@@ -63,6 +63,11 @@ export function RecipeCaptureCard() {
     });
   };
 
+  const handleSwitchToText = () => {
+    setMode('texto');
+    setError(null);
+  };
+
   return (
     <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -84,7 +89,10 @@ export function RecipeCaptureCard() {
         <div className="flex items-center bg-[#f4efe6] p-1.5 rounded-2xl border border-[#e7dfd5] self-start sm:self-auto">
           <button
             type="button"
-            onClick={() => setMode('url')}
+            onClick={() => {
+              setMode('url');
+              setError(null);
+            }}
             className={`min-h-[44px] px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center gap-2 ${
               mode === 'url'
                 ? 'bg-white text-stone-900 font-semibold shadow-xs'
@@ -96,7 +104,10 @@ export function RecipeCaptureCard() {
           </button>
           <button
             type="button"
-            onClick={() => setMode('texto')}
+            onClick={() => {
+              setMode('texto');
+              setError(null);
+            }}
             className={`min-h-[44px] px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center gap-2 ${
               mode === 'texto'
                 ? 'bg-white text-stone-900 font-semibold shadow-xs'
@@ -117,11 +128,34 @@ export function RecipeCaptureCard() {
         </div>
       )}
 
-      {/* Feedback de error */}
+      {/* Feedback de error en estilo Terracota */}
       {error && (
-        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs sm:text-sm flex items-start gap-3">
-          <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-          <span>{error}</span>
+        <div className="p-4 sm:p-5 rounded-2xl bg-[#faf2eb] border border-[#e3ba93] text-[#7c3d12] text-xs sm:text-sm space-y-3 shadow-2xs">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-[#a86224] shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold text-[#8c4515] leading-snug">
+                {error.includes('bloquea el acceso')
+                  ? 'Red social protegida contra lectura automática'
+                  : 'Aviso de extracción'}
+              </p>
+              <p className="text-[#6c3912] leading-relaxed">{error}</p>
+            </div>
+          </div>
+
+          {/* Botón rápido en Modo Cocina para cambiar a modo texto con 1 toque */}
+          {(error.includes('copia y pega') || mode === 'url') && (
+            <div className="pt-1 sm:pl-8">
+              <button
+                type="button"
+                onClick={handleSwitchToText}
+                className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-white border border-[#e3ba93] text-[#8c4515] hover:bg-[#f4efe6] font-semibold text-xs sm:text-sm transition cursor-pointer shadow-2xs active:scale-[0.98]"
+              >
+                <FileText className="w-4 h-4 text-[#a86224]" />
+                <span>Cambiar a modo texto y pegar receta</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
