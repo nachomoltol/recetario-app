@@ -1,3 +1,7 @@
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
+import youtubedl from 'yt-dlp-exec';
 import * as cheerio from 'cheerio';
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from './client';
 import {
@@ -7,19 +11,6 @@ import {
 } from './schema';
 import { FuenteTipoReceta } from '@/types/database';
 
-export const BOT_BLOCK_ERROR_MESSAGE =
-  'No hemos podido leer el enlace porque esta red social bloquea el acceso automático. Por favor, copia y pega el texto de la receta o los ingredientes.';
-
-export interface ScrapedContent {
-  titulo?: string;
-  descripcion?: string;
-  cuerpoTexto?: string;
-  ingredientesDetectados?: string[];
-  instruccionesDetectadas?: string[];
-  esUtil: boolean;
-  esBloqueoBot: boolean;
-}
-
 export function detectFuenteTipo(url?: string): FuenteTipoReceta {
   if (!url) return 'manual';
   const lower = url.toLowerCase();
@@ -27,6 +18,15 @@ export function detectFuenteTipo(url?: string): FuenteTipoReceta {
   if (lower.includes('instagram.com')) return 'instagram';
   if (lower.includes('youtube.com') || lower.includes('youtu.be')) return 'youtube';
   return 'web';
+}
+
+export interface MediaComboResult {
+  mediaPath?: string;
+  mimeType: string;
+  title?: string;
+  caption?: string;
+  tags?: string[];
+  cleanUp: () => Promise<void>;
 }
 
 const BROWSER_HEADERS: Record<string, string> = {
@@ -47,16 +47,122 @@ const BROWSER_HEADERS: Record<string, string> = {
 };
 
 /**
- * Realiza un scraping real en el servidor simulando cabeceras de navegador.
- * Extrae metadatos, microformatos Schema.org (JSON-LD) y texto limpio con cheerio.
- * Detecta de forma estricta si el sitio ha bloqueado el acceso o carece de información útil.
+ * Descarga el combo (Archivo audiovisual optimizado + Descripción/Caption cruda)
+ * en el servidor usando yt-dlp-exec en una sola pasada.
  */
-export async function scrapeUrlContent(url: string): Promise<ScrapedContent> {
-  const isSocialDomain = /tiktok\.com|instagram\.com|facebook\.com/i.test(url);
+export async function downloadMediaCombo(url: string): Promise<MediaComboResult | null> {
+  const tempDir = os.tmpdir();
+  const filePrefix = `receta_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const outputTemplate = path.join(tempDir, `${filePrefix}.%(ext)s`);
 
   try {
+    const flags: any = {
+      output: outputTemplate,
+      writeInfoJson: true,
+      format: '18/worst[ext=mp4]/best[height<=480][ext=mp4]/best[height<=720]/bestaudio/best',
+      jsRuntimes: 'node',
+      noWarnings: true,
+      noCallHome: true,
+      preferFreeFormats: true,
+      maxFilesize: '60M',
+    };
+    await youtubedl(url, flags);
+
+    const matchingFiles = fs.readdirSync(tempDir).filter((f) => f.startsWith(filePrefix));
+    const jsonFile = matchingFiles.find((f) => f.endsWith('.info.json'));
+    const mediaFile = matchingFiles.find(
+      (f) =>
+        !f.endsWith('.info.json') &&
+        !f.endsWith('.temp') &&
+        !f.endsWith('.part') &&
+        !f.endsWith('.ytdl')
+    );
+
+    let title = '';
+    let caption = '';
+    let tags: string[] = [];
+
+    if (jsonFile) {
+      try {
+        const jsonContent = JSON.parse(
+          fs.readFileSync(path.join(tempDir, jsonFile), 'utf-8')
+        );
+        title = jsonContent.title || '';
+        caption = jsonContent.description || jsonContent.caption || '';
+        if (Array.isArray(jsonContent.tags)) {
+          tags = jsonContent.tags;
+        }
+      } catch (err) {
+        console.warn('Error leyendo .info.json:', err);
+      }
+    }
+
+    let mimeType = 'video/mp4';
+    let mediaPath: string | undefined = undefined;
+
+    if (mediaFile) {
+      mediaPath = path.join(tempDir, mediaFile);
+      const ext = path.extname(mediaFile).toLowerCase();
+      if (ext === '.mp4') mimeType = 'video/mp4';
+      else if (ext === '.webm') mimeType = 'video/webm';
+      else if (ext === '.m4a' || ext === '.aac') mimeType = 'audio/mp4';
+      else if (ext === '.mp3') mimeType = 'audio/mpeg';
+      else if (ext === '.ogg' || ext === '.opus') mimeType = 'audio/ogg';
+    }
+
+    const cleanUp = async () => {
+      for (const f of matchingFiles) {
+        const full = path.join(tempDir, f);
+        if (fs.existsSync(full)) {
+          try {
+            fs.unlinkSync(full);
+          } catch {}
+        }
+      }
+    };
+
+    if (!mediaPath && !caption) {
+      await cleanUp();
+      return null;
+    }
+
+    return {
+      mediaPath,
+      mimeType,
+      title,
+      caption,
+      tags,
+      cleanUp,
+    };
+  } catch (err) {
+    console.warn(
+      'yt-dlp-exec no pudo descargar el combo multimedia directo:',
+      err instanceof Error ? err.message : err
+    );
+    // Limpieza de restos en fallo
+    try {
+      const leftover = fs.readdirSync(tempDir).filter((f) => f.startsWith(filePrefix));
+      for (const f of leftover) {
+        fs.unlinkSync(path.join(tempDir, f));
+      }
+    } catch {}
+    return null;
+  }
+}
+
+/**
+ * Scraping de respaldo para blogs o páginas de recetas tradicionales que no disponen de vídeo.
+ */
+export async function scrapeUrlContent(url: string): Promise<{
+  titulo?: string;
+  descripcion?: string;
+  cuerpoTexto?: string;
+  ingredientesDetectados?: string[];
+  instruccionesDetectadas?: string[];
+}> {
+  try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
     const res = await fetch(url, {
       headers: BROWSER_HEADERS,
@@ -67,38 +173,24 @@ export async function scrapeUrlContent(url: string): Promise<ScrapedContent> {
 
     clearTimeout(timeout);
 
-    // Detección directa de bloqueo anti-bot por código HTTP
-    if (res.status === 401 || res.status === 403 || res.status === 429) {
-      return {
-        esUtil: false,
-        esBloqueoBot: true,
-      };
-    }
-
     if (!res.ok) {
-      return {
-        esUtil: false,
-        esBloqueoBot: isSocialDomain,
-      };
+      return {};
     }
 
     const html = await res.text();
     const $ = cheerio.load(html);
 
-    // 1. Títulos
     const ogTitle = $('meta[property="og:title"]').attr('content')?.trim();
     const twitterTitle = $('meta[name="twitter:title"]').attr('content')?.trim();
     const docTitle = $('title').text().trim();
     const h1Title = $('h1').first().text().trim();
     const titulo = ogTitle || twitterTitle || h1Title || docTitle || '';
 
-    // 2. Descripciones y metadatos
     const ogDesc = $('meta[property="og:description"]').attr('content')?.trim();
     const twitterDesc = $('meta[name="twitter:description"]').attr('content')?.trim();
     const metaDesc = $('meta[name="description"]').attr('content')?.trim();
     let descripcion = ogDesc || twitterDesc || metaDesc || '';
 
-    // 3. Extracción de microdatos Schema.org Recipe (JSON-LD)
     const ingredientesDetectados: string[] = [];
     const instruccionesDetectadas: string[] = [];
 
@@ -136,12 +228,6 @@ export async function scrapeUrlContent(url: string): Promise<ScrapedContent> {
                   instruccionesDetectadas.push(inst.trim());
                 } else if (inst?.text && typeof inst.text === 'string') {
                   instruccionesDetectadas.push(inst.text.trim());
-                } else if (Array.isArray(inst?.itemListElement)) {
-                  inst.itemListElement.forEach((sub: any) => {
-                    if (sub?.text && typeof sub.text === 'string') {
-                      instruccionesDetectadas.push(sub.text.trim());
-                    }
-                  });
                 }
               });
             }
@@ -149,78 +235,14 @@ export async function scrapeUrlContent(url: string): Promise<ScrapedContent> {
         };
 
         items.forEach(parseRecipeNode);
-      } catch {
-        // Ignorar bloques JSON-LD con sintaxis corrupta
-      }
+      } catch {}
     });
 
-    // 4. Extracción de datos universales o rehidratación (TikTok)
-    const universalData = $('script#__UNIVERSAL_DATA_FOR_REHYDRATION__').text();
-    if (universalData) {
-      try {
-        const parsed = JSON.parse(universalData);
-        const item =
-          parsed?.['__DEFAULT_SCOPE__']?.['webapp.video-detail']?.['itemInfo']?.['itemStruct'];
-        if (item?.desc) {
-          descripcion = [descripcion, item.desc].filter(Boolean).join(' - ');
-        }
-      } catch {}
-    }
-
-    // 5. Limpieza del cuerpo para aislar el texto real
     $('script, style, noscript, nav, header, footer, iframe, svg, button, form, dialog, aside').remove();
 
     const articleEl = $('article, main, [role="main"]').first();
     const rawBody = (articleEl.length ? articleEl.text() : $('body').text()) || '';
-    const cuerpoTexto = rawBody
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 10000);
-
-    // 6. Diagnóstico de bloqueo bot o contenido insuficiente
-    const cleanLowerTitle = (titulo || docTitle).toLowerCase();
-    const cleanLowerDesc = descripcion.toLowerCase();
-
-    const isGenericPlaceholderTitle =
-      cleanLowerTitle === 'tiktok - make your day' ||
-      cleanLowerTitle === 'tiktok' ||
-      cleanLowerTitle === 'instagram' ||
-      cleanLowerTitle.includes('login') ||
-      cleanLowerTitle.includes('iniciar sesión') ||
-      cleanLowerTitle.includes('just a moment') ||
-      cleanLowerTitle.includes('attention required') ||
-      cleanLowerTitle.includes('access denied') ||
-      cleanLowerTitle.includes('cloudflare') ||
-      cleanLowerTitle.includes('robot');
-
-    const totalUsefulLength =
-      titulo.length +
-      descripcion.length +
-      ingredientesDetectados.join(' ').length +
-      instruccionesDetectadas.join(' ').length +
-      cuerpoTexto.length;
-
-    // Bloqueo típico en TikTok/Instagram sin cookies de sesión
-    if (isSocialDomain && (isGenericPlaceholderTitle || totalUsefulLength < 80)) {
-      return {
-        titulo,
-        descripcion,
-        cuerpoTexto,
-        esUtil: false,
-        esBloqueoBot: true,
-      };
-    }
-
-    // Página genérica sin contenido culinario o bloqueada
-    if (totalUsefulLength < 60 && ingredientesDetectados.length === 0) {
-      return {
-        titulo,
-        descripcion,
-        cuerpoTexto,
-        esUtil: false,
-        esBloqueoBot: isSocialDomain || isGenericPlaceholderTitle,
-      };
-    }
+    const cuerpoTexto = rawBody.replace(/\s+/g, ' ').trim().slice(0, 8000);
 
     return {
       titulo,
@@ -228,98 +250,180 @@ export async function scrapeUrlContent(url: string): Promise<ScrapedContent> {
       cuerpoTexto,
       ingredientesDetectados,
       instruccionesDetectadas,
-      esUtil: true,
-      esBloqueoBot: false,
     };
   } catch (err) {
-    console.warn('Error durante el scraping en servidor:', err);
-    return {
-      esUtil: false,
-      esBloqueoBot: isSocialDomain,
-    };
+    console.warn('Error en scraping fallback:', err);
+    return {};
   }
 }
 
 /**
- * Llama al SDK oficial de Gemini con el esquema estricto de recetas.
- * REGLA ESTRICTA: NUNCA se pasa la URL cruda al modelo para evitar el rechazo
- * genérico ("no tengo la capacidad de acceder a enlaces externos").
+ * Extracción Multimodal con Fusión Contextual (Vídeo/Audio + Descripción/Caption)
+ * usando la File API de Gemini y responseJsonSchema estricto.
  */
 export async function extractRecipeWithGemini({
-  scraped,
+  url,
   texto,
 }: {
-  scraped?: ScrapedContent;
+  url?: string;
   texto?: string;
 }): Promise<ExtractedRecipe> {
   const ai = getGeminiClient();
 
-  let contextPrompt = '';
+  let combo: MediaComboResult | null = null;
+  let geminiUploadedFileName: string | null = null;
 
-  if (scraped && scraped.esUtil) {
-    if (scraped.titulo) {
-      contextPrompt += `TÍTULO EXTRAÍDO DE LA RECETA:\n${scraped.titulo}\n\n`;
-    }
-    if (scraped.descripcion) {
-      contextPrompt += `DESCRIPCIÓN Y METADATOS DEL PLATO:\n${scraped.descripcion}\n\n`;
-    }
-    if (scraped.ingredientesDetectados && scraped.ingredientesDetectados.length > 0) {
-      contextPrompt += `INGREDIENTES DETECTADOS EN LA FUENTE:\n${scraped.ingredientesDetectados.join('\n')}\n\n`;
-    }
-    if (scraped.instruccionesDetectadas && scraped.instruccionesDetectadas.length > 0) {
-      contextPrompt += `PASOS O ELABORACIÓN DETECTADA:\n${scraped.instruccionesDetectadas.join('\n')}\n\n`;
-    }
-    if (scraped.cuerpoTexto) {
-      contextPrompt += `TEXTO O ARTÍCULO DE LA RECETA:\n${scraped.cuerpoTexto}\n\n`;
-    }
-  }
+  try {
+    let uploadedFilePart: any = null;
+    let contextPrompt = '';
 
-  if (texto) {
-    contextPrompt += `CONTENIDO O DETALLES APORTADOS POR EL USUARIO:\n${texto}\n\n`;
-  }
+    // 1. Procesar URL con Extracción del Combo
+    if (url) {
+      combo = await downloadMediaCombo(url);
 
-  if (!contextPrompt.trim()) {
-    throw new Error('Debes proporcionar información o texto de la receta para procesarla.');
-  }
+      if (combo?.mediaPath) {
+        // Ingesta Multimodal: Carga mediante Gemini File API
+        const uploadedFile = await ai.files.upload({
+          file: combo.mediaPath,
+          config: { mimeType: combo.mimeType },
+        });
 
-  const promptFinal = `
-Por favor, analiza la siguiente receta o contenido culinario y estandarízala conforme a tus instrucciones de sistema y al esquema JSON estricto requerido:
+        if (uploadedFile.name) {
+          geminiUploadedFileName = uploadedFile.name;
+
+          // Esperar si el archivo multimedia está en estado PROCESSING
+          let fileRecord = await ai.files.get({ name: uploadedFile.name });
+          let attempts = 0;
+          while (fileRecord.state === 'PROCESSING' && attempts < 25) {
+            await new Promise((r) => setTimeout(r, 2000));
+            fileRecord = await ai.files.get({ name: uploadedFile.name });
+            attempts++;
+          }
+
+          if (fileRecord.state !== 'FAILED' && fileRecord.uri) {
+            uploadedFilePart = {
+              fileData: {
+                fileUri: fileRecord.uri,
+                mimeType: fileRecord.mimeType || combo.mimeType,
+              },
+            };
+          }
+        }
+      }
+
+      if (combo?.title) {
+        contextPrompt += `TÍTULO DEL POST / RECETA:\n${combo.title}\n\n`;
+      }
+      if (combo?.caption) {
+        contextPrompt += `DESCRIPCIÓN CRUDA DEL POST (CAPTION DEL CREADOR):\n${combo.caption}\n\n`;
+      }
+
+      // Si no hubo archivo ni caption por yt-dlp (ej. blogs de texto), acudir al scraper web
+      if (!combo || (!combo.mediaPath && !combo.caption)) {
+        const scraped = await scrapeUrlContent(url);
+        if (scraped.titulo) contextPrompt += `TÍTULO DETECTADO:\n${scraped.titulo}\n\n`;
+        if (scraped.descripcion) contextPrompt += `DESCRIPCIÓN:\n${scraped.descripcion}\n\n`;
+        if (scraped.ingredientesDetectados?.length) {
+          contextPrompt += `INGREDIENTES ENCONTRADOS:\n${scraped.ingredientesDetectados.join('\n')}\n\n`;
+        }
+        if (scraped.instruccionesDetectadas?.length) {
+          contextPrompt += `PASOS ENCONTRADOS:\n${scraped.instruccionesDetectadas.join('\n')}\n\n`;
+        }
+        if (scraped.cuerpoTexto) {
+          contextPrompt += `TEXTO DE LA RECETA / PÁGINA:\n${scraped.cuerpoTexto}\n\n`;
+        }
+      }
+    }
+
+    if (texto) {
+      contextPrompt += `NOTAS O TEXTO ADICIONAL APORTADO POR EL USUARIO:\n${texto}\n\n`;
+    }
+
+    if (!contextPrompt.trim() && !uploadedFilePart) {
+      throw new Error(
+        'No se pudo extraer información ni archivo multimedia de la receta. Por favor, verifica el enlace o introduce el texto.'
+      );
+    }
+
+    // 2. Prompt de Fusión Contextual (Multimodal)
+    const promptFinal = `
+Eres un Chef Ejecutivo y Nutricionista especializado en extracción culinaria multimodal y perfilado nutricional.
+${
+  uploadedFilePart
+    ? `Se te proporciona un ARCHIVO AUDIOVISUAL (vídeo/audio del cocinado) y la DESCRIPCIÓN CRUDA del post (caption/notas del creador).
+
+INSTRUCCIÓN DE FUSIÓN CONTEXTUAL:
+Cruza activamente ambas fuentes de información:
+- Del VÍDEO/AUDIO: Observa y escucha los ingredientes mostrados o mencionados, los pasos secuenciales, técnicas aplicadas (puntos de cocción, temperaturas, cortes) y detalles no mencionados en el texto.
+- De la DESCRIPCIÓN/CAPTION: Extrae las cantidades exactas, nombres canónicos de ingredientes y notas complementarias que el creador haya listado por escrito.
+- Si en el texto faltan ingredientes o pasos, rescátalos observando el vídeo/audio (y viceversa).`
+    : `Analiza y estandariza la receta culinaria a partir de los datos y notas proporcionados.`
+}
+
+Estandariza la receta al esquema JSON estricto requerido:
 
 ${contextPrompt.trim()}
 `.trim();
 
-  // Probar modelo primario y si falla por compatibilidad de versión, probar los alternativos
-  const candidateModels = [PRIMARY_GEMINI_MODEL, ...FALLBACK_GEMINI_MODELS];
-  let lastError: unknown = null;
+    // 3. Montar payload para Gemini
+    const parts: any[] = [];
+    if (uploadedFilePart) {
+      parts.push(uploadedFilePart);
+    }
+    parts.push({ text: promptFinal });
 
-  for (const model of candidateModels) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: promptFinal,
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION_RECIPES,
-          responseMimeType: 'application/json',
-          responseJsonSchema: recipeExtractionSchema,
-          maxOutputTokens: 8192,
-        },
-      });
+    const contents = [{ role: 'user', parts }];
 
-      if (!response.text) {
-        throw new Error('La respuesta de Gemini vino vacía.');
+    // 4. Invocación con modelo parametrizable y fallback resiliente
+    const primaryModel = PRIMARY_GEMINI_MODEL;
+    const candidateModels = [
+      primaryModel,
+      ...FALLBACK_GEMINI_MODELS.filter((m) => m !== primaryModel),
+    ];
+
+    let lastError: unknown = null;
+
+    for (const model of candidateModels) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents,
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION_RECIPES,
+            responseMimeType: 'application/json',
+            responseJsonSchema: recipeExtractionSchema,
+            maxOutputTokens: 8192,
+          },
+        });
+
+        if (!response.text) {
+          throw new Error('La respuesta de Gemini vino vacía.');
+        }
+
+        const parsed: ExtractedRecipe = JSON.parse(response.text);
+        return parsed;
+      } catch (err) {
+        lastError = err;
+        console.warn(`Intento con modelo '${model}' falló:`, err instanceof Error ? err.message : err);
       }
+    }
 
-      const parsed: ExtractedRecipe = JSON.parse(response.text);
-      return parsed;
-    } catch (err) {
-      lastError = err;
-      console.warn(`Intento con modelo '${model}' falló:`, err instanceof Error ? err.message : err);
+    throw new Error(
+      `No se pudo estructurar la receta con Gemini. Detalle: ${
+        lastError instanceof Error ? lastError.message : 'Error desconocido'
+      }`
+    );
+  } finally {
+    // 5. Limpieza automática de recursos (File API y disco temporal)
+    if (geminiUploadedFileName) {
+      try {
+        await ai.files.delete({ name: geminiUploadedFileName });
+      } catch (e) {
+        console.warn('No se pudo borrar el archivo en Gemini Files:', e);
+      }
+    }
+    if (combo?.cleanUp) {
+      await combo.cleanUp();
     }
   }
-
-  throw new Error(
-    `No se pudo estructurar la receta con Gemini. Detalle: ${
-      lastError instanceof Error ? lastError.message : 'Error desconocido'
-    }`
-  );
 }

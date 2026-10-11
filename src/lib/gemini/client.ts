@@ -16,5 +16,13 @@ export function getGeminiClient(): GoogleGenAI {
   return geminiClientInstance;
 }
 
-export const PRIMARY_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-export const FALLBACK_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite'];
+/**
+ * Modelo configurable por variable de entorno GEMINI_MODEL,
+ * con fallback por defecto en código a gemini-2.5-flash-lite para optimizar costes.
+ */
+export const PRIMARY_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+export const FALLBACK_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-3.8-flash'];
+
+export function getActiveGeminiModel(): string {
+  return process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+}

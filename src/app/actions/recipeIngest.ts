@@ -2,13 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import {
-  extractRecipeWithGemini,
-  scrapeUrlContent,
-  detectFuenteTipo,
-  BOT_BLOCK_ERROR_MESSAGE,
-  ScrapedContent,
-} from '@/lib/gemini/extractor';
+import { extractRecipeWithGemini, detectFuenteTipo } from '@/lib/gemini/extractor';
 import { calcularGramos } from '@/lib/nutrition/converter';
 import { IngredienteMaestro } from '@/types/recipe';
 
@@ -36,29 +30,11 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     return { error: 'Debes haber iniciado sesión para procesar y guardar recetas.' };
   }
 
-  // 2. Scraping previo en el servidor si se aportó URL
-  let scraped: ScrapedContent | undefined = undefined;
-
-  if (url) {
-    scraped = await scrapeUrlContent(url);
-
-    // Si las protecciones anti-bot de la red social bloquean el acceso o no hay contenido útil
-    if (!scraped.esUtil) {
-      // Si el usuario no aportó texto alternativo suficiente, devolver el error amigable sin llamar a Gemini
-      if (!texto || texto.length < 15) {
-        return {
-          error: BOT_BLOCK_ERROR_MESSAGE,
-        };
-      }
-    }
-  }
-
   try {
-    // 3. Extracción estructurada mediante Gemini SDK con esquema JSON estricto
-    // NUNCA se le pasa la URL cruda al modelo para evitar el mensaje de negativa a navegar
-    const extracted = await extractRecipeWithGemini({ scraped, texto });
+    // 2. Extracción multimodal autónoma (Combo Vídeo/Audio + Caption) con Gemini File API
+    const extracted = await extractRecipeWithGemini({ url, texto });
 
-    // 4. Consultar ingredientes maestros para cruce relacional y cálculo volumétrico
+    // 3. Consultar ingredientes maestros para cruce relacional y cálculo volumétrico
     const { data: maestros } = await supabase
       .from('ingredientes_maestro')
       .select('*');
@@ -79,7 +55,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
 
     const fuenteTipo = detectFuenteTipo(url);
 
-    // 5. Inserción atómica en 'recetas'
+    // 4. Inserción atómica en 'recetas'
     const { data: nuevaReceta, error: errReceta } = await supabase
       .from('recetas')
       .insert({
@@ -107,7 +83,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       return { error: `Error guardando la receta: ${errReceta?.message || 'Error desconocido'}` };
     }
 
-    // 6. Preparar e insertar en 'receta_ingredientes'
+    // 5. Preparar e insertar en 'receta_ingredientes'
     const ingredientesPayload = extracted.ingredientes.map((ing, idx) => {
       const matchedMaestro = encontrarMaestro(ing.nombre_limpio);
 
@@ -154,7 +130,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       return { error: `Error guardando los ingredientes: ${errIngredientes.message}` };
     }
 
-    // 7. Preparar e insertar en 'pasos'
+    // 6. Preparar e insertar en 'pasos'
     const pasosPayload = extracted.pasos.map((p, idx) => ({
       receta_id: nuevaReceta.id,
       orden: p.orden || idx + 1,
