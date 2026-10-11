@@ -37,13 +37,13 @@ export function RecipeCaptureCard() {
     const formData = new FormData();
     if (mode === 'url') {
       if (!url.trim()) {
-        setError('Por favor introduce un enlace válido.');
+        setError('Por favor, introduce un enlace de receta válido.');
         return;
       }
       formData.set('url', url.trim());
     } else {
       if (!texto.trim()) {
-        setError('Por favor introduce la descripción o ingredientes de la receta.');
+        setError('Por favor, introduce el texto con la receta.');
         return;
       }
       formData.set('texto', texto.trim());
@@ -54,10 +54,9 @@ export function RecipeCaptureCard() {
       if (res.error) {
         setError(res.error);
       } else if (res.success) {
-        setSuccess('¡Receta analizada, estandarizada y guardada con éxito en tu recetario!');
+        setSuccess('¡Receta extraída y estandarizada en tu recetario!');
         setUrl('');
         setTexto('');
-        // Limpiar query params de la URL
         router.replace('/recipes');
         router.refresh();
       }
@@ -65,69 +64,71 @@ export function RecipeCaptureCard() {
   };
 
   return (
-    <div className="p-6 rounded-3xl bg-charcoal-900 border border-charcoal-700/80 shadow-2xl space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+    <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold font-serif-recipe text-stone-100">
-              Captura Inteligente con IA
+            <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 tracking-tight">
+              Captura Rápida de Recetas
             </h2>
-            <p className="text-xs text-stone-400">
-              Ingesta multicanal (TikTok, Instagram Reels, YouTube o texto) vía Gemini Flash
+            <p className="text-xs sm:text-sm text-stone-500">
+              Pega enlaces de TikTok, Instagram Reels, YouTube o notas
             </p>
           </div>
         </div>
 
-        {/* Selector de modo */}
-        <div className="flex items-center bg-charcoal-950 p-1 rounded-xl border border-charcoal-800">
+        {/* Selector de modo Mobile-First con touch targets amplios */}
+        <div className="flex items-center bg-[#f4efe6] p-1.5 rounded-2xl border border-[#e7dfd5] self-start sm:self-auto">
           <button
             type="button"
             onClick={() => setMode('url')}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-[44px] px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center gap-2 ${
               mode === 'url'
-                ? 'bg-amber-400 text-stone-950 font-semibold shadow'
-                : 'text-stone-400 hover:text-stone-200'
+                ? 'bg-white text-stone-900 font-semibold shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <LinkIcon className="w-3.5 h-3.5" /> Enlace
+            <LinkIcon className="w-4 h-4 text-[#a86224]" />
+            <span>Enlace</span>
           </button>
           <button
             type="button"
             onClick={() => setMode('texto')}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-[44px] px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center gap-2 ${
               mode === 'texto'
-                ? 'bg-amber-400 text-stone-950 font-semibold shadow'
-                : 'text-stone-400 hover:text-stone-200'
+                ? 'bg-white text-stone-900 font-semibold shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <FileText className="w-3.5 h-3.5" /> Texto / Notas
+            <FileText className="w-4 h-4 text-[#a86224]" />
+            <span>Texto</span>
           </button>
         </div>
       </div>
 
-      {/* Alerta de notificación si vino de Web Share Target */}
+      {/* Aviso de captura nativa Web Share Target */}
       {initialUrl && (
-        <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-blue-400 shrink-0" />
-          <span>Enlace capturado nativamente desde el menú Compartir de tu móvil.</span>
+        <div className="p-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-stone-700 text-xs sm:text-sm flex items-center gap-2.5">
+          <Sparkles className="w-4 h-4 text-[#a86224] shrink-0" />
+          <span>Enlace recibido directamente desde el menú Compartir de tu móvil.</span>
         </div>
       )}
 
       {/* Feedback de error */}
       {error && (
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-start gap-3">
-          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs sm:text-sm flex items-start gap-3">
+          <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Feedback de éxito */}
       {success && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-start gap-3">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm flex items-start gap-3">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
           <span>{success}</span>
         </div>
       )}
@@ -139,37 +140,37 @@ export function RecipeCaptureCard() {
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="Pega un enlace de TikTok, Instagram Reel o YouTube..."
+              placeholder="https://vm.tiktok.com/... o enlace de YouTube / Reels"
               disabled={isPending}
-              className="w-full pl-4 pr-10 py-3 rounded-xl bg-charcoal-950 border border-charcoal-700 text-stone-100 placeholder-stone-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/80 transition"
+              className="w-full min-h-[52px] pl-4 pr-12 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition shadow-2xs"
             />
-            <LinkIcon className="w-4 h-4 text-stone-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <LinkIcon className="w-5 h-5 text-stone-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         ) : (
           <textarea
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             rows={4}
-            placeholder="Pega transcripciones de audio, notas de voz, ingredientes o instrucciones..."
+            placeholder="Pega aquí los ingredientes o la preparación de la receta..."
             disabled={isPending}
-            className="w-full p-4 rounded-xl bg-charcoal-950 border border-charcoal-700 text-stone-100 placeholder-stone-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/80 transition resize-none"
+            className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition resize-none shadow-2xs"
           />
         )}
 
         <button
           type="submit"
           disabled={isPending}
-          className="w-full py-3 px-4 rounded-xl font-medium text-sm text-stone-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          className="w-full min-h-[52px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-sm shadow-[#a86224]/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           {isPending ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin text-stone-950" />
-              <span>Extrayendo y perfilando con Gemini...</span>
+              <Loader2 className="w-5 h-5 animate-spin text-white" />
+              <span>Analizando y extrayendo con Gemini...</span>
             </>
           ) : (
             <>
               <span>Procesar Receta con IA</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-5 h-5" />
             </>
           )}
         </button>

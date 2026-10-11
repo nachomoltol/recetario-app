@@ -18,11 +18,11 @@ export function UserProfileBadge({ fallbackName, email }: UserProfileBadgeProps)
 
   return (
     <div className="flex items-center gap-3">
-      <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-600 to-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center shadow-md shadow-amber-500/10">
+      <div className="w-9 h-9 rounded-full bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] font-bold text-xs flex items-center justify-center shadow-xs">
         {initials}
       </div>
       <div className="hidden sm:block text-left">
-        <p className="text-xs font-semibold text-stone-200 leading-tight">{displayName}</p>
+        <p className="text-xs font-semibold text-stone-900 leading-tight">{displayName}</p>
         <p className="text-[11px] text-stone-500 truncate max-w-[150px]">{displayEmail}</p>
       </div>
     </div>

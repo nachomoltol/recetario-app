@@ -1,139 +1,114 @@
 import Link from 'next/link';
-import { BookOpen, Sparkles, Share2, Camera, Database, ShieldCheck } from 'lucide-react';
+import { BookOpen, Sparkles, Share2, Camera, Database, ArrowRight } from 'lucide-react';
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-charcoal-950 text-stone-100 flex flex-col justify-between p-6 sm:p-12 max-w-6xl mx-auto">
+    <main className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col justify-between p-6 sm:p-12 max-w-5xl mx-auto">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-charcoal-700/60 pb-6">
+      <header className="flex items-center justify-between border-b border-[#e7dfd5] pb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+          <div className="w-11 h-11 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224]">
             <BookOpen className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white font-serif-recipe">
+            <h1 className="text-xl font-bold tracking-tight text-stone-900 font-serif-recipe">
               Recetario Inteligente
             </h1>
-            <p className="text-xs text-stone-400">
-              Arquitectura Base PWA & Motor Nutricional Relacional
+            <p className="text-xs text-stone-500">
+              Minimalismo Luminoso · Modo Cocina Mobile-First
             </p>
           </div>
         </div>
+
         <div className="flex items-center gap-3">
           <Link
             href="/login"
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-stone-300 hover:text-white hover:bg-charcoal-800 transition"
+            className="min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition flex items-center"
           >
             Iniciar Sesión
           </Link>
           <Link
             href="/register"
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-stone-950 bg-amber-400 hover:bg-amber-300 shadow-md shadow-amber-500/20 transition"
+            className="min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#a86224] hover:bg-[#8e511c] shadow-xs transition flex items-center"
           >
-            Registrarse
+            Crear Cuenta
           </Link>
         </div>
       </header>
 
       {/* Hero / State Validation */}
-      <section className="py-12 space-y-6">
-        <div className="max-w-2xl space-y-3">
-          <span className="text-amber-500 font-medium text-xs tracking-wider uppercase">
-            Fase 2: Autenticación & Estado Global Activos
+      <section className="py-12 sm:py-16 space-y-8">
+        <div className="max-w-2xl space-y-4">
+          <span className="text-[#a86224] font-semibold text-xs tracking-wider uppercase">
+            Plataforma Culinaria y Nutricional
           </span>
-          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-stone-100 font-serif-recipe">
-            Ecosistema preparado para estandarización culinaria y nutrición clínica.
+          <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-stone-900 font-serif-recipe leading-tight">
+            Estandarización de recetas y sustituciones saludables bajo demanda.
           </h2>
-          <p className="text-sm sm:text-base text-stone-400 leading-relaxed">
-            Se ha implementado el flujo de Supabase Auth (Login y Registro), la protección de rutas
-            mediante Middleware de Next.js y los stores de Zustand (<code className="text-amber-400">useAuthStore</code> y <code className="text-amber-400">useProfileStore</code>) para la sincronización de sesión en el cliente.
+          <p className="text-base sm:text-lg text-stone-600 leading-relaxed font-light">
+            Convierte enlaces de TikTok, Reels o YouTube en fichas culinarias estructuradas.
+            Diseñada especialmente para cocinar desde el móvil, con touch targets amplios y alta legibilidad.
           </p>
 
-          <div className="pt-2 flex items-center gap-3">
+          <div className="pt-2 flex items-center gap-4">
             <Link
               href="/recipes"
-              className="px-5 py-2.5 rounded-xl text-sm font-medium text-stone-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 shadow-lg shadow-amber-500/20 transition"
+              className="min-h-[50px] px-6 py-3 rounded-2xl text-sm sm:text-base font-semibold text-white bg-[#a86224] hover:bg-[#8e511c] shadow-sm transition inline-flex items-center gap-2"
             >
-              Probar Ruta Protegida (/recipes) →
+              <span>Acceder a Mis Recetas</span>
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
 
-        {/* Pilares funcionales definidos */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-6">
-          <div className="p-5 rounded-2xl bg-charcoal-900 border border-charcoal-700/60 space-y-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
-              <Sparkles className="w-4 h-4" />
+        {/* Pilares Funcionales Orgánicos */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
+          <div className="p-6 rounded-3xl bg-white border border-[#e7dfd5] space-y-3 shadow-2xs">
+            <div className="w-10 h-10 rounded-2xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center">
+              <Sparkles className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-stone-200 text-sm">Ingesta Multicanal</h3>
-            <p className="text-xs text-stone-400 leading-relaxed">
-              Preparado para procesar TikTok, Reels y YouTube, extrayendo metadatos y vídeo.
+            <h3 className="font-bold text-stone-900 font-serif-recipe text-base">Ingesta con IA</h3>
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+              Extracción precisa de ingredientes y pasos desde vídeos y textos con Gemini Flash.
             </p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-charcoal-900 border border-charcoal-700/60 space-y-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
-              <Share2 className="w-4 h-4" />
+          <div className="p-6 rounded-3xl bg-white border border-[#e7dfd5] space-y-3 shadow-2xs">
+            <div className="w-10 h-10 rounded-2xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center">
+              <Share2 className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-stone-200 text-sm">Captura Web Share</h3>
-            <p className="text-xs text-stone-400 leading-relaxed">
-              Integración PWA manifest target lista para capturar desde el menú nativo móvil.
+            <h3 className="font-bold text-stone-900 font-serif-recipe text-base">Web Share PWA</h3>
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+              Envía vídeos a la app desde el menú nativo de tu teléfono con un solo toque.
             </p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-charcoal-900 border border-charcoal-700/60 space-y-3">
-            <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400">
-              <Camera className="w-4 h-4" />
+          <div className="p-6 rounded-3xl bg-white border border-[#e7dfd5] space-y-3 shadow-2xs">
+            <div className="w-10 h-10 rounded-2xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center">
+              <Camera className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-stone-200 text-sm">Diario Culinario</h3>
-            <p className="text-xs text-stone-400 leading-relaxed">
-              Tabla `diario_cocinados` con registro empírico fotográfico y notas de sabor.
+            <h3 className="font-bold text-stone-900 font-serif-recipe text-base">Diario Visual</h3>
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+              Guarda fotos reales de tus platos, notas de sabor y puntuación en Supabase Storage.
             </p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-charcoal-900 border border-charcoal-700/60 space-y-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-              <Database className="w-4 h-4" />
+          <div className="p-6 rounded-3xl bg-white border border-[#e7dfd5] space-y-3 shadow-2xs">
+            <div className="w-10 h-10 rounded-2xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center">
+              <Database className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-stone-200 text-sm">Motor Nutricional</h3>
-            <p className="text-xs text-stone-400 leading-relaxed">
-              Conversión volumétrica por densidad g/ml y catálogo maestro de macros clínicos.
+            <h3 className="font-bold text-stone-900 font-serif-recipe text-base">Sustitución IA</h3>
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+              Botón bajo demanda junto a cada ingrediente para consultar alternativas saludables.
             </p>
-          </div>
-        </div>
-
-        {/* Tablas Relacionales Listas */}
-        <div className="mt-8 p-6 rounded-2xl bg-charcoal-900/60 border border-charcoal-700/80">
-          <h3 className="text-sm font-semibold text-stone-300 uppercase tracking-wider mb-4">
-            Tablas Relacionales Diseñadas en Supabase (DDL & RLS)
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {[
-              { name: 'usuarios', desc: 'Perfiles + auth.users' },
-              { name: 'recetas', desc: 'Metadatos y tiempos' },
-              { name: 'ingredientes_maestro', desc: 'Densidad y macros' },
-              { name: 'receta_ingredientes', desc: 'Volumen y pesos' },
-              { name: 'pasos', desc: 'Guía secuencial' },
-              { name: 'diario_cocinados', desc: 'Fotos y notas' },
-            ].map((tbl) => (
-              <div
-                key={tbl.name}
-                className="p-3 rounded-xl bg-charcoal-950/80 border border-charcoal-700/50 text-left"
-              >
-                <code className="text-amber-400 font-mono text-xs block font-bold">
-                  {tbl.name}
-                </code>
-                <span className="text-[11px] text-stone-400 block mt-1">{tbl.desc}</span>
-              </div>
-            ))}
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="pt-6 border-t border-charcoal-700/40 text-xs text-stone-500 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <span>Recetario App &copy; 2026 — Modo Oscuro Gastronómico</span>
-        <span>Ecosistema: Next.js 15 · Tailwind v4 · Zustand 5 · Supabase</span>
+      <footer className="pt-6 border-t border-[#e7dfd5] text-xs text-stone-500 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <span>Recetario App &copy; 2026 — Lino & Minimalismo Luminoso</span>
+        <span>Ecosistema: Next.js 15 · Tailwind CSS · Zustand · Supabase · Gemini</span>
       </footer>
     </main>
   );

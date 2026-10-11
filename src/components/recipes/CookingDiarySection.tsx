@@ -58,13 +58,13 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
   };
 
   return (
-    <section className="space-y-6 pt-8 border-t border-stone-800/60">
-      <div className="flex items-center justify-between">
+    <section className="space-y-6 pt-10 border-t border-[#e7dfd5]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-[11px] uppercase tracking-widest text-amber-500 font-semibold block">
+          <span className="text-xs uppercase tracking-widest text-[#a86224] font-semibold block">
             Registro Empírico Culinario
           </span>
-          <h2 className="text-2xl font-bold font-serif-recipe text-stone-100">
+          <h2 className="text-2xl sm:text-3xl font-bold font-serif-recipe text-stone-900">
             Diario de Cocinados ({entradas.length})
           </h2>
         </div>
@@ -72,7 +72,7 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-stone-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 shadow-md shadow-amber-500/10 transition cursor-pointer"
+          className="min-h-[48px] px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-white bg-[#a86224] hover:bg-[#8e511c] shadow-xs transition flex items-center justify-center gap-2 cursor-pointer self-start sm:self-auto"
         >
           {isOpen ? (
             <>
@@ -88,44 +88,46 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
         </button>
       </div>
 
-      {/* Formulario de subida desplegable */}
+      {/* Formulario de subida de preparación */}
       {isOpen && (
-        <div className="p-6 rounded-2xl border border-stone-800 bg-stone-900/30 backdrop-blur-sm space-y-5 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between border-b border-stone-800/60 pb-3">
-            <h3 className="text-base font-semibold font-serif-recipe text-stone-200">
-              Registrar Resultado Real
+        <div className="p-6 sm:p-8 rounded-3xl border border-[#e7dfd5] bg-white shadow-xs space-y-6 animate-in fade-in duration-200">
+          <div className="border-b border-[#e7dfd5] pb-3">
+            <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
+              Documentar Resultado Real
             </h3>
-            <span className="text-xs text-stone-400">Sube una foto y documenta tus notas de cata</span>
+            <p className="text-xs sm:text-sm text-stone-500">
+              Sube la foto de tu plato para crear tu historial gastronómico personal
+            </p>
           </div>
 
           {error && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+            <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs sm:text-sm flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
               <span>{success}</span>
             </div>
           )}
 
-          <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+          <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
             {/* Selector de Foto */}
             <div className="space-y-2">
-              <label className="block text-xs font-medium text-stone-300">
-                Fotografía del Plato Real *
+              <label className="block text-xs sm:text-sm font-semibold text-stone-800">
+                Fotografía del Plato *
               </label>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2.5 rounded-xl border border-dashed border-stone-700 hover:border-amber-500/50 text-xs text-stone-300 hover:text-white transition flex items-center gap-2 cursor-pointer bg-charcoal-950"
+                  className="min-h-[48px] px-5 py-3 rounded-2xl border border-dashed border-[#d8cbba] hover:border-[#a86224] text-xs sm:text-sm font-medium text-stone-700 bg-[#faf7f2] hover:bg-[#f4efe6] transition flex items-center gap-2.5 cursor-pointer"
                 >
-                  <Camera className="w-4 h-4 text-amber-400" />
-                  <span>{previewUrl ? 'Cambiar fotografía' : 'Seleccionar foto desde galería o cámara'}</span>
+                  <Camera className="w-5 h-5 text-[#a86224]" />
+                  <span>{previewUrl ? 'Cambiar fotografía' : 'Tomar foto o elegir de la galería'}</span>
                 </button>
                 <input
                   ref={fileInputRef}
@@ -139,7 +141,7 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
               </div>
 
               {previewUrl && (
-                <div className="mt-3 relative w-48 h-36 rounded-xl overflow-hidden border border-stone-700 culinary-photo">
+                <div className="mt-4 relative w-56 h-40 rounded-2xl overflow-hidden border border-[#e7dfd5] culinary-photo shadow-2xs">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={previewUrl}
@@ -150,12 +152,12 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
               )}
             </div>
 
-            {/* Calificación por estrellas */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-stone-300">
+            {/* Calificación por estrellas con touch targets grandes */}
+            <div className="space-y-2">
+              <label className="block text-xs sm:text-sm font-semibold text-stone-800">
                 Puntuación del Plato
               </label>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
@@ -163,18 +165,18 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
                     onClick={() => setCalificacion(star)}
                     onMouseEnter={() => setHoverCalificacion(star)}
                     onMouseLeave={() => setHoverCalificacion(null)}
-                    className="p-1 transition cursor-pointer"
+                    className="min-h-[48px] min-w-[48px] rounded-xl flex items-center justify-center transition cursor-pointer hover:bg-[#f4efe6] active:scale-90"
                   >
                     <Star
-                      className={`w-6 h-6 ${
+                      className={`w-7 h-7 ${
                         (hoverCalificacion !== null ? star <= hoverCalificacion : star <= calificacion)
-                          ? 'fill-amber-400 text-amber-400'
-                          : 'text-stone-600'
+                          ? 'fill-[#f59e0b] text-[#f59e0b]'
+                          : 'text-stone-300'
                       }`}
                     />
                   </button>
                 ))}
-                <span className="text-xs text-stone-400 ml-2 font-medium">
+                <span className="text-xs sm:text-sm text-stone-600 ml-2 font-medium">
                   {calificacion} de 5 estrellas
                 </span>
               </div>
@@ -182,7 +184,7 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
 
             {/* Tiempo empleado */}
             <div className="space-y-1.5">
-              <label htmlFor="tiempoEmpleadoMin" className="block text-xs font-medium text-stone-300">
+              <label htmlFor="tiempoEmpleadoMin" className="block text-xs sm:text-sm font-semibold text-stone-800">
                 Tiempo Total Empleado (minutos)
               </label>
               <input
@@ -190,36 +192,36 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
                 name="tiempoEmpleadoMin"
                 type="number"
                 min={1}
-                placeholder="Ej. 45"
-                className="w-full sm:w-48 px-3 py-2 rounded-xl bg-charcoal-950 border border-stone-700 text-sm text-stone-200 focus:outline-none focus:border-amber-500/80"
+                placeholder="Ej. 40"
+                className="w-full sm:w-48 min-h-[48px] px-4 py-2.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-sm sm:text-base text-stone-900 focus:bg-white focus:outline-none focus:border-[#a86224]"
               />
             </div>
 
             {/* Notas de sabor */}
             <div className="space-y-1.5">
-              <label htmlFor="notas" className="block text-xs font-medium text-stone-300">
+              <label htmlFor="notas" className="block text-xs sm:text-sm font-semibold text-stone-800">
                 Notas del Cocinero (Sabor, Textura, Puntos a Mejorar)
               </label>
               <textarea
                 id="notas"
                 name="notas"
                 rows={3}
-                placeholder="Ej. La textura quedó cremosa y el punto de sal fue exacto. La próxima vez bajaré 3 minutos el horno..."
-                className="w-full p-3 rounded-xl bg-charcoal-950 border border-stone-700 text-sm text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-500/80 resize-none"
+                placeholder="Ej. Quedó muy jugoso. Para la próxima añadiré un poco más de pimienta..."
+                className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-sm sm:text-base text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none focus:border-[#a86224] resize-none"
               />
             </div>
 
             {/* Modificaciones realizadas */}
             <div className="space-y-1.5">
-              <label htmlFor="modificaciones" className="block text-xs font-medium text-stone-300">
+              <label htmlFor="modificaciones" className="block text-xs sm:text-sm font-semibold text-stone-800">
                 Modificaciones o Sustituciones Realizadas
               </label>
               <input
                 id="modificaciones"
                 name="modificaciones"
                 type="text"
-                placeholder="Ej. Sustituí la mantequilla por aceite de oliva virgen extra."
-                className="w-full px-3 py-2 rounded-xl bg-charcoal-950 border border-stone-700 text-sm text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-500/80"
+                placeholder="Ej. Usé harina de avena en vez de trigo."
+                className="w-full min-h-[48px] px-4 py-2.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-sm sm:text-base text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none focus:border-[#a86224]"
               />
             </div>
 
@@ -227,12 +229,12 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
             <button
               type="submit"
               disabled={isPending}
-              className="py-2.5 px-5 rounded-xl font-medium text-xs text-stone-950 bg-amber-400 hover:bg-amber-300 transition flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+              className="min-h-[50px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] transition flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
             >
               {isPending ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Subiendo fotografía y guardando entrada...</span>
+                  <Loader2 className="w-5 h-5 animate-spin text-white" />
+                  <span>Subiendo fotografía...</span>
                 </>
               ) : (
                 <>
@@ -246,41 +248,41 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
 
       {/* Galería de cocinados existentes */}
       {entradas.length === 0 ? (
-        <div className="p-8 text-center rounded-2xl border border-dashed border-stone-800 text-xs text-stone-500">
-          Aún no has cocinado este plato. ¡Prepáralo, toma una foto real y sé el primero en evaluarlo!
+        <div className="p-10 text-center rounded-3xl border border-dashed border-[#e7dfd5] bg-white text-xs sm:text-sm text-stone-500">
+          Aún no has registrado ningún cocinado de este plato. ¡Cocínalo, hazle una foto y anota tus impresiones!
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {entradas.map((entry) => (
             <div
               key={entry.id}
-              className="rounded-2xl border border-stone-800/80 bg-stone-900/30 overflow-hidden shadow-lg flex flex-col sm:flex-row group"
+              className="rounded-3xl border border-[#e7dfd5] bg-white overflow-hidden shadow-2xs flex flex-col group"
             >
-              <div className="sm:w-48 h-48 relative overflow-hidden culinary-photo shrink-0 bg-stone-950">
+              <div className="w-full h-52 relative overflow-hidden culinary-photo bg-[#f4efe6]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={entry.foto_resultado_url}
                   alt="Resultado real de la receta"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
                 />
               </div>
 
-              <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+              <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
                           key={star}
-                          className={`w-3.5 h-3.5 ${
+                          className={`w-4 h-4 ${
                             entry.calificacion && star <= entry.calificacion
-                              ? 'fill-amber-400 text-amber-400'
-                              : 'text-stone-700'
+                              ? 'fill-[#f59e0b] text-[#f59e0b]'
+                              : 'text-stone-300'
                           }`}
                         />
                       ))}
                     </div>
-                    <span className="text-[11px] text-stone-500 font-mono">
+                    <span className="text-xs text-stone-500 font-medium">
                       {new Date(entry.fecha_cocinado).toLocaleDateString('es-ES', {
                         day: 'numeric',
                         month: 'short',
@@ -290,23 +292,23 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
                   </div>
 
                   {entry.notas_cocinero && (
-                    <p className="text-xs text-stone-300 italic leading-relaxed">
+                    <p className="text-sm text-stone-800 italic leading-relaxed">
                       &ldquo;{entry.notas_cocinero}&rdquo;
                     </p>
                   )}
 
                   {entry.modificaciones_realizadas && (
-                    <p className="text-[11px] text-amber-300/80">
-                      <span className="font-medium text-stone-400">Variación:</span>{' '}
+                    <p className="text-xs text-[#a86224]">
+                      <span className="font-semibold text-stone-700">Variación:</span>{' '}
                       {entry.modificaciones_realizadas}
                     </p>
                   )}
                 </div>
 
                 {entry.tiempo_empleado_min && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-stone-500 pt-2 border-t border-stone-800/40">
-                    <Clock className="w-3 h-3 text-amber-500/80" />
-                    <span>Tiempo real: {entry.tiempo_empleado_min} min</span>
+                  <div className="flex items-center gap-1.5 text-xs text-stone-500 pt-2 border-t border-[#f4efe6]">
+                    <Clock className="w-3.5 h-3.5 text-[#a86224]" />
+                    <span>Tiempo empleado: {entry.tiempo_empleado_min} min</span>
                   </div>
                 )}
               </div>

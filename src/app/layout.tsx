@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0c0d12',
+  themeColor: '#faf7f2',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -42,11 +42,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${serifFont.variable} ${sansFont.variable} dark`}>
+    <html lang="es" className={`${serifFont.variable} ${sansFont.variable}`}>
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body className="min-h-screen bg-charcoal-950 text-stone-100 font-sans antialiased selection:bg-amber-600/30 selection:text-amber-200">
+      <body className="min-h-screen bg-[#faf7f2] text-stone-900 font-sans antialiased selection:bg-amber-200 selection:text-amber-950">
         <ServiceWorkerRegister />
         <AuthInitializer />
         {children}
