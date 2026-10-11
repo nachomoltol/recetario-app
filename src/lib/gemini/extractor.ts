@@ -1,8 +1,12 @@
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
 import youtubedl from 'yt-dlp-exec';
 import * as cheerio from 'cheerio';
+import { alldl } from 'rahad-all-downloader-v2';
+import { igdl, ttdl } from 'btch-downloader';
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from './client';
 import {
   recipeExtractionSchema,
@@ -53,13 +57,403 @@ const BROWSER_HEADERS: Record<string, string> = {
   'Cache-Control': 'max-age=0',
 };
 
+const SOCIAL_CRAWLER_HEADERS: Record<string, string> = {
+  'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7',
+  'Cache-Control': 'no-cache',
+};
+
 /**
- * Descarga el combo (Archivo audiovisual optimizado + Descripción/Caption cruda)
- * en el servidor usando yt-dlp-exec en una sola pasada.
+ * Descarga en streaming un archivo multimedia remoto directamente al disco local en os.tmpdir()
  */
-export async function downloadMediaCombo(url: string): Promise<MediaComboResult | null> {
+async function streamMediaUrlToFile(
+  mediaUrl: string,
+  targetFilePath: string
+): Promise<{ success: boolean; mimeType: string }> {
+  try {
+    const res = await fetch(mediaUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        Accept: '*/*',
+      },
+    });
+
+    if (!res.ok || !res.body) {
+      console.warn(`Error de respuesta descargando stream (${res.status}): ${res.statusText}`);
+      return { success: false, mimeType: 'video/mp4' };
+    }
+
+    const contentType = res.headers.get('content-type') || 'video/mp4';
+    const writeStream = fs.createWriteStream(targetFilePath);
+    await pipeline(Readable.fromWeb(res.body as any), writeStream);
+
+    const stats = fs.statSync(targetFilePath);
+    if (stats.size < 1024) {
+      try {
+        fs.unlinkSync(targetFilePath);
+      } catch {}
+      return { success: false, mimeType: 'video/mp4' };
+    }
+
+    let mimeType = 'video/mp4';
+    if (contentType.includes('webm')) mimeType = 'video/webm';
+    else if (contentType.includes('audio') || contentType.includes('mp3') || contentType.includes('m4a')) {
+      mimeType = 'audio/mp4';
+    }
+
+    return { success: true, mimeType };
+  } catch (err) {
+    console.warn('Fallo en streamMediaUrlToFile:', err instanceof Error ? err.message : err);
+    try {
+      if (fs.existsSync(targetFilePath)) fs.unlinkSync(targetFilePath);
+    } catch {}
+    return { success: false, mimeType: 'video/mp4' };
+  }
+}
+
+/**
+ * Extractor especializado y a prueba de balas para TikTok
+ * Tier 1: TikWM API (directo, sin bloqueos de IP, < 2s)
+ * Tier 2: rahad-all-downloader-v2
+ * Tier 3: btch-downloader (ttdl)
+ * Tier 4: yt-dlp-exec
+ */
+async function extractTikTokCombo(
+  url: string,
+  filePrefix: string
+): Promise<MediaComboResult | null> {
   const tempDir = os.tmpdir();
-  const filePrefix = `receta_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const targetFilePath = path.join(tempDir, `${filePrefix}.mp4`);
+  const createdFiles: string[] = [];
+
+  const cleanUp = async () => {
+    for (const f of createdFiles) {
+      if (fs.existsSync(f)) {
+        try {
+          fs.unlinkSync(f);
+        } catch {}
+      }
+    }
+  };
+
+  // Tier 1: TikWM API
+  try {
+    const formData = new URLSearchParams();
+    formData.append('url', url);
+    formData.append('hd', '1');
+
+    const res = await fetch('https://www.tikwm.com/api/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+      },
+      body: formData.toString(),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.code === 0 && data.data) {
+        const rawPlay = data.data.play || data.data.wmplay;
+        const videoPlayUrl = rawPlay
+          ? rawPlay.startsWith('http')
+            ? rawPlay
+            : `https://www.tikwm.com${rawPlay}`
+          : null;
+        const title = data.data.title || '';
+        const author = data.data.author?.nickname || data.data.author?.unique_id || '';
+        const caption = title ? `${title} (Autor: ${author})` : '';
+
+        if (videoPlayUrl) {
+          const downloadRes = await streamMediaUrlToFile(videoPlayUrl, targetFilePath);
+          if (downloadRes.success) {
+            createdFiles.push(targetFilePath);
+            return {
+              mediaPath: targetFilePath,
+              mimeType: downloadRes.mimeType,
+              title,
+              caption,
+              cleanUp,
+            };
+          }
+        } else if (caption) {
+          return {
+            mimeType: 'video/mp4',
+            title,
+            caption,
+            cleanUp,
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('TikWM API tier fallo, pasando al siguiente:', err instanceof Error ? err.message : err);
+  }
+
+  // Tier 2: rahad-all-downloader-v2
+  try {
+    const res = await alldl(url);
+    if (res?.data?.videoUrl) {
+      const title = res.data.title || '';
+      const downloadRes = await streamMediaUrlToFile(res.data.videoUrl, targetFilePath);
+      if (downloadRes.success) {
+        createdFiles.push(targetFilePath);
+        return {
+          mediaPath: targetFilePath,
+          mimeType: downloadRes.mimeType,
+          title,
+          caption: title,
+          cleanUp,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('alldl TikTok fallo:', err instanceof Error ? err.message : err);
+  }
+
+  // Tier 3: btch-downloader (ttdl)
+  try {
+    const res = await ttdl(url);
+    const videoUrl = res?.video?.[0];
+    if (videoUrl) {
+      const title = res.title || '';
+      const downloadRes = await streamMediaUrlToFile(videoUrl, targetFilePath);
+      if (downloadRes.success) {
+        createdFiles.push(targetFilePath);
+        return {
+          mediaPath: targetFilePath,
+          mimeType: downloadRes.mimeType,
+          title,
+          caption: title,
+          cleanUp,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('btch ttdl fallo:', err instanceof Error ? err.message : err);
+  }
+
+  // Tier 4: yt-dlp-exec
+  return executeYtDlpCombo(url, filePrefix);
+}
+
+/**
+ * Extractor especializado y a prueba de balas para Instagram (Reels y Posts)
+ * Tier 0: RapidAPI (si se provee RAPIDAPI_KEY en entorno)
+ * Tier 1: OpenGraph & Social Crawler bot simulation para descripción/receta completa
+ * Tier 2: rahad-all-downloader-v2 (alldl)
+ * Tier 3: btch-downloader (igdl)
+ * Tier 4: yt-dlp-exec
+ */
+async function extractInstagramCombo(
+  url: string,
+  filePrefix: string
+): Promise<MediaComboResult | null> {
+  const tempDir = os.tmpdir();
+  const targetFilePath = path.join(tempDir, `${filePrefix}.mp4`);
+  const createdFiles: string[] = [];
+
+  const cleanUp = async () => {
+    for (const f of createdFiles) {
+      if (fs.existsSync(f)) {
+        try {
+          fs.unlinkSync(f);
+        } catch {}
+      }
+    }
+  };
+
+  let title = '';
+  let caption = '';
+
+  // Paso 1: Extraer descripción/receta completa de Instagram simulando User-Agents de bots de indexación
+  try {
+    const crawlerRes = await fetch(url, {
+      headers: SOCIAL_CRAWLER_HEADERS,
+      redirect: 'follow',
+    });
+    if (crawlerRes.ok) {
+      const html = await crawlerRes.text();
+      const $ = cheerio.load(html);
+      const ogTitle = $('meta[property="og:title"]').attr('content')?.trim() || '';
+      const ogDesc = $('meta[property="og:description"]').attr('content')?.trim() || '';
+      const metaDesc = $('meta[name="description"]').attr('content')?.trim() || '';
+
+      if (ogTitle && !ogTitle.startsWith('Instagram')) {
+        title = ogTitle;
+        caption = ogTitle;
+      }
+      if (ogDesc && ogDesc.length > caption.length) {
+        caption = ogDesc;
+      } else if (metaDesc && metaDesc.length > caption.length) {
+        caption = metaDesc;
+      }
+    }
+  } catch (err) {
+    console.warn('Extracción de caption crawler Instagram fallo:', err instanceof Error ? err.message : err);
+  }
+
+  // Paso 2: Descargar el archivo audiovisual (Reel)
+  // Tier 0: RapidAPI si existe RAPIDAPI_KEY
+  const rapidApiKey = process.env.RAPIDAPI_KEY || process.env.INSTAGRAM_API_KEY;
+  if (rapidApiKey) {
+    try {
+      const res = await fetch(
+        `https://instagram-downloader-download-instagram-videos-stories.p.rapidapi.com/index?url=${encodeURIComponent(
+          url
+        )}`,
+        {
+          headers: {
+            'x-rapidapi-key': rapidApiKey,
+            'x-rapidapi-host':
+              'instagram-downloader-download-instagram-videos-stories.p.rapidapi.com',
+          },
+        }
+      );
+      if (res.ok) {
+        const json = await res.json();
+        const mediaUrl = json.media || json.url || json.download_url;
+        if (mediaUrl) {
+          const downloadRes = await streamMediaUrlToFile(mediaUrl, targetFilePath);
+          if (downloadRes.success) {
+            createdFiles.push(targetFilePath);
+            return {
+              mediaPath: targetFilePath,
+              mimeType: downloadRes.mimeType,
+              title: title || json.title,
+              caption: caption || json.description || json.title,
+              cleanUp,
+            };
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('RapidAPI Instagram intento fallo:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  // Tier 1: rahad-all-downloader-v2
+  try {
+    const res = await alldl(url);
+    const videoUrl = res?.data?.videoUrl;
+    if (videoUrl) {
+      const downloadRes = await streamMediaUrlToFile(videoUrl, targetFilePath);
+      if (downloadRes.success) {
+        createdFiles.push(targetFilePath);
+        return {
+          mediaPath: targetFilePath,
+          mimeType: downloadRes.mimeType,
+          title: title || res.data.title,
+          caption: caption || res.data.title,
+          cleanUp,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('alldl Instagram fallo:', err instanceof Error ? err.message : err);
+  }
+
+  // Tier 2: btch-downloader (igdl)
+  try {
+    const res = await igdl(url);
+    const videoUrl = res?.result?.[0]?.url;
+    if (videoUrl) {
+      const downloadRes = await streamMediaUrlToFile(videoUrl, targetFilePath);
+      if (downloadRes.success) {
+        createdFiles.push(targetFilePath);
+        return {
+          mediaPath: targetFilePath,
+          mimeType: downloadRes.mimeType,
+          title,
+          caption,
+          cleanUp,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('btch igdl fallo:', err instanceof Error ? err.message : err);
+  }
+
+  // Tier 3: yt-dlp-exec
+  const ytdlRes = await executeYtDlpCombo(url, filePrefix);
+  if (ytdlRes) {
+    if (!ytdlRes.caption && caption) ytdlRes.caption = caption;
+    if (!ytdlRes.title && title) ytdlRes.title = title;
+    return ytdlRes;
+  }
+
+  // Si no se pudo bajar el archivo pero el crawler obtuvo la receta/caption completa, la entregamos
+  if (caption && caption.length > 50) {
+    return {
+      mimeType: 'video/mp4',
+      title,
+      caption,
+      cleanUp,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Extractor especializado para YouTube (Videos y Shorts)
+ * Tier 1: yt-dlp-exec
+ * Tier 2: rahad-all-downloader-v2
+ */
+async function extractYouTubeCombo(
+  url: string,
+  filePrefix: string
+): Promise<MediaComboResult | null> {
+  const ytdlRes = await executeYtDlpCombo(url, filePrefix);
+  if (ytdlRes) return ytdlRes;
+
+  const tempDir = os.tmpdir();
+  const targetFilePath = path.join(tempDir, `${filePrefix}.mp4`);
+  const createdFiles: string[] = [];
+
+  const cleanUp = async () => {
+    for (const f of createdFiles) {
+      if (fs.existsSync(f)) {
+        try {
+          fs.unlinkSync(f);
+        } catch {}
+      }
+    }
+  };
+
+  try {
+    const res = await alldl(url);
+    if (res?.data?.videoUrl) {
+      const downloadRes = await streamMediaUrlToFile(res.data.videoUrl, targetFilePath);
+      if (downloadRes.success) {
+        createdFiles.push(targetFilePath);
+        return {
+          mediaPath: targetFilePath,
+          mimeType: downloadRes.mimeType,
+          title: res.data.title,
+          caption: res.data.title,
+          cleanUp,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('alldl YouTube fallback fallo:', err instanceof Error ? err.message : err);
+  }
+
+  return null;
+}
+
+/**
+ * Descarga y extracción estándar usando yt-dlp-exec
+ */
+async function executeYtDlpCombo(
+  url: string,
+  filePrefix: string
+): Promise<MediaComboResult | null> {
+  const tempDir = os.tmpdir();
   const outputTemplate = path.join(tempDir, `${filePrefix}.%(ext)s`);
 
   try {
@@ -143,10 +537,9 @@ export async function downloadMediaCombo(url: string): Promise<MediaComboResult 
     };
   } catch (err) {
     console.warn(
-      'yt-dlp-exec no pudo descargar el combo multimedia directo:',
+      'yt-dlp-exec no pudo descargar combo:',
       err instanceof Error ? err.message : err
     );
-    // Limpieza de restos en fallo
     try {
       const leftover = fs.readdirSync(tempDir).filter((f) => f.startsWith(filePrefix));
       for (const f of leftover) {
@@ -155,6 +548,29 @@ export async function downloadMediaCombo(url: string): Promise<MediaComboResult 
     } catch {}
     return null;
   }
+}
+
+/**
+ * Orquestador principal multi-nivel para descarga de combo multimedia + descripción.
+ * Rutea de forma inteligente según la plataforma para eludir activamente cualquier bloqueo anti-bot.
+ */
+export async function downloadMediaCombo(url: string): Promise<MediaComboResult | null> {
+  const filePrefix = `receta_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const tipo = detectFuenteTipo(url);
+
+  if (tipo === 'tiktok') {
+    return extractTikTokCombo(url, filePrefix);
+  }
+
+  if (tipo === 'instagram') {
+    return extractInstagramCombo(url, filePrefix);
+  }
+
+  if (tipo === 'youtube') {
+    return extractYouTubeCombo(url, filePrefix);
+  }
+
+  return executeYtDlpCombo(url, filePrefix);
 }
 
 /**
@@ -284,11 +700,11 @@ export async function extractRecipeWithGemini({
     let uploadedFilePart: any = null;
     let contextPrompt = '';
 
-    // 1. Procesar URL con Extracción del Combo
+    // 1. Procesar URL con Extracción del Combo Multi-Nivel
     if (url) {
       combo = await downloadMediaCombo(url);
 
-      if (combo?.mediaPath) {
+      if (combo?.mediaPath && fs.existsSync(combo.mediaPath)) {
         // Ingesta Multimodal: Carga mediante Gemini File API
         const uploadedFile = await ai.files.upload({
           file: combo.mediaPath,
@@ -325,7 +741,7 @@ export async function extractRecipeWithGemini({
         contextPrompt += `DESCRIPCIÓN CRUDA DEL POST (CAPTION DEL CREADOR):\n${combo.caption}\n\n`;
       }
 
-      // Si no hubo archivo ni caption por yt-dlp (ej. blogs de texto), acudir al scraper web
+      // Si no hubo archivo ni caption por descargadores (ej. blogs de texto), acudir al scraper web
       if (!combo || (!combo.mediaPath && !combo.caption)) {
         const scraped = await scrapeUrlContent(url);
         if (scraped.titulo) contextPrompt += `TÍTULO DETECTADO:\n${scraped.titulo}\n\n`;
@@ -348,7 +764,10 @@ export async function extractRecipeWithGemini({
 
     // Validación previa para evitar alucinaciones: si no hay vídeo, verificar que haya texto con sustancia culinaria real
     const cleanTextWithoutPlaceholders = contextPrompt
-      .replace(/TÍTULO DETECTADO:|DESCRIPCIÓN:|TEXTO DE LA RECETA \/ PÁGINA:|NOTAS O TEXTO ADICIONAL APORTADO POR EL USUARIO:|TÍTULO DEL POST \/ RECETA:|DESCRIPCIÓN CRUDA DEL POST \(CAPTION DEL CREADOR\):/g, '')
+      .replace(
+        /TÍTULO DETECTADO:|DESCRIPCIÓN:|TEXTO DE LA RECETA \/ PÁGINA:|NOTAS O TEXTO ADICIONAL APORTADO POR EL USUARIO:|TÍTULO DEL POST \/ RECETA:|DESCRIPCIÓN CRUDA DEL POST \(CAPTION DEL CREADOR\):/g,
+        ''
+      )
       .replace(/TikTok - Make Your Day|Login • Instagram|Instagram|YouTube|Sign in|Iniciar sesión/gi, '')
       .trim();
 
@@ -433,7 +852,6 @@ ${contextPrompt.trim()}
         return parsed;
       } catch (err) {
         if (err instanceof NonCulinaryContentError) {
-          // El modelo identificó de forma fidedigna que el contenido no es culinario: abortar inmediatamente sin gastar llamadas de fallback
           throw err;
         }
         lastError = err;
