@@ -5,15 +5,25 @@ import { Type } from '@google/genai';
  */
 export const recipeExtractionSchema = {
   type: Type.OBJECT,
-  description: 'Objeto canónico de receta estructurada con perfil nutricional y desglose atómico.',
+  description: 'Objeto canónico de receta estructurada con verificación culinaria, perfil nutricional y desglose atómico.',
   properties: {
+    es_receta_valida: {
+      type: Type.BOOLEAN,
+      description:
+        'OBLIGATORIO: Establece TRUE únicamente si el contenido analizado (vídeo, audio, transcripción o texto) contiene de forma explícita una receta de cocina o elaboración culinaria real. Establece FALSE si el contenido trata de otro tema (humor, música, bailes, noticias, vlogs no culinarios, videojuegos, etc.), si carece de ingredientes o si no tiene sentido culinario.',
+    },
+    motivo_invalido: {
+      type: Type.STRING,
+      description:
+        'Si es_receta_valida es false, detalla con precisión el motivo por el cual no se detectó una receta (ej: "El vídeo trata de música y no muestra ningún cocinado ni ingredientes").',
+    },
     titulo: {
       type: Type.STRING,
-      description: 'Título atractivo y culinario de la receta.',
+      description: 'Título culinario fiel a la receta mostrada en el contenido.',
     },
     descripcion: {
       type: Type.STRING,
-      description: 'Breve descripción del plato, notas de sabor y origen.',
+      description: 'Breve descripción del plato, notas de sabor y origen conforme al contenido analizado.',
     },
     tiempo_preparacion_min: {
       type: Type.INTEGER,
@@ -34,7 +44,7 @@ export const recipeExtractionSchema = {
     },
     ingredientes: {
       type: Type.ARRAY,
-      description: 'Lista desagregada de ingredientes de la receta.',
+      description: 'Lista desagregada de ingredientes identificados en el contenido real.',
       items: {
         type: Type.OBJECT,
         properties: {
@@ -87,7 +97,7 @@ export const recipeExtractionSchema = {
     },
     pasos: {
       type: Type.ARRAY,
-      description: 'Secuencia ordenada de instrucciones para elaborar el plato.',
+      description: 'Secuencia ordenada de instrucciones para elaborar el plato según el contenido analizado.',
       items: {
         type: Type.OBJECT,
         properties: {
@@ -153,6 +163,7 @@ export const recipeExtractionSchema = {
     },
   },
   required: [
+    'es_receta_valida',
     'titulo',
     'descripcion',
     'tiempo_preparacion_min',
@@ -167,30 +178,31 @@ export const recipeExtractionSchema = {
 };
 
 /**
- * Directiva Nutricional Holística y de Ingeniería Culinaria
+ * Directiva Nutricional Holística y de Ingeniería Culinaria con Tolerancia Cero a la Alucinación
  */
 export const SYSTEM_INSTRUCTION_RECIPES = `
-Eres un Chef Ejecutivo y Nutricionista Clínico de élite especializado en estandarización culinaria y salud sostenible.
-Tu misión es recibir información desestructurada de recetas (transcripciones de TikTok, Reels de Instagram, vídeos de YouTube, notas de voz o textos) y convertirlas en una ficha culinaria estructurada, reproducible y perfilada nutricionalmente.
+Eres un Chef Ejecutivo y Nutricionista Clínico de élite especializado en estandarización culinaria, análisis audiovisual y salud sostenible.
+Tu misión es recibir información culinaria multimodal (vídeos/audio de TikTok, Reels de Instagram, YouTube Shorts, o textos/recetas) y convertirlas en una ficha culinaria técnica estandarizada.
 
-REGLAS DE ACTUACIÓN:
-1. DESGLOSE RELACIONAL DE INGREDIENTES:
-   - Aísla cada ingrediente extrayendo su cantidad numérica, su unidad (g, ml, cucharada, cucharadita, taza, unidad, pizca) y su 'nombre_limpio' canónico (ej: "Pechuga de pollo", "Aceite de oliva virgen extra", "Harina de avena").
-   - El 'nombre_limpio' debe estar optimizado para cruzarlo con una base de datos de ingredientes maestros.
+REGLAS SUPREMAS DE FIDELIDAD Y CONTRA ALUCINACIONES:
+1. ANCLAJE ESTRICTO EN LA REALIDAD DE LA FUENTE:
+   - Está TERMINANTEMENTE PROHIBIDO inventar, asumir o alucinar recetas que no estén presentes en el contenido multimedia o texto proporcionado.
+   - Debes basarte ÚNICA Y EXCLUSIVAMENTE en los ingredientes, técnicas y pasos que se muestren visualmente, se mencionen en el audio o se detallen en la descripción escrita.
+   - Jamás inventes una receta alternativa al azar para rellenar campos si el contenido original no trata de esa receta.
 
-2. DIRECTIVA NUTRICIONAL HOLÍSTICA Y SALUD SOSTENIBLE:
-   - NO apliques dogmas restrictivos extremos. La adherencia, el placer gustativo y la cultura gastronómica son prioritarios.
-   - Si detectas ingredientes ultraprocesados o con exceso de azúcares/grasas trans industriales (ej. nata comercial azucarada, salsas industriales, siropes), márcalos como 'es_ultraprocesado: true'.
-   - Para esos ingredientes, propone en 'sustituto_saludable_sugerido' una alternativa viable y deliciosa que mantenga el perfil de sabor y textura del plato (ej: sustituir nata comercial por yogur griego o leche de coco; sustituir azúcar blanco por compota de manzana o eritritol/miel).
-   - Explica brevemente en 'sustituciones_resumen' cómo elevar el valor nutricional del plato sin perder la esencia.
+2. VERIFICACIÓN OBLIGATORIA DE SENTIDO CULINARIO:
+   - Si el contenido analizado NO corresponde a una receta o elaboración culinaria real (por ejemplo: si es un vídeo de humor, música, baile, viajes, podcast, noticias, videojuegos, o si el texto no describe una preparación de comida):
+     DEBES establecer obligatoriamente: "es_receta_valida": false
+     Y detallar en "motivo_invalido" la causa (ej: "El contenido no describe ninguna preparación de cocina ni ingredientes comestibles").
+     En este caso de falsedad culinaria, deja las listas de ingredientes y pasos vacías o mínimas; NO te inventes un plato.
 
-3. CÁLCULO VOLUMÉTRICO PRECISO:
-   - Realiza la conversión volumétrica basándote en la densidad real del alimento (ej. 1 cucharada de aceite son ~14g, 1 taza de harina ~125g, 1 taza de miel ~340g).
-   - Calcula de forma rigurosa los macronutrientes estimados por porción (calorías, proteínas, carbohidratos, grasas, fibra).
-
-4. PASOS SECUENCIALES TÉCNICOS:
-   - Redacta cada instrucción de forma concisa y técnica (temperaturas, puntos de cocción, texturas visuales).
-   - Si hay algún secreto de cocina clave (desglasar la sartén, atemperar la carne, reservar agua de cocción), inclúyelo en 'consejo_pro'.
+3. EXTRACCIÓN Y FUSIÓN MULTIMODAL:
+   - Si es_receta_valida es true:
+     * Cruza lo que ves/escuchas en el vídeo/audio con el texto del post (caption).
+     * Extrae cada ingrediente con cantidad numérica real, unidad estandarizada (g, ml, cucharada, cucharadita, taza, unidad, pizca) y 'nombre_limpio' canónico optimizado para cruce relacional.
+     * Si detectas ultraprocesados industriales excesivos, marca 'es_ultraprocesado: true' y sugiere una alternativa viable en 'sustituto_saludable_sugerido'.
+     * Calcula los gramos estimados mediante densidad física de cada alimento y estima los macronutrientes por porción.
+     * Redacta pasos técnicos precisos con temperatura y consejos pro si se aprecian en el vídeo.
 `.trim();
 
 export interface ExtractedIngredient {
@@ -222,6 +234,8 @@ export interface ExtractedMacros {
 }
 
 export interface ExtractedRecipe {
+  es_receta_valida: boolean;
+  motivo_invalido?: string;
   titulo: string;
   descripcion: string;
   tiempo_preparacion_min: number;

@@ -29,6 +29,13 @@ export interface MediaComboResult {
   cleanUp: () => Promise<void>;
 }
 
+export class NonCulinaryContentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NonCulinaryContentError';
+  }
+}
+
 const BROWSER_HEADERS: Record<string, string> = {
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
@@ -339,26 +346,29 @@ export async function extractRecipeWithGemini({
       contextPrompt += `NOTAS O TEXTO ADICIONAL APORTADO POR EL USUARIO:\n${texto}\n\n`;
     }
 
-    if (!contextPrompt.trim() && !uploadedFilePart) {
+    // Validación previa para evitar alucinaciones: si no hay vídeo, verificar que haya texto con sustancia culinaria real
+    const cleanTextWithoutPlaceholders = contextPrompt
+      .replace(/TÍTULO DETECTADO:|DESCRIPCIÓN:|TEXTO DE LA RECETA \/ PÁGINA:|NOTAS O TEXTO ADICIONAL APORTADO POR EL USUARIO:|TÍTULO DEL POST \/ RECETA:|DESCRIPCIÓN CRUDA DEL POST \(CAPTION DEL CREADOR\):/g, '')
+      .replace(/TikTok - Make Your Day|Login • Instagram|Instagram|YouTube|Sign in|Iniciar sesión/gi, '')
+      .trim();
+
+    if (!uploadedFilePart && cleanTextWithoutPlaceholders.length < 35) {
       throw new Error(
-        'No se pudo extraer información ni archivo multimedia de la receta. Por favor, verifica el enlace o introduce el texto.'
+        'No se pudo extraer información culinaria ni archivo de vídeo del enlace (es posible que la red social bloquee la lectura directa o que el enlace sea privado). Por favor, pega directamente el texto o los ingredientes de la receta.'
       );
     }
 
     // 2. Prompt de Fusión Contextual (Multimodal)
     const promptFinal = `
 Eres un Chef Ejecutivo y Nutricionista especializado en extracción culinaria multimodal y perfilado nutricional.
-${
-  uploadedFilePart
-    ? `Se te proporciona un ARCHIVO AUDIOVISUAL (vídeo/audio del cocinado) y la DESCRIPCIÓN CRUDA del post (caption/notas del creador).
 
-INSTRUCCIÓN DE FUSIÓN CONTEXTUAL:
-Cruza activamente ambas fuentes de información:
-- Del VÍDEO/AUDIO: Observa y escucha los ingredientes mostrados o mencionados, los pasos secuenciales, técnicas aplicadas (puntos de cocción, temperaturas, cortes) y detalles no mencionados en el texto.
-- De la DESCRIPCIÓN/CAPTION: Extrae las cantidades exactas, nombres canónicos de ingredientes y notas complementarias que el creador haya listado por escrito.
-- Si en el texto faltan ingredientes o pasos, rescátalos observando el vídeo/audio (y viceversa).`
-    : `Analiza y estandariza la receta culinaria a partir de los datos y notas proporcionados.`
-}
+DIRECTIVAS CRÍTICAS DE PRECISIÓN Y TOLERANCIA CERO A LA ALUCINACIÓN:
+1. Basarse única y exclusivamente en los hechos observados y escuchados en el archivo audiovisual o en el texto proporcionado.
+2. Si el contenido NO corresponde a una receta de cocina ni preparación de alimentos real:
+   - Establece obligatoriamente: "es_receta_valida": false
+   - Especifica en "motivo_invalido" el motivo exacto (ej: "Vídeo no culinario", "Contenido sin ingredientes ni pasos de cocina").
+   - NO inventes ingredientes ni pasos.
+3. Si el contenido SÍ es una receta real, establece "es_receta_valida": true y cruza exhaustivamente el vídeo/audio con el texto del post para extraer cantidades, ingredientes canónicos, pasos y tiempos.
 
 Estandariza la receta al esquema JSON estricto requerido:
 
@@ -401,8 +411,31 @@ ${contextPrompt.trim()}
         }
 
         const parsed: ExtractedRecipe = JSON.parse(response.text);
+
+        if (parsed.es_receta_valida === false) {
+          throw new NonCulinaryContentError(
+            parsed.motivo_invalido ||
+              'El contenido proporcionado no contiene una receta de cocina ni elaboración culinaria identificable.'
+          );
+        }
+
+        if (
+          !parsed.ingredientes ||
+          parsed.ingredientes.length === 0 ||
+          !parsed.pasos ||
+          parsed.pasos.length === 0
+        ) {
+          throw new NonCulinaryContentError(
+            'No se identificaron ingredientes ni pasos de cocinado suficientes en el contenido analizado.'
+          );
+        }
+
         return parsed;
       } catch (err) {
+        if (err instanceof NonCulinaryContentError) {
+          // El modelo identificó de forma fidedigna que el contenido no es culinario: abortar inmediatamente sin gastar llamadas de fallback
+          throw err;
+        }
         lastError = err;
         console.warn(`Intento con modelo '${model}' falló:`, err instanceof Error ? err.message : err);
       }

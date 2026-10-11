@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { IngredientRow } from '@/components/recipes/IngredientRow';
 import { CookingDiarySection } from '@/components/recipes/CookingDiarySection';
+import { DeleteRecipeButton } from '@/components/recipes/DeleteRecipeButton';
 import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe';
 
 export const dynamic = 'force-dynamic';
@@ -87,7 +88,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
             <span>Volver a recetas</span>
           </Link>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {receta.fuente_url && (
               <a
                 href={receta.fuente_url}
@@ -102,6 +103,12 @@ export default async function RecipeDetailPage({ params }: PageProps) {
             <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] capitalize">
               {receta.dificultad}
             </span>
+            <DeleteRecipeButton
+              recipeId={receta.id}
+              recipeTitle={receta.titulo}
+              redirectTo="/recipes"
+              variant="button"
+            />
           </div>
         </div>
       </header>
@@ -301,6 +308,19 @@ export default async function RecipeDetailPage({ params }: PageProps) {
 
         {/* Sección: Diario Visual de Cocinados */}
         <CookingDiarySection recetaId={receta.id} entradas={diarioEntries} />
+
+        {/* Zona de gestión y borrado de la receta */}
+        <section className="pt-8 border-t border-[#e7dfd5] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="text-xs text-stone-500">
+            <span>Ficha culinaria creada el {new Date(receta.created_at).toLocaleDateString('es-ES')}</span>
+          </div>
+          <DeleteRecipeButton
+            recipeId={receta.id}
+            recipeTitle={receta.titulo}
+            redirectTo="/recipes"
+            variant="button"
+          />
+        </section>
       </main>
     </div>
   );

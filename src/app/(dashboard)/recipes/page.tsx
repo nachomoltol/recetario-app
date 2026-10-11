@@ -6,6 +6,7 @@ import { ChefHat, LogOut, BookOpen, User, Clock, ArrowRight } from 'lucide-react
 import { signOutAction } from '@/app/actions/auth';
 import { UserProfileBadge } from '@/components/auth/UserProfileBadge';
 import { RecipeCaptureCard } from '@/components/recipes/RecipeCaptureCard';
+import { DeleteRecipeButton } from '@/components/recipes/DeleteRecipeButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -146,37 +147,53 @@ export default async function RecipesDashboardPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {recetas.map((r) => (
-                <Link
+                <div
                   key={r.id}
-                  href={`/recipes/${r.id}`}
-                  className="group rounded-3xl bg-white border border-[#e7dfd5] hover:border-[#c27835] hover:shadow-md transition-all p-6 space-y-4 shadow-2xs block"
+                  className="group rounded-3xl bg-white border border-[#e7dfd5] hover:border-[#c27835] hover:shadow-md transition-all p-6 space-y-4 shadow-2xs flex flex-col justify-between"
                 >
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs text-[#a86224] font-semibold uppercase tracking-wider">
-                      <span>{r.fuente_tipo}</span>
-                      <span className="capitalize text-stone-500">{r.dificultad}</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className="text-[#a86224] uppercase tracking-wider">{r.fuente_tipo}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2.5 py-0.5 rounded-full bg-[#f4efe6] text-stone-600 border border-[#e7dfd5] capitalize text-xs">
+                          {r.dificultad}
+                        </span>
+                        <DeleteRecipeButton
+                          recipeId={r.id}
+                          recipeTitle={r.titulo}
+                          variant="icon"
+                          className="w-8 h-8 rounded-xl"
+                        />
+                      </div>
                     </div>
-                    <h3 className="font-bold text-stone-900 font-serif-recipe text-xl group-hover:text-[#a86224] transition-colors leading-snug">
-                      {r.titulo}
-                    </h3>
-                  </div>
 
-                  {r.descripcion && (
-                    <p className="text-xs sm:text-sm text-stone-600 line-clamp-2 leading-relaxed">
-                      {r.descripcion}
-                    </p>
-                  )}
+                    <Link href={`/recipes/${r.id}`} className="block group-hover:text-[#a86224] transition-colors">
+                      <h3 className="font-bold text-stone-900 font-serif-recipe text-xl leading-snug">
+                        {r.titulo}
+                      </h3>
+                    </Link>
+
+                    {r.descripcion && (
+                      <p className="text-xs sm:text-sm text-stone-600 line-clamp-2 leading-relaxed font-light">
+                        {r.descripcion}
+                      </p>
+                    )}
+                  </div>
 
                   <div className="pt-3 border-t border-[#f4efe6] flex items-center justify-between text-xs text-stone-500">
                     <span className="flex items-center gap-1.5">
                       <Clock className="w-4 h-4 text-[#a86224]" /> {r.tiempo_total_min} min
                     </span>
                     <span className="font-medium text-stone-700">{r.porciones} porciones</span>
-                    <span className="text-[#a86224] group-hover:translate-x-1 transition-transform inline-flex items-center gap-0.5 font-semibold">
-                      Abrir <ArrowRight className="w-3.5 h-3.5" />
-                    </span>
+                    <Link
+                      href={`/recipes/${r.id}`}
+                      className="text-[#a86224] hover:text-[#8e511c] transition-colors inline-flex items-center gap-0.5 font-semibold"
+                    >
+                      <span>Abrir</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </Link>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           )}
