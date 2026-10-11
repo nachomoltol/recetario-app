@@ -55,6 +55,15 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
 
     const fuenteTipo = detectFuenteTipo(url);
 
+    // Consolidar etiquetas de doble clasificación (gastronómicas + momentos de consumo)
+    const etiquetasCombinadas = Array.from(
+      new Set([
+        ...(extracted.categorias_gastronomicas || []),
+        ...(extracted.momentos_consumo || []),
+        ...(extracted.etiquetas || []),
+      ].filter((t): t is string => typeof t === 'string' && t.trim().length > 0))
+    );
+
     // 4. Inserción atómica en 'recetas'
     const { data: nuevaReceta, error: errReceta } = await supabase
       .from('recetas')
@@ -73,7 +82,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         carbohidratos_por_porcion: extracted.macros_estimados_por_porcion?.carbohidratos ?? 0,
         grasas_por_porcion: extracted.macros_estimados_por_porcion?.grasas ?? 0,
         fibra_por_porcion: extracted.macros_estimados_por_porcion?.fibra ?? 0,
-        etiquetas: extracted.etiquetas || [],
+        etiquetas: etiquetasCombinadas,
       })
       .select()
       .single();

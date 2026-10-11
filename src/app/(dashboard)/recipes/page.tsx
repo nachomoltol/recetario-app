@@ -178,6 +178,24 @@ export default async function RecipesDashboardPage() {
                         {r.descripcion}
                       </p>
                     )}
+
+                    {r.etiquetas && r.etiquetas.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {r.etiquetas.slice(0, 3).map((tag) => (
+                          <span
+                            key={tag}
+                            className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] truncate max-w-[140px]"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                        {r.etiquetas.length > 3 && (
+                          <span className="text-[11px] text-stone-400 font-semibold self-center">
+                            +{r.etiquetas.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-3 border-t border-[#f4efe6] flex items-center justify-between text-xs text-stone-500">

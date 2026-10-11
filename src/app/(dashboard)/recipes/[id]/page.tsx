@@ -12,7 +12,8 @@ import {
   Layers,
   Thermometer,
 } from 'lucide-react';
-import { IngredientRow } from '@/components/recipes/IngredientRow';
+import { RecipeTagsEditor } from '@/components/recipes/RecipeTagsEditor';
+import { ShoppingListMode } from '@/components/recipes/ShoppingListMode';
 import { CookingDiarySection } from '@/components/recipes/CookingDiarySection';
 import { DeleteRecipeButton } from '@/components/recipes/DeleteRecipeButton';
 import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe';
@@ -114,7 +115,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
       </header>
 
       {/* Contenido Editorial con Modo Cocina (alta legibilidad y espacios generosos) */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-12">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10">
         {/* Cabecera Editorial Limpia */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#a86224]">
@@ -131,6 +132,11 @@ export default async function RecipeDetailPage({ params }: PageProps) {
               {receta.descripcion}
             </p>
           )}
+
+          {/* Categorización Doble y Editor Interactivo de Etiquetas */}
+          <div className="pt-1">
+            <RecipeTagsEditor recetaId={receta.id} initialTags={receta.etiquetas || []} />
+          </div>
 
           {/* Tiempos y Rendimiento en Modo Cocina */}
           <div className="pt-5 flex flex-wrap items-center gap-6 sm:gap-10 text-xs sm:text-sm text-stone-600 border-t border-[#e7dfd5]">
@@ -219,9 +225,9 @@ export default async function RecipeDetailPage({ params }: PageProps) {
           </section>
         ) : null}
 
-        {/* Sección Culinaria: Ingredientes y Pasos */}
+        {/* Sección Culinaria: Ingredientes (con Modo Compra) y Pasos */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 pt-2">
-          {/* Columna Izquierda: Ingredientes con Sustitución Bajo Demanda */}
+          {/* Columna Izquierda: Ingredientes con Modo Lista de la Compra y Sustituciones */}
           <section className="lg:col-span-5 space-y-4">
             <div className="flex items-center justify-between border-b border-[#e7dfd5] pb-3">
               <h2 className="text-2xl font-bold font-serif-recipe text-stone-900 flex items-center gap-2">
@@ -233,19 +239,12 @@ export default async function RecipeDetailPage({ params }: PageProps) {
               </span>
             </div>
 
-            <p className="text-xs sm:text-sm text-stone-500 font-light">
-              Toca <span className="text-[#a86224] font-semibold">Alternativa</span> para ver sustituciones saludables bajo demanda con Gemini.
-            </p>
-
-            <div className="space-y-1 divide-y divide-[#e7dfd5]">
-              {ingredientes.map((ing) => (
-                <IngredientRow
-                  key={ing.id}
-                  ingrediente={ing}
-                  tituloReceta={receta.titulo}
-                />
-              ))}
-            </div>
+            {/* Componente Dual: Modo Cocina (Alternativas IA) + Modo Lista de la Compra (Checklist táctil) */}
+            <ShoppingListMode
+              recetaId={receta.id}
+              tituloReceta={receta.titulo}
+              ingredientes={ingredientes}
+            />
           </section>
 
           {/* Columna Derecha: Método y Pasos en Modo Cocina (súper legibles) */}

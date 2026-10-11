@@ -156,10 +156,22 @@ export const recipeExtractionSchema = {
       type: Type.STRING,
       description: 'Resumen holístico de mejoras nutricionales que respetan el perfil culinario.',
     },
+    categorias_gastronomicas: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description:
+        'Clasificación gastronómica principal (ej: "Pasta", "Carnes", "Aves", "Pescados y Mariscos", "Vegano", "Vegetariano", "Arroces", "Ensaladas", "Guisos", "Sopas", "Postres y Dulces", "Panadería y Masas", "Tapas"). Asigna al menos 1 categoría.',
+    },
+    momentos_consumo: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description:
+        'Momentos de consumo y etiquetas funcionales (ej: "Desayuno", "Almuerzo", "Cena", "Postre", "Snack", "Pre-entreno", "Post-entreno", "Batch Cooking", "Rápido (<20m)"). Asigna al menos 1 momento.',
+    },
     etiquetas: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: 'Etiquetas temáticas (ej: "alta_proteina", "cena_rapida", "mediterranea").',
+      description: 'Etiquetas temáticas consolidadas (incluyendo las categorías gastronómicas y momentos de consumo).',
     },
   },
   required: [
@@ -173,6 +185,8 @@ export const recipeExtractionSchema = {
     'ingredientes',
     'pasos',
     'macros_estimados_por_porcion',
+    'categorias_gastronomicas',
+    'momentos_consumo',
     'etiquetas',
   ],
 };
@@ -196,13 +210,25 @@ REGLAS SUPREMAS DE FIDELIDAD Y CONTRA ALUCINACIONES:
      Y detallar en "motivo_invalido" la causa (ej: "El contenido no describe ninguna preparación de cocina ni ingredientes comestibles").
      En este caso de falsedad culinaria, deja las listas de ingredientes y pasos vacías o mínimas; NO te inventes un plato.
 
-3. EXTRACCIÓN Y FUSIÓN MULTIMODAL:
+3. REFINAMIENTO DE INGESTA ANTE SPEECH RÁPIDO, JERGA O TELEGRÁFICO (RECONSTRUCCIÓN DE PASOS LÓGICOS):
+   - En vídeos de redes sociales (TikTok, Reels, Shorts), es común que el creador hable a gran velocidad, use modismos, jerga o expresiones ultra telegráficas (ej: "echamos esto, pim pam, fuego a tope y al horno").
+   - En estos casos, DEBES cruzar la locución con las ACCIONES VISUALES mostradas en el vídeo:
+     * Rellena los vacíos narrativos deduciendo y estructurando los pasos lógicos de cocina indispensables que el creador ejecuta visualmente pero no verbaliza (ej. precalentar el horno, cortar/picar finamente un vegetal, pochar la cebolla hasta traslúcida, reservar agua de cocción para emulsionar, tiempos de reposo).
+     * Identifica ingredientes que el creador añade visualmente aunque no los mencione en el audio o texto (ej. un chorro de aceite de oliva en la sartén, sal, pimienta negra, ajo en polvo o perejil fresco al emplatar).
+     * Estandariza la instrucción en lenguaje profesional de cocina con tiempos y temperaturas realistas basados en lo observado en el vídeo.
+
+4. EXTRACCIÓN Y FUSIÓN MULTIMODAL:
    - Si es_receta_valida es true:
      * Cruza lo que ves/escuchas en el vídeo/audio con el texto del post (caption).
      * Extrae cada ingrediente con cantidad numérica real, unidad estandarizada (g, ml, cucharada, cucharadita, taza, unidad, pizca) y 'nombre_limpio' canónico optimizado para cruce relacional.
      * Si detectas ultraprocesados industriales excesivos, marca 'es_ultraprocesado: true' y sugiere una alternativa viable en 'sustituto_saludable_sugerido'.
      * Calcula los gramos estimados mediante densidad física de cada alimento y estima los macronutrientes por porción.
-     * Redacta pasos técnicos precisos con temperatura y consejos pro si se aprecian en el vídeo.
+
+5. CLASIFICACIÓN AUTOMÁTICA DOBLE OBLIGATORIA:
+   - Clasifica siempre la receta en dos ejes taxonómicos:
+     a) Categorías Gastronómicas ("categorias_gastronomicas"): asigna al menos 1 categoría principal (ej: Pasta, Carnes, Aves, Pescados y Mariscos, Vegano, Vegetariano, Arroces, Ensaladas, Guisos, Sopas, Postres y Dulces, Panadería y Masas).
+     b) Momentos de Consumo & Etiquetas Funcionales ("momentos_consumo"): asigna al menos 1 momento o función idónea (ej: Desayuno, Almuerzo, Cena, Postre, Snack, Pre-entreno, Post-entreno, Batch Cooking, Rápido (<20m)).
+   - Consolida en "etiquetas" todas las categorías y momentos detectados.
 `.trim();
 
 export interface ExtractedIngredient {
@@ -246,5 +272,7 @@ export interface ExtractedRecipe {
   pasos: ExtractedStep[];
   macros_estimados_por_porcion: ExtractedMacros;
   sustituciones_resumen?: string;
+  categorias_gastronomicas?: string[];
+  momentos_consumo?: string[];
   etiquetas: string[];
 }
