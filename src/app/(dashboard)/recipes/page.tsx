@@ -1,7 +1,8 @@
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { ChefHat, LogOut, Sparkles, BookOpen, User, Flame, Clock } from 'lucide-react';
+import { ChefHat, LogOut, Sparkles, BookOpen, User, Clock } from 'lucide-react';
 import { signOutAction } from '@/app/actions/auth';
 import { UserProfileBadge } from '@/components/auth/UserProfileBadge';
 import { RecipeCaptureCard } from '@/components/recipes/RecipeCaptureCard';
@@ -91,29 +92,23 @@ export default async function RecipesDashboardPage() {
         </section>
 
         {/* Resumen del Estado de la Base de Datos */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="p-5 rounded-2xl bg-charcoal-900/60 border border-charcoal-700/60 space-y-1">
             <span className="text-xs text-stone-400 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-amber-400" /> Total Recetas
+              <BookOpen className="w-4 h-4 text-amber-400" /> Total Recetas Guardadas
             </span>
             <p className="text-2xl font-bold text-white">{recetas?.length || 0}</p>
           </div>
 
           <div className="p-5 rounded-2xl bg-charcoal-900/60 border border-charcoal-700/60 space-y-1">
             <span className="text-xs text-stone-400 flex items-center gap-2">
-              <Flame className="w-4 h-4 text-amber-500" /> Objetivo Calórico
+              <User className="w-4 h-4 text-blue-400" /> Chef / Propietario
             </span>
-            <p className="text-2xl font-bold text-white">
-              {profile?.objetivo_calorico_diario ? `${profile.objetivo_calorico_diario} kcal` : 'No fijado'}
+            <p className="text-sm font-semibold text-stone-200 truncate">
+              {profile?.nombre || user.email?.split('@')[0]}
             </p>
-          </div>
-
-          <div className="p-5 rounded-2xl bg-charcoal-900/60 border border-charcoal-700/60 space-y-1">
-            <span className="text-xs text-stone-400 flex items-center gap-2">
-              <User className="w-4 h-4 text-blue-400" /> ID de Usuario
-            </span>
-            <p className="text-xs font-mono text-stone-300 truncate" title={user.id}>
-              {user.id}
+            <p className="text-[11px] font-mono text-stone-500 truncate" title={user.id}>
+              {user.email}
             </p>
           </div>
         </div>
@@ -147,28 +142,41 @@ export default async function RecipesDashboardPage() {
                   Aún no tienes recetas registradas
                 </h3>
                 <p className="text-xs text-stone-500 max-w-sm mx-auto">
-                  La infraestructura de usuarios y base de datos está validada. En la siguiente fase
-                  conectaremos el motor multimodal de Gemini para extraerlas de TikTok, Reels y YouTube.
+                  Pega un enlace de TikTok, Reels o YouTube arriba para extraer, estandarizar y calcular los ingredientes con IA.
                 </p>
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {recetas.map((r) => (
-                <div
+                <Link
                   key={r.id}
-                  className="rounded-2xl bg-charcoal-900 border border-charcoal-700/80 overflow-hidden shadow-lg p-5 space-y-3"
+                  href={`/recipes/${r.id}`}
+                  className="group rounded-2xl bg-charcoal-900/70 border border-charcoal-700/70 hover:border-amber-500/40 transition-all p-5 space-y-4 shadow-lg hover:shadow-amber-500/5 block"
                 >
-                  <h3 className="font-semibold text-stone-100 font-serif-recipe text-base">
-                    {r.titulo}
-                  </h3>
-                  <div className="flex items-center gap-4 text-xs text-stone-400">
-                    <span className="flex items-center gap-1">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] text-amber-400/90 uppercase tracking-wider font-semibold">
+                      <span>{r.fuente_tipo}</span>
+                      <span className="capitalize text-stone-400">{r.dificultad}</span>
+                    </div>
+                    <h3 className="font-semibold text-stone-100 font-serif-recipe text-lg group-hover:text-amber-300 transition-colors line-clamp-2">
+                      {r.titulo}
+                    </h3>
+                  </div>
+
+                  {r.descripcion && (
+                    <p className="text-xs text-stone-400 line-clamp-2 leading-relaxed">
+                      {r.descripcion}
+                    </p>
+                  )}
+
+                  <div className="pt-2 border-t border-charcoal-800 flex items-center justify-between text-xs text-stone-400">
+                    <span className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-amber-400" /> {r.tiempo_total_min} min
                     </span>
                     <span>{r.porciones} porciones</span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
