@@ -34,11 +34,52 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     return { error: 'Debes haber iniciado sesión para procesar y guardar recetas.' };
   }
 
+  // 2. Control de Cuotas Freemium (Paywall) ANTES de invocar a Gemini
+  const { data: perfilUsuario } = await supabase
+    .from('usuarios')
+    .select('id, plan_suscripcion, capturas_mes_actual, fecha_ultimo_reinicio, raciones_defecto')
+    .eq('id', user.id)
+    .single();
+
+  let capturasMesActual = perfilUsuario?.capturas_mes_actual ?? 0;
+  const planSuscripcion = perfilUsuario?.plan_suscripcion || 'gratis';
+  const ahora = new Date();
+
+  // Verificación de Mes: Si el mes/año actual no coincide con fecha_ultimo_reinicio, resetear a 0
+  const fechaReinicio = perfilUsuario?.fecha_ultimo_reinicio
+    ? new Date(perfilUsuario.fecha_ultimo_reinicio)
+    : ahora;
+
+  const esMismoMesYAno =
+    fechaReinicio.getUTCFullYear() === ahora.getUTCFullYear() &&
+    fechaReinicio.getUTCMonth() === ahora.getUTCMonth();
+
+  if (!esMismoMesYAno) {
+    capturasMesActual = 0;
+    await supabase
+      .from('usuarios')
+      .update({
+        capturas_mes_actual: 0,
+        fecha_ultimo_reinicio: ahora.toISOString(),
+        updated_at: ahora.toISOString(),
+      })
+      .eq('id', user.id);
+  }
+
+  // Lógica de Permisos:
+  // Si es 'gratis' y capturas_mes_actual >= 10: Bloquear ANTES de Gemini
+  if (planSuscripcion !== 'pro' && capturasMesActual >= 10) {
+    return {
+      success: false,
+      error: 'PAYWALL_LIMIT_REACHED',
+    };
+  }
+
   try {
-    // 2. Extracción multimodal autónoma con Gemini
+    // 3. Extracción multimodal autónoma con Gemini
     const extracted = await extractRecipeWithGemini({ url, texto });
 
-    // 3. Consultar ingredientes maestros para cruce relacional y cálculo volumétrico
+    // 4. Consultar ingredientes maestros para cruce relacional y cálculo volumétrico
     const { data: maestros } = await supabase
       .from('ingredientes_maestro')
       .select('*');
@@ -87,18 +128,11 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     const tiempoTotal = Math.max(1, prepMin + coccMin);
     const porcionesNum = Math.max(1, Number(extracted.porciones) || 2);
 
-    // Consultar raciones por defecto del usuario
-    const { data: userProfile } = await supabase
-      .from('usuarios')
-      .select('raciones_defecto')
-      .eq('id', user.id)
-      .single();
-
     const porcionesFinales =
-      userProfile?.raciones_defecto &&
-      userProfile.raciones_defecto >= 1 &&
-      userProfile.raciones_defecto <= 12
-        ? userProfile.raciones_defecto
+      perfilUsuario?.raciones_defecto &&
+      perfilUsuario.raciones_defecto >= 1 &&
+      perfilUsuario.raciones_defecto <= 12
+        ? perfilUsuario.raciones_defecto
         : porcionesNum;
 
     const factorEscalado = porcionesNum > 0 ? porcionesFinales / porcionesNum : 1;
@@ -243,6 +277,17 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       console.error('Error insertando pasos, ejecutando rollback:', errPasos);
       await supabase.from('recetas').delete().eq('id', nuevaReceta.id);
       return { error: `Error guardando los pasos: ${errPasos.message}` };
+    }
+
+    // 6. Si el usuario es de plan 'gratis', incrementar cuota mensual en +1
+    if (planSuscripcion !== 'pro') {
+      await supabase
+        .from('usuarios')
+        .update({
+          capturas_mes_actual: capturasMesActual + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
     }
 
     // 7. Revalidación exhaustiva de caché de Next.js

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { ingestRecipeAction } from '@/app/actions/recipeIngest';
 import { IosShortcutTutorialModal } from '@/components/pwa/IosShortcutTutorialModal';
+import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
 
 interface LoadingStage {
   seconds: number;
@@ -88,6 +89,7 @@ export function RecipeCaptureCard() {
   const [success, setSuccess] = useState<string | null>(null);
   const [createdRecetaId, setCreatedRecetaId] = useState<string | null>(null);
   const [showIosTutorial, setShowIosTutorial] = useState(false);
+  const [showProModal, setShowProModal] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // Estados de carga progresiva
@@ -135,7 +137,12 @@ export function RecipeCaptureCard() {
       startTransition(async () => {
         const res = await ingestRecipeAction(formData);
         if (res.error) {
-          setError(res.error);
+          if (res.error === 'PAYWALL_LIMIT_REACHED') {
+            setShowProModal(true);
+            setError(null);
+          } else {
+            setError(res.error);
+          }
         } else if (res.success) {
           setSuccess('¡Receta extraída, estandarizada y guardada en tu recetario!');
           setCreatedRecetaId(res.recetaId || null);
@@ -416,6 +423,15 @@ export function RecipeCaptureCard() {
       <IosShortcutTutorialModal
         isOpen={showIosTutorial}
         onClose={() => setShowIosTutorial(false)}
+      />
+
+      <ProSubscriptionModal
+        isOpen={showProModal}
+        onClose={() => setShowProModal(false)}
+        context="limit_reached"
+        onVipSuccess={() => {
+          setShowProModal(false);
+        }}
       />
     </div>
   );

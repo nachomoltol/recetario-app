@@ -31,6 +31,9 @@ export interface Database {
           objetivo_calorico_diario: number | null;
           raciones_defecto: number;
           nivel_culinario: string;
+          plan_suscripcion: 'gratis' | 'pro';
+          capturas_mes_actual: number;
+          fecha_ultimo_reinicio: string;
           created_at: string;
           updated_at: string;
         };
@@ -44,6 +47,9 @@ export interface Database {
           objetivo_calorico_diario?: number | null;
           raciones_defecto?: number;
           nivel_culinario?: string;
+          plan_suscripcion?: 'gratis' | 'pro';
+          capturas_mes_actual?: number;
+          fecha_ultimo_reinicio?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -57,6 +63,9 @@ export interface Database {
           objetivo_calorico_diario?: number | null;
           raciones_defecto?: number;
           nivel_culinario?: string;
+          plan_suscripcion?: 'gratis' | 'pro';
+          capturas_mes_actual?: number;
+          fecha_ultimo_reinicio?: string;
           created_at?: string;
           updated_at?: string;
         };
