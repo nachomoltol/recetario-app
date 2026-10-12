@@ -13,6 +13,7 @@ import { RecipeNutritionAccordion } from '@/components/recipes/RecipeNutritionAc
 import { RecipeRatingHeader } from '@/components/recipes/RecipeRatingHeader';
 import { RecipeInteractiveSections } from '@/components/recipes/RecipeInteractiveSections';
 import { RecipeWakeLock } from '@/components/recipes/RecipeWakeLock';
+import { RecipeAdaptationSection } from '@/components/recipes/RecipeAdaptationSection';
 import { CookingDiarySection } from '@/components/recipes/CookingDiarySection';
 import { DeleteRecipeButton } from '@/components/recipes/DeleteRecipeButton';
 import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe';
@@ -35,10 +36,10 @@ export default async function RecipeDetailPage({ params }: PageProps) {
     redirect(`/login?redirectTo=/recipes/${id}`);
   }
 
-  // Consultar preferencias del usuario (ej. raciones por defecto)
+  // Consultar perfil del usuario para preferencias (alergias, nivel y raciones)
   const { data: userProfile } = await supabase
     .from('usuarios')
-    .select('raciones_defecto')
+    .select('id, raciones_defecto, nivel_culinario, preferencias_dieteticas, alergenos')
     .eq('id', user.id)
     .single();
 
@@ -83,6 +84,25 @@ export default async function RecipeDetailPage({ params }: PageProps) {
     .order('fecha_cocinado', { ascending: false });
 
   const diarioEntries = (diarioData as DiarioCocinados[]) || [];
+
+  const recipeDataForAdapt = {
+    recetaId: receta.id,
+    titulo: receta.titulo,
+    descripcion: receta.descripcion,
+    porciones: receta.porciones || 2,
+    dificultad: receta.dificultad,
+    ingredientes: ingredientes.map((i) => ({
+      nombre_limpio: i.nombre_limpio,
+      cantidad: i.cantidad,
+      unidad: i.unidad,
+      pasillo_supermercado: i.pasillo_supermercado,
+    })),
+    pasos: pasos.map((p) => ({
+      orden: p.orden,
+      instruccion: p.instruccion,
+      consejo_pro: p.consejo_pro,
+    })),
+  };
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
@@ -160,6 +180,12 @@ export default async function RecipeDetailPage({ params }: PageProps) {
               {receta.descripcion}
             </p>
           )}
+
+          {/* Motor de Adaptación Culinaria No Destructivo (Capa Clínica y de Nivel) */}
+          <RecipeAdaptationSection
+            recipe={recipeDataForAdapt}
+            userProfile={userProfile}
+          />
 
           {/* Tiempos y Rendimiento en Modo Cocina */}
           <div className="pt-5 flex flex-wrap items-center gap-6 sm:gap-10 text-xs sm:text-sm text-stone-600 border-t border-[#e7dfd5]">
