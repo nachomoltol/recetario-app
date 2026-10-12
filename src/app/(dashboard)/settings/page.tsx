@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { ArrowLeft, Settings, Sliders, Smartphone } from 'lucide-react';
+import { ArrowLeft, Settings, User, ChefHat } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
-import { IosShortcutSettingsCard } from '@/components/settings/IosShortcutSettingsCard';
+import { CookingSettingsForm } from '@/components/settings/CookingSettingsForm';
+import { ShareAppsCard } from '@/components/settings/ShareAppsCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
+      {/* Barra de cabecera */}
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -40,7 +42,7 @@ export default async function SettingsPage() {
                 Configuración
               </span>
               <span className="text-[10px] text-stone-500 tracking-wider uppercase block font-medium">
-                Preferencias de la Aplicación
+                Ajustes Culinarios
               </span>
             </div>
           </div>
@@ -52,60 +54,53 @@ export default async function SettingsPage() {
         </div>
       </header>
 
+      {/* Contenido principal */}
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6">
-        <div className="p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-6">
-          <div className="flex items-center gap-3 border-b border-[#e7dfd5] pb-5">
-            <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224]">
+        {/* Cabecera de la sección */}
+        <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
               <Settings className="w-6 h-6" />
             </div>
             <div>
               <h1 className="text-2xl font-bold font-serif-recipe text-stone-900">
                 Ajustes de Cocina
               </h1>
-              <p className="text-xs text-stone-500">Configura tu experiencia culinaria e IA</p>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Personaliza cómo cocinas y cómo interactúa tu recetario
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Formulario de Preferencias: Raciones por defecto + Modo Manos en la Masa */}
+        <CookingSettingsForm initialServings={profile?.raciones_defecto || 2} />
+
+        {/* Panel limpio: Compartir desde otras apps */}
+        <ShareAppsCard />
+
+        {/* Acceso a Datos Personales y Recetario */}
+        <div className="p-6 rounded-3xl bg-[#f4efe6] border border-[#e7dfd5] flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-center sm:text-left">
+            <div className="w-10 h-10 rounded-2xl bg-white border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+              <ChefHat className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold font-serif-recipe text-stone-900">
+                Perfil y Preferencias Alimentarias
+              </h4>
+              <p className="text-xs text-stone-600">
+                Alergias, nivel de cocina y estadísticas de chef
+              </p>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between">
-              <div className="space-y-0.5">
-                <span className="text-sm font-semibold text-stone-900 flex items-center gap-2">
-                  <Smartphone className="w-4 h-4 text-[#a86224]" /> Modo Mobile-First (Cocina)
-                </span>
-                <p className="text-xs text-stone-500">
-                  Touch targets ampliados y botones de alta visibilidad para cocinar
-                </p>
-              </div>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">
-                Activado
-              </span>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between">
-              <div className="space-y-0.5">
-                <span className="text-sm font-semibold text-stone-900 flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-[#a86224]" /> Modelo IA Predeterminado
-                </span>
-                <p className="text-xs text-stone-500">
-                  Inferencia multimodal y deducción de speech telegráfico
-                </p>
-              </div>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
-                Gemini 3.1 Flash Lite
-              </span>
-            </div>
-
-            <IosShortcutSettingsCard />
-          </div>
-
-          <div className="pt-2">
-            <Link
-              href="/recipes"
-              className="w-full min-h-[48px] py-3 px-4 rounded-2xl font-semibold text-sm text-stone-700 bg-[#f4efe6] hover:bg-[#ebdcc9] transition flex items-center justify-center gap-2"
-            >
-              <span>Volver a Mis Recetas</span>
-            </Link>
-          </div>
+          <Link
+            href="/profile"
+            className="w-full sm:w-auto min-h-[42px] px-5 py-2.5 rounded-xl bg-white hover:bg-stone-100 text-[#a86224] border border-[#e7dfd5] text-xs font-semibold flex items-center justify-center transition shadow-2xs"
+          >
+            Ver Mi Perfil
+          </Link>
         </div>
       </main>
     </div>

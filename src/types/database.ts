@@ -29,6 +29,8 @@ export interface Database {
           preferencias_dieteticas: string[];
           alergenos: string[];
           objetivo_calorico_diario: number | null;
+          raciones_defecto: number;
+          nivel_culinario: string;
           created_at: string;
           updated_at: string;
         };
@@ -40,6 +42,8 @@ export interface Database {
           preferencias_dieteticas?: string[];
           alergenos?: string[];
           objetivo_calorico_diario?: number | null;
+          raciones_defecto?: number;
+          nivel_culinario?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -51,6 +55,8 @@ export interface Database {
           preferencias_dieteticas?: string[];
           alergenos?: string[];
           objetivo_calorico_diario?: number | null;
+          raciones_defecto?: number;
+          nivel_culinario?: string;
           created_at?: string;
           updated_at?: string;
         };

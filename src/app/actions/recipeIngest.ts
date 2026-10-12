@@ -87,6 +87,22 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     const tiempoTotal = Math.max(1, prepMin + coccMin);
     const porcionesNum = Math.max(1, Number(extracted.porciones) || 2);
 
+    // Consultar raciones por defecto del usuario
+    const { data: userProfile } = await supabase
+      .from('usuarios')
+      .select('raciones_defecto')
+      .eq('id', user.id)
+      .single();
+
+    const porcionesFinales =
+      userProfile?.raciones_defecto &&
+      userProfile.raciones_defecto >= 1 &&
+      userProfile.raciones_defecto <= 12
+        ? userProfile.raciones_defecto
+        : porcionesNum;
+
+    const factorEscalado = porcionesNum > 0 ? porcionesFinales / porcionesNum : 1;
+
     // 4. Inserción en 'recetas'
     const { data: nuevaReceta, error: errReceta } = await supabase
       .from('recetas')
@@ -96,7 +112,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         descripcion: extracted.descripcion || null,
         tiempo_preparacion_min: prepMin,
         tiempo_coccion_min: coccMin,
-        porciones: porcionesNum,
+        porciones: porcionesFinales,
         dificultad: dificultadNormalizada,
         fuente_tipo: fuenteTipo,
         fuente_url: url || null,
@@ -135,10 +151,14 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       const nombreLimpio = (ing.nombre_limpio || ing.nombre_crudo || `Ingrediente ${idx + 1}`).trim();
       const matchedMaestro = encontrarMaestro(nombreLimpio);
 
-      // Conversión volumétrica dinámica por densidad
-      const rawCantidad = typeof ing.cantidad === 'number' && !isNaN(ing.cantidad) && ing.cantidad > 0
+      // Conversión volumétrica dinámica por densidad con escalado a raciones preferidas
+      const baseCantidad = typeof ing.cantidad === 'number' && !isNaN(ing.cantidad) && ing.cantidad > 0
         ? ing.cantidad
         : parseFloat(String(ing.cantidad)) || 1;
+
+      const rawCantidad = factorEscalado !== 1
+        ? Math.round(baseCantidad * factorEscalado * 10) / 10
+        : baseCantidad;
 
       let rawUnidad = (ing.unidad || 'unidad').trim();
       // Regla lógica de pluralización: si cantidad > 1 y unidad es 'unidad', salida estrictamente 'unidades'

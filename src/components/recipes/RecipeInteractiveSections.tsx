@@ -20,6 +20,7 @@ interface RecipeInteractiveSectionsProps {
   tiempoCoccionMin: number | null;
   ingredientes: RecetaIngrediente[];
   pasos: Paso[];
+  defaultServings?: number;
 }
 
 export function RecipeInteractiveSections({
@@ -29,8 +30,9 @@ export function RecipeInteractiveSections({
   tiempoCoccionMin,
   ingredientes,
   pasos,
+  defaultServings,
 }: RecipeInteractiveSectionsProps) {
-  const [servings, setServings] = useState(basePorciones || 2);
+  const [servings, setServings] = useState(defaultServings || basePorciones || 2);
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
   const [isStepsOpen, setIsStepsOpen] = useState(false);
 

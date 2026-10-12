@@ -12,6 +12,7 @@ import {
 import { RecipeNutritionAccordion } from '@/components/recipes/RecipeNutritionAccordion';
 import { RecipeRatingHeader } from '@/components/recipes/RecipeRatingHeader';
 import { RecipeInteractiveSections } from '@/components/recipes/RecipeInteractiveSections';
+import { RecipeWakeLock } from '@/components/recipes/RecipeWakeLock';
 import { CookingDiarySection } from '@/components/recipes/CookingDiarySection';
 import { DeleteRecipeButton } from '@/components/recipes/DeleteRecipeButton';
 import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe';
@@ -33,6 +34,15 @@ export default async function RecipeDetailPage({ params }: PageProps) {
   if (!user) {
     redirect(`/login?redirectTo=/recipes/${id}`);
   }
+
+  // Consultar preferencias del usuario (ej. raciones por defecto)
+  const { data: userProfile } = await supabase
+    .from('usuarios')
+    .select('raciones_defecto')
+    .eq('id', user.id)
+    .single();
+
+  const userRacionesDefecto = userProfile?.raciones_defecto || undefined;
 
   // 1. Consultar receta principal
   const { data: recetaData, error: errReceta } = await supabase
@@ -128,12 +138,17 @@ export default async function RecipeDetailPage({ params }: PageProps) {
               <span>Ficha Culinaria Estandarizada</span>
             </div>
 
-            {/* Sistema de Valoración y Favoritos Interactivo */}
-            <RecipeRatingHeader
-              recetaId={receta.id}
-              initialFavorite={receta.es_favorita || false}
-              initialRating={receta.puntuacion || 0}
-            />
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+              {/* Modo Manos en la Masa: Wake Lock para que no se apague la pantalla */}
+              <RecipeWakeLock />
+
+              {/* Sistema de Valoración y Favoritos Interactivo */}
+              <RecipeRatingHeader
+                recetaId={receta.id}
+                initialFavorite={receta.es_favorita || false}
+                initialRating={receta.puntuacion || 0}
+              />
+            </div>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-bold font-serif-recipe tracking-tight text-stone-900 leading-tight">
@@ -203,6 +218,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
           tiempoCoccionMin={receta.tiempo_coccion_min}
           ingredientes={ingredientes}
           pasos={pasos}
+          defaultServings={userRacionesDefecto}
         />
 
         {/* Sección: Diario Visual de Cocinados */}
