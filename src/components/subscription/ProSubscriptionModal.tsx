@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
+import { redeemVipCodeAction } from '@/app/actions/subscription';
 
 export interface ProSubscriptionModalProps {
   isOpen?: boolean;
@@ -62,7 +63,7 @@ export function ProSubscriptionModal({
 
   if (!isOpen) return null;
 
-  const handleRedeemVip = (e: React.FormEvent) => {
+  const handleRedeemVip = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCode = vipCode.trim().toUpperCase();
 
@@ -74,10 +75,11 @@ export function ProSubscriptionModal({
     setIsVipValidating(true);
     setVipError(null);
 
-    // Simular validación rápida del código promocional
-    setTimeout(() => {
+    try {
+      const res = await redeemVipCodeAction(cleanCode);
       setIsVipValidating(false);
-      if (cleanCode === 'NACHOVIP') {
+
+      if (res.success) {
         setVipSuccess(true);
         if (typeof window !== 'undefined') {
           localStorage.setItem('recetario_vip_active', 'true');
@@ -86,9 +88,12 @@ export function ProSubscriptionModal({
           onVipSuccess();
         }
       } else {
-        setVipError('Código no válido o caducado. Prueba de nuevo.');
+        setVipError(res.error || 'Código inválido o caducado. Prueba de nuevo.');
       }
-    }, 500);
+    } catch (err) {
+      setIsVipValidating(false);
+      setVipError('Error al conectar con el servidor.');
+    }
   };
 
   const handleSubscribeClick = () => {

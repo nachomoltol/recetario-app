@@ -13,6 +13,7 @@ import {
   AlertCircle,
   CreditCard,
 } from 'lucide-react';
+import { redeemVipCodeAction } from '@/app/actions/subscription';
 
 interface BillingPlanViewProps {
   userEmail?: string;
@@ -34,7 +35,7 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
     }
   }, []);
 
-  const handleRedeemVip = (e: React.FormEvent) => {
+  const handleRedeemVip = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCode = vipCode.trim().toUpperCase();
 
@@ -46,17 +47,22 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
     setIsVipValidating(true);
     setVipError(null);
 
-    setTimeout(() => {
+    try {
+      const res = await redeemVipCodeAction(cleanCode);
       setIsVipValidating(false);
-      if (cleanCode === 'NACHOVIP') {
+
+      if (res.success) {
         setVipSuccess(true);
         if (typeof window !== 'undefined') {
           localStorage.setItem('recetario_vip_active', 'true');
         }
       } else {
-        setVipError('Código no válido o caducado. Prueba de nuevo.');
+        setVipError(res.error || 'Código no válido o caducado. Prueba de nuevo.');
       }
-    }, 500);
+    } catch (err) {
+      setIsVipValidating(false);
+      setVipError('Error al conectar con el servidor.');
+    }
   };
 
   const handleSubscribe = () => {
