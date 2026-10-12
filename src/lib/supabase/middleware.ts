@@ -45,6 +45,7 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute =
     path === '/' ||
     path.startsWith('/auth') ||
+    path.startsWith('/api/stripe/webhook') ||
     path.startsWith('/share-target') ||
     path.startsWith('/robots.txt') ||
     path.startsWith('/sitemap.xml') ||
