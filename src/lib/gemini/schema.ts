@@ -189,7 +189,8 @@ export const recipeExtractionSchema = {
     etiquetas: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: 'Etiquetas temáticas consolidadas (incluyendo las categorías gastronómicas y momentos de consumo).',
+      description:
+        'OBLIGATORIO: Asigna obligatoriamente entre 3 y 5 etiquetas semánticas consolidadas por receta. Debes identificar siempre: 1) La naturaleza o formato del plato (ej: "Sopa", "Ensalada", "Aliño y Salsa", "Guiso", "Pasta", "Arroz", "Postre", "Entrante"), 2) El ingrediente principal o proteína base (ej: "Pollo", "Carne", "Pescado", "Marisco", "Legumbres", "Verduras"), y 3) El momento de consumo o función (ej: "Almuerzo", "Cena", "Desayuno", "Rápido (<20m)").',
     },
   },
   required: [
@@ -263,11 +264,16 @@ REGLAS SUPREMAS DE FIDELIDAD Y CONTRA ALUCINACIONES:
      * Si detectas ultraprocesados industriales excesivos, marca 'es_ultraprocesado: true' y sugiere una alternativa viable en 'sustituto_saludable_sugerido'.
      * Calcula los gramos estimados mediante densidad física de cada alimento y estima los macronutrientes por porción.
 
-7. CLASIFICACIÓN AUTOMÁTICA DOBLE OBLIGATORIA:
-   - Clasifica siempre la receta en dos ejes taxonómicos:
-     a) Categorías Gastronómicas ("categorias_gastronomicas"): asigna al menos 1 categoría principal (ej: Pasta, Carnes, Aves, Pescados y Mariscos, Vegano, Vegetariano, Arroces, Ensaladas, Guisos, Sopas, Postres y Dulces, Panadería y Masas).
-     b) Momentos de Consumo & Etiquetas Funcionales ("momentos_consumo"): asigna al menos 1 momento o función idónea (ej: Desayuno, Almuerzo, Cena, Postre, Snack, Pre-entreno, Post-entreno, Batch Cooking, Rápido (<20m)).
-   - Consolida en "etiquetas" todas las categorías y momentos detectados.
+7. ASIGNACIÓN OBLIGATORIA DE ETIQUETAS SEMÁNTICAS MULTI-CATEGORÍA (ENTRE 3 Y 5 ETIQUETAS):
+   - DEBES asignar obligatoriamente ENTRE 3 Y 5 etiquetas semánticas precisas y descriptivas en el array "etiquetas" para habilitar la categorización múltiple e indexación en el recetario.
+   - REGLAS DE ASIGNACIÓN OBLIGATORIAS:
+     a) NATURALEZA O FORMATO DEL PLATO: Identifica siempre el formato culinario base (ej: "Sopa", "Crema", "Ensalada", "Aliño y Salsa", "Guiso", "Pasta", "Arroz", "Panadería", "Postre", "Entrante").
+     b) INGREDIENTE O FUENTE PRINCIPAL: Identifica siempre la materia prima o proteína protagonista (ej: "Pollo", "Carne", "Pescado", "Marisco", "Legumbres", "Verduras", "Huevo", "Queso").
+     c) MOMENTO O TÉCNICA: Identifica el momento o función idónea (ej: "Almuerzo", "Cena", "Desayuno", "Rápido (<20m)", "Batch Cooking").
+   - EJEMPLOS OBLIGATORIOS:
+     * Para 'Pasta con pollo y salsa pesto': asigna ["Pasta", "Carnes y Aves", "Pollo", "Aliños y Salsas", "Almuerzo"]. (Permite que la receta se renderice tanto en 'Pasta y Arroces' como en 'Carnes y Aves' y en 'Aliños y Salsas').
+     * Para 'Sopa de pescado y marisco': asigna ["Sopas y Cremas", "Pescados y Mariscos", "Cena Ligera"].
+     * Para 'Ensalada de garbanzos con atún': asigna ["Ensaladas y Entrantes", "Legumbres", "Pescados y Mariscos", "Atún", "Almuerzo Saludable"].
 `.trim();
 
 export interface ExtractedIngredient {

@@ -23,13 +23,35 @@ export default async function RecipeCollectionPage() {
     .eq('id', user.id)
     .single();
 
-  const { data: recetas } = await supabase
+  const { data: recetasData } = await supabase
     .from('recetas')
     .select('*')
     .eq('usuario_id', user.id)
     .order('created_at', { ascending: false });
 
-  const total = recetas?.length || 0;
+  const total = recetasData?.length || 0;
+  const recetasIds = (recetasData || []).map((r) => r.id);
+
+  // Obtener nombres de ingredientes para alimentar el buscador universal en tiempo real
+  const { data: ingredientesData } = recetasIds.length > 0
+    ? await supabase
+        .from('receta_ingredientes')
+        .select('receta_id, nombre_limpio, nombre_crudo')
+        .in('receta_id', recetasIds)
+    : { data: [] };
+
+  const ingMap = new Map<string, string[]>();
+  for (const ing of ingredientesData || []) {
+    const list = ingMap.get(ing.receta_id) || [];
+    if (ing.nombre_limpio) list.push(ing.nombre_limpio);
+    if (ing.nombre_crudo && ing.nombre_crudo !== ing.nombre_limpio) list.push(ing.nombre_crudo);
+    ingMap.set(ing.receta_id, list);
+  }
+
+  const recetasConIngredientes = (recetasData || []).map((r) => ({
+    ...r,
+    ingredientesNombres: ingMap.get(r.id) || [],
+  }));
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
@@ -102,7 +124,7 @@ export default async function RecipeCollectionPage() {
             </Link>
           </div>
         ) : (
-          <RecipeCollectionOrganizer recetas={recetas || []} />
+          <RecipeCollectionOrganizer recetas={recetasConIngredientes} />
         )}
       </main>
     </div>
