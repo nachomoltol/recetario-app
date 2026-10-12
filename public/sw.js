@@ -1,4 +1,4 @@
-const CACHE_NAME = 'recetario-pwa-v3';
+const CACHE_NAME = 'recetario-pwa-v2.0';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',

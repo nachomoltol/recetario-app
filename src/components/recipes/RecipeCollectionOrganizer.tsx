@@ -648,6 +648,7 @@ export function RecipeCollectionOrganizer({
         >
           <BookOpen className="w-3.5 h-3.5 shrink-0" />
           <span>Todas ({filteredRecipes.length})</span>
+          <span className="text-[9px] opacity-75 font-mono ml-0.5">v.2.0</span>
         </button>
 
         {populatedCategories.map(({ category, recetas: groupRecetas }) => {
@@ -772,6 +773,11 @@ export function RecipeCollectionOrganizer({
           })()
         )
       )}
+
+      {/* Indicador visual de versión para confirmar despliegue */}
+      <div className="pt-6 pb-2 text-center text-[11px] text-stone-400 font-mono tracking-wider">
+        v.2.0
+      </div>
     </div>
   );
 }

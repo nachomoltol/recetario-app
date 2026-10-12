@@ -6,6 +6,8 @@ import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { RecipeCollectionOrganizer } from '@/components/recipes/RecipeCollectionOrganizer';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export default async function RecipeCollectionPage() {
   const supabase = await createClient();
@@ -70,7 +72,7 @@ export default async function RecipeCollectionPage() {
                 Mi Recetario
               </span>
               <span className="text-[10px] text-stone-500 tracking-wider uppercase block font-medium">
-                Colección Completa ({total})
+                Colección Completa ({total}) <span className="font-mono text-stone-400 font-bold ml-1">v.2.0</span>
               </span>
             </div>
           </div>
@@ -129,6 +131,10 @@ export default async function RecipeCollectionPage() {
             userProfile={profile}
           />
         )}
+
+        <footer className="pt-8 pb-4 border-t border-[#e7dfd5] text-center text-xs text-stone-400 font-mono">
+          Recetario Colección · v.2.0
+        </footer>
       </main>
     </div>
   );
