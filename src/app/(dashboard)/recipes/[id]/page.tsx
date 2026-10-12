@@ -95,9 +95,13 @@ export default async function RecipeDetailPage({ params }: PageProps) {
                 href={receta.fuente_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] px-3 rounded-xl inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors"
+                className="min-h-[44px] px-3.5 py-2 rounded-2xl bg-white border border-[#e7dfd5] inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-stone-700 hover:text-[#a86224] hover:border-[#a86224] transition-all shadow-2xs"
               >
-                <span>Fuente ({receta.fuente_tipo})</span>
+                <span>
+                  {receta.fuente_tipo === 'web' || receta.fuente_tipo === 'manual'
+                    ? 'Ver fuente original'
+                    : 'Ver vídeo original'}
+                </span>
                 <ExternalLink className="w-3.5 h-3.5 text-[#a86224]" />
               </a>
             )}

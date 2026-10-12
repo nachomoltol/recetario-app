@@ -69,6 +69,7 @@ export function RecipeCaptureCard() {
   const [texto, setTexto] = useState(initialText);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [createdRecetaId, setCreatedRecetaId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Estados de carga progresiva
@@ -96,6 +97,7 @@ export function RecipeCaptureCard() {
     (targetMode: 'url' | 'texto', targetValue: string) => {
       setError(null);
       setSuccess(null);
+      setCreatedRecetaId(null);
 
       const formData = new FormData();
       if (targetMode === 'url') {
@@ -118,10 +120,15 @@ export function RecipeCaptureCard() {
           setError(res.error);
         } else if (res.success) {
           setSuccess('¡Receta extraída, estandarizada y guardada en tu recetario!');
+          setCreatedRecetaId(res.recetaId || null);
           setUrl('');
           setTexto('');
-          router.replace('/recipes');
           router.refresh();
+          // Desplazar suavemente a la previsualización de la última receta
+          setTimeout(() => {
+            const el = document.getElementById('ultima-receta');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }, 400);
         }
       });
     },
@@ -297,9 +304,26 @@ export function RecipeCaptureCard() {
 
       {/* Feedback de éxito */}
       {success && !isPending && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm flex items-start gap-3">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-          <span className="font-medium">{success}</span>
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-emerald-950">{success}</p>
+              <p className="text-xs text-emerald-800">
+                La receta se ha guardado en tu recetario y está disponible abajo en la vista previa.
+              </p>
+            </div>
+          </div>
+          {createdRecetaId && (
+            <button
+              type="button"
+              onClick={() => router.push(`/recipes/${createdRecetaId}`)}
+              className="min-h-[40px] px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs transition cursor-pointer self-start sm:self-auto shrink-0 flex items-center gap-1.5 shadow-2xs"
+            >
+              <span>Abrir ahora</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       )}
 

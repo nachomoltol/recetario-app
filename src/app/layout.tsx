@@ -44,7 +44,15 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${serifFont.variable} ${sansFont.variable}`}>
       <head>
+        <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Recetario" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#faf7f2" />
       </head>
       <body className="min-h-screen bg-[#faf7f2] text-stone-900 font-sans antialiased selection:bg-amber-200 selection:text-amber-950">
         <ServiceWorkerRegister />

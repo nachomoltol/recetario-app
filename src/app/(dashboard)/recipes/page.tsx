@@ -26,7 +26,7 @@ export default async function RecipesDashboardPage() {
     .eq('id', user.id)
     .single();
 
-  // Obtener recetas del usuario ordenadas por fecha reciente
+  // Obtener recetas del usuario ordenadas por fecha reciente (la primera es la última capturada)
   const { data: recetas } = await supabase
     .from('recetas')
     .select('*')
@@ -34,7 +34,6 @@ export default async function RecipesDashboardPage() {
     .order('created_at', { ascending: false });
 
   const ultimaReceta = recetas && recetas.length > 0 ? recetas[0] : null;
-  const restoRecetas = recetas && recetas.length > 1 ? recetas.slice(1) : [];
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
@@ -63,7 +62,7 @@ export default async function RecipesDashboardPage() {
         </div>
       </header>
 
-      {/* Contenido Principal enfocado */}
+      {/* Contenido Principal con foco exclusivo en Captura y Última Receta */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8 sm:space-y-10">
         {/* Cabecera y Bienvenida Limpia */}
         <section className="space-y-1 sm:space-y-2">
@@ -89,9 +88,9 @@ export default async function RecipesDashboardPage() {
           <RecipeCaptureCard />
         </Suspense>
 
-        {/* Foco 2: Acceso Rápido a la Última Receta Capturada */}
+        {/* Foco 2: Previsualización de la Última Receta Capturada */}
         {ultimaReceta && (
-          <section className="space-y-3">
+          <section className="space-y-3" id="ultima-receta">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-[#a86224] flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" /> Última Receta Capturada
@@ -156,11 +155,11 @@ export default async function RecipesDashboardPage() {
                 )}
               </div>
 
-              {/* Barra de acción rápida mobile-first */}
+              {/* Barra de acción rápida mobile-first con microcopy actualizado */}
               <div className="pt-4 border-t border-[#f4efe6] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4 text-xs sm:text-sm text-stone-500 font-medium">
                   <span className="flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-[#a86224]" /> {ultimaReceta.tiempo_total_min} min
+                    <Clock className="w-4 h-4 text-[#a86224]" /> {ultimaReceta.tiempo_total_min || 15} min
                   </span>
                   <span>·</span>
                   <span className="flex items-center gap-1.5">
@@ -172,7 +171,7 @@ export default async function RecipesDashboardPage() {
                   href={`/recipes/${ultimaReceta.id}`}
                   className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
                 >
-                  <span>Cocinar en Modo Cocina</span>
+                  <span>Ver receta en modo cocina</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -180,67 +179,8 @@ export default async function RecipesDashboardPage() {
           </section>
         )}
 
-        {/* Colección de Recetas Anteriores */}
-        {restoRecetas.length > 0 && (
-          <section className="space-y-4 pt-4 border-t border-[#e7dfd5]">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900">
-                Tu Colección ({recetas?.length || 0})
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {restoRecetas.map((r) => (
-                <div
-                  key={r.id}
-                  className="group rounded-3xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:shadow-xs transition-all p-5 space-y-3 flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="text-[#a86224] uppercase text-[10px] tracking-wider">
-                        {r.fuente_tipo}
-                      </span>
-                      <DeleteRecipeButton
-                        recipeId={r.id}
-                        recipeTitle={r.titulo}
-                        variant="icon"
-                        className="w-7 h-7 rounded-lg"
-                      />
-                    </div>
-
-                    <Link href={`/recipes/${r.id}`} className="block group-hover:text-[#a86224] transition-colors">
-                      <h4 className="font-bold text-stone-900 font-serif-recipe text-lg leading-snug line-clamp-1">
-                        {r.titulo}
-                      </h4>
-                    </Link>
-
-                    {r.descripcion && (
-                      <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed font-light">
-                        {r.descripcion}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="pt-3 border-t border-[#f4efe6] flex items-center justify-between text-xs text-stone-500">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-[#a86224]" /> {r.tiempo_total_min}m
-                    </span>
-                    <Link
-                      href={`/recipes/${r.id}`}
-                      className="text-[#a86224] hover:text-[#8e511c] transition-colors font-semibold inline-flex items-center gap-0.5"
-                    >
-                      <span>Abrir</span>
-                      <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Estado Vacío */}
-        {(!recetas || recetas.length === 0) && (
+        {/* Estado Vacío si no hay recetas */}
+        {!ultimaReceta && (
           <div className="p-10 text-center rounded-3xl bg-white border border-dashed border-[#e7dfd5] space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center mx-auto">
               <BookOpen className="w-6 h-6" />

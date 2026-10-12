@@ -8,24 +8,9 @@ export function ServiceWorkerRegister() {
       return;
     }
 
-    if (process.env.NODE_ENV === 'development') {
-      // En desarrollo, desregistrar SW para no romper Fast Refresh / HMR
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        for (const registration of registrations) {
-          registration.unregister();
-        }
-      });
-      caches.keys().then((keys) => {
-        for (const key of keys) {
-          caches.delete(key);
-        }
-      });
-      return;
-    }
-
-    // En producción, registrar Service Worker
+    // Registrar Service Worker con scope global para PWA y Web Share Target
     navigator.serviceWorker
-      .register('/sw.js')
+      .register('/sw.js', { scope: '/' })
       .then((registration) => {
         registration.addEventListener('updatefound', () => {
           const installingWorker = registration.installing;
@@ -35,7 +20,7 @@ export function ServiceWorkerRegister() {
                 installingWorker.state === 'installed' &&
                 navigator.serviceWorker.controller
               ) {
-                // Nueva versión detectada, solicitar skip waiting
+                // Nueva versión detectada, solicitar activación
                 installingWorker.postMessage({ type: 'SKIP_WAITING' });
               }
             });
@@ -43,7 +28,7 @@ export function ServiceWorkerRegister() {
         });
       })
       .catch((error) => {
-        console.warn('Error al registrar Service Worker PWA:', error);
+        console.warn('Aviso: no se pudo registrar Service Worker PWA:', error);
       });
   }, []);
 

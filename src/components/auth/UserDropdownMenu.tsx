@@ -103,13 +103,13 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
           {/* Opciones del Menú */}
           <div className="space-y-1">
             <Link
-              href="/recipes"
+              href="/recipes/collection"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium"
             >
               <BookOpen className="w-4 h-4 text-[#a86224]" />
               <div className="flex-1">
-                <span>Mi Recetario</span>
+                <span>Mi Recetario (Colección)</span>
               </div>
             </Link>
 
