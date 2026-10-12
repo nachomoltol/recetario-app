@@ -58,31 +58,22 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
   };
 
   return (
-    <section className="space-y-6 pt-10 border-t border-[#e7dfd5]">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <span className="text-xs uppercase tracking-widest text-[#a86224] font-semibold block">
-            Registro Empírico Culinario
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-bold font-serif-recipe text-stone-900">
-            Diario de Cocinados ({entradas.length})
-          </h2>
-        </div>
-
+    <section className="space-y-6 pt-8 border-t border-[#e7dfd5]">
+      <div className="flex justify-center sm:justify-start">
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="min-h-[48px] px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-white bg-[#a86224] hover:bg-[#8e511c] shadow-xs transition flex items-center justify-center gap-2 cursor-pointer self-start sm:self-auto"
+          className="min-h-[48px] px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-white bg-[#a86224] hover:bg-[#8e511c] shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
         >
           {isOpen ? (
             <>
               <X className="w-4 h-4" />
-              <span>Cerrar Formulario</span>
+              <span>Cerrar</span>
             </>
           ) : (
             <>
               <Camera className="w-4 h-4" />
-              <span>Añadir Mi Cocinado</span>
+              <span>Fotografía tu plato</span>
             </>
           )}
         </button>
@@ -246,13 +237,9 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
         </div>
       )}
 
-      {/* Galería de cocinados existentes */}
-      {entradas.length === 0 ? (
-        <div className="p-10 text-center rounded-3xl border border-dashed border-[#e7dfd5] bg-white text-xs sm:text-sm text-stone-500">
-          Aún no has registrado ningún cocinado de este plato. ¡Cocínalo, hazle una foto y anota tus impresiones!
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      {/* Galería de cocinados existentes (solo si hay fotos) */}
+      {entradas.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
           {entradas.map((entry) => (
             <div
               key={entry.id}

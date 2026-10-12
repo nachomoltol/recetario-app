@@ -84,13 +84,20 @@ export function IngredientRow({
   };
 
   const baseCantidadNum = scaledCantidad !== undefined ? scaledCantidad : Number(ingrediente.cantidad);
+  const unidadAjustada =
+    ingrediente.unidad === 'unidad' || ingrediente.unidad === 'unidades'
+      ? Number(baseCantidadNum) > 1
+        ? 'unidades'
+        : 'unidad'
+      : ingrediente.unidad;
+
   const nombreMostrado = appliedOption
     ? appliedOption.nombre_sustituto
     : ingrediente.nombre_limpio || ingrediente.nombre_crudo;
 
   const cantidadMostrada = appliedOption
     ? appliedOption.cantidad_sugerida
-    : `${baseCantidadNum} ${ingrediente.unidad}`;
+    : `${baseCantidadNum} ${unidadAjustada}`;
 
   const getOptionIcon = (tipo: string) => {
     if (tipo === 'magra_tradicional') return <Beef className="w-3.5 h-3.5 shrink-0" />;
@@ -100,16 +107,16 @@ export function IngredientRow({
   };
 
   return (
-    <div className="py-3.5 border-b border-[#e7dfd5] last:border-b-0 transition-colors">
-      <div className="flex items-center justify-between gap-4">
-        {/* Nombre y Cantidad en gran tamaño para legibilidad en cocina */}
-        <div className="flex items-baseline gap-2.5 min-w-0">
+    <div className="py-3 border-b border-[#e7dfd5] last:border-b-0 transition-colors">
+      <div className="flex items-center justify-between gap-3">
+        {/* Nombre y Cantidad ocupando ~90% del ancho disponible */}
+        <div className="flex-1 min-w-0 flex items-baseline gap-2 flex-wrap sm:flex-nowrap">
           <span className="w-2 h-2 rounded-full bg-[#c27835] shrink-0 self-center" />
           <span className="text-base sm:text-lg font-bold text-stone-900 shrink-0 tabular-nums">
             {cantidadMostrada}
           </span>
           <span
-            className={`text-base sm:text-lg text-stone-800 ${
+            className={`text-base sm:text-lg text-stone-800 break-words ${
               appliedOption ? 'text-[#a86224] font-semibold' : ''
             }`}
           >
@@ -121,30 +128,25 @@ export function IngredientRow({
             </span>
           )}
           {appliedOption && (
-            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#f4efe6] text-[#a86224] font-semibold border border-[#e7dfd5] shrink-0">
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#f4efe6] text-[#a86224] font-semibold border border-[#e7dfd5] shrink-0">
               Sustituido por {appliedOption.etiqueta_tipo}
             </span>
           )}
         </div>
 
-        {/* Touch Target amplio para pulsar con una sola mano en cocina */}
+        {/* Icon-button minimalista universal de intercambio (swap) */}
         <button
           type="button"
           onClick={handleToggle}
           disabled={isPending}
+          aria-label="Ver alternativas de intercambio"
           title="Ver 3 alternativas inteligentes con IA"
-          className="shrink-0 min-h-[44px] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-stone-700 hover:text-stone-900 bg-[#f4efe6] hover:bg-[#eae1d2] border border-[#e7dfd5] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 shadow-2xs"
+          className="shrink-0 w-9 h-9 rounded-xl text-stone-700 hover:text-[#a86224] bg-[#f4efe6] hover:bg-[#eae1d2] border border-[#e7dfd5] transition-all flex items-center justify-center cursor-pointer disabled:opacity-50 active:scale-95 shadow-2xs"
         >
           {isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin text-[#a86224]" />
-              <span className="text-xs text-[#a86224]">Buscando...</span>
-            </>
+            <Loader2 className="w-4 h-4 animate-spin text-[#a86224]" />
           ) : (
-            <>
-              <ArrowRightLeft className="w-3.5 h-3.5 text-[#a86224]" />
-              <span>Cambiar ingrediente</span>
-            </>
+            <ArrowRightLeft className="w-4 h-4 text-[#a86224]" />
           )}
         </button>
       </div>

@@ -98,11 +98,24 @@ export const AISLE_CONFIGS: Record<SupermarketAisle, AisleConfig> = {
  * Heurística de clasificación de pasillo para ingredientes sin asignar o heredados
  */
 export function classifyIngredientAisle(nombre: string, existingAisle?: string | null): SupermarketAisle {
+  const n = (nombre || '').toLowerCase();
+
+  // Corrección estricta: si vino marcado erróneamente como Despensa, re-enrutar
   if (existingAisle && SUPERMARKET_AISLES.includes(existingAisle as SupermarketAisle)) {
+    if (existingAisle === 'Despensa y Especias') {
+      if (
+        /tomate|cebolla|ajo|albahaca|limon|limón|lima|patata|papa|zanahoria|perejil|seta|champinon|champiñón|espinaca|lechuga|fruta|aguacate|calabacin|calabacín|berenjena|pimiento|brocoli|brócoli|col|manzana|platano|plátano|fresa|cilantro|romero|tomillo/i.test(
+          n
+        )
+      ) {
+        return 'Frutas y Verduras';
+      }
+      if (/^agua\b|agua mineral|agua del grifo|agua tibia|agua fría|vino|cerveza|licor|refresco|zumo|caldo/i.test(n)) {
+        return 'Bebidas';
+      }
+    }
     return existingAisle as SupermarketAisle;
   }
-
-  const n = (nombre || '').toLowerCase();
 
   // 1. Carnes y Aves
   if (
@@ -141,7 +154,7 @@ export function classifyIngredientAisle(nombre: string, existingAisle?: string |
   }
 
   // 5. Bebidas
-  if (/vino|cerveza|licor|refresco|zumo|caldo de pollo|caldo de verduras|caldo de carne|agua mineral/i.test(n)) {
+  if (/^agua\b|agua mineral|agua del grifo|agua tibia|agua fría|vino|cerveza|licor|refresco|zumo|caldo/i.test(n)) {
     return 'Bebidas';
   }
 

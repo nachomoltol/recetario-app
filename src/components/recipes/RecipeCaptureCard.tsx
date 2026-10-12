@@ -25,6 +25,21 @@ interface LoadingStage {
   percent: number;
 }
 
+const CULINARY_HUMOR_PHRASES = [
+  'Yendo a por papel y boli...',
+  'Lavándome las manos...',
+  'Poniéndome el delantal...',
+  'Afilando los cuchillos...',
+  'Probando el punto de sal...',
+  'Precalentando los fogones...',
+  'Buscando la especia perdida...',
+  'Pelando las cebollas sin llorar...',
+  'Decodificando la salsa secreta del chef...',
+  'Estandarizando gramos y mililitros...',
+  'Emplatando la receta digitalmente...',
+  'Dando el toque maestro del chef...',
+];
+
 const LOADING_STAGES: LoadingStage[] = [
   {
     seconds: 0,
@@ -127,11 +142,16 @@ export function RecipeCaptureCard() {
           setUrl('');
           setTexto('');
           router.refresh();
-          // Desplazar suavemente a la previsualización de la última receta
-          setTimeout(() => {
+          // Desplazar suavemente a la previsualización de la última receta en el dashboard (sin abrirla a pantalla completa)
+          const tryScrollToNewRecipe = (attempts = 0) => {
             const el = document.getElementById('ultima-receta');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }, 400);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (attempts < 12) {
+              setTimeout(() => tryScrollToNewRecipe(attempts + 1), 250);
+            }
+          };
+          setTimeout(() => tryScrollToNewRecipe(), 350);
         }
       });
     },
@@ -171,6 +191,10 @@ export function RecipeCaptureCard() {
   const currentStage =
     [...LOADING_STAGES].reverse().find((s) => elapsedSeconds >= s.seconds) || LOADING_STAGES[0];
   const stageIndex = LOADING_STAGES.findIndex((s) => s.seconds === currentStage.seconds);
+
+  // Calcular frase rotativa con humor culinario (rota cada 2.5 - 3 segundos)
+  const humorIndex = Math.floor(elapsedSeconds / 3) % CULINARY_HUMOR_PHRASES.length;
+  const currentHumorPhrase = CULINARY_HUMOR_PHRASES[humorIndex];
 
   return (
     <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-6">
@@ -269,11 +293,11 @@ export function RecipeCaptureCard() {
             />
           </div>
 
-          {/* Mensaje descriptivo dinámico */}
+          {/* Mensaje descriptivo dinámico con humor culinario */}
           <div className="space-y-1">
             <h4 className="text-sm sm:text-base font-bold text-stone-900 flex items-center gap-2">
               <Radio className="w-4 h-4 text-[#a86224] animate-pulse" />
-              {currentStage.title}
+              {currentHumorPhrase}
             </h4>
             <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-light">
               {currentStage.description}
@@ -363,12 +387,12 @@ export function RecipeCaptureCard() {
             <>
               <Loader2 className="w-5 h-5 animate-spin text-white shrink-0" />
               <span className="truncate">
-                {currentStage.title} ({elapsedSeconds}s)
+                {currentHumorPhrase} ({elapsedSeconds}s)
               </span>
             </>
           ) : (
             <>
-              <span>Procesar Receta con IA</span>
+              <span>Procesar la receta</span>
               <ArrowRight className="w-5 h-5" />
             </>
           )}

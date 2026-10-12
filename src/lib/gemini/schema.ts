@@ -63,7 +63,7 @@ export const recipeExtractionSchema = {
           unidad: {
             type: Type.STRING,
             description:
-              'Unidad métrica estricta. EXCLUSIVAMENTE "g" para sólidos/pastas o "ml" para líquidos/emulsiones (o "unidad" si son piezas enteras indivisibles como huevos). Está TAJANTEMENTE PROHIBIDO usar "taza", "cucharada", "cucharadita", "pizca", "chorro", "vaso" u otras medidas volumétricas ambiguas.',
+              'Unidad métrica estricta. EXCLUSIVAMENTE "g" para sólidos/pastas o "ml" para líquidos/emulsiones (o "unidad" / "unidades" si son piezas enteras indivisibles). REGLA LÓGICA DE PLURALIZACIÓN: si la cantidad es > 1 y la unidad es de piezas enteras, el texto de salida en unidad debe ser estrictamente "unidades" en plural; si es 1, estrictamente "unidad". Está TAJANTEMENTE PROHIBIDO usar "taza", "cucharada", "cucharadita", "pizca", "chorro", "vaso" u otras medidas volumétricas ambiguas.',
           },
           gramos_estimados: {
             type: Type.NUMBER,
@@ -235,23 +235,26 @@ REGLAS SUPREMAS DE FIDELIDAD Y CONTRA ALUCINACIONES:
      * Identifica ingredientes que el creador añade visualmente aunque no los mencione en el audio o texto (ej. un chorro de aceite de oliva en la sartén, sal, pimienta negra, ajo en polvo o perejil fresco al emplatar).
      * Estandariza la instrucción en lenguaje profesional de cocina con tiempos y temperaturas realistas basados en lo observado en el vídeo.
 
-4. CONVERSIÓN MÉTRICA ESTRICTA (TOLERANCIA CERO A MEDIDAS VOLUMÉTRICAS AMBIGUAS):
+4. CONVERSIÓN MÉTRICA ESTRICTA Y REGLA DE PLURALIZACIÓN DE UNIDADES:
    - Está TAJANTEMENTE PROHIBIDO el uso de medidas volumétricas o coloquiales ambiguas como 'taza', 'cucharada', 'cucharadita', 'pizca', 'chorro', 'vaso' o 'puñado'.
    - La IA DEBE estimar la densidad física del alimento y convertir la cantidad EXCLUSIVAMENTE a medidas estandarizadas: gramos ('g') para ingredientes sólidos/pastosos o mililitros ('ml') para líquidos/aceites/emulsiones.
    - Si el contenido indica '1 taza de harina', conviértelo a 120 g (unidad: 'g', cantidad: 120). Si dice '2 cucharadas de aceite', conviértelo a 30 ml (unidad: 'ml', cantidad: 30). Si dice 'una pizca de sal', conviértelo a 1 g o 2 g (unidad: 'g', cantidad: 2).
-   - Únicamente se permite 'unidad' para piezas enteras e indivisibles (ej. huevos), siempre completando sus gramos_estimados equivalentes (ej. 1 huevo = 60 g).
+   - REGLA LÓGICA ESTRICTA PARA PIEZAS INDIVISIBLES ('unidad' vs 'unidades'):
+     * Si la cantidad detectada es 1 (o <= 1), la unidad debe ser estrictamente "unidad" en singular (ej: cantidad: 1, unidad: "unidad").
+     * Si la cantidad detectada es > 1 (ej: 2, 3, 4, etc.), la unidad de salida DEBE SER ESTRICTAMENTE "unidades" en plural (ej: cantidad: 2, unidad: "unidades").
+     * Siempre completa los gramos_estimados equivalentes según el peso estándar de la pieza (ej. 2 unidades de huevo = 120 g).
 
-5. CATEGORIZACIÓN DE SUPERMERCADO FÍSICO:
-   - Asigna obligatoriamente a cada ingrediente su 'pasillo_supermercado' adecuado para facilitar la compra agrupada:
-     * 'Frutas y Verduras': vegetales frescos, frutas, tubérculos, hierbas frescas.
-     * 'Carnes y Aves': carnes rojas, pollo, pavo, cerdo, embutidos frescos, chacinas.
-     * 'Pescados y Mariscos': pescados frescos, marisco, conservas de pescado.
-     * 'Lácteos y Huevos': leche, quesos, yogur, mantequilla, nata, huevos.
-     * 'Despensa y Especias': pastas, arroces, legumbres secas, aceites, vinagres, especias secas, harinas, salsas, azúcar, sal.
-     * 'Panadería y Pastelería': panes, bases de masa, levadura, repostería.
-     * 'Congelados': productos ultracongelados.
-     * 'Bebidas': vinos de cocina, caldos envasados, cervezas, licores, agua.
-     * 'Refrigerados': masas refrigeradas, embutidos cocidos, tofu, preparados listos.
+5. CATEGORIZACIÓN PRECISA Y ESTRICTA DE PASILLOS DE SUPERMERCADO FÍSICO:
+   - Asigna obligatoriamente a cada ingrediente su 'pasillo_supermercado' exacto. Está TERMINANTEMENTE PROHIBIDO desviar a 'Despensa' productos que pertenecen a su pasillo natural:
+     * 'Frutas y Verduras': OBLIGATORIO para frutas frescas (la manzana SIEMPRE va aquí, al igual que plátanos, limones, fresas, aguacates), vegetales, hortalizas (tomates, pimientos, calabacines), tubérculos (patatas, cebollas, ajos) y hierbas frescas. JAMÁS clasifiques una manzana, fruta o verdura fresca en 'Despensa'.
+     * 'Bebidas': OBLIGATORIO para agua (mineral, del grifo o con gas, el agua SIEMPRE va a 'Bebidas'), refrescos, caldos líquidos envasados, zumos, vinos de cocina, cervezas y licores. JAMÁS clasifiques el agua ni las bebidas en 'Despensa'.
+     * 'Carnes y Aves': Carnes rojas, pollo, pavo, cerdo, embutidos frescos, picadas y chacinas.
+     * 'Pescados y Mariscos': Pescados frescos o congelados, marisco, conservas de pescado (atún, anchoas).
+     * 'Lácteos y Huevos': Leche, quesos, yogur, mantequilla, nata líquida para cocinar, huevos.
+     * 'Despensa y Especias': Exclusivamente pastas secas, arroces, legumbres secas, aceites, vinagres, especias secas molidas, harinas, salsas envasadas, azúcar y sal.
+     * 'Panadería y Pastelería': Panes, masas de hojaldre, levadura de panadero, productos de repostería.
+     * 'Congelados': Productos ultracongelados procesados.
+     * 'Refrigerados': Masas frescas refrigeradas, tofu, preparados listos refrigerados.
 
 6. EXTRACCIÓN Y FUSIÓN MULTIMODAL:
    - Si es_receta_valida es true:

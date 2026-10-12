@@ -89,7 +89,13 @@ export function ShoppingListMode({
         const isChecked = checkedIds.includes(ing.id);
         const prefix = isChecked ? '✓' : '☐';
         const qtyNum = ing.cantidad_escalada !== undefined ? ing.cantidad_escalada : ing.cantidad;
-        const qty = `${qtyNum} ${ing.unidad}`;
+        const unidadFormat =
+          ing.unidad === 'unidad' || ing.unidad === 'unidades'
+            ? Number(qtyNum) > 1
+              ? 'unidades'
+              : 'unidad'
+            : ing.unidad;
+        const qty = `${qtyNum} ${unidadFormat}`;
         const name = ing.nombre_limpio || ing.nombre_crudo;
         textLines.push(`${prefix} ${qty} ${name}${ing.notas ? ` (${ing.notas})` : ''}`);
       }
@@ -292,13 +298,23 @@ export function ShoppingListMode({
                               )}
                             </div>
 
-                            <span
-                              className={`text-sm sm:text-base font-bold shrink-0 tabular-nums ${
-                                isChecked ? 'line-through text-stone-400' : 'text-[#a86224]'
-                              }`}
-                            >
-                              {qtyNum} {ing.unidad}
-                            </span>
+                            {(() => {
+                              const unidadFormat =
+                                ing.unidad === 'unidad' || ing.unidad === 'unidades'
+                                  ? Number(qtyNum) > 1
+                                    ? 'unidades'
+                                    : 'unidad'
+                                  : ing.unidad;
+                              return (
+                                <span
+                                  className={`text-sm sm:text-base font-bold shrink-0 tabular-nums ${
+                                    isChecked ? 'line-through text-stone-400' : 'text-[#a86224]'
+                                  }`}
+                                >
+                                  {qtyNum} {unidadFormat}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                       );

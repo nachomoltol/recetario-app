@@ -31,8 +31,8 @@ export function RecipeInteractiveSections({
   pasos,
 }: RecipeInteractiveSectionsProps) {
   const [servings, setServings] = useState(basePorciones || 2);
-  const [isIngredientsOpen, setIsIngredientsOpen] = useState(true);
-  const [isStepsOpen, setIsStepsOpen] = useState(true);
+  const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
+  const [isStepsOpen, setIsStepsOpen] = useState(false);
 
   // Escalado inteligente con conciencia culinaria
   const scaledIngredientes = scaleIngredientsWithCulinaryHeuristics(

@@ -9,7 +9,7 @@ import {
   ExternalLink,
   ChefHat,
 } from 'lucide-react';
-import { RecipeTagsEditor } from '@/components/recipes/RecipeTagsEditor';
+import { RecipeNutritionAccordion } from '@/components/recipes/RecipeNutritionAccordion';
 import { RecipeRatingHeader } from '@/components/recipes/RecipeRatingHeader';
 import { RecipeInteractiveSections } from '@/components/recipes/RecipeInteractiveSections';
 import { CookingDiarySection } from '@/components/recipes/CookingDiarySection';
@@ -146,11 +146,6 @@ export default async function RecipeDetailPage({ params }: PageProps) {
             </p>
           )}
 
-          {/* Categorización Doble y Editor Interactivo de Etiquetas */}
-          <div className="pt-1">
-            <RecipeTagsEditor recetaId={receta.id} initialTags={receta.etiquetas || []} />
-          </div>
-
           {/* Tiempos y Rendimiento en Modo Cocina */}
           <div className="pt-5 flex flex-wrap items-center gap-6 sm:gap-10 text-xs sm:text-sm text-stone-600 border-t border-[#e7dfd5]">
             <div className="flex items-center gap-2.5">
@@ -191,52 +186,14 @@ export default async function RecipeDetailPage({ params }: PageProps) {
           </div>
         </section>
 
-        {/* Tira Nutricional Minimalista de Lino y Crema */}
-        {(receta.calorias_por_porcion || receta.proteinas_por_porcion) ? (
-          <section className="p-6 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#a86224] uppercase tracking-wider">
-              <Flame className="w-4 h-4" />
-              <span>Valores Nutricionales Estimados (Por Ración)</span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
-              <div className="py-2 border-r border-[#f4efe6] last:border-r-0">
-                <span className="text-xs uppercase text-stone-500 font-medium block">Calorías</span>
-                <span className="text-2xl font-bold font-serif-recipe text-stone-900 tabular-nums">
-                  {Math.round(receta.calorias_por_porcion || 0)} <span className="text-xs font-normal text-stone-500">kcal</span>
-                </span>
-              </div>
-
-              <div className="py-2 border-r border-[#f4efe6] last:border-r-0">
-                <span className="text-xs uppercase text-stone-500 font-medium block">Proteínas</span>
-                <span className="text-2xl font-bold font-serif-recipe text-stone-900 tabular-nums">
-                  {receta.proteinas_por_porcion} <span className="text-xs font-normal text-stone-500">g</span>
-                </span>
-              </div>
-
-              <div className="py-2 border-r border-[#f4efe6] last:border-r-0">
-                <span className="text-xs uppercase text-stone-500 font-medium block">Carbohidratos</span>
-                <span className="text-2xl font-bold font-serif-recipe text-stone-900 tabular-nums">
-                  {receta.carbohidratos_por_porcion} <span className="text-xs font-normal text-stone-500">g</span>
-                </span>
-              </div>
-
-              <div className="py-2 border-r border-[#f4efe6] last:border-r-0">
-                <span className="text-xs uppercase text-stone-500 font-medium block">Grasas</span>
-                <span className="text-2xl font-bold font-serif-recipe text-stone-900 tabular-nums">
-                  {receta.grasas_por_porcion} <span className="text-xs font-normal text-stone-500">g</span>
-                </span>
-              </div>
-
-              <div className="py-2">
-                <span className="text-xs uppercase text-stone-500 font-medium block">Fibra</span>
-                <span className="text-2xl font-bold font-serif-recipe text-stone-900 tabular-nums">
-                  {receta.fibra_por_porcion || 0} <span className="text-xs font-normal text-stone-500">g</span>
-                </span>
-              </div>
-            </div>
-          </section>
-        ) : null}
+        {/* Pestaña / Acordeón Plegable Compacto de Valores Nutricionales */}
+        <RecipeNutritionAccordion
+          calorias={receta.calorias_por_porcion}
+          proteinas={receta.proteinas_por_porcion}
+          carbohidratos={receta.carbohidratos_por_porcion}
+          grasas={receta.grasas_por_porcion}
+          fibra={receta.fibra_por_porcion}
+        />
 
         {/* Acordeones Plegables con Escalado Inteligente y Modo Compra */}
         <RecipeInteractiveSections

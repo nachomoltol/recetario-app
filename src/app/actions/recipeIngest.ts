@@ -140,7 +140,11 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         ? ing.cantidad
         : parseFloat(String(ing.cantidad)) || 1;
 
-      const rawUnidad = (ing.unidad || 'unidad').trim();
+      let rawUnidad = (ing.unidad || 'unidad').trim();
+      // Regla lógica de pluralización: si cantidad > 1 y unidad es 'unidad', salida estrictamente 'unidades'
+      if (rawUnidad === 'unidad' || rawUnidad === 'unidades') {
+        rawUnidad = rawCantidad > 1 ? 'unidades' : 'unidad';
+      }
 
       const conv = calcularGramos({
         cantidad: rawCantidad,
@@ -151,6 +155,15 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       const gramosFinales = conv.gramos > 0
         ? conv.gramos
         : (typeof ing.gramos_estimados === 'number' && !isNaN(ing.gramos_estimados) ? ing.gramos_estimados : 0);
+
+      // Regla estricta de pasillos: manzana a Frutas y Verduras, agua a Bebidas, etc.
+      let pasilloFinal = ing.pasillo_supermercado || 'Despensa y Especias';
+      const nLower = nombreLimpio.toLowerCase();
+      if (/manzana|platano|plátano|limon|limón|naranja|fruta|pera|fresa|aguacate|tomate|cebolla|ajo|patata|verdura/i.test(nLower)) {
+        pasilloFinal = 'Frutas y Verduras';
+      } else if (/^agua\b|agua mineral|agua del grifo|refresco|zumo|vino|cerveza/i.test(nLower)) {
+        pasilloFinal = 'Bebidas';
+      }
 
       const notasCombinadas = [
         ing.notas,
@@ -169,7 +182,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         cantidad: Math.max(0.1, rawCantidad),
         unidad: rawUnidad,
         gramos_calculados: Math.max(0, gramosFinales),
-        pasillo_supermercado: ing.pasillo_supermercado || 'Despensa y Especias',
+        pasillo_supermercado: pasilloFinal,
         notas: notasCombinadas || null,
         es_opcional: Boolean(ing.es_opcional),
         orden: idx + 1, // Secuencial estricto

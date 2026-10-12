@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ChefHat, ArrowLeft, BookOpen, Clock, ArrowRight, Utensils, Sparkles } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
-import { DeleteRecipeButton } from '@/components/recipes/DeleteRecipeButton';
+import { RecipeCollectionOrganizer } from '@/components/recipes/RecipeCollectionOrganizer';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,77 +102,7 @@ export default async function RecipeCollectionPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {recetas?.map((r) => (
-              <div
-                key={r.id}
-                className="group rounded-3xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:shadow-xs transition-all p-5 space-y-3.5 flex flex-col justify-between"
-              >
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-lg bg-[#f4efe6] text-[#a86224] font-bold uppercase tracking-wider text-[10px]">
-                        {r.fuente_tipo}
-                      </span>
-                      <span className="px-2 py-0.5 rounded-lg bg-stone-100 text-stone-600 capitalize text-[11px]">
-                        {r.dificultad}
-                      </span>
-                    </div>
-
-                    <DeleteRecipeButton
-                      recipeId={r.id}
-                      recipeTitle={r.titulo}
-                      variant="icon"
-                      className="w-7 h-7 rounded-lg"
-                    />
-                  </div>
-
-                  <Link href={`/recipes/${r.id}`} className="block group-hover:text-[#a86224] transition-colors">
-                    <h3 className="font-bold text-stone-900 font-serif-recipe text-lg leading-snug line-clamp-2">
-                      {r.titulo}
-                    </h3>
-                  </Link>
-
-                  {r.descripcion && (
-                    <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed font-light">
-                      {r.descripcion}
-                    </p>
-                  )}
-
-                  {r.etiquetas && r.etiquetas.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {r.etiquetas.slice(0, 3).map((tag: string) => (
-                        <span
-                          key={tag}
-                          className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#faf7f2] text-stone-600 border border-[#e7dfd5]"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                      {r.etiquetas.length > 3 && (
-                        <span className="text-[10px] text-stone-400 font-medium self-center">
-                          +{r.etiquetas.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-3 border-t border-[#f4efe6] flex items-center justify-between text-xs text-stone-500">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-[#a86224]" /> {r.tiempo_total_min || 15} min
-                  </span>
-                  <Link
-                    href={`/recipes/${r.id}`}
-                    className="text-[#a86224] hover:text-[#8e511c] font-semibold inline-flex items-center gap-1 transition-colors"
-                  >
-                    <span>Abrir receta</span>
-                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
+          <RecipeCollectionOrganizer recetas={recetas || []} />
         )}
       </main>
     </div>
