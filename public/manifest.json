@@ -2,11 +2,13 @@
   "name": "Recetario Inteligente",
   "short_name": "Recetario",
   "description": "Gestión, extracción y estandarización culinaria impulsada por IA multimodal",
-  "start_url": "/",
+  "start_url": "/recipes",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#090a0f",
-  "theme_color": "#090a0f",
+  "background_color": "#faf7f2",
+  "theme_color": "#faf7f2",
+  "categories": ["food", "lifestyle", "utilities"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -24,6 +26,7 @@
   "share_target": {
     "action": "/share-target",
     "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
     "params": {
       "title": "title",
       "text": "text",
@@ -31,3 +34,4 @@
     }
   }
 }
+

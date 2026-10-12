@@ -60,8 +60,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 2. Si el usuario ya está autenticado e intenta entrar a login o registro, redirigir al recetario
-  if (user && isAuthRoute) {
+  // 2. Si el usuario ya está autenticado e intenta entrar a login, registro o raíz, redirigir al recetario
+  if (user && (isAuthRoute || path === '/')) {
     const url = request.nextUrl.clone();
     url.pathname = '/recipes';
     return NextResponse.redirect(url);

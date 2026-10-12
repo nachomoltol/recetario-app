@@ -1,9 +1,60 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Sparkles, Link as LinkIcon, FileText, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import {
+  Sparkles,
+  Link as LinkIcon,
+  FileText,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Clock,
+  Radio,
+  Share2,
+} from 'lucide-react';
 import { ingestRecipeAction } from '@/app/actions/recipeIngest';
+
+interface LoadingStage {
+  seconds: number;
+  title: string;
+  description: string;
+  percent: number;
+}
+
+const LOADING_STAGES: LoadingStage[] = [
+  {
+    seconds: 0,
+    title: 'Conectando con la plataforma',
+    description: 'Verificando enlace y resolviendo redirecciones de TikTok, Reels o YouTube...',
+    percent: 15,
+  },
+  {
+    seconds: 4,
+    title: 'Descargando y optimizando metraje',
+    description: 'Extrayendo pista de audio, fotogramas clave y caption original del post...',
+    percent: 38,
+  },
+  {
+    seconds: 10,
+    title: 'Analizando con Gemini 3.1 Flash',
+    description: 'Inferencia multimodal activa: decodificando técnicas culinarias y speech acelerado...',
+    percent: 65,
+  },
+  {
+    seconds: 18,
+    title: 'Estructurando pasos y deduciendo medidas',
+    description: 'Rellenando vacíos narrativos con acciones visuales y estandarizando ingredientes...',
+    percent: 85,
+  },
+  {
+    seconds: 26,
+    title: 'Finalizando estandarización y macros',
+    description: 'Generando categorización doble (gastronómica + momento de consumo) y guardando...',
+    percent: 96,
+  },
+];
 
 export function RecipeCaptureCard() {
   const searchParams = useSearchParams();
@@ -11,6 +62,7 @@ export function RecipeCaptureCard() {
 
   const initialUrl = searchParams.get('captureUrl') || '';
   const initialText = searchParams.get('captureText') || '';
+  const autoStart = searchParams.get('autoStart') === '1';
 
   const [mode, setMode] = useState<'url' | 'texto'>(initialText && !initialUrl ? 'texto' : 'url');
   const [url, setUrl] = useState(initialUrl);
@@ -19,6 +71,64 @@ export function RecipeCaptureCard() {
   const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // Estados de carga progresiva
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const hasAutoStarted = useRef(false);
+
+  // Temporizador activo durante el proceso de extracción
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (isPending) {
+      setElapsedSeconds(0);
+      interval = setInterval(() => {
+        setElapsedSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setElapsedSeconds(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isPending]);
+
+  // Ejecutor centralizado de ingesta
+  const executeIngest = useCallback(
+    (targetMode: 'url' | 'texto', targetValue: string) => {
+      setError(null);
+      setSuccess(null);
+
+      const formData = new FormData();
+      if (targetMode === 'url') {
+        if (!targetValue.trim()) {
+          setError('Por favor, introduce un enlace de receta válido.');
+          return;
+        }
+        formData.set('url', targetValue.trim());
+      } else {
+        if (!targetValue.trim()) {
+          setError('Por favor, introduce el texto con la receta.');
+          return;
+        }
+        formData.set('texto', targetValue.trim());
+      }
+
+      startTransition(async () => {
+        const res = await ingestRecipeAction(formData);
+        if (res.error) {
+          setError(res.error);
+        } else if (res.success) {
+          setSuccess('¡Receta extraída, estandarizada y guardada en tu recetario!');
+          setUrl('');
+          setTexto('');
+          router.replace('/recipes');
+          router.refresh();
+        }
+      });
+    },
+    [router]
+  );
+
+  // Soporte nativo para Web Share Target: disparo automático al recibir enlace
   useEffect(() => {
     if (initialUrl) {
       setUrl(initialUrl);
@@ -27,47 +137,36 @@ export function RecipeCaptureCard() {
       setTexto(initialText);
       setMode('texto');
     }
-  }, [initialUrl, initialText]);
+
+    if (autoStart && initialUrl && !hasAutoStarted.current) {
+      hasAutoStarted.current = true;
+      // Limpiar query params de la URL visual para evitar re-ejecuciones al recargar
+      if (typeof window !== 'undefined') {
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('autoStart');
+        cleanUrl.searchParams.delete('captureUrl');
+        cleanUrl.searchParams.delete('captureText');
+        window.history.replaceState({}, '', cleanUrl.pathname);
+      }
+      executeIngest('url', initialUrl);
+    }
+  }, [initialUrl, initialText, autoStart, executeIngest]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    const formData = new FormData();
-    if (mode === 'url') {
-      if (!url.trim()) {
-        setError('Por favor, introduce un enlace de receta válido.');
-        return;
-      }
-      formData.set('url', url.trim());
-    } else {
-      if (!texto.trim()) {
-        setError('Por favor, introduce el texto con la receta.');
-        return;
-      }
-      formData.set('texto', texto.trim());
-    }
-
-    startTransition(async () => {
-      const res = await ingestRecipeAction(formData);
-      if (res.error) {
-        setError(res.error);
-      } else if (res.success) {
-        setSuccess('¡Receta extraída y estandarizada en tu recetario!');
-        setUrl('');
-        setTexto('');
-        router.replace('/recipes');
-        router.refresh();
-      }
-    });
+    executeIngest(mode, mode === 'url' ? url : texto);
   };
+
+  // Calcular etapa actual según segundos transcurridos
+  const currentStage =
+    [...LOADING_STAGES].reverse().find((s) => elapsedSeconds >= s.seconds) || LOADING_STAGES[0];
+  const stageIndex = LOADING_STAGES.findIndex((s) => s.seconds === currentStage.seconds);
 
   return (
     <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0 shadow-2xs">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
@@ -84,6 +183,7 @@ export function RecipeCaptureCard() {
         <div className="flex items-center bg-[#f4efe6] p-1.5 rounded-2xl border border-[#e7dfd5] self-start sm:self-auto">
           <button
             type="button"
+            disabled={isPending}
             onClick={() => {
               setMode('url');
               setError(null);
@@ -92,13 +192,14 @@ export function RecipeCaptureCard() {
               mode === 'url'
                 ? 'bg-white text-stone-900 font-semibold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900'
-            }`}
+            } disabled:opacity-50`}
           >
             <LinkIcon className="w-4 h-4 text-[#a86224]" />
             <span>Enlace</span>
           </button>
           <button
             type="button"
+            disabled={isPending}
             onClick={() => {
               setMode('texto');
               setError(null);
@@ -107,7 +208,7 @@ export function RecipeCaptureCard() {
               mode === 'texto'
                 ? 'bg-white text-stone-900 font-semibold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900'
-            }`}
+            } disabled:opacity-50`}
           >
             <FileText className="w-4 h-4 text-[#a86224]" />
             <span>Texto</span>
@@ -116,15 +217,75 @@ export function RecipeCaptureCard() {
       </div>
 
       {/* Aviso de captura nativa Web Share Target */}
-      {initialUrl && (
-        <div className="p-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-stone-700 text-xs sm:text-sm flex items-center gap-2.5">
-          <Sparkles className="w-4 h-4 text-[#a86224] shrink-0" />
-          <span>Enlace recibido directamente desde el menú Compartir de tu móvil.</span>
+      {autoStart && (
+        <div className="p-4 rounded-2xl bg-[#f4efe6] border border-[#c27835]/40 text-stone-800 text-xs sm:text-sm flex items-center gap-3 animate-fade-in">
+          <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-[#a86224] shrink-0 shadow-2xs">
+            <Share2 className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="font-semibold text-stone-900">Enlace recibido desde el menú Compartir</p>
+            <p className="text-xs text-stone-600">
+              Iniciando automáticamente la extracción multimodal en segundo plano...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Panel de Carga Progresiva Dinámica para procesos largos */}
+      {isPending && (
+        <div className="p-5 sm:p-6 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-4 animate-fade-in shadow-2xs">
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-[#a86224] font-semibold">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#a86224] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#a86224]"></span>
+              </span>
+              <span className="uppercase tracking-wider">
+                Fase {stageIndex + 1} de {LOADING_STAGES.length}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-stone-500 font-medium">
+              <Clock className="w-3.5 h-3.5 text-[#a86224]" />
+              <span>{elapsedSeconds}s transcurridos</span>
+            </div>
+          </div>
+
+          {/* Barra de progreso animada */}
+          <div className="w-full h-2.5 rounded-full bg-[#e7dfd5] overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-[#c27835] to-[#a86224] rounded-full transition-all duration-700 ease-out"
+              style={{ width: `${Math.min(currentStage.percent + (elapsedSeconds % 3) * 2, 98)}%` }}
+            />
+          </div>
+
+          {/* Mensaje descriptivo dinámico */}
+          <div className="space-y-1">
+            <h4 className="text-sm sm:text-base font-bold text-stone-900 flex items-center gap-2">
+              <Radio className="w-4 h-4 text-[#a86224] animate-pulse" />
+              {currentStage.title}
+            </h4>
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-light">
+              {currentStage.description}
+            </p>
+          </div>
+
+          {/* Aviso informativo para vídeos largos de YouTube */}
+          {elapsedSeconds >= 12 && (
+            <div className="p-3 rounded-xl bg-white border border-[#e7dfd5] text-[11px] sm:text-xs text-stone-600 flex items-start gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-[#a86224] shrink-0 mt-0.5" />
+              <span>
+                Los vídeos largos de YouTube y recetas complejas requieren entre 15 y 30 segundos
+                mientras la IA visualiza el metraje y estructura los pasos. Por favor, mantén la app
+                abierta.
+              </span>
+            </div>
+          )}
         </div>
       )}
 
       {/* Feedback de error */}
-      {error && (
+      {error && !isPending && (
         <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs sm:text-sm flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
           <div className="space-y-0.5">
@@ -135,10 +296,10 @@ export function RecipeCaptureCard() {
       )}
 
       {/* Feedback de éxito */}
-      {success && (
+      {success && !isPending && (
         <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm flex items-start gap-3">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-          <span>{success}</span>
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          <span className="font-medium">{success}</span>
         </div>
       )}
 
@@ -151,7 +312,7 @@ export function RecipeCaptureCard() {
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://vm.tiktok.com/... o enlace de YouTube / Reels"
               disabled={isPending}
-              className="w-full min-h-[52px] pl-4 pr-12 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition shadow-2xs"
+              className="w-full min-h-[52px] pl-4 pr-12 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition shadow-2xs disabled:opacity-60"
             />
             <LinkIcon className="w-5 h-5 text-stone-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
@@ -162,19 +323,21 @@ export function RecipeCaptureCard() {
             rows={4}
             placeholder="Pega aquí los ingredientes o la preparación de la receta..."
             disabled={isPending}
-            className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition resize-none shadow-2xs"
+            className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition resize-none shadow-2xs disabled:opacity-60"
           />
         )}
 
         <button
           type="submit"
           disabled={isPending}
-          className="w-full min-h-[52px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-sm shadow-[#a86224]/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          className="w-full min-h-[54px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-sm shadow-[#a86224]/20 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
         >
           {isPending ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin text-white" />
-              <span>Extrayendo multimedia y fusionando con Gemini...</span>
+              <Loader2 className="w-5 h-5 animate-spin text-white shrink-0" />
+              <span className="truncate">
+                {currentStage.title} ({elapsedSeconds}s)
+              </span>
             </>
           ) : (
             <>

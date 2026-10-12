@@ -33,12 +33,14 @@ export async function GET(request: NextRequest) {
 
   if (detectedUrl) {
     redirectUrl.searchParams.set('captureUrl', detectedUrl);
+    redirectUrl.searchParams.set('autoStart', '1');
     const remainingText = (text || '').replace(detectedUrl, '').trim();
     if (remainingText || title) {
       redirectUrl.searchParams.set('captureText', (remainingText || title).slice(0, 1000));
     }
   } else if (text || title) {
     redirectUrl.searchParams.set('captureText', (text || title).slice(0, 1000));
+    redirectUrl.searchParams.set('autoStart', '1');
   }
 
   return NextResponse.redirect(redirectUrl);
@@ -58,12 +60,14 @@ export async function POST(request: NextRequest) {
 
     if (detectedUrl) {
       redirectUrl.searchParams.set('captureUrl', detectedUrl);
+      redirectUrl.searchParams.set('autoStart', '1');
       const remainingText = (text || '').replace(detectedUrl, '').trim();
       if (remainingText || title) {
         redirectUrl.searchParams.set('captureText', (remainingText || title).slice(0, 1000));
       }
     } else if (text || title) {
       redirectUrl.searchParams.set('captureText', (text || title).slice(0, 1000));
+      redirectUrl.searchParams.set('autoStart', '1');
     }
 
     return NextResponse.redirect(redirectUrl);
