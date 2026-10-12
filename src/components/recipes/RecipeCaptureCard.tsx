@@ -13,8 +13,10 @@ import {
   Clock,
   Radio,
   Share2,
+  Smartphone,
 } from 'lucide-react';
 import { ingestRecipeAction } from '@/app/actions/recipeIngest';
+import { IosShortcutTutorialModal } from '@/components/pwa/IosShortcutTutorialModal';
 
 interface LoadingStage {
   seconds: number;
@@ -70,6 +72,7 @@ export function RecipeCaptureCard() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [createdRecetaId, setCreatedRecetaId] = useState<string | null>(null);
+  const [showIosTutorial, setShowIosTutorial] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // Estados de carga progresiva
@@ -371,6 +374,25 @@ export function RecipeCaptureCard() {
           )}
         </button>
       </form>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-[#f4efe6] text-xs">
+        <span className="text-stone-500 text-[11px] sm:text-xs">
+          💡 En <strong>Android</strong> comparte directo desde TikTok, Reels o YouTube hacia Recetario
+        </span>
+        <button
+          type="button"
+          onClick={() => setShowIosTutorial(true)}
+          className="text-[#a86224] hover:text-[#8e511c] font-semibold text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer self-start sm:self-auto hover:underline"
+        >
+          <Smartphone className="w-3.5 h-3.5" />
+          <span>¿En iPhone? Activar menú Compartir (Atajo iOS)</span>
+        </button>
+      </div>
+
+      <IosShortcutTutorialModal
+        isOpen={showIosTutorial}
+        onClose={() => setShowIosTutorial(false)}
+      />
     </div>
   );
 }

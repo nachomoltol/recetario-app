@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { ArrowLeft, Settings, Sliders, Smartphone, Bell, Moon } from 'lucide-react';
+import { ArrowLeft, Settings, Sliders, Smartphone } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
+import { IosShortcutSettingsCard } from '@/components/settings/IosShortcutSettingsCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,19 +95,7 @@ export default async function SettingsPage() {
               </span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between">
-              <div className="space-y-0.5">
-                <span className="text-sm font-semibold text-stone-900 flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-[#a86224]" /> Web Share Target PWA
-                </span>
-                <p className="text-xs text-stone-500">
-                  Captura directa desde TikTok, Instagram Reels y YouTube
-                </p>
-              </div>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">
-                Sincronizado
-              </span>
-            </div>
+            <IosShortcutSettingsCard />
           </div>
 
           <div className="pt-2">
