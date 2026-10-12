@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { PlanComida, Receta, RecetaIngrediente } from '@/types/recipe';
+import { classifyIngredientAisle } from '@/lib/culinary/aisles';
 
 export type MealSlot = 'desayuno' | 'almuerzo' | 'cena' | 'snack';
 
@@ -10,11 +11,17 @@ export interface PlannedSlotItem extends PlanComida {
   receta?: Pick<Receta, 'id' | 'titulo' | 'tiempo_total_min' | 'porciones' | 'dificultad'> | null;
 }
 
+export interface UnifiedShoppingFilterOptions {
+  selectedDates?: string[];
+  selectedSlots?: MealSlot[];
+}
+
 export interface UnifiedShoppingItem {
   nombre: string;
   cantidadTotal: number;
   unidad: string;
   gramosTotal: number;
+  pasillo_supermercado: string;
   recetasNombres: string[];
 }
 
@@ -136,7 +143,8 @@ export async function removeMealSlotAction({
 
 export async function generateUnifiedShoppingListAction(
   startDate: string,
-  endDate: string
+  endDate: string,
+  options?: UnifiedShoppingFilterOptions
 ): Promise<{ success: boolean; items?: UnifiedShoppingItem[]; error?: string }> {
   const supabase = await createClient();
   const {
@@ -147,10 +155,12 @@ export async function generateUnifiedShoppingListAction(
     return { success: false, error: 'No autenticado' };
   }
 
-  // 1. Obtener los slots que tienen receta asignada en el rango
-  const { data: plans, error: errPlans } = await supabase
+  // 1. Obtener los slots que tienen receta asignada en el rango, aplicando filtros interactivos
+  let query = supabase
     .from('plan_comidas')
     .select(`
+      fecha,
+      slot,
       receta_id,
       recetas:receta_id (
         id,
@@ -161,6 +171,16 @@ export async function generateUnifiedShoppingListAction(
     .gte('fecha', startDate)
     .lte('fecha', endDate)
     .not('receta_id', 'is', null);
+
+  if (options?.selectedDates && options.selectedDates.length > 0) {
+    query = query.in('fecha', options.selectedDates);
+  }
+
+  if (options?.selectedSlots && options.selectedSlots.length > 0) {
+    query = query.in('slot', options.selectedSlots);
+  }
+
+  const { data: plans, error: errPlans } = await query;
 
   if (errPlans) {
     return { success: false, error: errPlans.message };
@@ -181,7 +201,7 @@ export async function generateUnifiedShoppingListAction(
     return { success: true, items: [] };
   }
 
-  // 2. Traer todos los ingredientes de estas recetas
+  // 2. Traer todos los ingredientes de estas recetas seleccionadas
   const { data: rawIngredientes, error: errIng } = await supabase
     .from('receta_ingredientes')
     .select('*')
@@ -191,10 +211,10 @@ export async function generateUnifiedShoppingListAction(
     return { success: false, error: errIng.message };
   }
 
-  // 3. Motor de consolidación inteligente (agrupa por nombre canónico y unidad compatible)
+  // 3. Motor de consolidación inteligente agrupado por pasillo y unidad compatible
   const consolidated = new Map<string, UnifiedShoppingItem>();
 
-  for (const ing of (rawIngredientes || []) as RecetaIngrediente[]) {
+  for (const ing of (rawIngredientes || []) as (RecetaIngrediente & { pasillo_supermercado?: string })[]) {
     const rawName = (ing.nombre_limpio || ing.nombre_crudo || '').trim();
     const canonName = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
     const unidad = (ing.unidad || 'unidad').trim().toLowerCase();
@@ -203,6 +223,7 @@ export async function generateUnifiedShoppingListAction(
     const cant = Number(ing.cantidad) || 0;
     const gramos = Number(ing.gramos_calculados) || 0;
     const recipeTitle = recipeMap.get(ing.receta_id) || 'Receta';
+    const pasillo = classifyIngredientAisle(canonName, ing.pasillo_supermercado);
 
     if (consolidated.has(key)) {
       const existing = consolidated.get(key)!;
@@ -217,14 +238,16 @@ export async function generateUnifiedShoppingListAction(
         cantidadTotal: Math.round(cant * 10) / 10,
         unidad,
         gramosTotal: Math.round(gramos),
+        pasillo_supermercado: pasillo,
         recetasNombres: [recipeTitle],
       });
     }
   }
 
-  const items = Array.from(consolidated.values()).sort((a, b) =>
-    a.nombre.localeCompare(b.nombre, 'es')
-  );
+  const items = Array.from(consolidated.values()).sort((a, b) => {
+    // Ordenar primero por nombre
+    return a.nombre.localeCompare(b.nombre, 'es');
+  });
 
   return { success: true, items };
 }

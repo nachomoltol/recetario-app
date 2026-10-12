@@ -210,6 +210,7 @@ export interface Database {
           cantidad: number;
           unidad: string;
           gramos_calculados: number;
+          pasillo_supermercado: string;
           notas: string | null;
           es_opcional: boolean;
           orden: number;
@@ -224,6 +225,7 @@ export interface Database {
           cantidad?: number;
           unidad?: string;
           gramos_calculados?: number;
+          pasillo_supermercado?: string;
           notas?: string | null;
           es_opcional?: boolean;
           orden?: number;
@@ -238,6 +240,7 @@ export interface Database {
           cantidad?: number;
           unidad?: string;
           gramos_calculados?: number;
+          pasillo_supermercado?: string;
           notas?: string | null;
           es_opcional?: boolean;
           orden?: number;

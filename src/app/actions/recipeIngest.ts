@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { extractRecipeWithGemini, detectFuenteTipo } from '@/lib/gemini/extractor';
+import { ExtractedIngredient } from '@/lib/gemini/schema';
 import { calcularGramos } from '@/lib/nutrition/converter';
 import { IngredienteMaestro } from '@/types/recipe';
 import { DificultadReceta } from '@/types/database';
@@ -115,7 +116,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     }
 
     // 5. Preparar e insertar en 'receta_ingredientes' de forma blindada
-    const rawIngredientes = extracted.ingredientes && extracted.ingredientes.length > 0
+    const rawIngredientes: ExtractedIngredient[] = extracted.ingredientes && extracted.ingredientes.length > 0
       ? extracted.ingredientes
       : [{
           nombre_crudo: 'Ingredientes principales según vídeo',
@@ -123,7 +124,10 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
           cantidad: 1,
           unidad: 'unidad',
           gramos_estimados: 100,
+          pasillo_supermercado: 'Despensa y Especias',
           es_ultraprocesado: false,
+          notas: undefined,
+          es_opcional: false,
         }];
 
     const ingredientesPayload = rawIngredientes.map((ing, idx) => {
@@ -165,6 +169,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         cantidad: Math.max(0.1, rawCantidad),
         unidad: rawUnidad,
         gramos_calculados: Math.max(0, gramosFinales),
+        pasillo_supermercado: ing.pasillo_supermercado || 'Despensa y Especias',
         notas: notasCombinadas || null,
         es_opcional: Boolean(ing.es_opcional),
         orden: idx + 1, // Secuencial estricto

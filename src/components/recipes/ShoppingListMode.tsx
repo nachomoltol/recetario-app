@@ -8,9 +8,11 @@ import {
   ShoppingCart,
   ChefHat,
   Sparkles,
+  Tag,
 } from 'lucide-react';
 import { RecetaIngrediente } from '@/types/recipe';
 import { IngredientRow } from './IngredientRow';
+import { groupItemsByAisle, classifyIngredientAisle } from '@/lib/culinary/aisles';
 
 export type ExtendedIngredient = RecetaIngrediente & {
   cantidad_escalada?: number;
@@ -70,21 +72,31 @@ export function ShoppingListMode({
     } catch {}
   };
 
+  const groupedAisles = groupItemsByAisle(ingredientes, (i) =>
+    classifyIngredientAisle(i.nombre_limpio || i.nombre_crudo, i.pasillo_supermercado)
+  );
+
   const handleCopyList = () => {
     const textLines = [
       `🛒 LISTA DE LA COMPRA - ${tituloReceta.toUpperCase()}`,
-      '----------------------------------------',
-      ...ingredientes.map((ing) => {
+      '========================================',
+    ];
+
+    for (const group of groupedAisles) {
+      textLines.push(`\n📍 ${group.aisle.toUpperCase()}`);
+      textLines.push('----------------------------------------');
+      for (const ing of group.items) {
         const isChecked = checkedIds.includes(ing.id);
         const prefix = isChecked ? '✓' : '☐';
         const qtyNum = ing.cantidad_escalada !== undefined ? ing.cantidad_escalada : ing.cantidad;
         const qty = `${qtyNum} ${ing.unidad}`;
         const name = ing.nombre_limpio || ing.nombre_crudo;
-        return `${prefix} ${qty} ${name}${ing.notas ? ` (${ing.notas})` : ''}`;
-      }),
-      '----------------------------------------',
-      `Creado con Recetario App (Escalado Inteligente)`,
-    ];
+        textLines.push(`${prefix} ${qty} ${name}${ing.notas ? ` (${ing.notas})` : ''}`);
+      }
+    }
+
+    textLines.push('\n========================================');
+    textLines.push('Creado con Recetario App (Organización por Pasillos)');
 
     navigator.clipboard.writeText(textLines.join('\n'));
     setCopied(true);
@@ -192,71 +204,105 @@ export function ShoppingListMode({
           </div>
 
           <p className="text-xs text-stone-500 px-1">
-            Toca con el dedo cualquier ingrediente para marcarlo como comprado mientras recorres los pasillos:
+            Ingredientes organizados por pasillo físico para recorrer el supermercado sin idas y vueltas:
           </p>
 
-          {/* Checklist táctil interactivo */}
-          <div className="space-y-2">
-            {ingredientes.map((ing) => {
-              const isChecked = checkedIds.includes(ing.id);
-              const qtyNum = ing.cantidad_escalada !== undefined ? ing.cantidad_escalada : ing.cantidad;
+          {/* Checklist agrupado por pasillos del supermercado */}
+          <div className="space-y-5">
+            {groupedAisles.map((group) => {
+              const groupTotal = group.items.length;
+              const groupCompleted = group.items.filter((i) => checkedIds.includes(i.id)).length;
+              const isGroupAllChecked = groupTotal > 0 && groupCompleted === groupTotal;
 
               return (
-                <div
-                  key={ing.id}
-                  onClick={() => handleToggleItem(ing.id)}
-                  className={`min-h-[54px] p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer select-none flex items-center gap-3.5 active:scale-[0.99] ${
-                    isChecked
-                      ? 'bg-[#f7f5f0] border-[#e2dbce] opacity-75'
-                      : 'bg-white hover:bg-[#faf7f2] border-[#e7dfd5] shadow-2xs'
-                  }`}
-                >
-                  {/* Casilla táctil grande de 28px */}
-                  <div
-                    className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-colors ${
-                      isChecked
-                        ? 'bg-[#2e6b3e] border-[#2e6b3e] text-white shadow-2xs'
-                        : 'border-[#cbbfae] bg-[#fbf9f5]'
-                    }`}
-                  >
-                    {isChecked && <Check className="w-4 h-4 stroke-3" />}
-                  </div>
-
-                  {/* Detalle del ingrediente */}
-                  <div className="flex-1 min-w-0 flex items-baseline justify-between gap-3">
-                    <div className="min-w-0">
+                <div key={group.aisle} className="space-y-2.5">
+                  {/* Encabezado del Pasillo */}
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2">
                       <span
-                        className={`text-base font-semibold block truncate ${
-                          isChecked
-                            ? 'line-through text-stone-400 font-normal'
-                            : 'text-stone-900'
-                        }`}
+                        className={`px-3 py-1 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${group.config.colorBg} ${group.config.colorText} ${group.config.colorBorder}`}
                       >
-                        {ing.nombre_limpio || ing.nombre_crudo}
+                        <Tag className="w-3.5 h-3.5" />
+                        <span>{group.aisle}</span>
                       </span>
-                      {ing.explicacion_culinaria && !isChecked && (
-                        <span className="text-[10px] text-[#a86224] block truncate font-medium">
-                          ✦ {ing.explicacion_culinaria}
-                        </span>
-                      )}
-                      {ing.notas && (
-                        <span
-                          className={`text-xs block truncate ${
-                            isChecked ? 'line-through text-stone-300' : 'text-stone-500 italic'
-                          }`}
-                        >
-                          {ing.notas}
-                        </span>
-                      )}
+                      <span className="text-[11px] text-stone-400 font-medium font-mono">
+                        {groupCompleted}/{groupTotal}
+                      </span>
                     </div>
 
-                    <span
-                      className={`text-sm sm:text-base font-bold shrink-0 tabular-nums ${
-                        isChecked ? 'line-through text-stone-400' : 'text-[#a86224]'
-                      }`}
-                    >
-                      {qtyNum} {ing.unidad}
-                    </span>
+                    {isGroupAllChecked && (
+                      <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                        <Check className="w-3 h-3 stroke-2" /> Completado
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Elementos del pasillo */}
+                  <div className="space-y-2">
+                    {group.items.map((ing) => {
+                      const isChecked = checkedIds.includes(ing.id);
+                      const qtyNum = ing.cantidad_escalada !== undefined ? ing.cantidad_escalada : ing.cantidad;
+
+                      return (
+                        <div
+                          key={ing.id}
+                          onClick={() => handleToggleItem(ing.id)}
+                          className={`min-h-[54px] p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer select-none flex items-center gap-3.5 active:scale-[0.99] ${
+                            isChecked
+                              ? 'bg-[#f7f5f0] border-[#e2dbce] opacity-75'
+                              : 'bg-white hover:bg-[#faf7f2] border-[#e7dfd5] shadow-2xs'
+                          }`}
+                        >
+                          {/* Casilla táctil grande */}
+                          <div
+                            className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-colors ${
+                              isChecked
+                                ? 'bg-[#2e6b3e] border-[#2e6b3e] text-white shadow-2xs'
+                                : 'border-[#cbbfae] bg-[#fbf9f5]'
+                            }`}
+                          >
+                            {isChecked && <Check className="w-4 h-4 stroke-3" />}
+                          </div>
+
+                          {/* Detalle del ingrediente */}
+                          <div className="flex-1 min-w-0 flex items-baseline justify-between gap-3">
+                            <div className="min-w-0">
+                              <span
+                                className={`text-base font-semibold block truncate ${
+                                  isChecked
+                                    ? 'line-through text-stone-400 font-normal'
+                                    : 'text-stone-900'
+                                }`}
+                              >
+                                {ing.nombre_limpio || ing.nombre_crudo}
+                              </span>
+                              {ing.explicacion_culinaria && !isChecked && (
+                                <span className="text-[10px] text-[#a86224] block truncate font-medium">
+                                  ✦ {ing.explicacion_culinaria}
+                                </span>
+                              )}
+                              {ing.notas && (
+                                <span
+                                  className={`text-xs block truncate ${
+                                    isChecked ? 'line-through text-stone-300' : 'text-stone-500 italic'
+                                  }`}
+                                >
+                                  {ing.notas}
+                                </span>
+                              )}
+                            </div>
+
+                            <span
+                              className={`text-sm sm:text-base font-bold shrink-0 tabular-nums ${
+                                isChecked ? 'line-through text-stone-400' : 'text-[#a86224]'
+                              }`}
+                            >
+                              {qtyNum} {ing.unidad}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );

@@ -58,15 +58,32 @@ export const recipeExtractionSchema = {
           },
           cantidad: {
             type: Type.NUMBER,
-            description: 'Cantidad numérica del ingrediente.',
+            description: 'Cantidad numérica del ingrediente convertida a estándar métrico.',
           },
           unidad: {
             type: Type.STRING,
-            description: 'Unidad de medida estandarizada (ej: "g", "ml", "cucharada", "cucharadita", "taza", "unidad", "pizca").',
+            description:
+              'Unidad métrica estricta. EXCLUSIVAMENTE "g" para sólidos/pastas o "ml" para líquidos/emulsiones (o "unidad" si son piezas enteras indivisibles como huevos). Está TAJANTEMENTE PROHIBIDO usar "taza", "cucharada", "cucharadita", "pizca", "chorro", "vaso" u otras medidas volumétricas ambiguas.',
           },
           gramos_estimados: {
             type: Type.NUMBER,
             description: 'Peso equivalente en gramos calculado según la densidad del alimento.',
+          },
+          pasillo_supermercado: {
+            type: Type.STRING,
+            enum: [
+              'Frutas y Verduras',
+              'Carnes y Aves',
+              'Pescados y Mariscos',
+              'Lácteos y Huevos',
+              'Despensa y Especias',
+              'Panadería y Pastelería',
+              'Congelados',
+              'Bebidas',
+              'Refrigerados',
+            ],
+            description:
+              'Pasillo o sección del supermercado físico asignado a este ingrediente para optimizar la compra física.',
           },
           es_ultraprocesado: {
             type: Type.BOOLEAN,
@@ -91,6 +108,7 @@ export const recipeExtractionSchema = {
           'cantidad',
           'unidad',
           'gramos_estimados',
+          'pasillo_supermercado',
           'es_ultraprocesado',
         ],
       },
@@ -217,14 +235,32 @@ REGLAS SUPREMAS DE FIDELIDAD Y CONTRA ALUCINACIONES:
      * Identifica ingredientes que el creador añade visualmente aunque no los mencione en el audio o texto (ej. un chorro de aceite de oliva en la sartén, sal, pimienta negra, ajo en polvo o perejil fresco al emplatar).
      * Estandariza la instrucción en lenguaje profesional de cocina con tiempos y temperaturas realistas basados en lo observado en el vídeo.
 
-4. EXTRACCIÓN Y FUSIÓN MULTIMODAL:
+4. CONVERSIÓN MÉTRICA ESTRICTA (TOLERANCIA CERO A MEDIDAS VOLUMÉTRICAS AMBIGUAS):
+   - Está TAJANTEMENTE PROHIBIDO el uso de medidas volumétricas o coloquiales ambiguas como 'taza', 'cucharada', 'cucharadita', 'pizca', 'chorro', 'vaso' o 'puñado'.
+   - La IA DEBE estimar la densidad física del alimento y convertir la cantidad EXCLUSIVAMENTE a medidas estandarizadas: gramos ('g') para ingredientes sólidos/pastosos o mililitros ('ml') para líquidos/aceites/emulsiones.
+   - Si el contenido indica '1 taza de harina', conviértelo a 120 g (unidad: 'g', cantidad: 120). Si dice '2 cucharadas de aceite', conviértelo a 30 ml (unidad: 'ml', cantidad: 30). Si dice 'una pizca de sal', conviértelo a 1 g o 2 g (unidad: 'g', cantidad: 2).
+   - Únicamente se permite 'unidad' para piezas enteras e indivisibles (ej. huevos), siempre completando sus gramos_estimados equivalentes (ej. 1 huevo = 60 g).
+
+5. CATEGORIZACIÓN DE SUPERMERCADO FÍSICO:
+   - Asigna obligatoriamente a cada ingrediente su 'pasillo_supermercado' adecuado para facilitar la compra agrupada:
+     * 'Frutas y Verduras': vegetales frescos, frutas, tubérculos, hierbas frescas.
+     * 'Carnes y Aves': carnes rojas, pollo, pavo, cerdo, embutidos frescos, chacinas.
+     * 'Pescados y Mariscos': pescados frescos, marisco, conservas de pescado.
+     * 'Lácteos y Huevos': leche, quesos, yogur, mantequilla, nata, huevos.
+     * 'Despensa y Especias': pastas, arroces, legumbres secas, aceites, vinagres, especias secas, harinas, salsas, azúcar, sal.
+     * 'Panadería y Pastelería': panes, bases de masa, levadura, repostería.
+     * 'Congelados': productos ultracongelados.
+     * 'Bebidas': vinos de cocina, caldos envasados, cervezas, licores, agua.
+     * 'Refrigerados': masas refrigeradas, embutidos cocidos, tofu, preparados listos.
+
+6. EXTRACCIÓN Y FUSIÓN MULTIMODAL:
    - Si es_receta_valida es true:
      * Cruza lo que ves/escuchas en el vídeo/audio con el texto del post (caption).
-     * Extrae cada ingrediente con cantidad numérica real, unidad estandarizada (g, ml, cucharada, cucharadita, taza, unidad, pizca) y 'nombre_limpio' canónico optimizado para cruce relacional.
+     * Extrae cada ingrediente con cantidad numérica convertida a estándar métrico, unidad métrica estricta ('g' o 'ml'), pasillo de supermercado y 'nombre_limpio' canónico optimizado para cruce relacional.
      * Si detectas ultraprocesados industriales excesivos, marca 'es_ultraprocesado: true' y sugiere una alternativa viable en 'sustituto_saludable_sugerido'.
      * Calcula los gramos estimados mediante densidad física de cada alimento y estima los macronutrientes por porción.
 
-5. CLASIFICACIÓN AUTOMÁTICA DOBLE OBLIGATORIA:
+7. CLASIFICACIÓN AUTOMÁTICA DOBLE OBLIGATORIA:
    - Clasifica siempre la receta en dos ejes taxonómicos:
      a) Categorías Gastronómicas ("categorias_gastronomicas"): asigna al menos 1 categoría principal (ej: Pasta, Carnes, Aves, Pescados y Mariscos, Vegano, Vegetariano, Arroces, Ensaladas, Guisos, Sopas, Postres y Dulces, Panadería y Masas).
      b) Momentos de Consumo & Etiquetas Funcionales ("momentos_consumo"): asigna al menos 1 momento o función idónea (ej: Desayuno, Almuerzo, Cena, Postre, Snack, Pre-entreno, Post-entreno, Batch Cooking, Rápido (<20m)).
@@ -237,6 +273,7 @@ export interface ExtractedIngredient {
   cantidad: number;
   unidad: string;
   gramos_estimados: number;
+  pasillo_supermercado: string;
   es_ultraprocesado: boolean;
   sustituto_saludable_sugerido?: string;
   notas?: string;
