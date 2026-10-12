@@ -31,7 +31,7 @@ export function ShareAppsCard() {
 
         <p className="text-xs text-stone-600 leading-relaxed">
           Cuando encuentres un vídeo o receta en redes sociales, pulsa el botón habitual de{' '}
-          <strong>Compartir</strong> en tu teléfono y selecciona <strong>Recetario</strong>. La IA
+          <strong>Compartir</strong> en tu teléfono y selecciona <strong>EL ICONO DE NUESTRA APP</strong>. La IA
           leerá el contenido y preparará los ingredientes y pasos de cocina al instante.
         </p>
 

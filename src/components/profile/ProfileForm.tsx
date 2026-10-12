@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import {
   ChefHat,
   BookOpen,
@@ -14,9 +14,11 @@ import {
   Award,
   AlertCircle,
   Save,
+  Lock,
 } from 'lucide-react';
 import { updateUserProfileAction } from '@/app/actions/userPreferences';
 import { useProfileStore } from '@/stores/useProfileStore';
+import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
 
 interface ChefStats {
   totalRecetas: number;
@@ -84,6 +86,16 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
     initialProfile.preferencias_dieteticas || []
   );
 
+  const [isProUser, setIsProUser] = useState(false);
+  const [showProModal, setShowProModal] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const vip = localStorage.getItem('recetario_vip_active');
+      setIsProUser(vip === 'true');
+    }
+  }, []);
+
   const [isPending, startTransition] = useTransition();
   const [statusMessage, setStatusMessage] = useState<{
     type: 'success' | 'error';
@@ -91,6 +103,10 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
   } | null>(null);
 
   const togglePreferencia = (prefId: string) => {
+    if (!isProUser) {
+      setShowProModal(true);
+      return;
+    }
     setPreferencias((prev) =>
       prev.includes(prefId) ? prev.filter((p) => p !== prefId) : [...prev, prefId]
     );
@@ -103,8 +119,8 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
     startTransition(async () => {
       const res = await updateUserProfileAction({
         nombre: nombre.trim(),
-        nivel_culinario: nivelCulinario,
-        preferencias_dieteticas: preferencias,
+        nivel_culinario: isProUser ? nivelCulinario : (initialProfile.nivel_culinario || 'Principiante'),
+        preferencias_dieteticas: isProUser ? preferencias : (initialProfile.preferencias_dieteticas || []),
       });
 
       if (res.success) {
@@ -277,27 +293,53 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
 
       {/* TARJETA 3: Nivel Culinario */}
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4">
-        <div className="flex items-center gap-2.5">
-          <ChefHat className="w-5 h-5 text-[#a86224]" />
-          <div>
-            <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
-              Nivel Culinario
-            </h3>
-            <p className="text-xs text-stone-500 mt-0.5">
-              Adapta las sugerencias de la IA y la dificultad recomendada
-            </p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <ChefHat className="w-5 h-5 text-[#a86224]" />
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
+                  Nivel Culinario
+                </h3>
+                {!isProUser && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-[#a86224] border border-[#a86224]/30 flex items-center gap-1 shadow-2xs">
+                    <Lock className="w-3 h-3 text-[#a86224]" /> Exclusivo PRO
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Adapta las sugerencias de la IA y la dificultad recomendada
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+        <div
+          className={`grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 transition-opacity ${
+            !isProUser ? 'opacity-60 cursor-pointer' : ''
+          }`}
+          onClick={() => {
+            if (!isProUser) setShowProModal(true);
+          }}
+        >
           {NIVELES_CULINARIOS.map((nivel) => {
             const isSelected = nivelCulinario === nivel.id;
             return (
               <button
                 key={nivel.id}
                 type="button"
-                onClick={() => setNivelCulinario(nivel.id)}
-                className={`p-4 rounded-2xl text-left transition cursor-pointer border flex flex-col justify-between gap-3 ${
+                disabled={!isProUser}
+                onClick={(e) => {
+                  if (!isProUser) {
+                    e.stopPropagation();
+                    setShowProModal(true);
+                    return;
+                  }
+                  setNivelCulinario(nivel.id);
+                }}
+                className={`p-4 rounded-2xl text-left transition border flex flex-col justify-between gap-3 ${
+                  !isProUser ? 'cursor-not-allowed' : 'cursor-pointer'
+                } ${
                   isSelected
                     ? 'bg-[#f4efe6] border-[#a86224] ring-1 ring-[#a86224]/40 shadow-2xs'
                     : 'bg-[#faf7f2] border-[#e7dfd5] hover:border-stone-400'
@@ -309,6 +351,9 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                     <span className="w-5 h-5 rounded-full bg-[#a86224] text-white flex items-center justify-center">
                       <Check className="w-3 h-3 stroke-[3]" />
                     </span>
+                  )}
+                  {!isProUser && (
+                    <Lock className="w-3.5 h-3.5 text-stone-400" />
                   )}
                 </div>
                 <div>
@@ -323,46 +368,104 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
             );
           })}
         </div>
+
+        {!isProUser && (
+          <div
+            onClick={() => setShowProModal(true)}
+            className="p-3.5 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-between gap-3 cursor-pointer hover:bg-[#ebdcc9] transition text-xs"
+          >
+            <div className="flex items-center gap-2 text-stone-700">
+              <Lock className="w-4 h-4 text-[#a86224] shrink-0" />
+              <span>Desbloquea el ajuste de nivel culinario con tu suscripción PRO</span>
+            </div>
+            <span className="font-bold text-[#a86224] shrink-0 hover:underline">
+              Desbloquear &rarr;
+            </span>
+          </div>
+        )}
       </div>
 
       {/* TARJETA 4: Preferencias Alimentarias (Alergias e Intolerancias) */}
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
-              Preferencias Alimentarias
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
+                Preferencias Alimentarias
+              </h3>
+              {!isProUser && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-[#a86224] border border-[#a86224]/30 flex items-center gap-1 shadow-2xs">
+                  <Lock className="w-3 h-3 text-[#a86224]" /> Exclusivo PRO
+                </span>
+              )}
+            </div>
             <p className="text-xs text-stone-500 mt-0.5">
               Alergias, intolerancias y estilos de alimentación para adaptar tus recetas
             </p>
           </div>
-          {preferencias.length > 0 && (
+          {isProUser && preferencias.length > 0 && (
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] shrink-0">
               {preferencias.length} {preferencias.length === 1 ? 'activa' : 'activas'}
             </span>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2.5 pt-2">
+        <div
+          className={`flex flex-wrap gap-2.5 pt-2 transition-opacity ${
+            !isProUser ? 'opacity-60 cursor-pointer' : ''
+          }`}
+          onClick={() => {
+            if (!isProUser) setShowProModal(true);
+          }}
+        >
           {PREFERENCIAS_OPCIONES.map((opcion) => {
             const isChecked = preferencias.includes(opcion.id);
             return (
               <button
                 key={opcion.id}
                 type="button"
-                onClick={() => togglePreferencia(opcion.id)}
-                className={`min-h-[42px] px-4 py-2 rounded-2xl text-xs font-semibold transition cursor-pointer border flex items-center gap-2 select-none ${
+                disabled={!isProUser}
+                onClick={(e) => {
+                  if (!isProUser) {
+                    e.stopPropagation();
+                    setShowProModal(true);
+                    return;
+                  }
+                  togglePreferencia(opcion.id);
+                }}
+                className={`min-h-[42px] px-4 py-2 rounded-2xl text-xs font-semibold transition border flex items-center gap-2 select-none ${
+                  !isProUser ? 'cursor-not-allowed' : 'cursor-pointer'
+                } ${
                   isChecked
                     ? 'bg-[#a86224] text-white border-[#a86224] shadow-2xs ring-2 ring-[#a86224]/20'
                     : 'bg-[#faf7f2] text-stone-700 border-[#e7dfd5] hover:bg-[#ebdcc9] hover:border-stone-400'
                 }`}
               >
-                {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                {!isProUser ? (
+                  <Lock className="w-3.5 h-3.5 text-stone-400" />
+                ) : (
+                  isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />
+                )}
                 <span>{opcion.label}</span>
               </button>
             );
           })}
         </div>
+
+        {!isProUser && (
+          <div
+            onClick={() => setShowProModal(true)}
+            className="p-3.5 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-between gap-3 cursor-pointer hover:bg-[#ebdcc9] transition text-xs"
+          >
+            <div className="flex items-center gap-2 text-stone-700">
+              <Lock className="w-4 h-4 text-[#a86224] shrink-0" />
+              <span>Protege tu salud: activa detección de alérgenos y filtros dietéticos con PRO</span>
+            </div>
+            <span className="font-bold text-[#a86224] shrink-0 hover:underline">
+              Desbloquear &rarr;
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Mensajes de feedback */}
@@ -403,6 +506,15 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
           )}
         </button>
       </div>
+
+      {/* Modal flotante de suscripción PRO */}
+      <ProSubscriptionModal
+        isOpen={showProModal}
+        onClose={() => setShowProModal(false)}
+        onVipSuccess={() => {
+          setIsProUser(true);
+        }}
+      />
     </form>
   );
 }
