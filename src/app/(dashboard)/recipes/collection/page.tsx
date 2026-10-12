@@ -124,7 +124,10 @@ export default async function RecipeCollectionPage() {
             </Link>
           </div>
         ) : (
-          <RecipeCollectionOrganizer recetas={recetasConIngredientes} />
+          <RecipeCollectionOrganizer
+            recetas={recetasConIngredientes}
+            userProfile={profile}
+          />
         )}
       </main>
     </div>
