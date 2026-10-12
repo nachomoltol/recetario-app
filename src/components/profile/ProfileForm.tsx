@@ -511,6 +511,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
       <ProSubscriptionModal
         isOpen={showProModal}
         onClose={() => setShowProModal(false)}
+        context="feature_locked"
         onVipSuccess={() => {
           setIsProUser(true);
         }}

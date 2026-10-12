@@ -73,11 +73,11 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-bold font-serif-recipe text-stone-900 tracking-tight">
-          Desbloquea el recetario sin límites
+          Suscripción PRO
         </h1>
 
         <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
-          Has alcanzado tu límite de 10 recetas gratuitas mensuales. Pásate a PRO para seguir capturando.
+          Eleva tu experiencia en la cocina. Disfruta de capturas ilimitadas, cero publicidad y un motor clínico que adapta cada receta a ti.
         </p>
       </div>
 

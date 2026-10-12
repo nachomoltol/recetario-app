@@ -20,6 +20,7 @@ export interface ProSubscriptionModalProps {
   onClose?: () => void;
   onVipSuccess?: () => void;
   onSubscribe?: () => void;
+  context?: 'limit_reached' | 'feature_locked';
 }
 
 export function ProSubscriptionModal({
@@ -27,6 +28,7 @@ export function ProSubscriptionModal({
   onClose,
   onVipSuccess,
   onSubscribe,
+  context = 'feature_locked',
 }: ProSubscriptionModalProps) {
   const [vipCode, setVipCode] = useState('');
   const [isVipValidating, setIsVipValidating] = useState(false);
@@ -135,11 +137,15 @@ export function ProSubscriptionModal({
             id="modal-pro-title"
             className="text-2xl sm:text-3xl font-bold font-serif-recipe text-stone-900 tracking-tight"
           >
-            Desbloquea el recetario sin límites
+            {context === 'limit_reached'
+              ? 'Desbloquea el recetario sin límites'
+              : 'Potencia tu recetario con IA'}
           </h2>
 
           <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
-            Has alcanzado tu límite de 10 recetas gratuitas mensuales. Pásate a PRO para seguir capturando.
+            {context === 'limit_reached'
+              ? 'Has alcanzado tu límite de 10 recetas gratuitas mensuales. Pásate a PRO para seguir capturando.'
+              : 'Pásate a PRO para desbloquear el motor clínico, adaptar recetas a tus intolerancias y disfrutar de capturas ilimitadas.'}
           </p>
         </div>
 
