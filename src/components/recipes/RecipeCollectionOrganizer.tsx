@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
@@ -23,11 +22,9 @@ import {
 } from 'lucide-react';
 import { Receta } from '@/types/recipe';
 import { DeleteRecipeButton } from './DeleteRecipeButton';
-
 export interface RecetaConIngredientes extends Receta {
   ingredientesNombres?: string[];
 }
-
 interface CategoryConfig {
   id: string;
   nombre: string;
@@ -36,7 +33,6 @@ interface CategoryConfig {
   badgeColor: string;
   keywords: string[];
 }
-
 /**
  * 12 Categorías estructurales con arrays literales explícitos de palabras clave en minúsculas.
  * Sin Expresiones Regulares: matching estrictamente determinista por intersección de arrays.
@@ -428,7 +424,6 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
     ],
   },
 ];
-
 /**
  * Regla 2: Matching por Intersección Matemática de Arrays (Sin Regex).
  * Extrae recipe.etiquetas (en minúsculas) y comprueba intersección directa con category.keywords.
@@ -442,7 +437,6 @@ function recipeMatchesCategory(
   const lowerTags = tags.map((t) => t.toLowerCase().trim());
   return lowerTags.some((tag) => keywords.includes(tag));
 }
-
 interface RecipeCollectionOrganizerProps {
   recetas: RecetaConIngredientes[];
   userProfile?: {
@@ -451,14 +445,12 @@ interface RecipeCollectionOrganizerProps {
     alergenos?: string[] | null;
   } | null;
 }
-
 export function RecipeCollectionOrganizer({
   recetas,
   userProfile,
 }: RecipeCollectionOrganizerProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroActivo, setFiltroActivo] = useState<string>('Todas');
-
   const tieneAdaptacionClinica = Boolean(
     (userProfile?.preferencias_dieteticas &&
       userProfile.preferencias_dieteticas.length > 0) ||
@@ -466,12 +458,10 @@ export function RecipeCollectionOrganizer({
       userProfile?.nivel_culinario === 'Principiante' ||
       userProfile?.nivel_culinario === 'Avanzado'
   );
-
   // Independencia del buscador: Busca en título, descripción, etiquetas e ingredientes
   const filteredRecipes = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return recetas;
-
     return recetas.filter((r) => {
       const matchTitle = (r.titulo || '').toLowerCase().includes(q);
       const matchDesc = (r.descripcion || '').toLowerCase().includes(q);
@@ -481,18 +471,15 @@ export function RecipeCollectionOrganizer({
       const matchIngs = (r.ingredientesNombres || []).some((i) =>
         i.toLowerCase().includes(q)
       );
-
       return matchTitle || matchDesc || matchTags || matchIngs;
     });
   }, [recetas, searchQuery]);
-
   // Lista ordenada alfabéticamente (A-Z) para la vista 'Todas'
   const allSortedRecipes = useMemo(() => {
     return [...filteredRecipes].sort((a, b) =>
       a.titulo.localeCompare(b.titulo, 'es', { sensitivity: 'base' })
     );
   }, [filteredRecipes]);
-
   // Categorías que tienen al menos 1 receta (matching estricto por tags)
   const populatedCategories = useMemo(() => {
     return CATEGORIAS_CONFIG.map((cat) => {
@@ -505,7 +492,6 @@ export function RecipeCollectionOrganizer({
       };
     }).filter((g) => g.recetas.length > 0);
   }, [filteredRecipes]);
-
   // Tarjeta de receta modular
   const renderRecipeCard = (r: RecetaConIngredientes) => (
     <div
@@ -521,7 +507,6 @@ export function RecipeCollectionOrganizer({
             <span className="px-2 py-0.5 rounded-lg bg-stone-100 text-stone-600 capitalize text-[11px]">
               {r.dificultad}
             </span>
-
             {tieneAdaptacionClinica && (
               <span
                 className="px-2 py-0.5 rounded-lg bg-amber-50 text-[#a86224] border border-amber-200/80 text-[10px] font-semibold flex items-center gap-1 shadow-2xs"
@@ -533,7 +518,6 @@ export function RecipeCollectionOrganizer({
               </span>
             )}
           </div>
-
           <DeleteRecipeButton
             recipeId={r.id}
             recipeTitle={r.titulo}
@@ -541,7 +525,6 @@ export function RecipeCollectionOrganizer({
             className="w-7 h-7 rounded-lg shrink-0"
           />
         </div>
-
         <Link
           href={`/recipes/${r.id}`}
           className="block group-hover:text-[#a86224] transition-colors"
@@ -550,13 +533,11 @@ export function RecipeCollectionOrganizer({
             {r.titulo}
           </h3>
         </Link>
-
         {r.descripcion && (
           <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed font-light">
             {r.descripcion}
           </p>
         )}
-
         {r.etiquetas && r.etiquetas.length > 0 && (
           <div className="flex flex-wrap gap-1 pt-1">
             {r.etiquetas.slice(0, 3).map((tag, tIdx) => (
@@ -570,7 +551,6 @@ export function RecipeCollectionOrganizer({
           </div>
         )}
       </div>
-
       <div className="pt-3 border-t border-[#f4efe6] flex items-center justify-between text-xs text-stone-500">
         <span className="flex items-center gap-1 font-medium">
           <Clock className="w-3.5 h-3.5 text-[#a86224]" /> {r.tiempo_total_min || 15} min
@@ -585,7 +565,6 @@ export function RecipeCollectionOrganizer({
       </div>
     </div>
   );
-
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* 1. BUSCADOR UNIVERSAL */}
@@ -616,7 +595,6 @@ export function RecipeCollectionOrganizer({
             </button>
           )}
         </div>
-
         {searchQuery.trim() && (
           <div className="flex items-center justify-between text-xs text-stone-500 px-1 pt-0.5">
             <span>
@@ -634,7 +612,6 @@ export function RecipeCollectionOrganizer({
           </div>
         )}
       </div>
-
       {/* 2. SELECTOR DE PESTAÑAS (TODAS + CATEGORÍAS) */}
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pt-1">
         <button
@@ -650,11 +627,9 @@ export function RecipeCollectionOrganizer({
           <span>Todas ({filteredRecipes.length})</span>
           <span className="text-[9px] opacity-75 font-mono ml-0.5">v.2.0</span>
         </button>
-
         {populatedCategories.map(({ category, recetas: groupRecetas }) => {
           const IconComponent = category.icono;
           const isSelected = filtroActivo === category.id;
-
           return (
             <button
               key={category.id}
@@ -679,7 +654,6 @@ export function RecipeCollectionOrganizer({
           );
         })}
       </div>
-
       {/* 3. ESTADO VACÍO CUANDO NO HAY COINCIDENCIAS */}
       {filteredRecipes.length === 0 && (
         <div className="p-10 text-center rounded-3xl bg-white border border-dashed border-[#e7dfd5] space-y-3 animate-fade-in">
@@ -705,7 +679,6 @@ export function RecipeCollectionOrganizer({
           )}
         </div>
       )}
-
       {/* ============================================================== */}
       {/* 4. CONDICIONAL ESTRICTO: VISTA 'TODAS' vs VISTA POR CATEGORÍA */}
       {/* ============================================================== */}
@@ -737,9 +710,7 @@ export function RecipeCollectionOrganizer({
                 </div>
               );
             }
-
             const IconComponent = activeGroup.category.icono;
-
             return (
               <section className="space-y-4 animate-fade-in">
                 {/* Encabezado visible únicamente en la vista de categoría */}
@@ -756,7 +727,6 @@ export function RecipeCollectionOrganizer({
                       </h2>
                     </div>
                   </div>
-
                   <span
                     className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${activeGroup.category.badgeColor}`}
                   >
@@ -764,7 +734,6 @@ export function RecipeCollectionOrganizer({
                     {activeGroup.recetas.length === 1 ? 'receta' : 'recetas'}
                   </span>
                 </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {activeGroup.recetas.map((r) => renderRecipeCard(r))}
                 </div>
@@ -773,7 +742,6 @@ export function RecipeCollectionOrganizer({
           })()
         )
       )}
-
       {/* Indicador visual de versión para confirmar despliegue */}
       <div className="pt-6 pb-2 text-center text-[11px] text-stone-400 font-mono tracking-wider">
         v.2.0
