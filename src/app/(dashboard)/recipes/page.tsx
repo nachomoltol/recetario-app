@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { ChefHat, BookOpen, Clock, ArrowRight, Sparkles, Utensils } from 'lucide-react';
+import { ChefHat, BookOpen, Clock, ArrowRight, Sparkles, Utensils, Calendar } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { RecipeCaptureCard } from '@/components/recipes/RecipeCaptureCard';
 import { DeleteRecipeButton } from '@/components/recipes/DeleteRecipeButton';
@@ -54,11 +54,22 @@ export default async function RecipesDashboardPage() {
             </div>
           </div>
 
-          {/* Menú de Usuario Desplegable */}
-          <UserDropdownMenu
-            fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
-            email={user.email || ''}
-          />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/meal-planner"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-[#f4efe6] hover:bg-[#e7dfd5] text-[#a86224] text-xs font-semibold border border-[#e7dfd5] transition shadow-2xs"
+              title="Plan de comidas semanal"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Plan Semanal</span>
+            </Link>
+
+            {/* Menú de Usuario Desplegable */}
+            <UserDropdownMenu
+              fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
+              email={user.email || ''}
+            />
+          </div>
         </div>
       </header>
 

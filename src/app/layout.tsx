@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Plus_Jakarta_Sans } from 'next/font/google';
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
+import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt';
 import { AuthInitializer } from '@/components/auth/AuthInitializer';
 import './globals.css';
 
@@ -56,6 +57,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-[#faf7f2] text-stone-900 font-sans antialiased selection:bg-amber-200 selection:text-amber-950">
         <ServiceWorkerRegister />
+        <PwaInstallPrompt />
         <AuthInitializer />
         {children}
       </body>

@@ -6,6 +6,7 @@ export type Receta = Database['public']['Tables']['recetas']['Row'];
 export type RecetaIngrediente = Database['public']['Tables']['receta_ingredientes']['Row'];
 export type Paso = Database['public']['Tables']['pasos']['Row'];
 export type DiarioCocinados = Database['public']['Tables']['diario_cocinados']['Row'];
+export type PlanComida = Database['public']['Tables']['plan_comidas']['Row'];
 
 /**
  * Entidad de Receta Completa con ingredientes y pasos anidados

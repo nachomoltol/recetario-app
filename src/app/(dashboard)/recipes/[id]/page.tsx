@@ -8,12 +8,10 @@ import {
   Flame,
   ExternalLink,
   ChefHat,
-  Sparkles,
-  Layers,
-  Thermometer,
 } from 'lucide-react';
 import { RecipeTagsEditor } from '@/components/recipes/RecipeTagsEditor';
-import { ShoppingListMode } from '@/components/recipes/ShoppingListMode';
+import { RecipeRatingHeader } from '@/components/recipes/RecipeRatingHeader';
+import { RecipeInteractiveSections } from '@/components/recipes/RecipeInteractiveSections';
 import { CookingDiarySection } from '@/components/recipes/CookingDiarySection';
 import { DeleteRecipeButton } from '@/components/recipes/DeleteRecipeButton';
 import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe';
@@ -105,9 +103,11 @@ export default async function RecipeDetailPage({ params }: PageProps) {
                 <ExternalLink className="w-3.5 h-3.5 text-[#a86224]" />
               </a>
             )}
+
             <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] capitalize">
               {receta.dificultad}
             </span>
+
             <DeleteRecipeButton
               recipeId={receta.id}
               recipeTitle={receta.titulo}
@@ -118,13 +118,22 @@ export default async function RecipeDetailPage({ params }: PageProps) {
         </div>
       </header>
 
-      {/* Contenido Editorial con Modo Cocina (alta legibilidad y espacios generosos) */}
+      {/* Contenido Editorial con Modo Cocina */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10">
         {/* Cabecera Editorial Limpia */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#a86224]">
-            <ChefHat className="w-4 h-4" />
-            <span>Ficha Culinaria Estandarizada</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#a86224]">
+              <ChefHat className="w-4 h-4" />
+              <span>Ficha Culinaria Estandarizada</span>
+            </div>
+
+            {/* Sistema de Valoración y Favoritos Interactivo */}
+            <RecipeRatingHeader
+              recetaId={receta.id}
+              initialFavorite={receta.es_favorita || false}
+              initialRating={receta.puntuacion || 0}
+            />
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-bold font-serif-recipe tracking-tight text-stone-900 leading-tight">
@@ -148,7 +157,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
               <Clock className="w-5 h-5 text-[#a86224]" />
               <div>
                 <span className="text-[10px] uppercase text-stone-500 font-medium block">Tiempo Total</span>
-                <span className="text-base font-bold text-stone-900">{receta.tiempo_total_min} min</span>
+                <span className="text-base font-bold text-stone-900">{receta.tiempo_total_min || 15} min</span>
               </div>
             </div>
 
@@ -175,7 +184,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
             <div className="flex items-center gap-2.5">
               <Users className="w-5 h-5 text-[#a86224]" />
               <div>
-                <span className="text-[10px] uppercase text-stone-500 font-medium block">Rendimiento</span>
+                <span className="text-[10px] uppercase text-stone-500 font-medium block">Base Receta</span>
                 <span className="text-base font-bold text-stone-900">{receta.porciones} porciones</span>
               </div>
             </div>
@@ -229,85 +238,15 @@ export default async function RecipeDetailPage({ params }: PageProps) {
           </section>
         ) : null}
 
-        {/* Sección Culinaria: Ingredientes (con Modo Compra) y Pasos */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 pt-2">
-          {/* Columna Izquierda: Ingredientes con Modo Lista de la Compra y Sustituciones */}
-          <section className="lg:col-span-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-[#e7dfd5] pb-3">
-              <h2 className="text-2xl font-bold font-serif-recipe text-stone-900 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-[#a86224]" />
-                <span>Ingredientes</span>
-              </h2>
-              <span className="text-xs font-semibold text-stone-500 font-mono">
-                {ingredientes.length} items
-              </span>
-            </div>
-
-            {/* Componente Dual: Modo Cocina (Alternativas IA) + Modo Lista de la Compra (Checklist táctil) */}
-            <ShoppingListMode
-              recetaId={receta.id}
-              tituloReceta={receta.titulo}
-              ingredientes={ingredientes}
-            />
-          </section>
-
-          {/* Columna Derecha: Método y Pasos en Modo Cocina (súper legibles) */}
-          <section className="lg:col-span-7 space-y-6">
-            <div className="flex items-center justify-between border-b border-[#e7dfd5] pb-3">
-              <h2 className="text-2xl font-bold font-serif-recipe text-stone-900 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-[#a86224]" />
-                <span>Preparación</span>
-              </h2>
-              <span className="text-xs font-semibold text-stone-500 font-mono">
-                {pasos.length} pasos
-              </span>
-            </div>
-
-            <ol className="space-y-8">
-              {pasos.map((paso) => (
-                <li
-                  key={paso.id}
-                  className="flex gap-4 sm:gap-5 group"
-                >
-                  <span className="w-10 h-10 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] font-serif-recipe font-bold text-base flex items-center justify-center shrink-0 self-start mt-0.5 shadow-2xs">
-                    {paso.orden}
-                  </span>
-
-                  <div className="space-y-3 flex-1">
-                    <p className="text-base sm:text-lg text-stone-800 leading-relaxed font-light">
-                      {paso.instruccion}
-                    </p>
-
-                    {(paso.tiempo_estimado_min || paso.temperatura_celsius || paso.consejo_pro) && (
-                      <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-stone-500">
-                        {paso.tiempo_estimado_min && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#f4efe6] text-stone-700 font-medium">
-                            <Clock className="w-3.5 h-3.5 text-[#a86224]" />
-                            {paso.tiempo_estimado_min} min
-                          </span>
-                        )}
-
-                        {paso.temperatura_celsius && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#f4efe6] text-stone-700 font-medium">
-                            <Thermometer className="w-3.5 h-3.5 text-[#c27835]" />
-                            {paso.temperatura_celsius}°C
-                          </span>
-                        )}
-
-                        {paso.consejo_pro && (
-                          <div className="w-full mt-2 p-3.5 rounded-2xl border border-[#e7dfd5] bg-white text-stone-700 text-xs sm:text-sm font-light">
-                            <span className="font-semibold text-[#a86224]">Consejo del Chef:</span>{' '}
-                            {paso.consejo_pro}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </section>
-        </div>
+        {/* Acordeones Plegables con Escalado Inteligente y Modo Compra */}
+        <RecipeInteractiveSections
+          recetaId={receta.id}
+          tituloReceta={receta.titulo}
+          basePorciones={receta.porciones || 2}
+          tiempoCoccionMin={receta.tiempo_coccion_min}
+          ingredientes={ingredientes}
+          pasos={pasos}
+        />
 
         {/* Sección: Diario Visual de Cocinados */}
         <CookingDiarySection recetaId={receta.id} entradas={diarioEntries} />

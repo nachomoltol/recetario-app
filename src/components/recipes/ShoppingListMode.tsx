@@ -7,15 +7,21 @@ import {
   Copy,
   ShoppingCart,
   ChefHat,
-  Share2,
+  Sparkles,
 } from 'lucide-react';
 import { RecetaIngrediente } from '@/types/recipe';
 import { IngredientRow } from './IngredientRow';
 
+export type ExtendedIngredient = RecetaIngrediente & {
+  cantidad_escalada?: number;
+  gramos_escalados?: number;
+  explicacion_culinaria?: string;
+};
+
 interface ShoppingListModeProps {
   recetaId: string;
   tituloReceta: string;
-  ingredientes: RecetaIngrediente[];
+  ingredientes: ExtendedIngredient[];
 }
 
 export function ShoppingListMode({
@@ -27,10 +33,9 @@ export function ShoppingListMode({
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
 
-  // Clave de persistencia en localStorage
+  // Clave de persistencia en localStorage para sobrevivir a apagados de pantalla
   const storageKey = `recetario_checklist_${recetaId}`;
 
-  // Cargar estado guardado al montar en cliente
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
@@ -40,7 +45,6 @@ export function ShoppingListMode({
     } catch {}
   }, [storageKey]);
 
-  // Persistir cambios en localStorage
   const handleToggleItem = (id: string) => {
     const next = checkedIds.includes(id)
       ? checkedIds.filter((item) => item !== id)
@@ -73,12 +77,13 @@ export function ShoppingListMode({
       ...ingredientes.map((ing) => {
         const isChecked = checkedIds.includes(ing.id);
         const prefix = isChecked ? '✓' : '☐';
-        const qty = `${ing.cantidad} ${ing.unidad}`;
+        const qtyNum = ing.cantidad_escalada !== undefined ? ing.cantidad_escalada : ing.cantidad;
+        const qty = `${qtyNum} ${ing.unidad}`;
         const name = ing.nombre_limpio || ing.nombre_crudo;
         return `${prefix} ${qty} ${name}${ing.notas ? ` (${ing.notas})` : ''}`;
       }),
       '----------------------------------------',
-      `Creado con Recetario App`,
+      `Creado con Recetario App (Escalado Inteligente)`,
     ];
 
     navigator.clipboard.writeText(textLines.join('\n'));
@@ -115,71 +120,50 @@ export function ShoppingListMode({
             onClick={() => setIsShoppingMode(true)}
             className={`min-h-[46px] px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
               isShoppingMode
-                ? 'bg-[#a86224] text-white shadow-xs font-bold'
+                ? 'bg-white text-stone-900 shadow-2xs font-bold border border-[#e7dfd5]'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <ShoppingCart className="w-4 h-4" />
-            <span>Lista Compra {completed > 0 ? `(${completed}/${total})` : ''}</span>
+            <ShoppingCart className="w-4 h-4 text-[#a86224]" />
+            <span>Lista de Compra</span>
           </button>
         </div>
 
+        {/* Herramientas rápidas para la lista */}
         {isShoppingMode && (
-          <div className="flex items-center justify-end gap-2 px-2 pt-1 sm:pt-0">
+          <div className="flex items-center justify-end gap-2 px-1">
             <button
               type="button"
               onClick={handleCopyList}
-              title="Copiar lista de la compra al portapapeles"
-              className="min-h-[38px] px-3 rounded-xl text-xs font-semibold bg-white hover:bg-stone-50 text-stone-700 border border-[#e7dfd5] transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title="Copiar lista de ingredientes formateada"
+              className="min-h-[38px] px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-[#e7dfd5] text-stone-700 font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
-              {copied ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-[#2e6b3e]" />
-                  <span className="text-[#2e6b3e]">¡Copiada!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 text-stone-500" />
-                  <span>Copiar texto</span>
-                </>
-              )}
+              <Copy className="w-3.5 h-3.5 text-[#a86224]" />
+              <span>{copied ? '¡Copiada!' : 'Copiar'}</span>
             </button>
 
-            {completed > 0 ? (
-              <button
-                type="button"
-                onClick={handleReset}
-                title="Desmarcar todos los ingredientes"
-                className="min-h-[38px] px-2.5 rounded-xl text-xs font-medium text-stone-500 hover:text-stone-800 transition flex items-center gap-1 cursor-pointer"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Reiniciar</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSelectAll}
-                title="Marcar todos los ingredientes como comprados"
-                className="min-h-[38px] px-2.5 rounded-xl text-xs font-medium text-stone-500 hover:text-stone-800 transition flex items-center gap-1 cursor-pointer"
-              >
-                <span>Marcar todo</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={completed === total ? handleReset : handleSelectAll}
+              className="min-h-[38px] px-3 py-1.5 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-white/70 transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3 text-stone-400" />
+              <span>{completed === total ? 'Desmarcar' : 'Marcar todo'}</span>
+            </button>
           </div>
         )}
       </div>
 
-      {/* Vista A: Modo Cocina (Listado estándar con botón de Alternativas con IA) */}
+      {/* Vista A: Modo 'Cocina' (Ingredientes con Sustituciones Inteligentes) */}
       {!isShoppingMode && (
-        <div className="space-y-1 divide-y divide-[#e7dfd5]">
-          <p className="text-xs sm:text-sm text-stone-500 font-light pb-2">
-            Toca <span className="text-[#a86224] font-semibold">Alternativas</span> junto a cada ingrediente para desplegar 3 opciones saludables bajo demanda.
-          </p>
+        <div className="divide-y divide-[#e7dfd5]">
           {ingredientes.map((ing) => (
             <IngredientRow
               key={ing.id}
               ingrediente={ing}
               tituloReceta={tituloReceta}
+              scaledCantidad={ing.cantidad_escalada}
+              scaledGramos={ing.gramos_escalados}
             />
           ))}
         </div>
@@ -187,7 +171,7 @@ export function ShoppingListMode({
 
       {/* Vista B: Modo 'Lista de la Compra' (Checklist Táctil Mobile-First) */}
       {isShoppingMode && (
-        <div className="space-y-3 animate-in fade-in duration-200">
+        <div className="space-y-3 animate-fade-in">
           {/* Barra de Progreso del Carrito */}
           <div className="p-4 rounded-2xl bg-white border border-[#e7dfd5] space-y-2 shadow-2xs">
             <div className="flex items-center justify-between text-xs">
@@ -215,6 +199,7 @@ export function ShoppingListMode({
           <div className="space-y-2">
             {ingredientes.map((ing) => {
               const isChecked = checkedIds.includes(ing.id);
+              const qtyNum = ing.cantidad_escalada !== undefined ? ing.cantidad_escalada : ing.cantidad;
 
               return (
                 <div
@@ -226,7 +211,7 @@ export function ShoppingListMode({
                       : 'bg-white hover:bg-[#faf7f2] border-[#e7dfd5] shadow-2xs'
                   }`}
                 >
-                  {/* Casilla táctil grande */}
+                  {/* Casilla táctil grande de 28px */}
                   <div
                     className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-colors ${
                       isChecked
@@ -249,6 +234,11 @@ export function ShoppingListMode({
                       >
                         {ing.nombre_limpio || ing.nombre_crudo}
                       </span>
+                      {ing.explicacion_culinaria && !isChecked && (
+                        <span className="text-[10px] text-[#a86224] block truncate font-medium">
+                          ✦ {ing.explicacion_culinaria}
+                        </span>
+                      )}
                       {ing.notas && (
                         <span
                           className={`text-xs block truncate ${
@@ -265,27 +255,13 @@ export function ShoppingListMode({
                         isChecked ? 'line-through text-stone-400' : 'text-[#a86224]'
                       }`}
                     >
-                      {ing.cantidad} {ing.unidad}
+                      {qtyNum} {ing.unidad}
                     </span>
                   </div>
                 </div>
               );
             })}
           </div>
-
-          {/* Mensaje de completado */}
-          {completed === total && total > 0 && (
-            <div className="p-4 rounded-2xl bg-[#edf3ee] border border-[#d8e5da] text-center text-xs sm:text-sm font-semibold text-[#2e6b3e] space-y-1">
-              <p>🎉 ¡Tienes todos los ingredientes listos!</p>
-              <button
-                type="button"
-                onClick={() => setIsShoppingMode(false)}
-                className="text-xs font-bold underline cursor-pointer text-[#2e6b3e] hover:text-[#1d4628]"
-              >
-                Volver al Modo Cocina para empezar a preparar el plato
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>

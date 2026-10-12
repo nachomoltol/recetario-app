@@ -136,6 +136,7 @@ export interface Database {
           grasas_por_porcion: number | null;
           fibra_por_porcion: number | null;
           es_favorita: boolean;
+          puntuacion: number;
           es_publica: boolean;
           etiquetas: string[];
           created_at: string;
@@ -159,6 +160,7 @@ export interface Database {
           grasas_por_porcion?: number | null;
           fibra_por_porcion?: number | null;
           es_favorita?: boolean;
+          puntuacion?: number;
           es_publica?: boolean;
           etiquetas?: string[];
           created_at?: string;
@@ -182,6 +184,7 @@ export interface Database {
           grasas_por_porcion?: number | null;
           fibra_por_porcion?: number | null;
           es_favorita?: boolean;
+          puntuacion?: number;
           es_publica?: boolean;
           etiquetas?: string[];
           created_at?: string;
@@ -357,6 +360,54 @@ export interface Database {
           },
           {
             foreignKeyName: "diario_cocinados_usuario_id_fkey";
+            columns: ["usuario_id"];
+            isOneToOne: false;
+            referencedRelation: "usuarios";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      plan_comidas: {
+        Row: {
+          id: string;
+          usuario_id: string;
+          receta_id: string | null;
+          fecha: string;
+          slot: 'desayuno' | 'almuerzo' | 'cena' | 'snack';
+          notas: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          usuario_id: string;
+          receta_id?: string | null;
+          fecha: string;
+          slot: 'desayuno' | 'almuerzo' | 'cena' | 'snack';
+          notas?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          usuario_id?: string;
+          receta_id?: string | null;
+          fecha?: string;
+          slot?: 'desayuno' | 'almuerzo' | 'cena' | 'snack';
+          notas?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "plan_comidas_receta_id_fkey";
+            columns: ["receta_id"];
+            isOneToOne: false;
+            referencedRelation: "recetas";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "plan_comidas_usuario_id_fkey";
             columns: ["usuario_id"];
             isOneToOne: false;
             referencedRelation: "usuarios";

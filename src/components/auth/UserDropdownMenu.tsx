@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   User,
   BookOpen,
+  Calendar,
   Settings,
   CreditCard,
   LogOut,
@@ -110,6 +111,17 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
               <BookOpen className="w-4 h-4 text-[#a86224]" />
               <div className="flex-1">
                 <span>Mi Recetario (Colección)</span>
+              </div>
+            </Link>
+
+            <Link
+              href="/meal-planner"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium"
+            >
+              <Calendar className="w-4 h-4 text-[#a86224]" />
+              <div className="flex-1">
+                <span>Plan de Comidas (Semanal)</span>
               </div>
             </Link>
 
