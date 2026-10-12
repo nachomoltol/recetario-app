@@ -35,6 +35,8 @@ export function ProSubscriptionModal({
   const [isVipValidating, setIsVipValidating] = useState(false);
   const [vipSuccess, setVipSuccess] = useState(false);
   const [vipError, setVipError] = useState<string | null>(null);
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   // Comprobar si ya tenía VIP activo previamente en localStorage
   useEffect(() => {
@@ -96,14 +98,33 @@ export function ProSubscriptionModal({
     }
   };
 
-  const handleSubscribeClick = () => {
+  const handleSubscribeClick = async () => {
     if (onSubscribe) {
       onSubscribe();
-    } else {
-      // Redirigir a la pasarela de pago / stripe checkout
-      if (typeof window !== 'undefined') {
-        window.location.href = '/billing';
+      return;
+    }
+
+    setIsCheckoutLoading(true);
+    setCheckoutError(null);
+
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setIsCheckoutLoading(false);
+        setCheckoutError(data.error || 'No se pudo conectar con Stripe.');
       }
+    } catch (err) {
+      console.error('Error al conectar con Stripe Checkout:', err);
+      setIsCheckoutLoading(false);
+      setCheckoutError('Error de red al conectar con la pasarela de pago.');
     }
   };
 
@@ -176,10 +197,25 @@ export function ProSubscriptionModal({
             <button
               type="button"
               onClick={handleSubscribeClick}
-              className="w-full min-h-[50px] py-3.5 px-6 rounded-2xl font-bold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] shadow-sm hover:shadow transition-all cursor-pointer flex items-center justify-center gap-2"
+              disabled={isCheckoutLoading}
+              className="w-full min-h-[50px] py-3.5 px-6 rounded-2xl font-bold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] shadow-sm hover:shadow transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
             >
-              <span>Suscribirse ahora — 3,50€/mes</span>
+              {isCheckoutLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin text-white shrink-0" />
+                  <span>Conectando de forma segura...</span>
+                </>
+              ) : (
+                <span>Suscribirse ahora — 3,50€/mes</span>
+              )}
             </button>
+          )}
+
+          {checkoutError && (
+            <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 font-medium pt-1">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>{checkoutError}</span>
+            </div>
           )}
 
           <div className="flex items-center justify-center gap-1.5 text-[11px] text-stone-500 pt-1">

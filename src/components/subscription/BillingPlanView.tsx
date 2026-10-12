@@ -24,6 +24,8 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
   const [isVipValidating, setIsVipValidating] = useState(false);
   const [vipSuccess, setVipSuccess] = useState(false);
   const [vipError, setVipError] = useState<string | null>(null);
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   // Leer estado VIP inicial de localStorage
   useEffect(() => {
@@ -65,9 +67,29 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
     }
   };
 
-  const handleSubscribe = () => {
-    // Simular inicio de checkout de Stripe o acción futura
-    alert('Redirigiendo a la pasarela segura de pago con Stripe...');
+  const handleSubscribe = async () => {
+    setIsCheckoutLoading(true);
+    setCheckoutError(null);
+
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setIsCheckoutLoading(false);
+        setCheckoutError(data.error || 'No se pudo conectar con Stripe.');
+      }
+    } catch (err) {
+      console.error('Error al conectar con Stripe Checkout:', err);
+      setIsCheckoutLoading(false);
+      setCheckoutError('Error de red al conectar con la pasarela de pago.');
+    }
   };
 
   return (
@@ -109,11 +131,28 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
           <button
             type="button"
             onClick={handleSubscribe}
-            className="w-full min-h-[52px] py-4 px-6 rounded-2xl font-bold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] shadow-sm hover:shadow transition-all cursor-pointer flex items-center justify-center gap-2"
+            disabled={isCheckoutLoading}
+            className="w-full min-h-[52px] py-4 px-6 rounded-2xl font-bold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] shadow-sm hover:shadow transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
           >
-            <CreditCard className="w-4 h-4" />
-            <span>Suscribirse ahora — 3,50€/mes</span>
+            {isCheckoutLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin text-white shrink-0" />
+                <span>Conectando de forma segura...</span>
+              </>
+            ) : (
+              <>
+                <CreditCard className="w-4 h-4" />
+                <span>Suscribirse ahora — 3,50€/mes</span>
+              </>
+            )}
           </button>
+        )}
+
+        {checkoutError && (
+          <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 font-medium pt-1">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+            <span>{checkoutError}</span>
+          </div>
         )}
 
         <div className="flex items-center justify-center gap-1.5 text-xs text-stone-500 pt-1">
