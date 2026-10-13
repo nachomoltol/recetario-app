@@ -125,6 +125,7 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
                   type="file"
                   name="foto"
                   accept="image/*"
+                  capture="environment"
                   required
                   onChange={handleImageChange}
                   className="hidden"

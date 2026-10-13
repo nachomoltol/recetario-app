@@ -3,18 +3,9 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import {
   ArrowLeft,
-  Clock,
-  Users,
-  Flame,
   ExternalLink,
-  ChefHat,
 } from 'lucide-react';
-import { RecipeNutritionAccordion } from '@/components/recipes/RecipeNutritionAccordion';
-import { RecipeRatingHeader } from '@/components/recipes/RecipeRatingHeader';
-import { RecipeInteractiveSections } from '@/components/recipes/RecipeInteractiveSections';
-import { RecipeWakeLock } from '@/components/recipes/RecipeWakeLock';
-import { RecipeAdaptationSection } from '@/components/recipes/RecipeAdaptationSection';
-import { CookingDiarySection } from '@/components/recipes/CookingDiarySection';
+import { RecipeDetailView } from '@/components/recipes/RecipeDetailView';
 import { DeleteRecipeButton } from '@/components/recipes/DeleteRecipeButton';
 import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe';
 
@@ -150,105 +141,15 @@ export default async function RecipeDetailPage({ params }: PageProps) {
 
       {/* Contenido Editorial con Modo Cocina */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10">
-        {/* Cabecera Editorial Limpia */}
-        <section className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#a86224]">
-              <ChefHat className="w-4 h-4" />
-              <span>Ficha Culinaria Estandarizada</span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-              {/* Modo Manos en la Masa: Wake Lock para que no se apague la pantalla */}
-              <RecipeWakeLock />
-
-              {/* Sistema de Valoración y Favoritos Interactivo */}
-              <RecipeRatingHeader
-                recetaId={receta.id}
-                initialFavorite={receta.es_favorita || false}
-                initialRating={receta.puntuacion || 0}
-              />
-            </div>
-          </div>
-
-          <h1 className="text-3xl sm:text-5xl font-bold font-serif-recipe tracking-tight text-stone-900 leading-tight">
-            {receta.titulo}
-          </h1>
-
-          {receta.descripcion && (
-            <p className="text-base sm:text-lg text-stone-700 font-light leading-relaxed max-w-2xl">
-              {receta.descripcion}
-            </p>
-          )}
-
-          {/* Motor de Adaptación Culinaria No Destructivo (Capa Clínica y de Nivel) */}
-          <RecipeAdaptationSection
-            recipe={recipeDataForAdapt}
-            userProfile={userProfile}
-          />
-
-          {/* Tiempos y Rendimiento en Modo Cocina */}
-          <div className="pt-5 flex flex-wrap items-center gap-6 sm:gap-10 text-xs sm:text-sm text-stone-600 border-t border-[#e7dfd5]">
-            <div className="flex items-center gap-2.5">
-              <Clock className="w-5 h-5 text-[#a86224]" />
-              <div>
-                <span className="text-[10px] uppercase text-stone-500 font-medium block">Tiempo Total</span>
-                <span className="text-base font-bold text-stone-900">{receta.tiempo_total_min || 15} min</span>
-              </div>
-            </div>
-
-            {receta.tiempo_preparacion_min ? (
-              <div className="flex items-center gap-2.5">
-                <Clock className="w-5 h-5 text-stone-400" />
-                <div>
-                  <span className="text-[10px] uppercase text-stone-500 font-medium block">Preparación</span>
-                  <span className="text-base font-semibold text-stone-800">{receta.tiempo_preparacion_min} min</span>
-                </div>
-              </div>
-            ) : null}
-
-            {receta.tiempo_coccion_min ? (
-              <div className="flex items-center gap-2.5">
-                <Clock className="w-5 h-5 text-stone-400" />
-                <div>
-                  <span className="text-[10px] uppercase text-stone-500 font-medium block">Cocción</span>
-                  <span className="text-base font-semibold text-stone-800">{receta.tiempo_coccion_min} min</span>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="flex items-center gap-2.5">
-              <Users className="w-5 h-5 text-[#a86224]" />
-              <div>
-                <span className="text-[10px] uppercase text-stone-500 font-medium block">Base Receta</span>
-                <span className="text-base font-bold text-stone-900">{receta.porciones} porciones</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Pestaña / Acordeón Plegable Compacto de Valores Nutricionales */}
-        <RecipeNutritionAccordion
-          calorias={receta.calorias_por_porcion}
-          proteinas={receta.proteinas_por_porcion}
-          carbohidratos={receta.carbohidratos_por_porcion}
-          grasas={receta.grasas_por_porcion}
-          fibra={receta.fibra_por_porcion}
-        />
-
-        {/* Acordeones Plegables con Escalado Inteligente y Modo Compra */}
-        <RecipeInteractiveSections
-          recetaId={receta.id}
-          tituloReceta={receta.titulo}
-          basePorciones={receta.porciones || 2}
-          tiempoCoccionMin={receta.tiempo_coccion_min}
+        <RecipeDetailView
+          receta={receta}
           ingredientes={ingredientes}
           pasos={pasos}
-          defaultServings={userRacionesDefecto}
+          userProfile={userProfile}
+          userRacionesDefecto={userRacionesDefecto}
+          recipeDataForAdapt={recipeDataForAdapt}
+          diarioEntries={diarioEntries}
         />
-
-        {/* Sección: Diario Visual de Cocinados */}
-        <CookingDiarySection recetaId={receta.id} entradas={diarioEntries} />
 
         {/* Zona de gestión y borrado de la receta */}
         <section className="pt-8 border-t border-[#e7dfd5] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
