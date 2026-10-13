@@ -14,6 +14,9 @@ import {
   Radio,
   Share2,
   Smartphone,
+  Paperclip,
+  X,
+  Camera,
 } from 'lucide-react';
 import { ingestRecipeAction } from '@/app/actions/recipeIngest';
 import { IosShortcutTutorialModal } from '@/components/pwa/IosShortcutTutorialModal';
@@ -88,13 +91,34 @@ export function RecipeCaptureCard() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [createdRecetaId, setCreatedRecetaId] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showIosTutorial, setShowIosTutorial] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const urlInputRef = useRef<HTMLInputElement>(null);
+  const textInputRef = useRef<HTMLTextAreaElement>(null);
+
   // Estados de carga progresiva
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const hasAutoStarted = useRef(false);
+
+  // Manejador del input de archivos
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) {
+      setSelectedFile(f);
+      setError(null);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   // Temporizador activo durante el proceso de extracción
   useEffect(() => {
@@ -119,19 +143,34 @@ export function RecipeCaptureCard() {
       setSuccess(null);
       setCreatedRecetaId(null);
 
+      // Bloquear cualquier foco en el input para evitar rebotes de scroll
+      if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      urlInputRef.current?.blur();
+      textInputRef.current?.blur();
+
       const formData = new FormData();
+      if (selectedFile) {
+        formData.set('archivo', selectedFile);
+      }
+
       if (targetMode === 'url') {
-        if (!targetValue.trim()) {
-          setError('Por favor, introduce un enlace de receta válido.');
+        if (!targetValue.trim() && !selectedFile) {
+          setError('Por favor, introduce un enlace o sube un archivo/imagen de la receta.');
           return;
         }
-        formData.set('url', targetValue.trim());
+        if (targetValue.trim()) {
+          formData.set('url', targetValue.trim());
+        }
       } else {
-        if (!targetValue.trim()) {
-          setError('Por favor, introduce el texto con la receta.');
+        if (!targetValue.trim() && !selectedFile) {
+          setError('Por favor, introduce el texto con la receta o sube un archivo/imagen.');
           return;
         }
-        formData.set('texto', targetValue.trim());
+        if (targetValue.trim()) {
+          formData.set('texto', targetValue.trim());
+        }
       }
 
       startTransition(async () => {
@@ -148,22 +187,62 @@ export function RecipeCaptureCard() {
           setCreatedRecetaId(res.recetaId || null);
           setUrl('');
           setTexto('');
+          setSelectedFile(null);
+          if (fileInputRef.current) fileInputRef.current.value = '';
           router.refresh();
-          // Desplazar suavemente a la previsualización de la última receta en el dashboard (sin abrirla a pantalla completa)
-          const tryScrollToNewRecipe = (attempts = 0) => {
-            const el = document.getElementById('ultima-receta');
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else if (attempts < 12) {
-              setTimeout(() => tryScrollToNewRecipe(attempts + 1), 250);
-            }
-          };
-          setTimeout(() => tryScrollToNewRecipe(), 350);
         }
       });
     },
-    [router]
+    [selectedFile, router]
   );
+
+  // Arreglo del rebote: Desplazamiento suave y anclado ejecutado en useEffect dependiente de createdRecetaId
+  useEffect(() => {
+    if (!createdRecetaId) return;
+
+    // Bloquear explícitamente el foco en los inputs superiores
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    urlInputRef.current?.blur();
+    textInputRef.current?.blur();
+
+    let isMounted = true;
+    let attempts = 0;
+    const maxAttempts = 25;
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const scrollToNewRecipe = () => {
+      if (!isMounted) return;
+
+      // Asegurar que ningún input retenga foco durante el desplazamiento
+      if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      urlInputRef.current?.blur();
+      textInputRef.current?.blur();
+
+      const el =
+        document.getElementById('ultima-receta') ||
+        document.getElementById(`receta-${createdRecetaId}`) ||
+        document.getElementById('capture-success-anchor');
+
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (attempts < maxAttempts) {
+        attempts++;
+        timeoutId = setTimeout(scrollToNewRecipe, 200);
+      }
+    };
+
+    // Retardo inicial para dar tiempo a que React Server Components re-renderice la sección
+    timeoutId = setTimeout(scrollToNewRecipe, 250);
+
+    return () => {
+      isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [createdRecetaId]);
 
   // Soporte nativo para Web Share Target: disparo automático al recibir enlace
   useEffect(() => {
@@ -338,7 +417,7 @@ export function RecipeCaptureCard() {
 
       {/* Feedback de éxito */}
       {success && !isPending && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+        <div id="capture-success-anchor" className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
           <div className="flex items-start gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
@@ -363,26 +442,135 @@ export function RecipeCaptureCard() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {mode === 'url' ? (
-          <div className="relative">
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://vm.tiktok.com/... o enlace de YouTube / Reels"
-              disabled={isPending}
-              className="w-full min-h-[52px] pl-4 pr-12 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition shadow-2xs disabled:opacity-60"
-            />
-            <LinkIcon className="w-5 h-5 text-stone-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  ref={urlInputRef}
+                  type="url"
+                  autoFocus={false}
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://vm.tiktok.com/... o enlace de YouTube / Reels"
+                  disabled={isPending}
+                  className="w-full min-h-[52px] pl-4 pr-12 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition shadow-2xs disabled:opacity-60"
+                />
+                <LinkIcon className="w-5 h-5 text-stone-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {/* Input nativo de archivo oculto */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*,.pdf,.txt,.doc,.docx"
+                className="hidden"
+                disabled={isPending}
+              />
+
+              {/* Botón secundario para subir archivos o fotos */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isPending}
+                title="Subir archivo o foto (.pdf, .txt, .doc, .docx, imágenes)"
+                className="min-h-[52px] px-3.5 sm:px-4 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] active:scale-[0.98] border border-[#e7dfd5] text-[#a86224] hover:text-[#8e511c] font-medium transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs shrink-0 disabled:opacity-50"
+              >
+                <Paperclip className="w-5 h-5" />
+                <span className="hidden sm:inline text-xs font-semibold">Subir archivo</span>
+              </button>
+            </div>
+
+            {/* Tarjeta de visualización de archivo adjunto */}
+            {selectedFile && (
+              <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  {selectedFile.type.startsWith('image/') ? (
+                    <Camera className="w-4 h-4 text-[#a86224] shrink-0" />
+                  ) : (
+                    <FileText className="w-4 h-4 text-[#a86224] shrink-0" />
+                  )}
+                  <div className="truncate">
+                    <p className="font-semibold text-stone-900 truncate">{selectedFile.name}</p>
+                    <p className="text-[11px] text-stone-500">
+                      {(selectedFile.size / 1024).toFixed(1)} KB • Archivo adjunto listo para inferencia
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveFile}
+                  disabled={isPending}
+                  className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer shrink-0"
+                  title="Quitar archivo"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         ) : (
-          <textarea
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            rows={4}
-            placeholder="Pega aquí los ingredientes o la preparación de la receta..."
-            disabled={isPending}
-            className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition resize-none shadow-2xs disabled:opacity-60"
-          />
+          <div className="space-y-3">
+            <textarea
+              ref={textInputRef}
+              autoFocus={false}
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              rows={4}
+              placeholder="Pega aquí los ingredientes o la preparación de la receta..."
+              disabled={isPending}
+              className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition resize-none shadow-2xs disabled:opacity-60"
+            />
+
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isPending}
+                className="px-3.5 py-2 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Paperclip className="w-4 h-4" />
+                <span>Adjuntar foto o documento</span>
+              </button>
+            </div>
+
+            {/* Input nativo de archivo oculto para modo texto */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/*,.pdf,.txt,.doc,.docx"
+              className="hidden"
+              disabled={isPending}
+            />
+
+            {selectedFile && (
+              <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  {selectedFile.type.startsWith('image/') ? (
+                    <Camera className="w-4 h-4 text-[#a86224] shrink-0" />
+                  ) : (
+                    <FileText className="w-4 h-4 text-[#a86224] shrink-0" />
+                  )}
+                  <div className="truncate">
+                    <p className="font-semibold text-stone-900 truncate">{selectedFile.name}</p>
+                    <p className="text-[11px] text-stone-500">
+                      {(selectedFile.size / 1024).toFixed(1)} KB • Archivo adjunto listo para inferencia
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveFile}
+                  disabled={isPending}
+                  className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer shrink-0"
+                  title="Quitar archivo"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         <button
@@ -399,7 +587,11 @@ export function RecipeCaptureCard() {
             </>
           ) : (
             <>
-              <span>Procesar la receta</span>
+              <span>
+                {selectedFile
+                  ? `Procesar receta (${selectedFile.name})`
+                  : 'Procesar la receta'}
+              </span>
               <ArrowRight className="w-5 h-5" />
             </>
           )}

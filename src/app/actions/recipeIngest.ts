@@ -6,7 +6,7 @@ import { extractRecipeWithGemini, detectFuenteTipo } from '@/lib/gemini/extracto
 import { ExtractedIngredient } from '@/lib/gemini/schema';
 import { calcularGramos } from '@/lib/nutrition/converter';
 import { IngredienteMaestro } from '@/types/recipe';
-import { DificultadReceta } from '@/types/database';
+import { DificultadReceta, FuenteTipoReceta } from '@/types/database';
 
 export interface IngestRecipeResult {
   success?: boolean;
@@ -17,9 +17,11 @@ export interface IngestRecipeResult {
 export async function ingestRecipeAction(formData: FormData): Promise<IngestRecipeResult> {
   const url = (formData.get('url') as string)?.trim() || undefined;
   const texto = (formData.get('texto') as string)?.trim() || undefined;
+  const fileEntry = formData.get('archivo') || formData.get('file');
+  const file = fileEntry instanceof File && fileEntry.size > 0 ? fileEntry : undefined;
 
-  if (!url && !texto) {
-    return { error: 'Por favor, introduce una URL (TikTok, Instagram, YouTube) o el texto de la receta.' };
+  if (!url && !texto && !file) {
+    return { error: 'Por favor, introduce una URL (TikTok, Instagram, YouTube), el texto de la receta o sube una imagen/documento.' };
   }
 
   // 1. Validar autenticación de usuario
@@ -77,7 +79,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
 
   try {
     // 3. Extracción multimodal autónoma con Gemini
-    const extracted = await extractRecipeWithGemini({ url, texto });
+    const extracted = await extractRecipeWithGemini({ url, texto, file });
 
     // 4. Consultar ingredientes maestros para cruce relacional y cálculo volumétrico
     const { data: maestros } = await supabase
@@ -98,7 +100,23 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       );
     };
 
-    const fuenteTipo = detectFuenteTipo(url);
+    let fuenteTipo: FuenteTipoReceta = 'manual';
+    if (file) {
+      const ext = (file.name || '').toLowerCase();
+      if (file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|heic|avif)$/i.test(ext)) {
+        fuenteTipo = 'foto_manuscrita';
+      } else if (file.type === 'application/pdf' || ext.endsWith('.pdf')) {
+        fuenteTipo = 'pdf';
+      } else if (url) {
+        fuenteTipo = detectFuenteTipo(url);
+      } else {
+        fuenteTipo = 'manual';
+      }
+    } else if (url) {
+      fuenteTipo = detectFuenteTipo(url);
+    }
+
+    const fuenteUrl = url || (file ? `Archivo: ${file.name}` : null);
 
     // Consolidar etiquetas de doble clasificación (gastronómicas + momentos de consumo)
     const etiquetasCombinadas = Array.from(
@@ -149,7 +167,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         porciones: porcionesFinales,
         dificultad: dificultadNormalizada,
         fuente_tipo: fuenteTipo,
-        fuente_url: url || null,
+        fuente_url: fuenteUrl,
         calorias_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.calorias) || 0),
         proteinas_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.proteinas) || 0),
         carbohidratos_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.carbohidratos) || 0),

@@ -680,25 +680,107 @@ export async function scrapeUrlContent(url: string): Promise<{
   }
 }
 
+function getMimeType(fileName: string, providedType?: string): string {
+  if (providedType && providedType !== 'application/octet-stream' && providedType.trim().length > 0) {
+    return providedType;
+  }
+  const ext = path.extname(fileName).toLowerCase();
+  switch (ext) {
+    case '.pdf':
+      return 'application/pdf';
+    case '.txt':
+      return 'text/plain';
+    case '.doc':
+      return 'application/msword';
+    case '.docx':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.png':
+      return 'image/png';
+    case '.webp':
+      return 'image/webp';
+    case '.gif':
+      return 'image/gif';
+    case '.heic':
+      return 'image/heic';
+    default:
+      return providedType || 'application/octet-stream';
+  }
+}
+
 /**
- * Extracción Multimodal con Fusión Contextual (Vídeo/Audio + Descripción/Caption)
+ * Extracción Multimodal con Fusión Contextual (Vídeo/Audio, Archivos/Documentos + Descripción/Caption)
  * usando la File API de Gemini y responseJsonSchema estricto.
  */
 export async function extractRecipeWithGemini({
   url,
   texto,
+  file,
 }: {
   url?: string;
   texto?: string;
+  file?: File;
 }): Promise<ExtractedRecipe> {
   const ai = getGeminiClient();
 
   let combo: MediaComboResult | null = null;
   let geminiUploadedFileName: string | null = null;
+  let tempUploadedFilePath: string | null = null;
 
   try {
     let uploadedFilePart: any = null;
     let contextPrompt = '';
+
+    // 0. Procesar Archivo / Imagen subido directamente por el usuario (Multimodal)
+    if (file && file.size > 0) {
+      const fileName = file.name || 'documento_receta';
+      const ext = path.extname(fileName).toLowerCase();
+      const mimeType = getMimeType(fileName, file.type);
+
+      if (ext === '.txt' || mimeType === 'text/plain') {
+        const textContent = await file.text();
+        contextPrompt += `DOCUMENTO DE TEXTO SUBIDO POR EL USUARIO (${fileName}):\n${textContent}\n\n`;
+      } else {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const tempFileName = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext || '.bin'}`;
+        tempUploadedFilePath = path.join(os.tmpdir(), tempFileName);
+        fs.writeFileSync(tempUploadedFilePath, buffer);
+
+        // Subida mediante Gemini Files API
+        const uploadedFile = await ai.files.upload({
+          file: tempUploadedFilePath,
+          config: {
+            mimeType: mimeType,
+          },
+        });
+
+        if (uploadedFile.name) {
+          geminiUploadedFileName = uploadedFile.name;
+
+          let fileRecord = await ai.files.get({ name: uploadedFile.name });
+          let attempts = 0;
+          while (fileRecord.state === 'PROCESSING' && attempts < 25) {
+            await new Promise((r) => setTimeout(r, 1500));
+            fileRecord = await ai.files.get({ name: uploadedFile.name });
+            attempts++;
+          }
+
+          if (fileRecord.state !== 'FAILED' && fileRecord.uri) {
+            uploadedFilePart = {
+              fileData: {
+                fileUri: fileRecord.uri,
+                mimeType: fileRecord.mimeType || mimeType,
+              },
+            };
+            contextPrompt += `ARCHIVO / DOCUMENTO ADJUNTO POR EL USUARIO (${fileName}, ${mimeType}). Analiza minuciosamente el contenido de este archivo (texto, imágenes o datos) para extraer la receta completa.\n\n`;
+          } else {
+            console.warn('El archivo subido a Gemini Files falló o no está listo:', fileRecord.state);
+          }
+        }
+      }
+    }
 
     // 1. Procesar URL con Extracción del Combo Multi-Nivel
     if (url) {
@@ -762,10 +844,10 @@ export async function extractRecipeWithGemini({
       contextPrompt += `NOTAS O TEXTO ADICIONAL APORTADO POR EL USUARIO:\n${texto}\n\n`;
     }
 
-    // Validación previa para evitar alucinaciones: si no hay vídeo, verificar que haya texto con sustancia culinaria real
+    // Validación previa para evitar alucinaciones: si no hay archivo multimodal, verificar que haya texto con sustancia culinaria real
     const cleanTextWithoutPlaceholders = contextPrompt
       .replace(
-        /TÍTULO DETECTADO:|DESCRIPCIÓN:|TEXTO DE LA RECETA \/ PÁGINA:|NOTAS O TEXTO ADICIONAL APORTADO POR EL USUARIO:|TÍTULO DEL POST \/ RECETA:|DESCRIPCIÓN CRUDA DEL POST \(CAPTION DEL CREADOR\):/g,
+        /TÍTULO DETECTADO:|DESCRIPCIÓN:|TEXTO DE LA RECETA \/ PÁGINA:|NOTAS O TEXTO ADICIONAL APORTADO POR EL USUARIO:|TÍTULO DEL POST \/ RECETA:|DESCRIPCIÓN CRUDA DEL POST \(CAPTION DEL CREADOR\):|DOCUMENTO DE TEXTO SUBIDO POR EL USUARIO \(.*?\):|ARCHIVO \/ DOCUMENTO ADJUNTO POR EL USUARIO \(.*?\):/g,
         ''
       )
       .replace(/TikTok - Make Your Day|Login • Instagram|Instagram|YouTube|Sign in|Iniciar sesión/gi, '')
@@ -773,7 +855,7 @@ export async function extractRecipeWithGemini({
 
     if (!uploadedFilePart && cleanTextWithoutPlaceholders.length < 35) {
       throw new Error(
-        'No se pudo extraer información culinaria ni archivo de vídeo del enlace (es posible que la red social bloquee la lectura directa o que el enlace sea privado). Por favor, pega directamente el texto o los ingredientes de la receta.'
+        'No se pudo extraer información culinaria del enlace ni del archivo proporcionado. Por favor, sube un documento o imagen con la receta o pega directamente el texto de los ingredientes.'
       );
     }
 
@@ -866,6 +948,13 @@ ${contextPrompt.trim()}
     );
   } finally {
     // 5. Limpieza automática de recursos (File API y disco temporal)
+    if (tempUploadedFilePath && fs.existsSync(tempUploadedFilePath)) {
+      try {
+        fs.unlinkSync(tempUploadedFilePath);
+      } catch (e) {
+        console.warn('No se pudo borrar el archivo temporal local:', e);
+      }
+    }
     if (geminiUploadedFileName) {
       try {
         await ai.files.delete({ name: geminiUploadedFileName });
