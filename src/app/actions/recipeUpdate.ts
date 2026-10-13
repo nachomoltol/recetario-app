@@ -173,3 +173,49 @@ export async function updateRecipeAction({
     };
   }
 }
+
+export async function updateRecipePhotoAction({
+  recetaId,
+  fotoUrl,
+}: {
+  recetaId: string;
+  fotoUrl: string;
+}): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { error: 'Debes iniciar sesión para actualizar la fotografía.' };
+    }
+
+    const { error: errUpdate } = await supabase
+      .from('recetas')
+      .update({
+        foto_url: fotoUrl,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', recetaId)
+      .eq('usuario_id', user.id);
+
+    if (errUpdate) {
+      console.error('Error actualizando foto_url en recetas:', errUpdate);
+      return { error: `Error al guardar foto: ${errUpdate.message}` };
+    }
+
+    revalidatePath(`/recipes/${recetaId}`, 'page');
+    revalidatePath('/recipes', 'page');
+    revalidatePath('/recipes/collection', 'page');
+
+    return { success: true };
+  } catch (err) {
+    console.error('Error inesperado al actualizar foto de receta:', err);
+    return {
+      error: err instanceof Error ? err.message : 'Error inesperado al guardar la fotografía.',
+    };
+  }
+}
+

@@ -8,9 +8,16 @@ import { DiarioCocinados } from '@/types/recipe';
 interface CookingDiarySectionProps {
   recetaId: string;
   entradas: DiarioCocinados[];
+  onTriggerPhotoUpload?: () => void;
+  isUploadingPhoto?: boolean;
 }
 
-export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionProps) {
+export function CookingDiarySection({
+  recetaId,
+  entradas,
+  onTriggerPhotoUpload,
+  isUploadingPhoto,
+}: CookingDiarySectionProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [calificacion, setCalificacion] = useState<number>(5);
   const [hoverCalificacion, setHoverCalificacion] = useState<number | null>(null);
@@ -59,21 +66,42 @@ export function CookingDiarySection({ recetaId, entradas }: CookingDiarySectionP
 
   return (
     <section className="space-y-6 pt-8 border-t border-[#e7dfd5]">
-      <div className="flex justify-center sm:justify-start">
+      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+        {onTriggerPhotoUpload && (
+          <button
+            type="button"
+            onClick={onTriggerPhotoUpload}
+            disabled={isUploadingPhoto}
+            className="min-h-[48px] px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-white bg-[#a86224] hover:bg-[#8e511c] shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {isUploadingPhoto ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+                <span>Subiendo y procesando imagen...</span>
+              </>
+            ) : (
+              <>
+                <Camera className="w-4 h-4 text-white" />
+                <span>Fotografía tu plato</span>
+              </>
+            )}
+          </button>
+        )}
+
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="min-h-[48px] px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-white bg-[#a86224] hover:bg-[#8e511c] shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+          className="min-h-[48px] px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-stone-700 bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-[#a86224] transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
         >
           {isOpen ? (
             <>
               <X className="w-4 h-4" />
-              <span>Cerrar</span>
+              <span>Cerrar notas</span>
             </>
           ) : (
             <>
-              <Camera className="w-4 h-4" />
-              <span>Fotografía tu plato</span>
+              <Star className="w-4 h-4 text-[#f59e0b]" />
+              <span>Añadir notas y valoración</span>
             </>
           )}
         </button>

@@ -138,6 +138,7 @@ export interface Database {
           titulo: string;
           descripcion: string | null;
           imagen_portada_url: string | null;
+          foto_url: string | null;
           tiempo_preparacion_min: number | null;
           tiempo_coccion_min: number | null;
           tiempo_total_min: number | null;
@@ -163,6 +164,7 @@ export interface Database {
           titulo: string;
           descripcion?: string | null;
           imagen_portada_url?: string | null;
+          foto_url?: string | null;
           tiempo_preparacion_min?: number | null;
           tiempo_coccion_min?: number | null;
           porciones?: number;
@@ -187,6 +189,7 @@ export interface Database {
           titulo?: string;
           descripcion?: string | null;
           imagen_portada_url?: string | null;
+          foto_url?: string | null;
           tiempo_preparacion_min?: number | null;
           tiempo_coccion_min?: number | null;
           porciones?: number;

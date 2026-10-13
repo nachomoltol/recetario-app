@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Pencil,
@@ -14,6 +14,7 @@ import {
   ChefHat,
   Clock,
   Users,
+  Camera,
 } from 'lucide-react';
 import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe';
 import { RecipeWakeLock } from './RecipeWakeLock';
@@ -22,7 +23,9 @@ import { RecipeAdaptationSection } from './RecipeAdaptationSection';
 import { RecipeNutritionAccordion } from './RecipeNutritionAccordion';
 import { RecipeInteractiveSections } from './RecipeInteractiveSections';
 import { CookingDiarySection } from './CookingDiarySection';
-import { updateRecipeAction } from '@/app/actions/recipeUpdate';
+import { updateRecipeAction, updateRecipePhotoAction } from '@/app/actions/recipeUpdate';
+import { createClient } from '@/lib/supabase/client';
+import { compressImageClient } from '@/lib/utils/imageCompress';
 
 interface EditableIngredient {
   id: string;
@@ -66,6 +69,13 @@ export function RecipeDetailView({
   const [currentIngredientes, setCurrentIngredientes] = useState<RecetaIngrediente[]>(ingredientes);
   const [editIngredientes, setEditIngredientes] = useState<EditableIngredient[]>([]);
 
+  // Estados de fotografía
+  const [currentFotoUrl, setCurrentFotoUrl] = useState<string | null>(
+    receta.foto_url || receta.imagen_portada_url || null
+  );
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
   // Notificación toast
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -77,6 +87,75 @@ export function RecipeDetailView({
     }, 3500);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  // Captura y subida de fotografía del plato
+  const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingPhoto(true);
+
+    try {
+      // 1. Comprimir/redimensionar en cliente
+      const compressedBlob = await compressImageClient(file, 1600, 1600, 0.82);
+
+      // 2. Obtener usuario actual para nombre único (userId-timestamp.jpg)
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const userId = user?.id || 'usuario';
+      const timestamp = Date.now();
+      const fileName = `${userId}-${timestamp}.jpg`;
+      const filePath = `${fileName}`;
+
+      // 3. Subir imagen usando supabase.storage.from('recetas_fotos').upload(path, file)
+      const { error: uploadError } = await supabase.storage
+        .from('recetas_fotos')
+        .upload(filePath, compressedBlob, {
+          contentType: 'image/jpeg',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error('Error subiendo imagen a recetas_fotos:', uploadError);
+        setToast({ message: `Error al subir la imagen: ${uploadError.message}`, type: 'error' });
+        setIsUploadingPhoto(false);
+        return;
+      }
+
+      // 4. Obtener URL pública con getPublicUrl()
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('recetas_fotos').getPublicUrl(filePath);
+
+      // 5. Guardar URL en recetas.foto_url
+      const resUpdate = await updateRecipePhotoAction({
+        recetaId: receta.id,
+        fotoUrl: publicUrl,
+      });
+
+      if (resUpdate.error) {
+        setToast({ message: resUpdate.error, type: 'error' });
+        setIsUploadingPhoto(false);
+        return;
+      }
+
+      // 6. Actualizar vista local, coronar la receta y mostrar toast
+      setCurrentFotoUrl(publicUrl);
+      setToast({ message: 'Fotografía guardada con éxito', type: 'success' });
+      router.refresh();
+    } catch (err) {
+      console.error('Error al procesar la fotografía:', err);
+      setToast({ message: 'Error inesperado al procesar la fotografía', type: 'error' });
+    } finally {
+      setIsUploadingPhoto(false);
+      if (photoInputRef.current) {
+        photoInputRef.current.value = '';
+      }
+    }
+  };
 
   // Iniciar modo edición
   const handleStartEdit = () => {
@@ -227,6 +306,50 @@ export function RecipeDetailView({
         </div>
       )}
 
+      {/* Input de archivo invisible para Fotografía tu plato */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handlePhotoCapture}
+        className="hidden"
+        id="recipe-photo-camera-input"
+      />
+
+      {/* FOTOGRAFÍA CORONANDO LA RECETA */}
+      {currentFotoUrl && (
+        <div className="relative w-full h-64 sm:h-80 md:h-[420px] rounded-3xl overflow-hidden border border-[#e7dfd5] shadow-sm group bg-[#f4efe6]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={currentFotoUrl}
+            alt={currentTitulo}
+            className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+          <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6">
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={isUploadingPhoto}
+              className="min-h-[44px] px-4 py-2.5 rounded-2xl bg-white/95 hover:bg-white text-stone-900 text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-lg backdrop-blur-md transition cursor-pointer disabled:opacity-50"
+            >
+              {isUploadingPhoto ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-[#a86224]" />
+                  <span>Subiendo y procesando imagen...</span>
+                </>
+              ) : (
+                <>
+                  <Camera className="w-4 h-4 text-[#a86224]" />
+                  <span>Cambiar fotografía</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Cabecera Editorial Limpia */}
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -236,6 +359,27 @@ export function RecipeDetailView({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            {/* Botón Fotografía tu plato si no hay foto coronando aún */}
+            {!currentFotoUrl && (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={isUploadingPhoto}
+                className="min-h-[40px] px-3.5 py-1.5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+              >
+                {isUploadingPhoto ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                    <span>Subiendo y procesando imagen...</span>
+                  </>
+                ) : (
+                  <>
+                    <Camera className="w-3.5 h-3.5 text-white" />
+                    <span>Fotografía tu plato</span>
+                  </>
+                )}
+              </button>
+            )}
             {/* Botón de Modo Edición */}
             {isEditing ? (
               <div className="flex items-center gap-2">
@@ -315,6 +459,43 @@ export function RecipeDetailView({
           <p className="text-base sm:text-lg text-stone-700 font-light leading-relaxed max-w-2xl">
             {receta.descripcion}
           </p>
+        )}
+
+        {/* Banner para invitar a fotografiar si no hay foto todavía */}
+        {!currentFotoUrl && (
+          <div className="p-4 sm:p-5 rounded-3xl border border-dashed border-[#d8cbba] hover:border-[#a86224] bg-white transition flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center shrink-0">
+                <Camera className="w-5 h-5 text-[#a86224]" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-stone-900 font-serif-recipe">
+                  ¿Has cocinado este plato?
+                </h4>
+                <p className="text-xs text-stone-500">
+                  Haz una foto al resultado final para coronar esta receta y personalizar tu recetario.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={isUploadingPhoto}
+              className="min-h-[42px] px-4 py-2 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold transition flex items-center gap-2 shadow-xs cursor-pointer shrink-0 disabled:opacity-50"
+            >
+              {isUploadingPhoto ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                  <span>Subiendo y procesando imagen...</span>
+                </>
+              ) : (
+                <>
+                  <Camera className="w-3.5 h-3.5 text-white" />
+                  <span>Fotografía tu plato</span>
+                </>
+              )}
+            </button>
+          </div>
         )}
 
         {/* Motor de Adaptación Culinaria No Destructivo (Capa Clínica y de Nivel) */}
@@ -524,7 +705,12 @@ export function RecipeDetailView({
       )}
 
       {/* Sección: Diario Visual de Cocinados */}
-      <CookingDiarySection recetaId={receta.id} entradas={diarioEntries} />
+      <CookingDiarySection
+        recetaId={receta.id}
+        entradas={diarioEntries}
+        onTriggerPhotoUpload={() => photoInputRef.current?.click()}
+        isUploadingPhoto={isUploadingPhoto}
+      />
     </>
   );
 }
