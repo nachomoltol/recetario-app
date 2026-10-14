@@ -158,7 +158,17 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         ? perfilUsuario.raciones_defecto
         : porcionesNum;
 
-    const factorEscalado = porcionesNum > 0 ? porcionesFinales / porcionesNum : 1;
+    // Si Gemini ya procesó el factor de conversión matemático para las raciones objetivo,
+    // los ingredientes y los pasos ya vienen calculados y sincronizados
+    const escaladoYaAplicadoPorGemini = Boolean(
+      perfilUsuario?.raciones_defecto &&
+      perfilUsuario.raciones_defecto > 0 &&
+      (extracted.porciones === porcionesFinales || perfilUsuario.raciones_defecto === porcionesFinales)
+    );
+
+    const factorEscalado = !escaladoYaAplicadoPorGemini && porcionesNum > 0
+      ? porcionesFinales / porcionesNum
+      : 1;
 
     // 4. Inserción en 'recetas'
     const { data: nuevaReceta, error: errReceta } = await supabase

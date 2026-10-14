@@ -155,6 +155,7 @@ export interface Database {
           puntuacion: number;
           es_publica: boolean;
           etiquetas: string[];
+          receta_original?: Record<string, any> | null;
           created_at: string;
           updated_at: string;
         };
@@ -180,6 +181,7 @@ export interface Database {
           puntuacion?: number;
           es_publica?: boolean;
           etiquetas?: string[];
+          receta_original?: Record<string, any> | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -205,6 +207,7 @@ export interface Database {
           puntuacion?: number;
           es_publica?: boolean;
           etiquetas?: string[];
+          receta_original?: Record<string, any> | null;
           created_at?: string;
           updated_at?: string;
         };

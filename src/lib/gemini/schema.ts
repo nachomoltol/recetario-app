@@ -276,11 +276,12 @@ REGLAS SUPREMAS DE FIDELIDAD Y CONTRA ALUCINACIONES:
      * Para 'Sopa de pescado y marisco': asigna ["Sopas y Cremas", "Pescados y Mariscos", "Cena Ligera"].
      * Para 'Ensalada de garbanzos con atún': asigna ["Ensaladas y Entrantes", "Legumbres", "Pescados y Mariscos", "Atún", "Almuerzo Saludable"].
 
-8. INYECCIÓN OBLIGATORIA DE CANTIDADES EXACTAS EN EL RELATO DE LOS PASOS:
+8. INYECCIÓN OBLIGATORIA DE CANTIDADES EXACTAS Y FACTOR DE CONVERSIÓN MATEMÁTICO:
    - En el array de 'pasos' o 'preparación', NUNCA menciones los ingredientes de forma genérica. Debes inyectar la cantidad exacta en el texto del paso a paso.
    - Ejemplo obligatorio: En lugar de 'Añade el tomate', debes escribir 'Añade los 400g de tomate triturado'. En lugar de 'Vierte el aceite', escribe 'Vierte los 30ml de aceite de oliva'. En lugar de 'Agrega los huevos', escribe 'Agrega las 2 unidades de huevo'.
    - Haz esto con todos los ingredientes posibles para facilitar la cocina.
-   - SINCRONIZACIÓN MATEMÁTICA CON LAS PORCIONES: Las cantidades inyectadas en el relato de los pasos (preparación) DEBEN coincidir matemáticamente con las porciones objetivo (yield/raciones) que se están generando para la lista de ingredientes, NO con las cantidades originales mencionadas en el vídeo si estas difieren.
+   - Si las raciones originales del metraje difieren de las raciones objetivo del usuario, DEBES aplicar obligatoriamente un factor de conversión matemático a TODOS los ingredientes. Ejemplo: si la receta original es para 8 raciones y el objetivo del usuario es 4, debes dividir absolutamente todos los pesos, volúmenes y unidades entre 2. Plasma estas cantidades ya calculadas (escaladas) tanto en el array de 'ingredientes' como inyectadas en el relato de 'preparación'.
+   - Establece el campo 'porciones' exactamente con el número final de raciones ya escaladas.
 `.trim();
 
 export interface ExtractedIngredient {

@@ -23,6 +23,7 @@ interface RecipeInteractiveSectionsProps {
   ingredientes: RecetaIngrediente[];
   pasos: Paso[];
   defaultServings?: number;
+  onSubstitutePersist?: (oldName: string, newName: string | null) => void;
 }
 
 export function RecipeInteractiveSections({
@@ -33,6 +34,7 @@ export function RecipeInteractiveSections({
   ingredientes,
   pasos,
   defaultServings,
+  onSubstitutePersist,
 }: RecipeInteractiveSectionsProps) {
   const [servings, setServings] = useState(defaultServings || basePorciones || 2);
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
@@ -49,6 +51,7 @@ export function RecipeInteractiveSections({
       }
       return next;
     });
+    onSubstitutePersist?.(oldName, newName);
   };
 
   // Reactividad dinámica: sustitución instantánea en el texto de preparación

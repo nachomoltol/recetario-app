@@ -847,7 +847,8 @@ export async function extractRecipeWithGemini({
     }
 
     if (porcionesUsuario && porcionesUsuario > 0) {
-      contextPrompt += `PORCIONES POR DEFECTO DEL USUARIO: ${porcionesUsuario} raciones/porciones.\nIMPORTANTE: Estandariza la receta para rendir exactamente ${porcionesUsuario} raciones. Todas las cantidades numéricas de los ingredientes y las cantidades inyectadas en los pasos de preparación DEBEN calcularse matemáticamente para estas ${porcionesUsuario} raciones.\n\n`;
+      contextPrompt += `PORCIONES / RACIONES OBJETIVO DEL USUARIO: ${porcionesUsuario} raciones.
+DIRECTIVA ESTRICTA DE ESCALADO MATEMÁTICO: Si las raciones originales del metraje difieren de las raciones objetivo del usuario (${porcionesUsuario} raciones), DEBES aplicar obligatoriamente un factor de conversión matemático a TODOS los ingredientes. Ejemplo: si la receta original es para 8 raciones y el objetivo del usuario es 4, debes dividir absolutamente todos los pesos, volúmenes y unidades entre 2. Plasma estas cantidades ya calculadas (escaladas) tanto en el array de 'ingredientes' como inyectadas en el relato de 'preparación', y establece 'porciones': ${porcionesUsuario}.\n\n`;
     }
 
     // Validación previa para evitar alucinaciones: si no hay archivo multimodal, verificar que haya texto con sustancia culinaria real

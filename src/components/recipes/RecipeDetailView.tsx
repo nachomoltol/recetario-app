@@ -26,6 +26,8 @@ import { RecipeNutritionAccordion } from './RecipeNutritionAccordion';
 import { RecipeInteractiveSections } from './RecipeInteractiveSections';
 import { CookingDiarySection } from './CookingDiarySection';
 import { updateRecipeAction, updateRecipePhotoAction } from '@/app/actions/recipeUpdate';
+import { saveRecipeAdaptationAction, revertRecipeAdaptationAction } from '@/app/actions/saveRecipeAdaptationAction';
+import { replaceIngredientInText } from '@/lib/culinary/textReplacer';
 import { createClient } from '@/lib/supabase/client';
 import { compressImageClient } from '@/lib/utils/imageCompress';
 
@@ -72,9 +74,11 @@ export function RecipeDetailView({
   const [currentPasos, setCurrentPasos] = useState<Paso[]>(pasos);
   const [editIngredientes, setEditIngredientes] = useState<EditableIngredient[]>([]);
 
-  // Estado de adaptación in-line a perfil
-  const [isAdapted, setIsAdapted] = useState(false);
-  const [adaptationSummary, setAdaptationSummary] = useState<string | null>(null);
+  // Estado de adaptación in-line a perfil: detecta persistencia previa en Supabase tras F5
+  const [isAdapted, setIsAdapted] = useState(Boolean(receta.receta_original));
+  const [adaptationSummary, setAdaptationSummary] = useState<string | null>(
+    receta.receta_original ? 'Receta adaptada y sincronizada con tu perfil' : null
+  );
 
   // Estados de fotografía
   const [currentFotoUrl, setCurrentFotoUrl] = useState<string | null>(
@@ -105,7 +109,7 @@ export function RecipeDetailView({
     }
   }, [receta?.id]);
 
-  const handleApplyAdaptation = (data: AdaptacionCulinaria) => {
+  const handleApplyAdaptation = async (data: AdaptacionCulinaria) => {
     const adaptedIngs: RecetaIngrediente[] = data.ingredientes.map((ai, index) => {
       const orig = ingredientes[index];
       return {
@@ -150,14 +154,144 @@ export function RecipeDetailView({
     setCurrentPasos(adaptedP);
     setIsAdapted(true);
     setAdaptationSummary(data.resumen_adaptacion);
+
+    // Persistir adaptación en Supabase (sobrescribe JSON con respaldo en receta_original)
+    try {
+      const res = await saveRecipeAdaptationAction({
+        recetaId: receta.id,
+        titulo: data.titulo || currentTitulo,
+        descripcion: data.resumen_adaptacion || receta.descripcion,
+        ingredientes: adaptedIngs.map((i, idx) => ({
+          id: i.id,
+          nombre_limpio: i.nombre_limpio,
+          nombre_crudo: i.nombre_crudo,
+          cantidad: i.cantidad,
+          unidad: i.unidad,
+          gramos_calculados: i.gramos_calculados,
+          pasillo_supermercado: i.pasillo_supermercado,
+          notas: i.notas,
+          orden: idx + 1,
+        })),
+        pasos: adaptedP.map((p, idx) => ({
+          id: p.id,
+          orden: p.orden || idx + 1,
+          instruccion: p.instruccion,
+          tiempo_estimado_min: p.tiempo_estimado_min,
+          temperatura_celsius: p.temperatura_celsius,
+          consejo_pro: p.consejo_pro,
+        })),
+      });
+
+      if (res.success) {
+        setToast({ message: 'Adaptación guardada en tu recetario', type: 'success' });
+      } else if (res.error) {
+        setToast({ message: res.error, type: 'error' });
+      }
+    } catch (e) {
+      console.error('Error guardando adaptación en Supabase:', e);
+      setToast({ message: 'Error persistiendo la adaptación en la base de datos', type: 'error' });
+    }
   };
 
-  const handleRevertAdaptation = () => {
-    setCurrentTitulo(receta.titulo);
-    setCurrentIngredientes(ingredientes);
-    setCurrentPasos(pasos);
-    setIsAdapted(false);
-    setAdaptationSummary(null);
+  const handleRevertAdaptation = async () => {
+    try {
+      const res = await revertRecipeAdaptationAction(receta.id);
+      if (res.success && res.originalData) {
+        setCurrentTitulo(res.originalData.titulo);
+        setCurrentIngredientes(res.originalData.ingredientes);
+        setCurrentPasos(res.originalData.pasos);
+        setIsAdapted(false);
+        setAdaptationSummary(null);
+        setToast({ message: 'Receta restaurada a su versión original', type: 'success' });
+      } else {
+        // Fallback a los props originales
+        setCurrentTitulo(receta.titulo);
+        setCurrentIngredientes(ingredientes);
+        setCurrentPasos(pasos);
+        setIsAdapted(false);
+        setAdaptationSummary(null);
+        if (res.error) {
+          setToast({ message: res.error, type: 'error' });
+        }
+      }
+    } catch (e) {
+      console.error('Error al revertir receta en Supabase:', e);
+      setCurrentTitulo(receta.titulo);
+      setCurrentIngredientes(ingredientes);
+      setCurrentPasos(pasos);
+      setIsAdapted(false);
+      setAdaptationSummary(null);
+    }
+  };
+
+  // Persistir sustitución de un ingrediente y actualizar pasos reactivos en Supabase
+  const handleSubstitutePersist = async (oldName: string, newName: string | null) => {
+    const updatedIngs = currentIngredientes.map((ing) => {
+      const ingName = ing.nombre_limpio || ing.nombre_crudo;
+      if (ingName.toLowerCase() === oldName.toLowerCase()) {
+        if (!newName) {
+          return {
+            ...ing,
+            nombre_limpio: ing.nombre_crudo || ing.nombre_limpio,
+            notas: null,
+          };
+        } else {
+          return {
+            ...ing,
+            nombre_limpio: newName,
+            notas: `Sustituido por ${newName}`,
+          };
+        }
+      }
+      return ing;
+    });
+
+    const updatedPasos = currentPasos.map((paso) => {
+      if (!newName) return paso;
+      return {
+        ...paso,
+        instruccion: replaceIngredientInText(paso.instruccion, oldName, newName),
+        consejo_pro: paso.consejo_pro ? replaceIngredientInText(paso.consejo_pro, oldName, newName) : null,
+      };
+    });
+
+    try {
+      const res = await saveRecipeAdaptationAction({
+        recetaId: receta.id,
+        titulo: currentTitulo,
+        ingredientes: updatedIngs.map((i, idx) => ({
+          id: i.id,
+          nombre_limpio: i.nombre_limpio,
+          nombre_crudo: i.nombre_crudo,
+          cantidad: i.cantidad,
+          unidad: i.unidad,
+          gramos_calculados: i.gramos_calculados,
+          pasillo_supermercado: i.pasillo_supermercado,
+          notas: i.notas,
+          orden: idx + 1,
+        })),
+        pasos: updatedPasos.map((p, idx) => ({
+          id: p.id,
+          orden: p.orden || idx + 1,
+          instruccion: p.instruccion,
+          tiempo_estimado_min: p.tiempo_estimado_min,
+          temperatura_celsius: p.temperatura_celsius,
+          consejo_pro: p.consejo_pro,
+        })),
+      });
+
+      if (res.success) {
+        setCurrentIngredientes(updatedIngs);
+        setCurrentPasos(updatedPasos);
+        setIsAdapted(true);
+        setToast({
+          message: newName ? `Sustitución guardada: ${newName}` : 'Ingrediente restaurado y guardado',
+          type: 'success',
+        });
+      }
+    } catch (e) {
+      console.error('Error persistiendo sustitución en Supabase:', e);
+    }
   };
 
   // Captura y subida de fotografía del plato
@@ -702,6 +836,7 @@ export function RecipeDetailView({
           ingredientes={currentIngredientes}
           pasos={currentPasos}
           defaultServings={userRacionesDefecto}
+          onSubstitutePersist={handleSubstitutePersist}
         />
       )}
 
