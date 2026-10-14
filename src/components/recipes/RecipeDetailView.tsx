@@ -74,7 +74,8 @@ export function RecipeDetailView({
     receta.foto_url || receta.imagen_portada_url || null
   );
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   // Notificación toast
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -151,8 +152,11 @@ export function RecipeDetailView({
       setToast({ message: 'Error inesperado al procesar la fotografía', type: 'error' });
     } finally {
       setIsUploadingPhoto(false);
-      if (photoInputRef.current) {
-        photoInputRef.current.value = '';
+      if (cameraInputRef.current) {
+        cameraInputRef.current.value = '';
+      }
+      if (galleryInputRef.current) {
+        galleryInputRef.current.value = '';
       }
     }
   };
@@ -306,9 +310,9 @@ export function RecipeDetailView({
         </div>
       )}
 
-      {/* Input de archivo invisible para Fotografía tu plato */}
+      {/* Inputs de archivo invisibles para cámara y galería */}
       <input
-        ref={photoInputRef}
+        ref={cameraInputRef}
         type="file"
         accept="image/*"
         capture="environment"
@@ -316,8 +320,16 @@ export function RecipeDetailView({
         className="hidden"
         id="recipe-photo-camera-input"
       />
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handlePhotoCapture}
+        className="hidden"
+        id="recipe-photo-gallery-input"
+      />
 
-      {/* FOTOGRAFÍA CORONANDO LA RECETA */}
+      {/* FOTOGRAFÍA CORONANDO LA RECETA (solo si existe foto_url) */}
       {currentFotoUrl && (
         <div className="relative w-full h-64 sm:h-80 md:h-[420px] rounded-3xl overflow-hidden border border-[#e7dfd5] shadow-sm group bg-[#f4efe6]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -330,7 +342,7 @@ export function RecipeDetailView({
           <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6">
             <button
               type="button"
-              onClick={() => photoInputRef.current?.click()}
+              onClick={() => cameraInputRef.current?.click()}
               disabled={isUploadingPhoto}
               className="min-h-[44px] px-4 py-2.5 rounded-2xl bg-white/95 hover:bg-white text-stone-900 text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-lg backdrop-blur-md transition cursor-pointer disabled:opacity-50"
             >
@@ -359,27 +371,6 @@ export function RecipeDetailView({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-            {/* Botón Fotografía tu plato si no hay foto coronando aún */}
-            {!currentFotoUrl && (
-              <button
-                type="button"
-                onClick={() => photoInputRef.current?.click()}
-                disabled={isUploadingPhoto}
-                className="min-h-[40px] px-3.5 py-1.5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
-              >
-                {isUploadingPhoto ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                    <span>Subiendo y procesando imagen...</span>
-                  </>
-                ) : (
-                  <>
-                    <Camera className="w-3.5 h-3.5 text-white" />
-                    <span>Fotografía tu plato</span>
-                  </>
-                )}
-              </button>
-            )}
             {/* Botón de Modo Edición */}
             {isEditing ? (
               <div className="flex items-center gap-2">
@@ -459,43 +450,6 @@ export function RecipeDetailView({
           <p className="text-base sm:text-lg text-stone-700 font-light leading-relaxed max-w-2xl">
             {receta.descripcion}
           </p>
-        )}
-
-        {/* Banner para invitar a fotografiar si no hay foto todavía */}
-        {!currentFotoUrl && (
-          <div className="p-4 sm:p-5 rounded-3xl border border-dashed border-[#d8cbba] hover:border-[#a86224] bg-white transition flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center shrink-0">
-                <Camera className="w-5 h-5 text-[#a86224]" />
-              </div>
-              <div>
-                <h4 className="text-xs sm:text-sm font-bold text-stone-900 font-serif-recipe">
-                  ¿Has cocinado este plato?
-                </h4>
-                <p className="text-xs text-stone-500">
-                  Haz una foto al resultado final para coronar esta receta y personalizar tu recetario.
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => photoInputRef.current?.click()}
-              disabled={isUploadingPhoto}
-              className="min-h-[42px] px-4 py-2 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold transition flex items-center gap-2 shadow-xs cursor-pointer shrink-0 disabled:opacity-50"
-            >
-              {isUploadingPhoto ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                  <span>Subiendo y procesando imagen...</span>
-                </>
-              ) : (
-                <>
-                  <Camera className="w-3.5 h-3.5 text-white" />
-                  <span>Fotografía tu plato</span>
-                </>
-              )}
-            </button>
-          </div>
         )}
 
         {/* Motor de Adaptación Culinaria No Destructivo (Capa Clínica y de Nivel) */}
@@ -704,11 +658,12 @@ export function RecipeDetailView({
         />
       )}
 
-      {/* Sección: Diario Visual de Cocinados */}
+      {/* Sección: Fotografía del plato, valoración y notas de la receta */}
       <CookingDiarySection
         recetaId={receta.id}
         entradas={diarioEntries}
-        onTriggerPhotoUpload={() => photoInputRef.current?.click()}
+        onTriggerCamera={() => cameraInputRef.current?.click()}
+        onTriggerGallery={() => galleryInputRef.current?.click()}
         isUploadingPhoto={isUploadingPhoto}
       />
     </>

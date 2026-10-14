@@ -1,21 +1,23 @@
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
-import { Camera, Star, Clock, Plus, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { Camera, Image as ImageIcon, Star, Clock, Plus, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { addCookEntryAction } from '@/app/actions/diary';
 import { DiarioCocinados } from '@/types/recipe';
 
 interface CookingDiarySectionProps {
   recetaId: string;
   entradas: DiarioCocinados[];
-  onTriggerPhotoUpload?: () => void;
+  onTriggerCamera?: () => void;
+  onTriggerGallery?: () => void;
   isUploadingPhoto?: boolean;
 }
 
 export function CookingDiarySection({
   recetaId,
   entradas,
-  onTriggerPhotoUpload,
+  onTriggerCamera,
+  onTriggerGallery,
   isUploadingPhoto,
 }: CookingDiarySectionProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -53,7 +55,7 @@ export function CookingDiarySection({
       if (res.error) {
         setError(res.error);
       } else if (res.success) {
-        setSuccess('¡Fotografía y notas guardadas en tu diario culinario!');
+        setSuccess('¡Valoración y notas guardadas para esta receta!');
         setPreviewUrl(null);
         formRef.current?.reset();
         setTimeout(() => {
@@ -66,56 +68,85 @@ export function CookingDiarySection({
 
   return (
     <section className="space-y-6 pt-8 border-t border-[#e7dfd5]">
-      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-        {onTriggerPhotoUpload && (
-          <button
-            type="button"
-            onClick={onTriggerPhotoUpload}
-            disabled={isUploadingPhoto}
-            className="min-h-[48px] px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-white bg-[#a86224] hover:bg-[#8e511c] shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-          >
-            {isUploadingPhoto ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-white" />
-                <span>Subiendo y procesando imagen...</span>
-              </>
-            ) : (
-              <>
-                <Camera className="w-4 h-4 text-white" />
-                <span>Fotografía tu plato</span>
-              </>
-            )}
-          </button>
-        )}
+      {/* Botones de acción al final de la receta: Fotografía (Cámara / Galería) y Valoración/Notas */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base sm:text-lg font-bold font-serif-recipe text-stone-900">
+              ¿Has cocinado este plato?
+            </h3>
+            <p className="text-xs sm:text-sm text-stone-500">
+              Fotografía tu resultado o añade tus valoraciones y notas personales
+            </p>
+          </div>
 
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className="min-h-[48px] px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-stone-700 bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-[#a86224] transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-        >
-          {isOpen ? (
-            <>
-              <X className="w-4 h-4" />
-              <span>Cerrar notas</span>
-            </>
-          ) : (
-            <>
-              <Star className="w-4 h-4 text-[#f59e0b]" />
-              <span>Añadir notas y valoración</span>
-            </>
-          )}
-        </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Botón Fotografía con Cámara (capture="environment") */}
+            {onTriggerCamera && (
+              <button
+                type="button"
+                onClick={onTriggerCamera}
+                disabled={isUploadingPhoto}
+                className="min-h-[44px] px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-white bg-[#a86224] hover:bg-[#8e511c] shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isUploadingPhoto ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Subiendo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Camera className="w-4 h-4 text-white" />
+                    <span>Hacer foto (Cámara)</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Botón Fotografía desde Galería */}
+            {onTriggerGallery && (
+              <button
+                type="button"
+                onClick={onTriggerGallery}
+                disabled={isUploadingPhoto}
+                className="min-h-[44px] px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-stone-700 bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-[#a86224] shadow-2xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <ImageIcon className="w-4 h-4 text-[#a86224]" />
+                <span>Galería</span>
+              </button>
+            )}
+
+            {/* Botón Añadir Valoración y Notas */}
+            <button
+              type="button"
+              onClick={() => setIsOpen(!isOpen)}
+              className="min-h-[44px] px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-stone-700 bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-[#a86224] transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+            >
+              {isOpen ? (
+                <>
+                  <X className="w-4 h-4" />
+                  <span>Cerrar notas</span>
+                </>
+              ) : (
+                <>
+                  <Star className="w-4 h-4 text-[#f59e0b]" />
+                  <span>Valoración y notas</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Formulario de subida de preparación */}
+      {/* Formulario de valoración y notas */}
       {isOpen && (
         <div className="p-6 sm:p-8 rounded-3xl border border-[#e7dfd5] bg-white shadow-xs space-y-6 animate-in fade-in duration-200">
           <div className="border-b border-[#e7dfd5] pb-3">
             <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
-              Documentar Resultado Real
+              Valoración y Notas de la Receta
             </h3>
             <p className="text-xs sm:text-sm text-stone-500">
-              Sube la foto de tu plato para crear tu historial gastronómico personal
+              Registra tu puntuación, notas de cata y modificaciones para esta receta
             </p>
           </div>
 
@@ -254,11 +285,11 @@ export function CookingDiarySection({
               {isPending ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin text-white" />
-                  <span>Subiendo fotografía...</span>
+                  <span>Guardando...</span>
                 </>
               ) : (
                 <>
-                  <span>Guardar en Mi Diario</span>
+                  <span>Guardar valoración</span>
                 </>
               )}
             </button>
@@ -266,9 +297,13 @@ export function CookingDiarySection({
         </div>
       )}
 
-      {/* Galería de cocinados existentes (solo si hay fotos) */}
+      {/* Historial de valoraciones y preparaciones anteriores de esta receta */}
       {entradas.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+        <div className="space-y-4 pt-4">
+          <h4 className="text-base font-bold font-serif-recipe text-stone-900">
+            Historial de valoraciones y preparaciones de esta receta
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {entradas.map((entry) => (
             <div
               key={entry.id}
@@ -330,6 +365,7 @@ export function CookingDiarySection({
               </div>
             </div>
           ))}
+          </div>
         </div>
       )}
     </section>

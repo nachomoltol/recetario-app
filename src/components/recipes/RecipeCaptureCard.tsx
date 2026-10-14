@@ -48,7 +48,7 @@ const LOADING_STAGES: LoadingStage[] = [
   {
     seconds: 0,
     title: 'Conectando con la plataforma',
-    description: 'Verificando enlace y resolviendo redirecciones de TikTok, Reels o YouTube...',
+    description: 'Verificando enlace y resolviendo redirecciones de TikTok, Reels o Facebook...',
     percent: 15,
   },
   {
@@ -294,7 +294,7 @@ export function RecipeCaptureCard() {
               Captura Rápida de Recetas
             </h2>
             <p className="text-xs sm:text-sm text-stone-500">
-              Pega enlaces de TikTok, Instagram Reels, YouTube o notas
+              Pega enlaces de TikTok, Instagram Reels, Facebook o notas
             </p>
           </div>
         </div>
@@ -390,17 +390,13 @@ export function RecipeCaptureCard() {
             </p>
           </div>
 
-          {/* Aviso informativo para vídeos largos de YouTube */}
-          {elapsedSeconds >= 12 && (
-            <div className="p-3 rounded-xl bg-white border border-[#e7dfd5] text-[11px] sm:text-xs text-stone-600 flex items-start gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-[#a86224] shrink-0 mt-0.5" />
-              <span>
-                Los vídeos largos de YouTube y recetas complejas requieren entre 15 y 30 segundos
-                mientras la IA visualiza el metraje y estructura los pasos. Por favor, mantén la app
-                abierta.
-              </span>
-            </div>
-          )}
+          {/* Aviso informativo de espera para la IA */}
+          <div className="p-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs text-stone-600 flex items-start gap-2.5 shadow-2xs">
+            <Sparkles className="w-4 h-4 text-[#a86224] shrink-0 mt-0.5" />
+            <span className="leading-relaxed">
+              Los vídeos largos requieren tiempo de generación mientras la IA visualiza el metraje y estructura los pasos. Por favor, mantén la app encendida.
+            </span>
+          </div>
         </div>
       )}
 
@@ -451,7 +447,7 @@ export function RecipeCaptureCard() {
                   autoFocus={false}
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://vm.tiktok.com/... o enlace de YouTube / Reels"
+                  placeholder="https://vm.tiktok.com/... o enlace de Facebook / Reels"
                   disabled={isPending}
                   className="w-full min-h-[52px] pl-4 pr-12 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition shadow-2xs disabled:opacity-60"
                 />
@@ -600,7 +596,7 @@ export function RecipeCaptureCard() {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-[#f4efe6] text-xs">
         <span className="text-stone-500 text-[11px] sm:text-xs">
-          💡 En <strong>Android</strong> comparte directo desde TikTok, Reels o YouTube hacia Recetario
+          💡 En <strong>Android</strong> comparte directo desde TikTok, Reels o Facebook hacia Recetario
         </span>
         <button
           type="button"
