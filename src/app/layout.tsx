@@ -3,6 +3,7 @@ import { Playfair_Display, Plus_Jakarta_Sans } from 'next/font/google';
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
 import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt';
 import { AuthInitializer } from '@/components/auth/AuthInitializer';
+import { BottomNavigation } from '@/components/layout/BottomNavigation';
 import './globals.css';
 
 const serifFont = Playfair_Display({
@@ -62,11 +63,12 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#faf7f2" />
       </head>
-      <body className="min-h-screen bg-[#faf7f2] text-stone-900 font-sans antialiased selection:bg-amber-200 selection:text-amber-950">
+      <body className="min-h-screen bg-[#faf7f2] text-stone-900 font-sans antialiased selection:bg-amber-200 selection:text-amber-950 pb-20 md:pb-0">
         <ServiceWorkerRegister />
         <PwaInstallPrompt />
         <AuthInitializer />
         {children}
+        <BottomNavigation />
       </body>
     </html>
   );

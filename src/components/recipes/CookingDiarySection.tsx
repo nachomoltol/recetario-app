@@ -55,13 +55,11 @@ export function CookingDiarySection({
       if (res.error) {
         setError(res.error);
       } else if (res.success) {
-        setSuccess('¡Valoración y notas guardadas para esta receta!');
         setPreviewUrl(null);
         formRef.current?.reset();
-        setTimeout(() => {
-          setIsOpen(false);
-          setSuccess(null);
-        }, 1500);
+        setIsOpen(false);
+        setError(null);
+        setSuccess(null);
       }
     });
   };
@@ -227,9 +225,6 @@ export function CookingDiarySection({
                     />
                   </button>
                 ))}
-                <span className="text-xs sm:text-sm text-stone-600 ml-2 font-medium">
-                  {calificacion} de 5 estrellas
-                </span>
               </div>
             </div>
 
