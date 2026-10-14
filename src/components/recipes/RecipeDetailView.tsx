@@ -467,55 +467,27 @@ export function RecipeDetailView({
           userProfile={userProfile}
         />
 
-        {/* Tiempos y Rendimiento en Modo Cocina */}
-        <div className="pt-5 flex flex-wrap items-center gap-6 sm:gap-10 text-xs sm:text-sm text-stone-600 border-t border-[#e7dfd5]">
-          <div className="flex items-center gap-2.5">
-            <Clock className="w-5 h-5 text-[#a86224]" />
+        {/* Tiempos y Rendimiento en Modo Cocina: Siempre en una sola línea horizontal */}
+        <div className="pt-5 flex flex-row items-center justify-start gap-8 sm:gap-12 text-xs sm:text-sm text-stone-600 border-t border-[#e7dfd5]">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Clock className="w-5 h-5 text-[#a86224] shrink-0" />
             <div>
-              <span className="text-[10px] uppercase text-stone-500 font-medium block">
+              <span className="text-[10px] uppercase text-stone-500 font-medium block leading-none">
                 Tiempo Total
               </span>
-              <span className="text-base font-bold text-stone-900">
+              <span className="text-base font-bold text-stone-900 mt-0.5 block whitespace-nowrap">
                 {receta.tiempo_total_min || 15} min
               </span>
             </div>
           </div>
 
-          {receta.tiempo_preparacion_min ? (
-            <div className="flex items-center gap-2.5">
-              <Clock className="w-5 h-5 text-stone-400" />
-              <div>
-                <span className="text-[10px] uppercase text-stone-500 font-medium block">
-                  Preparación
-                </span>
-                <span className="text-base font-semibold text-stone-800">
-                  {receta.tiempo_preparacion_min} min
-                </span>
-              </div>
-            </div>
-          ) : null}
-
-          {receta.tiempo_coccion_min ? (
-            <div className="flex items-center gap-2.5">
-              <Clock className="w-5 h-5 text-stone-400" />
-              <div>
-                <span className="text-[10px] uppercase text-stone-500 font-medium block">
-                  Cocción
-                </span>
-                <span className="text-base font-semibold text-stone-800">
-                  {receta.tiempo_coccion_min} min
-                </span>
-              </div>
-            </div>
-          ) : null}
-
-          <div className="flex items-center gap-2.5">
-            <Users className="w-5 h-5 text-[#a86224]" />
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Users className="w-5 h-5 text-[#a86224] shrink-0" />
             <div>
-              <span className="text-[10px] uppercase text-stone-500 font-medium block">
+              <span className="text-[10px] uppercase text-stone-500 font-medium block leading-none">
                 Base Receta
               </span>
-              <span className="text-base font-bold text-stone-900">
+              <span className="text-base font-bold text-stone-900 mt-0.5 block whitespace-nowrap">
                 {receta.porciones} porciones
               </span>
             </div>

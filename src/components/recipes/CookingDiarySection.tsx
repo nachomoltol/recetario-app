@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useTransition, useRef } from 'react';
+import { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera, Image as ImageIcon, Star, Clock, Plus, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
-import { addCookEntryAction } from '@/app/actions/diary';
+import { Camera, Image as ImageIcon, Star, Clock, Plus, Loader2, CheckCircle2, AlertCircle, X, Trash2 } from 'lucide-react';
+import { addCookEntryAction, deleteDiaryEntryAction } from '@/app/actions/diary';
 import { DiarioCocinados } from '@/types/recipe';
 
 interface CookingDiarySectionProps {
@@ -32,6 +32,12 @@ export function CookingDiarySection({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [localEntries, setLocalEntries] = useState<DiarioCocinados[]>(entradas);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalEntries(entradas);
+  }, [entradas]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -74,6 +80,26 @@ export function CookingDiarySection({
         router.refresh();
       }
     });
+  };
+
+  const handleDeleteEntry = async (entryId: string) => {
+    if (!window.confirm('¿Seguro que deseas eliminar esta valoración y sus notas?')) {
+      return;
+    }
+
+    setDeletingId(entryId);
+    // Actualización optimista inmediata
+    setLocalEntries((prev) => prev.filter((item) => item.id !== entryId));
+
+    const res = await deleteDiaryEntryAction(entryId, recetaId);
+    setDeletingId(null);
+
+    if (res.error) {
+      setError(res.error);
+      router.refresh();
+    } else {
+      router.refresh();
+    }
   };
 
   return (
@@ -310,17 +336,32 @@ export function CookingDiarySection({
       )}
 
       {/* Historial de valoraciones y preparaciones anteriores de esta receta */}
-      {entradas.length > 0 && (
+      {localEntries.length > 0 && (
         <div className="space-y-4 pt-4">
           <h4 className="text-base font-bold font-serif-recipe text-stone-900">
             Historial de valoraciones y preparaciones de esta receta
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {entradas.map((entry) => (
+          {localEntries.map((entry) => (
             <div
               key={entry.id}
-              className="rounded-3xl border border-[#e7dfd5] bg-white overflow-hidden shadow-2xs flex flex-col group"
+              className="rounded-3xl border border-[#e7dfd5] bg-white overflow-hidden shadow-2xs flex flex-col group relative"
             >
+              {/* Botón discreto de eliminación en la esquina superior derecha */}
+              <button
+                type="button"
+                onClick={() => handleDeleteEntry(entry.id)}
+                disabled={deletingId === entry.id}
+                title="Eliminar valoración"
+                className="absolute top-3.5 right-3.5 z-10 w-8 h-8 rounded-xl bg-white/90 hover:bg-red-50 text-stone-400 hover:text-red-600 border border-[#e7dfd5] shadow-2xs backdrop-blur-xs flex items-center justify-center transition cursor-pointer disabled:opacity-50"
+              >
+                {deletingId === entry.id ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-red-500" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+              </button>
+
               {entry.foto_resultado_url && (
                 <div className="w-full h-52 relative overflow-hidden culinary-photo bg-[#f4efe6]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -334,7 +375,7 @@ export function CookingDiarySection({
 
               <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pr-8">
                     <div className="flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star

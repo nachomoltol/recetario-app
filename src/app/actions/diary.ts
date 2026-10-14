@@ -108,3 +108,75 @@ export async function addCookEntryAction(formData: FormData): Promise<DiaryActio
     };
   }
 }
+
+export async function deleteDiaryEntryAction(
+  entryId: string,
+  recetaId?: string
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Debes iniciar sesión para realizar esta acción.' };
+  }
+
+  if (!entryId) {
+    return { error: 'ID de valoración no válido.' };
+  }
+
+  try {
+    // 1. Obtener la entrada para verificar pertenencia y obtener datos
+    const { data: entry, error: fetchError } = await supabase
+      .from('diario_cocinados')
+      .select('id, receta_id, foto_resultado_url')
+      .eq('id', entryId)
+      .eq('usuario_id', user.id)
+      .single();
+
+    if (fetchError || !entry) {
+      return { error: 'No se encontró la valoración o no tienes permisos para eliminarla.' };
+    }
+
+    // 2. Si tenía foto asociada en cooking-diary, eliminarla del Storage
+    if (entry.foto_resultado_url) {
+      try {
+        const urlParts = entry.foto_resultado_url.split('/cooking-diary/');
+        if (urlParts.length > 1) {
+          const filePath = decodeURIComponent(urlParts[1]);
+          await supabase.storage.from('cooking-diary').remove([filePath]);
+        }
+      } catch (storageErr) {
+        console.warn('Aviso: no se pudo borrar la foto de Storage (no bloqueante):', storageErr);
+      }
+    }
+
+    // 3. Eliminar de la base de datos
+    const { error: deleteError } = await supabase
+      .from('diario_cocinados')
+      .delete()
+      .eq('id', entryId)
+      .eq('usuario_id', user.id);
+
+    if (deleteError) {
+      console.error('Error eliminando valoración de diario_cocinados:', deleteError);
+      return { error: `Error eliminando la valoración: ${deleteError.message}` };
+    }
+
+    const targetRecetaId = recetaId || entry.receta_id;
+    if (targetRecetaId) {
+      revalidatePath(`/recipes/${targetRecetaId}`);
+    }
+    revalidatePath('/recipes');
+    revalidatePath('/recipes/collection');
+
+    return { success: true };
+  } catch (err) {
+    console.error('Error en deleteDiaryEntryAction:', err);
+    return {
+      error: err instanceof Error ? err.message : 'Error inesperado al eliminar la valoración.',
+    };
+  }
+}
+
