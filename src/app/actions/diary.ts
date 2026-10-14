@@ -34,42 +34,41 @@ export async function addCookEntryAction(formData: FormData): Promise<DiaryActio
     return { error: 'ID de receta inválido.' };
   }
 
-  if (!fotoFile || fotoFile.size === 0) {
-    return { error: 'Por favor, sube una fotografía del plato terminado.' };
-  }
-
-  // 1. Validar tamaño (máximo 10MB)
-  if (fotoFile.size > 10 * 1024 * 1024) {
-    return { error: 'La fotografía no debe superar los 10MB.' };
-  }
+  let fotoResultadoUrl: string | null = null;
 
   try {
-    // 2. Subir imagen a Supabase Storage (bucket: cooking-diary)
-    const fileExt = fotoFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `${user.id}/${recetaId}_${Date.now()}.${fileExt}`;
-    const arrayBuffer = await fotoFile.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    // 1. Si se adjunta fotografía, validar tamaño (máximo 10MB) y subir a Supabase Storage
+    if (fotoFile && fotoFile.size > 0 && fotoFile.name) {
+      if (fotoFile.size > 10 * 1024 * 1024) {
+        return { error: 'La fotografía no debe superar los 10MB.' };
+      }
 
-    const { error: uploadError } = await supabase.storage
-      .from('cooking-diary')
-      .upload(fileName, buffer, {
-        contentType: fotoFile.type || 'image/jpeg',
-        upsert: false,
-      });
+      const fileExt = fotoFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `${user.id}/${recetaId}_${Date.now()}.${fileExt}`;
+      const arrayBuffer = await fotoFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
-    if (uploadError) {
-      console.error('Error subiendo imagen al storage:', uploadError);
-      return { error: `Error subiendo la foto: ${uploadError.message}` };
+      const { error: uploadError } = await supabase.storage
+        .from('cooking-diary')
+        .upload(fileName, buffer, {
+          contentType: fotoFile.type || 'image/jpeg',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Error subiendo imagen al storage:', uploadError);
+        return { error: `Error subiendo la foto: ${uploadError.message}` };
+      }
+
+      // Obtener URL pública
+      const { data: publicUrlData } = supabase.storage
+        .from('cooking-diary')
+        .getPublicUrl(fileName);
+
+      fotoResultadoUrl = publicUrlData.publicUrl;
     }
 
-    // 3. Obtener URL pública
-    const { data: publicUrlData } = supabase.storage
-      .from('cooking-diary')
-      .getPublicUrl(fileName);
-
-    const fotoResultadoUrl = publicUrlData.publicUrl;
-
-    // 4. Insertar en la tabla relacional 'diario_cocinados'
+    // 2. Insertar en la tabla relacional 'diario_cocinados'
     const { data: newEntry, error: insertError } = await supabase
       .from('diario_cocinados')
       .insert({
@@ -89,7 +88,18 @@ export async function addCookEntryAction(formData: FormData): Promise<DiaryActio
       return { error: `Error guardando en el diario: ${insertError.message}` };
     }
 
+    // 3. Si se valoró con estrellas, sincronizar puntuación en la receta
+    if (calificacion) {
+      await supabase
+        .from('recetas')
+        .update({ puntuacion: calificacion })
+        .eq('id', recetaId)
+        .eq('usuario_id', user.id);
+    }
+
     revalidatePath(`/recipes/${recetaId}`);
+    revalidatePath('/recipes');
+    revalidatePath('/recipes/collection');
     return { success: true, entryId: newEntry.id };
   } catch (err) {
     console.error('Error procesando entrada del diario:', err);

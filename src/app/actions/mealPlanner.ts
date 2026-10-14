@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { PlanComida, Receta, RecetaIngrediente } from '@/types/recipe';
 import { classifyIngredientAisle } from '@/lib/culinary/aisles';
 
-export type MealSlot = 'desayuno' | 'almuerzo' | 'cena' | 'snack';
+export type MealSlot = 'desayuno' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre';
 
 export interface PlannedSlotItem extends PlanComida {
   receta?: Pick<Receta, 'id' | 'titulo' | 'tiempo_total_min' | 'porciones' | 'dificultad'> | null;

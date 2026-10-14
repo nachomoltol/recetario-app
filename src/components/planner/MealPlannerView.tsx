@@ -42,9 +42,10 @@ interface MealPlannerViewProps {
 
 const SLOTS_CONFIG: { slot: MealSlot; label: string; icon: typeof Sun }[] = [
   { slot: 'desayuno', label: 'Desayuno', icon: Sun },
-  { slot: 'almuerzo', label: 'Almuerzo', icon: Soup },
+  { slot: 'almuerzo_1', label: 'Almuerzo (1er plato)', icon: Soup },
+  { slot: 'almuerzo_2', label: 'Almuerzo (2do plato)', icon: Utensils },
   { slot: 'cena', label: 'Cena', icon: Moon },
-  { slot: 'snack', label: 'Snack', icon: Apple },
+  { slot: 'snack_postre', label: 'Snack / Postre', icon: Apple },
 ];
 
 function getMonday(d: Date): Date {
@@ -75,7 +76,13 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
   // Estados de filtros interactivos para exportación de compra
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
-  const [selectedSlots, setSelectedSlots] = useState<MealSlot[]>(['desayuno', 'almuerzo', 'cena', 'snack']);
+  const [selectedSlots, setSelectedSlots] = useState<MealSlot[]>([
+    'desayuno',
+    'almuerzo_1',
+    'almuerzo_2',
+    'cena',
+    'snack_postre',
+  ]);
 
   // Fechas de la semana activa
   const weekDays = useMemo(() => {
@@ -141,11 +148,11 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
 
   // Presets de selección de slots
   const handleSelectAllSlots = () => {
-    setSelectedSlots(['desayuno', 'almuerzo', 'cena', 'snack']);
+    setSelectedSlots(['desayuno', 'almuerzo_1', 'almuerzo_2', 'cena', 'snack_postre']);
   };
 
   const handleSelectMainMeals = () => {
-    setSelectedSlots(['almuerzo', 'cena']);
+    setSelectedSlots(['almuerzo_1', 'almuerzo_2', 'cena']);
   };
 
   const handleToggleSlot = (slot: MealSlot) => {
@@ -192,7 +199,9 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
   const handleGenerateShoppingList = () => {
     const activeDates = selectedDates.length > 0 ? selectedDates : weekDays.map((d) => d.dateStr);
     const activeSlots: MealSlot[] =
-      selectedSlots.length > 0 ? selectedSlots : (['desayuno', 'almuerzo', 'cena', 'snack'] as MealSlot[]);
+      selectedSlots.length > 0
+        ? selectedSlots
+        : (['desayuno', 'almuerzo_1', 'almuerzo_2', 'cena', 'snack_postre'] as MealSlot[]);
 
     startShoppingTransition(async () => {
       const res = await generateUnifiedShoppingListAction(startDateStr, endDateStr, {
@@ -395,7 +404,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
             {/* Control 2: Bloques de Comida / Slots */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-stone-700">Bloques de comida ({selectedSlots.length} de 4):</span>
+                <span className="font-semibold text-stone-700">Bloques de comida ({selectedSlots.length} de 5):</span>
                 <div className="flex items-center gap-1.5 text-[11px]">
                   <button
                     type="button"
@@ -415,7 +424,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
                 {SLOTS_CONFIG.map(({ slot, label, icon: SlotIcon }) => {
                   const isSelected = selectedSlots.includes(slot);
                   return (
@@ -429,8 +438,8 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                           : 'bg-white border-[#e7dfd5] text-stone-500 hover:bg-stone-50'
                       }`}
                     >
-                      <SlotIcon className="w-3.5 h-3.5" />
-                      <span>{label}</span>
+                      <SlotIcon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{label}</span>
                     </button>
                   );
                 })}
@@ -556,7 +565,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
             <div className="flex items-center justify-between border-b border-[#e7dfd5] pb-3">
               <div>
                 <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
-                  Asignar Receta a {pickerModal.slot.toUpperCase()}
+                  Asignar Receta a {SLOTS_CONFIG.find((s) => s.slot === pickerModal.slot)?.label || pickerModal.slot}
                 </h3>
                 <p className="text-xs text-stone-500">Fecha: {pickerModal.fecha}</p>
               </div>

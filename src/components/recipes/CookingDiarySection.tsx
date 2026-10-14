@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Camera, Image as ImageIcon, Star, Clock, Plus, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { addCookEntryAction } from '@/app/actions/diary';
 import { DiarioCocinados } from '@/types/recipe';
@@ -20,9 +21,13 @@ export function CookingDiarySection({
   onTriggerGallery,
   isUploadingPhoto,
 }: CookingDiarySectionProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [calificacion, setCalificacion] = useState<number>(5);
   const [hoverCalificacion, setHoverCalificacion] = useState<number | null>(null);
+  const [tiempoEmpleadoMin, setTiempoEmpleadoMin] = useState<string>('');
+  const [notas, setNotas] = useState<string>('');
+  const [modificaciones, setModificaciones] = useState<string>('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -49,6 +54,9 @@ export function CookingDiarySection({
     const formData = new FormData(e.currentTarget);
     formData.set('recetaId', recetaId);
     formData.set('calificacion', calificacion.toString());
+    formData.set('tiempoEmpleadoMin', tiempoEmpleadoMin);
+    formData.set('notas', notas);
+    formData.set('modificaciones', modificaciones);
 
     startTransition(async () => {
       const res = await addCookEntryAction(formData);
@@ -56,10 +64,14 @@ export function CookingDiarySection({
         setError(res.error);
       } else if (res.success) {
         setPreviewUrl(null);
+        setTiempoEmpleadoMin('');
+        setNotas('');
+        setModificaciones('');
         formRef.current?.reset();
         setIsOpen(false);
         setError(null);
         setSuccess(null);
+        router.refresh();
       }
     });
   };
@@ -166,7 +178,7 @@ export function CookingDiarySection({
             {/* Selector de Foto */}
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm font-semibold text-stone-800">
-                Fotografía del Plato *
+                Fotografía del Plato <span className="font-normal text-stone-400">(opcional)</span>
               </label>
               <div className="flex flex-wrap items-center gap-4">
                 <button
@@ -183,7 +195,6 @@ export function CookingDiarySection({
                   name="foto"
                   accept="image/*"
                   capture="environment"
-                  required
                   onChange={handleImageChange}
                   className="hidden"
                 />
@@ -239,6 +250,8 @@ export function CookingDiarySection({
                 type="number"
                 min={1}
                 placeholder="Ej. 40"
+                value={tiempoEmpleadoMin}
+                onChange={(e) => setTiempoEmpleadoMin(e.target.value)}
                 className="w-full sm:w-48 min-h-[48px] px-4 py-2.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-sm sm:text-base text-stone-900 focus:bg-white focus:outline-none focus:border-[#a86224]"
               />
             </div>
@@ -253,6 +266,8 @@ export function CookingDiarySection({
                 name="notas"
                 rows={3}
                 placeholder="Ej. Quedó muy jugoso. Para la próxima añadiré un poco más de pimienta..."
+                value={notas}
+                onChange={(e) => setNotas(e.target.value)}
                 className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-sm sm:text-base text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none focus:border-[#a86224] resize-none"
               />
             </div>
@@ -267,6 +282,8 @@ export function CookingDiarySection({
                 name="modificaciones"
                 type="text"
                 placeholder="Ej. Usé harina de avena en vez de trigo."
+                value={modificaciones}
+                onChange={(e) => setModificaciones(e.target.value)}
                 className="w-full min-h-[48px] px-4 py-2.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-sm sm:text-base text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none focus:border-[#a86224]"
               />
             </div>
@@ -304,14 +321,16 @@ export function CookingDiarySection({
               key={entry.id}
               className="rounded-3xl border border-[#e7dfd5] bg-white overflow-hidden shadow-2xs flex flex-col group"
             >
-              <div className="w-full h-52 relative overflow-hidden culinary-photo bg-[#f4efe6]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={entry.foto_resultado_url}
-                  alt="Resultado real de la receta"
-                  className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
-                />
-              </div>
+              {entry.foto_resultado_url && (
+                <div className="w-full h-52 relative overflow-hidden culinary-photo bg-[#f4efe6]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={entry.foto_resultado_url}
+                    alt="Resultado real de la receta"
+                    className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
+                  />
+                </div>
+              )}
 
               <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                 <div className="space-y-2">

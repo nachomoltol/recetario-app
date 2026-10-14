@@ -334,7 +334,7 @@ export interface Database {
           receta_id: string;
           usuario_id: string;
           fecha_cocinado: string;
-          foto_resultado_url: string;
+          foto_resultado_url: string | null;
           calificacion: number | null;
           notas_cocinero: string | null;
           modificaciones_realizadas: string | null;
@@ -348,7 +348,7 @@ export interface Database {
           receta_id: string;
           usuario_id: string;
           fecha_cocinado?: string;
-          foto_resultado_url: string;
+          foto_resultado_url?: string | null;
           calificacion?: number | null;
           notas_cocinero?: string | null;
           modificaciones_realizadas?: string | null;
@@ -362,7 +362,7 @@ export interface Database {
           receta_id?: string;
           usuario_id?: string;
           fecha_cocinado?: string;
-          foto_resultado_url?: string;
+          foto_resultado_url?: string | null;
           calificacion?: number | null;
           notas_cocinero?: string | null;
           modificaciones_realizadas?: string | null;
@@ -394,7 +394,7 @@ export interface Database {
           usuario_id: string;
           receta_id: string | null;
           fecha: string;
-          slot: 'desayuno' | 'almuerzo' | 'cena' | 'snack';
+          slot: 'desayuno' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre' | 'almuerzo' | 'snack';
           notas: string | null;
           created_at: string;
           updated_at: string;
@@ -404,7 +404,7 @@ export interface Database {
           usuario_id: string;
           receta_id?: string | null;
           fecha: string;
-          slot: 'desayuno' | 'almuerzo' | 'cena' | 'snack';
+          slot: 'desayuno' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre' | 'almuerzo' | 'snack';
           notas?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -414,7 +414,7 @@ export interface Database {
           usuario_id?: string;
           receta_id?: string | null;
           fecha?: string;
-          slot?: 'desayuno' | 'almuerzo' | 'cena' | 'snack';
+          slot?: 'desayuno' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre' | 'almuerzo' | 'snack';
           notas?: string | null;
           created_at?: string;
           updated_at?: string;
