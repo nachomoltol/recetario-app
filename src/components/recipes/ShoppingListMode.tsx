@@ -11,6 +11,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { RecetaIngrediente } from '@/types/recipe';
+import { FormattedText } from '@/components/ui/FormattedText';
 import { IngredientRow } from './IngredientRow';
 import { groupItemsByAisle, classifyIngredientAisle } from '@/lib/culinary/aisles';
 
@@ -280,11 +281,11 @@ export function ShoppingListMode({
                                     : 'text-stone-900'
                                 }`}
                               >
-                                {ing.nombre_limpio || ing.nombre_crudo}
+                                <FormattedText text={ing.nombre_limpio || ing.nombre_crudo} />
                               </span>
                               {ing.explicacion_culinaria && !isChecked && (
                                 <span className="text-[10px] text-[#a86224] block truncate font-medium">
-                                  ✦ {ing.explicacion_culinaria}
+                                  ✦ <FormattedText text={ing.explicacion_culinaria} />
                                 </span>
                               )}
                               {ing.notas && (
@@ -293,7 +294,7 @@ export function ShoppingListMode({
                                     isChecked ? 'line-through text-stone-300' : 'text-stone-500 italic'
                                   }`}
                                 >
-                                  {ing.notas}
+                                  <FormattedText text={ing.notas} />
                                 </span>
                               )}
                             </div>

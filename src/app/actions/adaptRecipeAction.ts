@@ -4,24 +4,27 @@ import { createClient } from '@/lib/supabase/server';
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '@/lib/gemini/client';
 import { Type } from '@google/genai';
 
-export interface SustitucionSugerida {
-  ingrediente_original: string;
-  alternativa_sugerida: string;
-  cantidad_o_ratio: string;
-  motivo_clinico_o_dietetico: string;
-  instrucciones_uso: string;
+export interface AdaptedIngredient {
+  nombre_limpio: string;
+  cantidad: number;
+  unidad: string;
+  pasillo_supermercado?: string;
+  notas?: string | null;
 }
 
-export interface TipTecnico {
-  paso_o_fase: string;
-  consejo: string;
-  enfoque: 'principiante' | 'avanzado' | 'general';
+export interface AdaptedStep {
+  orden: number;
+  instruccion: string;
+  consejo_pro?: string | null;
+  tiempo_estimado_min?: number | null;
+  temperatura_celsius?: number | null;
 }
 
 export interface AdaptacionCulinaria {
   resumen_adaptacion: string;
-  sustituciones_sugeridas: SustitucionSugerida[];
-  tips_tecnicos: TipTecnico[];
+  titulo?: string;
+  ingredientes: AdaptedIngredient[];
+  pasos: AdaptedStep[];
 }
 
 export interface AdaptRecipeResult {
@@ -56,109 +59,106 @@ export interface AdaptRecipeInput {
 
 const adaptRecipeSchema = {
   type: Type.OBJECT,
-  description: 'Adaptación culinaria no destructiva basada en el perfil clínico y nivel del usuario.',
+  description: 'Reescritura de la receta adaptada al perfil clínico y nivel culinario del usuario con etiquetas <mark>.',
   properties: {
     resumen_adaptacion: {
       type: Type.STRING,
-      description: 'Resumen claro y motivador (1 a 2 frases) de las adaptaciones realizadas según el perfil.',
+      description: 'Resumen claro (1 a 2 frases) de las adaptaciones realizadas según el perfil de salud y nivel del usuario.',
     },
-    sustituciones_sugeridas: {
+    titulo: {
+      type: Type.STRING,
+      description: 'Título de la receta adaptada.',
+    },
+    ingredientes: {
       type: Type.ARRAY,
-      description: 'Array de sustituciones necesarias o recomendadas para cumplir con las alergias o dieta del usuario.',
+      description: 'Lista completa de ingredientes adaptados. Si un ingrediente fue modificado o sustituido, envuelve el cambio en etiquetas <mark>...</mark>.',
       items: {
         type: Type.OBJECT,
         properties: {
-          ingrediente_original: {
+          nombre_limpio: {
             type: Type.STRING,
-            description: 'Nombre del ingrediente original presente en la receta que debe ser sustituido.',
+            description: 'Nombre del ingrediente. Si fue sustituido o adaptado, envuélvelo en <mark> (ej: "<mark>Leche de avena</mark>").',
           },
-          alternativa_sugerida: {
-            type: Type.STRING,
-            description: 'Alternativa segura, sabrosa y nutricionalmente equivalente.',
+          cantidad: {
+            type: Type.NUMBER,
+            description: 'Cantidad numérica ajustada.',
           },
-          cantidad_o_ratio: {
+          unidad: {
             type: Type.STRING,
-            description: 'Proporción o cantidad recomendada (ej: "1:1 misma cantidad", "150g en lugar de 200g").',
+            description: 'Unidad métrica estandarizada (g, ml, unidad, unidades).',
           },
-          motivo_clinico_o_dietetico: {
+          pasillo_supermercado: {
             type: Type.STRING,
-            description: 'Justificación médica, clínica o dietética (ej: "Elimina el gluten manteniendo la textura").',
+            description: 'Pasillo de supermercado.',
           },
-          instrucciones_uso: {
+          notas: {
             type: Type.STRING,
-            description: 'Recomendación técnica sobre cómo integrarlo en el cocinado.',
+            description: 'Notas técnicas del ingrediente adaptado.',
           },
         },
-        required: [
-          'ingrediente_original',
-          'alternativa_sugerida',
-          'cantidad_o_ratio',
-          'motivo_clinico_o_dietetico',
-          'instrucciones_uso',
-        ],
+        required: ['nombre_limpio', 'cantidad', 'unidad'],
       },
     },
-    tips_tecnicos: {
+    pasos: {
       type: Type.ARRAY,
-      description: 'Consejos técnicos personalizados según el nivel del usuario (ampliados para principiantes, atajos y optimizaciones para avanzados).',
+      description: 'Lista completa de pasos de preparación reescritos y adaptados. Cuando modifiques un paso para hacerlo apto o más fácil, envuelve el cambio en <mark>...</mark>.',
       items: {
         type: Type.OBJECT,
         properties: {
-          paso_o_fase: {
-            type: Type.STRING,
-            description: 'Fase o paso donde aplica el consejo (ej: "Paso 1: Sofrito", "Cocción y fuego").',
+          orden: {
+            type: Type.INTEGER,
+            description: 'Orden cronológico del paso.',
           },
-          consejo: {
+          instruccion: {
             type: Type.STRING,
-            description: 'Consejo técnico concreto, accionable y didáctico.',
+            description: 'Instrucción adaptada. OBLIGATORIO: Cuando menciones un ingrediente sustituido o técnica adaptada, envuélvelo en <mark> (ej: "Añade <mark>la leche de avena</mark>").',
           },
-          enfoque: {
+          consejo_pro: {
             type: Type.STRING,
-            enum: ['principiante', 'avanzado', 'general'],
-            description: 'Nivel técnico al que va dirigido el consejo.',
+            description: 'Consejo técnico adaptado al nivel culinario.',
+          },
+          tiempo_estimado_min: {
+            type: Type.INTEGER,
+            description: 'Minutos estimados.',
+          },
+          temperatura_celsius: {
+            type: Type.INTEGER,
+            description: 'Temperatura en grados centígrados.',
           },
         },
-        required: ['paso_o_fase', 'consejo', 'enfoque'],
+        required: ['orden', 'instruccion'],
       },
     },
   },
-  required: ['resumen_adaptacion', 'sustituciones_sugeridas', 'tips_tecnicos'],
+  required: ['resumen_adaptacion', 'ingredientes', 'pasos'],
 };
 
 const SYSTEM_INSTRUCTION_ADAPT = `
 Eres un Chef Consultor de Alta Cocina y Nutricionista Clínico experto en dietética personalizada.
-Tu misión es generar una ADAPTACIÓN CULINARIA NO DESTRUCTIVA de una receta específica para un usuario concreto, respetando estrictamente su perfil de salud y nivel técnico.
+Tu misión es recibir una receta y REESCRIBIR SU JSON para adaptarla de forma IN-LINE al perfil clínico (alérgenos, intolerancias, dieta) y nivel culinario (Principiante, Intermedio, Avanzado) del usuario.
 
-REGLAS DE ORO:
-1. SEGURIDAD Y DIETÉTICA (CAPA CLÍNICA):
-   - Analiza con rigor clínico todos los ingredientes de la receta contra las preferencias y alérgenos del usuario:
-     * Sin gluten / Celiaquía: Detecta harinas de trigo, cebada, centeno, salsa de soja tradicional, pan rallado, etc.
-     * Sin lactosa: Detecta leche de vaca, nata, mantequilla, quesos con lactosa.
-     * Vegetariano / Vegano: Detecta carnes, aves, pescados, mariscos, gelatinas animales, manteca, caldos de carne.
-     * Sin frutos secos: Detecta nueces, almendras, avellanas, piñones, cacahuetes.
-     * Bajo en sal / Hipertensión: Detecta sal añadida en exceso, embutidos curados, caldos concentrados con alto sodio.
-     * Keto / Low-Carb: Detecta pastas, arroces, azúcares, patatas, harinas.
-   - Para cada ingrediente incompatible, genera una entrada detallada en "sustituciones_sugeridas".
-   - Si la receta es 100% compatible con las restricciones del usuario y no requiere sustituciones, devuelve "sustituciones_sugeridas": [] y destaca en "resumen_adaptacion" que el plato es naturalmente apto para su dieta.
+DIRECTIVAS ESTRICTAS DE ADAPTACIÓN:
+1. REESCRITURA DIRECTA DE INGREDIENTES Y PASOS:
+   - Reescribe el JSON de esta receta.
+   - Adapta los ingredientes y los pasos de preparación basándote estrictamente en el nivel culinario y las intolerancias del usuario.
+   - Si el usuario tiene celiaquía o intolerancia al gluten, sustituye cualquier harina, salsa o pasta con gluten por una alternativa adecuada (ej. harina de avena sin gluten, tamari, pasta de maíz o arroz).
+   - Si no tolera la lactosa, sustituye leche, natas o mantequillas por bebidas vegetales o versiones sin lactosa.
+   - Si es vegetariano/vegano, sustituye carnes o pescados por legumbres, tofu o proteínas vegetales coherentes con la receta.
+   - Si su nivel es "Principiante", simplifica los pasos técnicos complejos, añade precauciones sobre control de fuego y tiempos.
+   - Si su nivel es "Avanzado", optimiza las técnicas, añade matices y consejos pro de alta cocina.
 
-2. ADAPTACIÓN AL NIVEL CULINARIO DEL CHEF:
-   - Si el nivel es "Principiante":
-     * Genera 2 a 4 "tips_tecnicos" con enfoque "principiante".
-     * Explica con claridad meridiana los puntos críticos: control de fuego (medio vs fuerte), cómo saber visualmente cuándo un ingrediente está dorado sin quemarlo, tiempos de reposo y precauciones para no arruinar el plato.
-   - Si el nivel es "Avanzado":
-     * Genera 2 a 4 "tips_tecnicos" con enfoque "avanzado".
-     * Ofrece atajos de chef profesional, reacciones de Maillard, desglasados óptimos, técnicas de emulsión, realce de umami o tiempos reducidos mediante técnicas profesionales.
-   - Si el nivel es "Intermedio":
-     * Genera consejos sobre balance de acidez, texturas y punto de cocción óptimo.
+2. ETIQUETADO OBLIGATORIO CON <mark>:
+   - IMPORTANTE: Cuando modifiques un ingrediente o cambies un paso para hacerlo más fácil o apto, envuelve esa palabra o frase modificada en una etiqueta <mark> (ejemplo: 'Añade <mark>la leche de avena</mark>').
+   - En ingredientes: si el ingrediente fue sustituido o cambiado, envuélvelo en <mark> (ejemplo: "<mark>Bebida de avena</mark>", "<mark>Harina de almendras</mark>").
+   - Si un ingrediente o paso no requirió cambios porque ya es 100% apto y perfecto para su nivel, mantenlo tal cual sin <mark>.
 
-3. ESTRICTAMENTE DE SOLO LECTURA:
-   - Tus sugerencias son una capa informativa superpuesta para guiar al usuario mientras cocina. No alteres la estructura básica de la receta ni inventes ingredientes exóticos e inalcanzables.
+3. INYECCIÓN DE CANTIDADES:
+   - Inyecta siempre la cantidad exacta en los pasos (ej: "Añade <mark>los 200ml de leche de avena</mark>").
 `.trim();
 
 /**
- * Server Action Culinario No Destructivo:
- * Consulta el perfil de Supabase del usuario autenticado, evalúa la receta con Gemini y devuelve
- * la capa clínica y técnica de adaptación sin mutar la base de datos.
+ * Server Action Culinario de Adaptación In-Line:
+ * Reescribe el JSON de la receta con adaptaciones integradas y etiquetas <mark>.
  */
 export async function adaptRecipeAction(
   receta: AdaptRecipeInput
@@ -255,7 +255,9 @@ ${receta.pasos
   )
   .join('\n')}
 
-Genera la adaptación culinaria no destructiva en formato JSON estricto.
+INSTRUCCIONES CLAVE:
+Reescribe el JSON de esta receta. Adapta los ingredientes y los pasos de preparación basándote estrictamente en el nivel culinario y las intolerancias del usuario.
+IMPORTANTE: Cuando modifiques un ingrediente o cambies un paso para hacerlo más fácil o apto, envuelve esa palabra o frase modificada en una etiqueta <mark> (ejemplo: 'Añade <mark>la leche de avena</mark>').
 `.trim();
 
     // 3. Ejecutar inferencia en Gemini
@@ -272,7 +274,7 @@ Genera la adaptación culinaria no destructiva en formato JSON estricto.
             systemInstruction: SYSTEM_INSTRUCTION_ADAPT,
             responseMimeType: 'application/json',
             responseJsonSchema: adaptRecipeSchema,
-            maxOutputTokens: 2500,
+            maxOutputTokens: 3500,
           },
         });
 
@@ -285,9 +287,10 @@ Genera la adaptación culinaria no destructiva en formato JSON estricto.
         return {
           success: true,
           data: {
-            resumen_adaptacion: parsedData.resumen_adaptacion || 'Adaptación culinaria generada para tu perfil.',
-            sustituciones_sugeridas: parsedData.sustituciones_sugeridas || [],
-            tips_tecnicos: parsedData.tips_tecnicos || [],
+            resumen_adaptacion: parsedData.resumen_adaptacion || 'Receta adaptada a tu perfil.',
+            titulo: parsedData.titulo,
+            ingredientes: parsedData.ingredientes || [],
+            pasos: parsedData.pasos || [],
           },
           perfilAplicado: {
             nivel_culinario: nivelCulinario,
@@ -297,7 +300,7 @@ Genera la adaptación culinaria no destructiva en formato JSON estricto.
         };
       } catch (err) {
         lastError = err;
-        console.warn(`Intento de adaptación con modelo '${model}' falló:`, err);
+        console.warn(`Intento de adaptación in-line con modelo '${model}' falló:`, err);
       }
     }
 

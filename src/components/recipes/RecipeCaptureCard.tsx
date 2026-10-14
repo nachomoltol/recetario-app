@@ -228,15 +228,33 @@ export function RecipeCaptureCard() {
         document.getElementById('capture-success-anchor');
 
       if (el) {
+        el.setAttribute('tabindex', '-1');
+        el.focus({ preventScroll: true });
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Afianzar el foco durante los siguientes ticks para neutralizar cualquier rebote del navegador
+        [50, 150, 300, 600, 1000].forEach((delay) => {
+          setTimeout(() => {
+            if (!isMounted) return;
+            if (
+              document.activeElement === urlInputRef.current ||
+              document.activeElement === textInputRef.current
+            ) {
+              (document.activeElement as HTMLElement)?.blur();
+            }
+            if (document.activeElement !== el) {
+              el.focus({ preventScroll: true });
+            }
+          }, delay);
+        });
       } else if (attempts < maxAttempts) {
         attempts++;
-        timeoutId = setTimeout(scrollToNewRecipe, 200);
+        timeoutId = setTimeout(scrollToNewRecipe, 150);
       }
     };
 
     // Retardo inicial para dar tiempo a que React Server Components re-renderice la sección
-    timeoutId = setTimeout(scrollToNewRecipe, 250);
+    timeoutId = setTimeout(scrollToNewRecipe, 200);
 
     return () => {
       isMounted = false;

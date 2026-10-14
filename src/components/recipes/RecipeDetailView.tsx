@@ -20,6 +20,8 @@ import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe
 import { RecipeWakeLock } from './RecipeWakeLock';
 import { RecipeRatingHeader } from './RecipeRatingHeader';
 import { RecipeAdaptationSection } from './RecipeAdaptationSection';
+import { AdaptacionCulinaria } from '@/app/actions/adaptRecipeAction';
+import { FormattedText } from '@/components/ui/FormattedText';
 import { RecipeNutritionAccordion } from './RecipeNutritionAccordion';
 import { RecipeInteractiveSections } from './RecipeInteractiveSections';
 import { CookingDiarySection } from './CookingDiarySection';
@@ -67,7 +69,12 @@ export function RecipeDetailView({
   const [editTitulo, setEditTitulo] = useState(receta.titulo);
 
   const [currentIngredientes, setCurrentIngredientes] = useState<RecetaIngrediente[]>(ingredientes);
+  const [currentPasos, setCurrentPasos] = useState<Paso[]>(pasos);
   const [editIngredientes, setEditIngredientes] = useState<EditableIngredient[]>([]);
+
+  // Estado de adaptación in-line a perfil
+  const [isAdapted, setIsAdapted] = useState(false);
+  const [adaptationSummary, setAdaptationSummary] = useState<string | null>(null);
 
   // Estados de fotografía
   const [currentFotoUrl, setCurrentFotoUrl] = useState<string | null>(
@@ -88,6 +95,70 @@ export function RecipeDetailView({
     }, 3500);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  // Guardar última receta vista para el acceso directo en Inicio
+  useEffect(() => {
+    if (typeof window !== 'undefined' && receta?.id) {
+      try {
+        localStorage.setItem('ultima_receta_vista_id', receta.id);
+      } catch {}
+    }
+  }, [receta?.id]);
+
+  const handleApplyAdaptation = (data: AdaptacionCulinaria) => {
+    const adaptedIngs: RecetaIngrediente[] = data.ingredientes.map((ai, index) => {
+      const orig = ingredientes[index];
+      return {
+        id: orig?.id || `adapted-ing-${index}`,
+        receta_id: receta.id,
+        ingrediente_maestro_id: orig?.ingrediente_maestro_id || null,
+        nombre_crudo: ai.nombre_limpio,
+        nombre_limpio: ai.nombre_limpio,
+        cantidad: ai.cantidad,
+        unidad: ai.unidad,
+        gramos_calculados: orig?.gramos_calculados || 0,
+        pasillo_supermercado: ai.pasillo_supermercado || orig?.pasillo_supermercado || 'Despensa y Especias',
+        notas: ai.notas || orig?.notas || null,
+        es_opcional: orig?.es_opcional || false,
+        orden: index + 1,
+        created_at: orig?.created_at || new Date().toISOString(),
+      };
+    });
+
+    const adaptedP: Paso[] = data.pasos.map((ap, index) => {
+      const orig = pasos[index];
+      return {
+        id: orig?.id || `adapted-paso-${index}`,
+        receta_id: receta.id,
+        orden: ap.orden || index + 1,
+        instruccion: ap.instruccion,
+        tiempo_estimado_min:
+          ap.tiempo_estimado_min !== undefined ? ap.tiempo_estimado_min : orig?.tiempo_estimado_min || null,
+        temperatura_celsius:
+          ap.temperatura_celsius !== undefined ? ap.temperatura_celsius : orig?.temperatura_celsius || null,
+        utensilios_sugeridos: orig?.utensilios_sugeridos || [],
+        consejo_pro: ap.consejo_pro !== undefined ? ap.consejo_pro : orig?.consejo_pro || null,
+        imagen_paso_url: orig?.imagen_paso_url || null,
+        created_at: orig?.created_at || new Date().toISOString(),
+      };
+    });
+
+    if (data.titulo) {
+      setCurrentTitulo(data.titulo);
+    }
+    setCurrentIngredientes(adaptedIngs);
+    setCurrentPasos(adaptedP);
+    setIsAdapted(true);
+    setAdaptationSummary(data.resumen_adaptacion);
+  };
+
+  const handleRevertAdaptation = () => {
+    setCurrentTitulo(receta.titulo);
+    setCurrentIngredientes(ingredientes);
+    setCurrentPasos(pasos);
+    setIsAdapted(false);
+    setAdaptationSummary(null);
+  };
 
   // Captura y subida de fotografía del plato
   const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -452,7 +523,7 @@ export function RecipeDetailView({
           </p>
         )}
 
-        {/* Motor de Adaptación Culinaria No Destructivo (Capa Clínica y de Nivel) */}
+        {/* Motor de Adaptación Culinaria In-Line (Capa Clínica y de Nivel) */}
         <RecipeAdaptationSection
           recipe={{
             ...recipeDataForAdapt,
@@ -465,6 +536,10 @@ export function RecipeDetailView({
             })),
           }}
           userProfile={userProfile}
+          isAdapted={isAdapted}
+          adaptationSummary={adaptationSummary}
+          onApplyAdaptation={handleApplyAdaptation}
+          onRevertAdaptation={handleRevertAdaptation}
         />
 
         {/* Tiempos y Rendimiento en Modo Cocina: Siempre en una sola línea horizontal */}
@@ -625,7 +700,7 @@ export function RecipeDetailView({
           basePorciones={receta.porciones || 2}
           tiempoCoccionMin={receta.tiempo_coccion_min}
           ingredientes={currentIngredientes}
-          pasos={pasos}
+          pasos={currentPasos}
           defaultServings={userRacionesDefecto}
         />
       )}

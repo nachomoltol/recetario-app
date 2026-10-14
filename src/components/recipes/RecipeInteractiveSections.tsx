@@ -12,6 +12,7 @@ import { RecetaIngrediente, Paso } from '@/types/recipe';
 import { scaleIngredientsWithCulinaryHeuristics, scaleCookingTime } from '@/lib/culinary/scaler';
 import { ServingsScaler } from './ServingsScaler';
 import { ShoppingListMode } from './ShoppingListMode';
+import { FormattedText } from '@/components/ui/FormattedText';
 
 interface RecipeInteractiveSectionsProps {
   recetaId: string;
@@ -163,7 +164,7 @@ export function RecipeInteractiveSections({
 
                   <div className="space-y-2.5 flex-1">
                     <p className="text-base sm:text-lg text-stone-800 leading-relaxed font-light">
-                      {paso.instruccion}
+                      <FormattedText text={paso.instruccion} />
                     </p>
 
                     {(paso.tiempo_estimado_min || paso.temperatura_celsius || paso.consejo_pro) && (
@@ -185,7 +186,7 @@ export function RecipeInteractiveSections({
                         {paso.consejo_pro && (
                           <div className="w-full mt-2 p-3.5 rounded-2xl border border-[#e7dfd5] bg-[#faf7f2] text-stone-700 text-xs sm:text-sm font-light">
                             <span className="font-semibold text-[#a86224]">Consejo del Chef:</span>{' '}
-                            {paso.consejo_pro}
+                            <FormattedText text={paso.consejo_pro} />
                           </div>
                         )}
                       </div>

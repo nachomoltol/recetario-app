@@ -125,7 +125,8 @@ export const recipeExtractionSchema = {
           },
           instruccion: {
             type: Type.STRING,
-            description: 'Instrucción técnica clara, detallada y comprensible.',
+            description:
+              'Instrucción técnica clara, detallada y comprensible. OBLIGATORIO: inyecta siempre las cantidades exactas de los ingredientes en el texto del paso (ej: "Añade los 400g de tomate triturado").',
           },
           tiempo_estimado_min: {
             type: Type.INTEGER,
@@ -274,6 +275,11 @@ REGLAS SUPREMAS DE FIDELIDAD Y CONTRA ALUCINACIONES:
      * Para 'Pasta con pollo y salsa pesto': asigna ["Pasta", "Carnes y Aves", "Pollo", "Aliños y Salsas", "Almuerzo"]. (Permite que la receta se renderice tanto en 'Pasta y Arroces' como en 'Carnes y Aves' y en 'Aliños y Salsas').
      * Para 'Sopa de pescado y marisco': asigna ["Sopas y Cremas", "Pescados y Mariscos", "Cena Ligera"].
      * Para 'Ensalada de garbanzos con atún': asigna ["Ensaladas y Entrantes", "Legumbres", "Pescados y Mariscos", "Atún", "Almuerzo Saludable"].
+
+8. INYECCIÓN OBLIGATORIA DE CANTIDADES EXACTAS EN EL RELATO DE LOS PASOS:
+   - En el array de 'pasos' o 'preparación', NUNCA menciones los ingredientes de forma genérica. Debes inyectar la cantidad exacta en el texto del paso a paso.
+   - Ejemplo obligatorio: En lugar de 'Añade el tomate', debes escribir 'Añade los 400g de tomate triturado'. En lugar de 'Vierte el aceite', escribe 'Vierte los 30ml de aceite de oliva'. En lugar de 'Agrega los huevos', escribe 'Agrega las 2 unidades de huevo'.
+   - Haz esto con todos los ingredientes posibles para facilitar la cocina.
 `.trim();
 
 export interface ExtractedIngredient {

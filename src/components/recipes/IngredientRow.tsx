@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { suggestSubstituteAction, SubstituteOption } from '@/app/actions/suggestSubstitute';
 import { RecetaIngrediente } from '@/types/recipe';
+import { FormattedText } from '@/components/ui/FormattedText';
 
 interface IngredientRowProps {
   ingrediente: RecetaIngrediente;
@@ -120,11 +121,11 @@ export function IngredientRow({
               appliedOption ? 'text-[#a86224] font-semibold' : ''
             }`}
           >
-            {nombreMostrado}
+            <FormattedText text={nombreMostrado} />
           </span>
           {ingrediente.notas && !appliedOption && (
             <span className="text-xs sm:text-sm text-stone-500 italic hidden sm:inline truncate">
-              ({ingrediente.notas})
+              (<FormattedText text={ingrediente.notas} />)
             </span>
           )}
           {appliedOption && (

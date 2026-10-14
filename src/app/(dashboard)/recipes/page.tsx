@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ChefHat, BookOpen, Clock, ArrowRight, Sparkles, Utensils, Calendar } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { RecipeCaptureCard } from '@/components/recipes/RecipeCaptureCard';
-import { DeleteRecipeButton } from '@/components/recipes/DeleteRecipeButton';
+import { HomeRecentRecipesSection } from '@/components/recipes/HomeRecentRecipesSection';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,96 +99,8 @@ export default async function RecipesDashboardPage() {
           <RecipeCaptureCard />
         </Suspense>
 
-        {/* Foco 2: Previsualización de la Última Receta Capturada */}
-        {ultimaReceta && (
-          <section className="space-y-3" id="ultima-receta">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#a86224] flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> Última Receta Capturada
-              </span>
-              <span className="text-xs text-stone-400">
-                {new Date(ultimaReceta.created_at).toLocaleDateString()}
-              </span>
-            </div>
-
-            <div className="group rounded-3xl bg-white border-2 border-[#e7dfd5] hover:border-[#a86224] transition-all p-6 sm:p-7 shadow-xs space-y-5">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-xl bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] font-bold uppercase tracking-wider text-[10px]">
-                      {ultimaReceta.fuente_tipo}
-                    </span>
-                    <span className="px-2.5 py-1 rounded-xl bg-stone-100 text-stone-700 capitalize text-[11px]">
-                      {ultimaReceta.dificultad}
-                    </span>
-                  </div>
-
-                  <DeleteRecipeButton
-                    recipeId={ultimaReceta.id}
-                    recipeTitle={ultimaReceta.titulo}
-                    variant="icon"
-                    className="w-8 h-8 rounded-xl"
-                  />
-                </div>
-
-                <Link
-                  href={`/recipes/${ultimaReceta.id}`}
-                  className="block group-hover:text-[#a86224] transition-colors"
-                >
-                  <h2 className="font-bold text-stone-900 font-serif-recipe text-2xl sm:text-3xl leading-snug">
-                    {ultimaReceta.titulo}
-                  </h2>
-                </Link>
-
-                {ultimaReceta.descripcion && (
-                  <p className="text-xs sm:text-sm text-stone-600 line-clamp-2 leading-relaxed font-light">
-                    {ultimaReceta.descripcion}
-                  </p>
-                )}
-
-                {/* Etiquetas de categorías dobles */}
-                {ultimaReceta.etiquetas && ultimaReceta.etiquetas.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {ultimaReceta.etiquetas.slice(0, 4).map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#faf7f2] text-stone-700 border border-[#e7dfd5]"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                    {ultimaReceta.etiquetas.length > 4 && (
-                      <span className="text-[11px] text-stone-400 font-medium self-center">
-                        +{ultimaReceta.etiquetas.length - 4} más
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Barra de acción rápida mobile-first con microcopy actualizado */}
-              <div className="pt-4 border-t border-[#f4efe6] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4 text-xs sm:text-sm text-stone-500 font-medium">
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-[#a86224]" /> {ultimaReceta.tiempo_total_min || 15} min
-                  </span>
-                  <span>·</span>
-                  <span className="flex items-center gap-1.5">
-                    <Utensils className="w-4 h-4 text-[#a86224]" /> {ultimaReceta.porciones} porciones
-                  </span>
-                </div>
-
-                <Link
-                  href={`/recipes/${ultimaReceta.id}`}
-                  className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
-                >
-                  <span>Ver receta en modo cocina</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-          </section>
-        )}
+        {/* Foco 2: Toggle entre Última Receta Capturada y Última Receta Vista */}
+        <HomeRecentRecipesSection recetas={recetas || []} />
 
         {/* Estado Vacío si no hay recetas */}
         {!ultimaReceta && (
