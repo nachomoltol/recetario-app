@@ -2,6 +2,7 @@
 
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '@/lib/gemini/client';
 import { Type } from '@google/genai';
+import { createClient } from '@/lib/supabase/server';
 
 export interface SubstituteOption {
   tipo: 'magra_tradicional' | 'vegetal_umami' | 'accesible_economica';
@@ -85,10 +86,11 @@ Tu objetivo es sugerir EXACTAMENTE TRES alternativas diferentes, viables y organ
 3. Opción Accesible y Cotidiana ("accesible_economica"):
    - Enfoque: Alimento básico de despensa común, económico y disponible en cualquier supermercado local, fácil de preparar y con ratio directo de sustitución.
 
-DIRECTRICES TÉCNICAS:
+DIRECTRICES TÉCNICAS Y CLÍNICAS:
 - Comportamiento Culinario: Explica con precisión técnica cómo reacciona al fuego/horno/emulsión y cómo afecta a la textura del plato.
 - Beneficio Nutricional: Cita el impacto en macronutrientes, digestión o salud metabólica.
 - Proporción Exacta: Especifica la ratio de intercambio para garantizar el éxito del plato.
+- SEGURIDAD CLÍNICA ESTRICTA: Si se especifican alérgenos o restricciones dietéticas del usuario, queda TERMINANTEMENTE PROHIBIDO incluir cualquiera de ellos en las alternativas.
 `.trim();
 
 export async function suggestSubstituteAction({
@@ -110,13 +112,48 @@ export async function suggestSubstituteAction({
   }
 
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    let clinicalContext = '';
+    if (user) {
+      const { data: perfil } = await supabase
+        .from('usuarios')
+        .select('alergenos, preferencias_dieteticas, nivel_culinario')
+        .eq('id', user.id)
+        .single();
+
+      if (perfil) {
+        const alergenosStr =
+          perfil.alergenos && perfil.alergenos.length > 0
+            ? perfil.alergenos.join(', ')
+            : 'Ninguno declarado';
+        const preferenciasStr =
+          perfil.preferencias_dieteticas && perfil.preferencias_dieteticas.length > 0
+            ? perfil.preferencias_dieteticas.join(', ')
+            : 'Ninguna declarada';
+        const nivelStr = perfil.nivel_culinario || 'medio';
+
+        clinicalContext = `
+PERFIL CLÍNICO E INTOLERANCIAS DEL USUARIO:
+- Alérgenos e intolerancias médicas estrictas: ${alergenosStr}
+- Preferencias dietéticas / estilo de vida: ${preferenciasStr}
+- Nivel culinario del usuario: ${nivelStr}
+
+PROHIBICIÓN ESTRICTA: La IA tiene TERMINANTEMENTE PROHIBIDO sugerir cualquier ingrediente o alternativa que contenga, derive o active las intolerancias, alergias o restricciones del usuario (${alergenosStr}, ${preferenciasStr}). Todas las alternativas sugeridas deben ser 100% aptas y seguras para este perfil clínico.`;
+      }
+    }
+
     const ai = getGeminiClient();
 
     const userPrompt = `
 RECETA: "${tituloReceta}"
 INGREDIENTE A SUSTITUIR: ${cantidad ? `${cantidad} ` : ''}${unidad ? `${unidad} de ` : ''}${nombreIngrediente}
+${clinicalContext}
 
-Proporciona las tres alternativas requeridas (1. Magra tradicional, 2. Vegetal rica en umami, 3. Accesible y cotidiana) adaptadas al perfil culinario de esta receta.
+Proporciona las tres alternativas requeridas (1. Magra tradicional, 2. Vegetal rica en umami, 3. Accesible y cotidiana) adaptadas al perfil culinario de esta receta respetando estrictamente las restricciones clínicas del usuario.
 `.trim();
 
     const candidateModels = [PRIMARY_GEMINI_MODEL, ...FALLBACK_GEMINI_MODELS];

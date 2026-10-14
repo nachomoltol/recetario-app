@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Layers,
   Sparkles,
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { RecetaIngrediente, Paso } from '@/types/recipe';
 import { scaleIngredientsWithCulinaryHeuristics, scaleCookingTime } from '@/lib/culinary/scaler';
+import { replaceIngredientInText } from '@/lib/culinary/textReplacer';
 import { ServingsScaler } from './ServingsScaler';
 import { ShoppingListMode } from './ShoppingListMode';
 import { FormattedText } from '@/components/ui/FormattedText';
@@ -36,6 +37,43 @@ export function RecipeInteractiveSections({
   const [servings, setServings] = useState(defaultServings || basePorciones || 2);
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
   const [isStepsOpen, setIsStepsOpen] = useState(false);
+  const [substitutions, setSubstitutions] = useState<Record<string, string>>({});
+
+  const handleSubstituteChange = (oldName: string, newName: string | null) => {
+    setSubstitutions((prev) => {
+      const next = { ...prev };
+      if (!newName) {
+        delete next[oldName];
+      } else {
+        next[oldName] = newName;
+      }
+      return next;
+    });
+  };
+
+  // Reactividad dinámica: sustitución instantánea en el texto de preparación
+  const reactivePasos = useMemo(() => {
+    const activeSubs = Object.entries(substitutions).filter(([_, newName]) => Boolean(newName));
+    if (activeSubs.length === 0) return pasos;
+
+    return pasos.map((paso) => {
+      let instruccion = paso.instruccion;
+      let consejo = paso.consejo_pro;
+
+      for (const [oldName, newName] of activeSubs) {
+        instruccion = replaceIngredientInText(instruccion, oldName, newName);
+        if (consejo) {
+          consejo = replaceIngredientInText(consejo, oldName, newName);
+        }
+      }
+
+      return {
+        ...paso,
+        instruccion,
+        consejo_pro: consejo,
+      };
+    });
+  }, [pasos, substitutions]);
 
   // Escalado inteligente con conciencia culinaria
   const scaledIngredientes = scaleIngredientsWithCulinaryHeuristics(
@@ -107,6 +145,7 @@ export function RecipeInteractiveSections({
               recetaId={recetaId}
               tituloReceta={tituloReceta}
               ingredientes={scaledIngredientes}
+              onSubstituteChange={handleSubstituteChange}
             />
           </div>
         )}
@@ -156,7 +195,7 @@ export function RecipeInteractiveSections({
         {isStepsOpen && (
           <div className="p-5 sm:p-6 pt-4 border-t border-[#f4efe6] animate-fade-in">
             <ol className="space-y-7">
-              {pasos.map((paso) => (
+              {reactivePasos.map((paso) => (
                 <li key={paso.id} className="flex gap-4 sm:gap-5 group">
                   <span className="w-10 h-10 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] font-serif-recipe font-bold text-base flex items-center justify-center shrink-0 self-start mt-0.5 shadow-2xs">
                     {paso.orden}

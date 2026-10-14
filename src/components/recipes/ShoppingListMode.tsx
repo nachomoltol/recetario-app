@@ -25,12 +25,14 @@ interface ShoppingListModeProps {
   recetaId: string;
   tituloReceta: string;
   ingredientes: ExtendedIngredient[];
+  onSubstituteChange?: (oldName: string, newName: string | null) => void;
 }
 
 export function ShoppingListMode({
   recetaId,
   tituloReceta,
   ingredientes,
+  onSubstituteChange,
 }: ShoppingListModeProps) {
   const [isShoppingMode, setIsShoppingMode] = useState(false);
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
@@ -183,6 +185,7 @@ export function ShoppingListMode({
               tituloReceta={tituloReceta}
               scaledCantidad={ing.cantidad_escalada}
               scaledGramos={ing.gramos_escalados}
+              onSubstituteChange={onSubstituteChange}
             />
           ))}
         </div>

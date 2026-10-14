@@ -718,10 +718,12 @@ export async function extractRecipeWithGemini({
   url,
   texto,
   file,
+  porcionesUsuario,
 }: {
   url?: string;
   texto?: string;
   file?: File;
+  porcionesUsuario?: number;
 }): Promise<ExtractedRecipe> {
   const ai = getGeminiClient();
 
@@ -842,6 +844,10 @@ export async function extractRecipeWithGemini({
 
     if (texto) {
       contextPrompt += `NOTAS O TEXTO ADICIONAL APORTADO POR EL USUARIO:\n${texto}\n\n`;
+    }
+
+    if (porcionesUsuario && porcionesUsuario > 0) {
+      contextPrompt += `PORCIONES POR DEFECTO DEL USUARIO: ${porcionesUsuario} raciones/porciones.\nIMPORTANTE: Estandariza la receta para rendir exactamente ${porcionesUsuario} raciones. Todas las cantidades numéricas de los ingredientes y las cantidades inyectadas en los pasos de preparación DEBEN calcularse matemáticamente para estas ${porcionesUsuario} raciones.\n\n`;
     }
 
     // Validación previa para evitar alucinaciones: si no hay archivo multimodal, verificar que haya texto con sustancia culinaria real

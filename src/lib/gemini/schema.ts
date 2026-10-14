@@ -126,7 +126,7 @@ export const recipeExtractionSchema = {
           instruccion: {
             type: Type.STRING,
             description:
-              'Instrucción técnica clara, detallada y comprensible. OBLIGATORIO: inyecta siempre las cantidades exactas de los ingredientes en el texto del paso (ej: "Añade los 400g de tomate triturado").',
+              'Instrucción técnica clara, detallada y comprensible. OBLIGATORIO: inyecta siempre las cantidades exactas de los ingredientes en el texto del paso (ej: "Añade los 400g de tomate triturado"). Las cantidades inyectadas en el relato de los pasos DEBEN coincidir matemáticamente con las porciones objetivo que se están generando para la lista de ingredientes, NO con las cantidades originales del vídeo si difieren.',
           },
           tiempo_estimado_min: {
             type: Type.INTEGER,
@@ -280,6 +280,7 @@ REGLAS SUPREMAS DE FIDELIDAD Y CONTRA ALUCINACIONES:
    - En el array de 'pasos' o 'preparación', NUNCA menciones los ingredientes de forma genérica. Debes inyectar la cantidad exacta en el texto del paso a paso.
    - Ejemplo obligatorio: En lugar de 'Añade el tomate', debes escribir 'Añade los 400g de tomate triturado'. En lugar de 'Vierte el aceite', escribe 'Vierte los 30ml de aceite de oliva'. En lugar de 'Agrega los huevos', escribe 'Agrega las 2 unidades de huevo'.
    - Haz esto con todos los ingredientes posibles para facilitar la cocina.
+   - SINCRONIZACIÓN MATEMÁTICA CON LAS PORCIONES: Las cantidades inyectadas en el relato de los pasos (preparación) DEBEN coincidir matemáticamente con las porciones objetivo (yield/raciones) que se están generando para la lista de ingredientes, NO con las cantidades originales mencionadas en el vídeo si estas difieren.
 `.trim();
 
 export interface ExtractedIngredient {

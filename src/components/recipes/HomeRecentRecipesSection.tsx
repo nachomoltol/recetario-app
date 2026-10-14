@@ -11,18 +11,45 @@ interface HomeRecentRecipesSectionProps {
 }
 
 export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionProps) {
-  // Estado local para alternar pestañas: siempre vuelve a 'capturada' por defecto al reiniciar/recargar
+  // Estado local para alternar pestañas: recuerda la última pestaña seleccionada
   const [activeTab, setActiveTab] = useState<'capturada' | 'vista'>('capturada');
   const [lastViewedId, setLastViewedId] = useState<string | null>(null);
 
+  // Cargar pestaña guardada y última receta vista desde localStorage
   useEffect(() => {
     try {
+      const savedTab = localStorage.getItem('home_recent_tab') as 'capturada' | 'vista' | null;
+      if (savedTab === 'capturada' || savedTab === 'vista') {
+        setActiveTab(savedTab);
+      }
       const stored = localStorage.getItem('ultima_receta_vista_id');
       if (stored) {
         setLastViewedId(stored);
       }
     } catch {}
   }, []);
+
+  // Escuchar evento de nueva receta capturada para saltar a 'capturada' automáticamente
+  useEffect(() => {
+    const handleRecipeCaptured = () => {
+      setActiveTab('capturada');
+      try {
+        localStorage.setItem('home_recent_tab', 'capturada');
+      } catch {}
+    };
+
+    window.addEventListener('recipe-captured', handleRecipeCaptured);
+    return () => {
+      window.removeEventListener('recipe-captured', handleRecipeCaptured);
+    };
+  }, []);
+
+  const handleSelectTab = (tab: 'capturada' | 'vista') => {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem('home_recent_tab', tab);
+    } catch {}
+  };
 
   const ultimaCapturada = recetas && recetas.length > 0 ? recetas[0] : null;
   const ultimaVista = lastViewedId
@@ -47,7 +74,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
         <div className="flex items-center p-1 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] w-full sm:w-auto shadow-2xs">
           <button
             type="button"
-            onClick={() => setActiveTab('capturada')}
+            onClick={() => handleSelectTab('capturada')}
             className={`flex-1 sm:flex-none min-h-[42px] px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'capturada'
                 ? 'bg-white text-stone-900 shadow-xs border border-[#e7dfd5]'
@@ -60,7 +87,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
 
           <button
             type="button"
-            onClick={() => setActiveTab('vista')}
+            onClick={() => handleSelectTab('vista')}
             className={`flex-1 sm:flex-none min-h-[42px] px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'vista'
                 ? 'bg-white text-stone-900 shadow-xs border border-[#e7dfd5]'

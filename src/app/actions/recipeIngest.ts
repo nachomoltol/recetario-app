@@ -79,7 +79,12 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
 
   try {
     // 3. Extracción multimodal autónoma con Gemini
-    const extracted = await extractRecipeWithGemini({ url, texto, file });
+    const extracted = await extractRecipeWithGemini({
+      url,
+      texto,
+      file,
+      porcionesUsuario: perfilUsuario?.raciones_defecto || undefined,
+    });
 
     // 4. Consultar ingredientes maestros para cruce relacional y cálculo volumétrico
     const { data: maestros } = await supabase

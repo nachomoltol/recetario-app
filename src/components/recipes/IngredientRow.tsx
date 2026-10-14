@@ -22,6 +22,7 @@ interface IngredientRowProps {
   tituloReceta: string;
   scaledCantidad?: number;
   scaledGramos?: number;
+  onSubstituteChange?: (oldName: string, newName: string | null) => void;
 }
 
 export function IngredientRow({
@@ -29,6 +30,7 @@ export function IngredientRow({
   tituloReceta,
   scaledCantidad,
   scaledGramos,
+  onSubstituteChange,
 }: IngredientRowProps) {
   const [options, setOptions] = useState<SubstituteOption[] | null>(null);
   // Revelación progresiva: inicialmente null para no mostrar la ficha hasta que el usuario toque una pastilla
@@ -77,10 +79,13 @@ export function IngredientRow({
     appliedOption.nombre_sustituto === activeOption.nombre_sustituto;
 
   const handleApplyToggle = (opt: SubstituteOption) => {
+    const originalName = ingrediente.nombre_limpio || ingrediente.nombre_crudo;
     if (appliedOption?.nombre_sustituto === opt.nombre_sustituto) {
       setAppliedOption(null);
+      onSubstituteChange?.(originalName, null);
     } else {
       setAppliedOption(opt);
+      onSubstituteChange?.(originalName, opt.nombre_sustituto);
     }
   };
 

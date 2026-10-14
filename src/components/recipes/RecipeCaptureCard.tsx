@@ -189,6 +189,17 @@ export function RecipeCaptureCard() {
           setTexto('');
           setSelectedFile(null);
           if (fileInputRef.current) fileInputRef.current.value = '';
+
+          // Disparar evento para que la sección de inicio salte a 'Última receta capturada'
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('home_recent_tab', 'capturada');
+              window.dispatchEvent(
+                new CustomEvent('recipe-captured', { detail: { recetaId: res.recetaId } })
+              );
+            } catch {}
+          }
+
           router.refresh();
         }
       });
