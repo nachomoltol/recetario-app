@@ -51,8 +51,12 @@ export function IngredientRow({
     setSelectedOptionIndex(null); // Revelación progresiva: sin ficha abierta al inicio
 
     startTransition(async () => {
+      const cleanIngName = (ingrediente.nombre_limpio || ingrediente.nombre_crudo)
+        .replace(/<\/?[^>]+(>|$)/g, '')
+        .trim();
+
       const res = await suggestSubstituteAction({
-        nombreIngrediente: ingrediente.nombre_limpio || ingrediente.nombre_crudo,
+        nombreIngrediente: cleanIngName,
         cantidad: Number(ingrediente.cantidad),
         unidad: ingrediente.unidad,
         tituloReceta,
@@ -79,7 +83,10 @@ export function IngredientRow({
     appliedOption.nombre_sustituto === activeOption.nombre_sustituto;
 
   const handleApplyToggle = (opt: SubstituteOption) => {
-    const originalName = ingrediente.nombre_limpio || ingrediente.nombre_crudo;
+    const originalName = (ingrediente.nombre_limpio || ingrediente.nombre_crudo)
+      .replace(/<\/?[^>]+(>|$)/g, '')
+      .trim();
+
     if (appliedOption?.nombre_sustituto === opt.nombre_sustituto) {
       setAppliedOption(null);
       onSubstituteChange?.(originalName, null);

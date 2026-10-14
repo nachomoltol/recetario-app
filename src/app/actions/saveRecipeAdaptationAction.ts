@@ -157,8 +157,12 @@ export async function saveRecipeAdaptationAction({
 
     const ingredientesPayload = ingredientes.map((ing, idx) => ({
       receta_id: recetaId,
-      nombre_limpio: (ing.nombre_limpio || ing.nombre_crudo || `Ingrediente ${idx + 1}`).trim(),
-      nombre_crudo: (ing.nombre_crudo || ing.nombre_limpio || `Ingrediente ${idx + 1}`).trim(),
+      nombre_limpio: (ing.nombre_limpio || ing.nombre_crudo || `Ingrediente ${idx + 1}`)
+        .replace(/<\/?[^>]+(>|$)/g, '')
+        .trim(),
+      nombre_crudo: (ing.nombre_crudo || ing.nombre_limpio || `Ingrediente ${idx + 1}`)
+        .replace(/<\/?[^>]+(>|$)/g, '')
+        .trim(),
       cantidad: typeof ing.cantidad === 'number' && !isNaN(ing.cantidad) ? ing.cantidad : 1,
       unidad: (ing.unidad || 'unidad').trim(),
       gramos_calculados: typeof ing.gramos_calculados === 'number' ? ing.gramos_calculados : 0,

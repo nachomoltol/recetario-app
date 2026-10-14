@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Layers,
   Sparkles,
@@ -24,6 +24,7 @@ interface RecipeInteractiveSectionsProps {
   pasos: Paso[];
   defaultServings?: number;
   onSubstitutePersist?: (oldName: string, newName: string | null) => void;
+  isAdapted?: boolean;
 }
 
 export function RecipeInteractiveSections({
@@ -35,11 +36,17 @@ export function RecipeInteractiveSections({
   pasos,
   defaultServings,
   onSubstitutePersist,
+  isAdapted,
 }: RecipeInteractiveSectionsProps) {
   const [servings, setServings] = useState(defaultServings || basePorciones || 2);
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
   const [isStepsOpen, setIsStepsOpen] = useState(false);
   const [substitutions, setSubstitutions] = useState<Record<string, string>>({});
+
+  // Limpiar sustituciones activas cuando cambia la receta o cuando se aplica/revierte una adaptación
+  useEffect(() => {
+    setSubstitutions({});
+  }, [recetaId, isAdapted]);
 
   const handleSubstituteChange = (oldName: string, newName: string | null) => {
     setSubstitutions((prev) => {

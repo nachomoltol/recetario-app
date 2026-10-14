@@ -109,15 +109,27 @@ export function RecipeDetailView({
     }
   }, [receta?.id]);
 
+  // Sincronizar estado local con props cuando la receta es actualizada desde servidor
+  useEffect(() => {
+    setCurrentTitulo(receta.titulo);
+    setCurrentIngredientes(ingredientes);
+    setCurrentPasos(pasos);
+    setIsAdapted(Boolean(receta.receta_original));
+    if (receta.receta_original) {
+      setAdaptationSummary('Receta adaptada y sincronizada con tu perfil');
+    }
+  }, [receta.id, receta.updated_at, receta.receta_original]);
+
   const handleApplyAdaptation = async (data: AdaptacionCulinaria) => {
     const adaptedIngs: RecetaIngrediente[] = data.ingredientes.map((ai, index) => {
       const orig = ingredientes[index];
+      const cleanNombre = ai.nombre_limpio.replace(/<\/?mark>/gi, '').trim();
       return {
         id: orig?.id || `adapted-ing-${index}`,
         receta_id: receta.id,
         ingrediente_maestro_id: orig?.ingrediente_maestro_id || null,
-        nombre_crudo: ai.nombre_limpio,
-        nombre_limpio: ai.nombre_limpio,
+        nombre_crudo: cleanNombre,
+        nombre_limpio: cleanNombre,
         cantidad: ai.cantidad,
         unidad: ai.unidad,
         gramos_calculados: orig?.gramos_calculados || 0,
@@ -226,20 +238,23 @@ export function RecipeDetailView({
 
   // Persistir sustitución de un ingrediente y actualizar pasos reactivos en Supabase
   const handleSubstitutePersist = async (oldName: string, newName: string | null) => {
+    const cleanOldName = oldName.replace(/<\/?[^>]+(>|$)/g, '').trim().toLowerCase();
+    const cleanNewName = newName ? newName.replace(/<\/?[^>]+(>|$)/g, '').trim() : null;
+
     const updatedIngs = currentIngredientes.map((ing) => {
-      const ingName = ing.nombre_limpio || ing.nombre_crudo;
-      if (ingName.toLowerCase() === oldName.toLowerCase()) {
-        if (!newName) {
+      const ingName = (ing.nombre_limpio || ing.nombre_crudo).replace(/<\/?[^>]+(>|$)/g, '').trim().toLowerCase();
+      if (ingName === cleanOldName) {
+        if (!cleanNewName) {
           return {
             ...ing,
-            nombre_limpio: ing.nombre_crudo || ing.nombre_limpio,
+            nombre_limpio: (ing.nombre_crudo || ing.nombre_limpio).replace(/<\/?[^>]+(>|$)/g, '').trim(),
             notas: null,
           };
         } else {
           return {
             ...ing,
-            nombre_limpio: newName,
-            notas: `Sustituido por ${newName}`,
+            nombre_limpio: cleanNewName,
+            notas: `Sustituido por ${cleanNewName}`,
           };
         }
       }
@@ -247,11 +262,24 @@ export function RecipeDetailView({
     });
 
     const updatedPasos = currentPasos.map((paso) => {
-      if (!newName) return paso;
+      if (!cleanNewName) {
+        const targetIng = currentIngredientes.find(
+          (i) => (i.nombre_limpio || i.nombre_crudo).replace(/<\/?[^>]+(>|$)/g, '').trim().toLowerCase() === cleanOldName
+        );
+        const revertTo = targetIng?.nombre_crudo?.replace(/<\/?[^>]+(>|$)/g, '').trim();
+        if (revertTo && revertTo.toLowerCase() !== cleanOldName) {
+          return {
+            ...paso,
+            instruccion: replaceIngredientInText(paso.instruccion, oldName, revertTo),
+            consejo_pro: paso.consejo_pro ? replaceIngredientInText(paso.consejo_pro, oldName, revertTo) : null,
+          };
+        }
+        return paso;
+      }
       return {
         ...paso,
-        instruccion: replaceIngredientInText(paso.instruccion, oldName, newName),
-        consejo_pro: paso.consejo_pro ? replaceIngredientInText(paso.consejo_pro, oldName, newName) : null,
+        instruccion: replaceIngredientInText(paso.instruccion, oldName, cleanNewName),
+        consejo_pro: paso.consejo_pro ? replaceIngredientInText(paso.consejo_pro, oldName, cleanNewName) : null,
       };
     });
 
@@ -837,6 +865,7 @@ export function RecipeDetailView({
           pasos={currentPasos}
           defaultServings={userRacionesDefecto}
           onSubstitutePersist={handleSubstitutePersist}
+          isAdapted={isAdapted}
         />
       )}
 
