@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Heart, Star } from 'lucide-react';
 import { toggleFavoriteAction, updateRatingAction } from '@/app/actions/recipeRating';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 
 interface RecipeRatingHeaderProps {
   recetaId: string;
@@ -19,6 +20,7 @@ export function RecipeRatingHeader({
   const [rating, setRating] = useState(initialRating || 0);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [, startTransition] = useTransition();
+  const t = useLanguageStore((s) => s.t);
 
   const handleFavoriteClick = () => {
     const nextFavorite = !isFavorite;
@@ -47,7 +49,7 @@ export function RecipeRatingHeader({
       <button
         type="button"
         onClick={handleFavoriteClick}
-        title={isFavorite ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+        title={isFavorite ? t('recipe_favorite_remove') : t('recipe_favorite_add')}
         className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
           isFavorite
             ? 'bg-rose-50 text-rose-600 border border-rose-200 shadow-2xs'
@@ -73,7 +75,7 @@ export function RecipeRatingHeader({
               type="button"
               onClick={() => handleStarClick(star)}
               onMouseEnter={() => setHoverRating(star)}
-              title={`Puntuar con ${star} de 5 estrellas`}
+              title={`${t('recipe_rate_stars')} ${star} ${t('recipe_of_5_stars')}`}
               className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#faf7f2] transition-colors cursor-pointer active:scale-95"
             >
               <Star

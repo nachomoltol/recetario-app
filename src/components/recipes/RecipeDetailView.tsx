@@ -30,6 +30,7 @@ import { saveRecipeAdaptationAction, revertRecipeAdaptationAction } from '@/app/
 import { replaceIngredientInText } from '@/lib/culinary/textReplacer';
 import { createClient } from '@/lib/supabase/client';
 import { compressImageClient } from '@/lib/utils/imageCompress';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 
 interface EditableIngredient {
   id: string;
@@ -61,6 +62,7 @@ export function RecipeDetailView({
   diarioEntries,
 }: RecipeDetailViewProps) {
   const router = useRouter();
+  const t = useLanguageStore((s) => s.t);
 
   // Estados de visualización y edición
   const [isEditing, setIsEditing] = useState(false);
@@ -571,12 +573,12 @@ export function RecipeDetailView({
               {isUploadingPhoto ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-[#a86224]" />
-                  <span>Subiendo y procesando imagen...</span>
+                  <span>{t('recipe_uploading_photo')}</span>
                 </>
               ) : (
                 <>
                   <Camera className="w-4 h-4 text-[#a86224]" />
-                  <span>Cambiar fotografía</span>
+                  <span>{t('recipe_change_photo')}</span>
                 </>
               )}
             </button>
@@ -589,7 +591,7 @@ export function RecipeDetailView({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#a86224]">
             <ChefHat className="w-4 h-4" />
-            <span>Ficha Culinaria Estandarizada</span>
+            <span>{t('recipe_card_header')}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
@@ -603,7 +605,7 @@ export function RecipeDetailView({
                   className="min-h-[40px] px-3.5 py-1.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <X className="w-3.5 h-3.5" />
-                  <span>Cancelar</span>
+                  <span>{t('recipe_cancel_btn')}</span>
                 </button>
                 <button
                   type="button"
@@ -614,12 +616,12 @@ export function RecipeDetailView({
                   {isSaving ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Guardando...</span>
+                      <span>{t('recipe_saving_btn')}</span>
                     </>
                   ) : (
                     <>
                       <Save className="w-3.5 h-3.5" />
-                      <span>Guardar cambios</span>
+                      <span>{t('recipe_save_btn')}</span>
                     </>
                   )}
                 </button>
@@ -631,7 +633,7 @@ export function RecipeDetailView({
                 className="min-h-[40px] px-3.5 py-1.5 rounded-2xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-[#a86224] text-xs font-semibold text-stone-700 hover:text-[#a86224] transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
               >
                 <Pencil className="w-3.5 h-3.5 text-[#a86224]" />
-                <span>Editar receta</span>
+                <span>{t('recipe_edit_btn')}</span>
               </button>
             )}
 
@@ -699,10 +701,10 @@ export function RecipeDetailView({
             <Clock className="w-5 h-5 text-[#a86224] shrink-0" />
             <div>
               <span className="text-[10px] uppercase text-stone-500 font-medium block leading-none">
-                Tiempo Total
+                {t('recipe_total_time')}
               </span>
               <span className="text-base font-bold text-stone-900 mt-0.5 block whitespace-nowrap">
-                {receta.tiempo_total_min || 15} min
+                {receta.tiempo_total_min || 15} {t('planner_min')}
               </span>
             </div>
           </div>
@@ -711,10 +713,10 @@ export function RecipeDetailView({
             <Users className="w-5 h-5 text-[#a86224] shrink-0" />
             <div>
               <span className="text-[10px] uppercase text-stone-500 font-medium block leading-none">
-                Base Receta
+                {t('recipe_base_servings')}
               </span>
               <span className="text-base font-bold text-stone-900 mt-0.5 block whitespace-nowrap">
-                {receta.porciones} porciones
+                {receta.porciones} {t('planner_servings')}
               </span>
             </div>
           </div>

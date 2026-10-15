@@ -46,6 +46,14 @@ export function IngredientRow({
   const [isPending, startTransition] = useTransition();
   const technicalCardRef = useRef<HTMLDivElement>(null);
   const language = useLanguageStore((s) => s.language);
+  const t = useLanguageStore((s) => s.t);
+
+  const getOptionChipLabel = (tipo: string, fallback: string) => {
+    if (tipo === 'magra_tradicional') return t('drawer_chip_lean');
+    if (tipo === 'vegetal_umami') return t('drawer_chip_umami');
+    if (tipo === 'accesible_economica') return t('drawer_chip_accessible');
+    return fallback;
+  };
 
   // El ingrediente activo canónico en el estado actual de la receta adaptada
   const adaptedBaseName = (ingrediente.nombre_limpio || ingrediente.nombre_crudo)
@@ -172,7 +180,7 @@ export function IngredientRow({
           )}
           {appliedOption && (
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#f4efe6] text-[#a86224] font-semibold border border-[#e7dfd5] shrink-0">
-              Sustituido por {appliedOption.etiqueta_tipo}
+              {t('drawer_substituted_by')} {getOptionChipLabel(appliedOption.tipo, appliedOption.etiqueta_tipo)}
             </span>
           )}
         </div>
@@ -196,7 +204,7 @@ export function IngredientRow({
             <ArrowRightLeft className="w-3.5 h-3.5 text-[#a86224]" />
           )}
           <span className="text-xs font-semibold hidden xs:inline">
-            {appliedOption ? 'Cambiar' : 'Sustituir'}
+            {appliedOption ? t('drawer_btn_change') : t('drawer_btn_substitute')}
           </span>
         </button>
       </div>
@@ -215,10 +223,10 @@ export function IngredientRow({
             <div className="px-5 py-3 border-b border-[#e7dfd5] flex items-center justify-between shrink-0 bg-white">
               <div>
                 <Drawer.Title className="text-lg sm:text-xl font-bold font-serif-recipe text-stone-900 leading-tight">
-                  Alternativas para &quot;{adaptedBaseName}&quot;
+                  {t('drawer_alternatives_for')} &quot;{adaptedBaseName}&quot;
                 </Drawer.Title>
                 <Drawer.Description className="text-xs text-stone-500 mt-0.5">
-                  Alternativas culinarias adaptadas al perfil de la receta
+                  {t('drawer_alternatives_subtitle')}
                 </Drawer.Description>
               </div>
               <button
@@ -239,9 +247,9 @@ export function IngredientRow({
                     <Loader2 className="w-6 h-6 animate-spin" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-stone-900">Consultando alternativas con IA...</p>
+                    <p className="text-sm font-bold text-stone-900">{t('drawer_loading_title')}</p>
                     <p className="text-xs text-stone-500 mt-0.5 max-w-xs mx-auto">
-                      Analizando equivalencias de textura, cocción y nutrición para tu plato.
+                      {t('drawer_loading_desc')}
                     </p>
                   </div>
                 </div>
@@ -255,7 +263,7 @@ export function IngredientRow({
                     onClick={handleOpenDrawer}
                     className="px-3 py-1.5 rounded-xl bg-red-600 text-white font-semibold text-xs hover:bg-red-700 transition cursor-pointer"
                   >
-                    Reintentar
+                    {t('drawer_retry')}
                   </button>
                 </div>
               )}
@@ -263,7 +271,7 @@ export function IngredientRow({
               {!isPending && options && options.length > 0 && (
                 <div className="space-y-3.5">
                   <p className="text-xs text-stone-500 font-medium">
-                    Toca una alternativa para consultar su ficha técnica y aplicarla a la preparación:
+                    {t('drawer_instructions')}
                   </p>
 
                   {/* Las 3 opciones generadas por la IA */}
@@ -286,11 +294,11 @@ export function IngredientRow({
                           <div className="flex items-center justify-between gap-1.5 w-full">
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#a86224]">
                               {getOptionIcon(opt.tipo)}
-                              <span>{opt.etiqueta_tipo}</span>
+                              <span>{getOptionChipLabel(opt.tipo, opt.etiqueta_tipo)}</span>
                             </span>
                             {isOptApplied && (
                               <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-0.5">
-                                <Check className="w-2.5 h-2.5" /> Activo
+                                <Check className="w-2.5 h-2.5" /> {t('drawer_active_badge')}
                               </span>
                             )}
                           </div>
@@ -310,20 +318,20 @@ export function IngredientRow({
                     >
                       <div className="border-b border-[#f4efe6] pb-2">
                         <span className="text-[10px] uppercase font-bold tracking-wider text-[#a86224]">
-                          Ficha técnica culinaria
+                          {t('drawer_spec_title')}
                         </span>
                         <h4 className="font-bold text-stone-900 font-serif-recipe text-lg">
                           {activeOption.nombre_sustituto}
                         </h4>
                         <p className="text-xs text-stone-600 font-medium mt-0.5">
-                          Ratio recomendado: <span className="font-bold text-stone-900">{activeOption.cantidad_sugerida}</span>
+                          {t('drawer_ratio_recommended')} <span className="font-bold text-stone-900">{activeOption.cantidad_sugerida}</span>
                         </p>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                         <div className="p-3 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] space-y-1">
                           <span className="font-semibold text-stone-800 flex items-center gap-1.5 text-[#a86224]">
-                            <ChefHat className="w-3.5 h-3.5" /> Comportamiento culinario
+                            <ChefHat className="w-3.5 h-3.5" /> {t('drawer_spec_behavior')}
                           </span>
                           <p className="text-stone-600 leading-relaxed font-light">
                             {activeOption.razon_culinaria}
@@ -332,7 +340,7 @@ export function IngredientRow({
 
                         <div className="p-3 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] space-y-1">
                           <span className="font-semibold text-stone-800 flex items-center gap-1.5 text-[#a86224]">
-                            <HeartPulse className="w-3.5 h-3.5" /> Beneficio nutricional
+                            <HeartPulse className="w-3.5 h-3.5" /> {t('drawer_spec_benefit')}
                           </span>
                           <p className="text-stone-600 leading-relaxed font-light">
                             {activeOption.beneficio_nutricional}
@@ -342,7 +350,7 @@ export function IngredientRow({
 
                       {activeOption.modo_uso && (
                         <div className="p-3 rounded-xl bg-[#f4efe6] text-stone-700 text-xs leading-relaxed">
-                          <strong className="text-[#a86224]">Técnica de cocina:</strong> {activeOption.modo_uso}
+                          <strong className="text-[#a86224]">{t('drawer_spec_technique')}</strong> {activeOption.modo_uso}
                         </div>
                       )}
                     </div>
@@ -355,7 +363,7 @@ export function IngredientRow({
             {activeOption && (
               <div className="p-4 border-t border-[#e7dfd5] bg-white flex items-center justify-between gap-3 shrink-0">
                 <div className="text-xs text-stone-600 truncate flex-1 min-w-0">
-                  <span>Selección: </span>
+                  <span>{t('drawer_selection')} </span>
                   <strong className="text-stone-900 block truncate">{activeOption.nombre_sustituto}</strong>
                 </div>
 
@@ -371,12 +379,12 @@ export function IngredientRow({
                   {isCurrentOptionApplied ? (
                     <>
                       <Check className="w-4 h-4 text-emerald-600 stroke-3" />
-                      <span>Restaurar original</span>
+                      <span>{t('drawer_restore_btn')}</span>
                     </>
                   ) : (
                     <>
                       <ArrowRightLeft className="w-4 h-4" />
-                      <span>Aplicar a la receta</span>
+                      <span>{t('drawer_apply_btn')}</span>
                     </>
                   )}
                 </button>

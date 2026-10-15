@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trash2, AlertTriangle, Loader2, X } from 'lucide-react';
 import { deleteRecipeAction } from '@/app/actions/recipeDelete';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 
 interface DeleteRecipeButtonProps {
   recipeId: string;
@@ -15,12 +16,13 @@ interface DeleteRecipeButtonProps {
 
 export function DeleteRecipeButton({
   recipeId,
-  recipeTitle = 'esta receta',
+  recipeTitle,
   redirectTo,
   variant = 'button',
   className = '',
 }: DeleteRecipeButtonProps) {
   const router = useRouter();
+  const t = useLanguageStore((s) => s.t);
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -52,7 +54,7 @@ export function DeleteRecipeButton({
             e.stopPropagation();
             setIsOpen(true);
           }}
-          title="Eliminar receta"
+          title={t('recipe_delete_btn')}
           className={`w-11 h-11 rounded-2xl flex items-center justify-center text-stone-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-all cursor-pointer ${className}`}
         >
           <Trash2 className="w-4 h-4" />
@@ -64,7 +66,7 @@ export function DeleteRecipeButton({
           className={`min-h-[44px] px-3.5 rounded-xl inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-stone-500 hover:text-red-700 hover:bg-red-50 border border-[#e7dfd5] hover:border-red-200 transition-all cursor-pointer ${className}`}
         >
           <Trash2 className="w-4 h-4 text-stone-400 group-hover:text-red-600" />
-          <span>Eliminar receta</span>
+          <span>{t('recipe_delete_btn')}</span>
         </button>
       )}
 
@@ -99,11 +101,10 @@ export function DeleteRecipeButton({
 
             <div className="space-y-2">
               <h3 className="text-lg sm:text-xl font-bold font-serif-recipe text-stone-900 leading-snug">
-                ¿Eliminar {recipeTitle ? `«${recipeTitle}»` : 'esta receta'}?
+                {t('recipe_delete_confirm_title')}
               </h3>
               <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-                Esta acción eliminará de forma irreversible la ficha culinaria, todos sus ingredientes,
-                pasos técnicos y las fotografías del diario de cocinado asociadas.
+                {t('recipe_delete_confirm_desc')} {recipeTitle ? `«${recipeTitle}»` : ''}.
               </p>
             </div>
 
@@ -120,7 +121,7 @@ export function DeleteRecipeButton({
                 disabled={isPending}
                 className="w-full sm:w-1/2 min-h-[48px] px-4 rounded-xl text-stone-700 bg-[#f4efe6] hover:bg-[#e7dfd5] font-semibold text-xs sm:text-sm transition cursor-pointer"
               >
-                Cancelar
+                {t('recipe_delete_cancel_btn')}
               </button>
               <button
                 type="button"
@@ -131,12 +132,12 @@ export function DeleteRecipeButton({
                 {isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Borrando...</span>
+                    <span>{t('recipe_saving_btn')}</span>
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" />
-                    <span>Sí, eliminar</span>
+                    <span>{t('recipe_delete_confirm_btn')}</span>
                   </>
                 )}
               </button>

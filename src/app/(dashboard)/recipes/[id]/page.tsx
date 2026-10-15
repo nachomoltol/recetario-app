@@ -1,10 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import {
-  ArrowLeft,
-  ExternalLink,
-} from 'lucide-react';
+import { RecipeDetailHeader } from '@/components/recipes/RecipeDetailHeader';
+import { RecipeDateFooter } from '@/components/recipes/RecipeDateFooter';
 import { RecipeDetailView } from '@/components/recipes/RecipeDetailView';
 import { DeleteRecipeButton } from '@/components/recipes/DeleteRecipeButton';
 import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe';
@@ -98,39 +95,11 @@ export default async function RecipeDetailPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
       {/* Barra de navegación superior luminosa */}
-      <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link
-            href="/"
-            className="min-h-[44px] px-3 -ml-3 rounded-xl inline-flex items-center gap-1.5 text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-5 h-5 text-[#a86224]" />
-            <span>Inicio</span>
-          </Link>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            {receta.fuente_url && (
-              <a
-                href={receta.fuente_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-h-[44px] px-3.5 py-2 rounded-2xl bg-white border border-[#e7dfd5] inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-stone-700 hover:text-[#a86224] hover:border-[#a86224] transition-all shadow-2xs"
-              >
-                <span>
-                  {receta.fuente_tipo === 'web' || receta.fuente_tipo === 'manual'
-                    ? 'Ver fuente original'
-                    : 'Ver vídeo original'}
-                </span>
-                <ExternalLink className="w-3.5 h-3.5 text-[#a86224]" />
-              </a>
-            )}
-
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] capitalize">
-              {receta.dificultad}
-            </span>
-          </div>
-        </div>
-      </header>
+      <RecipeDetailHeader
+        fuenteUrl={receta.fuente_url}
+        fuenteTipo={receta.fuente_tipo}
+        dificultad={receta.dificultad}
+      />
 
       {/* Contenido Editorial con Modo Cocina */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10">
@@ -147,7 +116,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
         {/* Zona de gestión y borrado de la receta */}
         <section className="pt-8 border-t border-[#e7dfd5] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="text-xs text-stone-500">
-            <span>Ficha culinaria creada el {new Date(receta.created_at).toLocaleDateString('es-ES')}</span>
+            <RecipeDateFooter createdAt={receta.created_at} />
           </div>
           <DeleteRecipeButton
             recipeId={receta.id}

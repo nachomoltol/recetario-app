@@ -14,6 +14,7 @@ import { replaceIngredientInText } from '@/lib/culinary/textReplacer';
 import { ServingsScaler } from './ServingsScaler';
 import { ShoppingListMode } from './ShoppingListMode';
 import { FormattedText } from '@/components/ui/FormattedText';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 
 interface RecipeInteractiveSectionsProps {
   recetaId: string;
@@ -42,6 +43,7 @@ export function RecipeInteractiveSections({
   onSubstitutePersist,
   isAdapted,
 }: RecipeInteractiveSectionsProps) {
+  const t = useLanguageStore((s) => s.t);
   const [servings, setServings] = useState(defaultServings || basePorciones || 2);
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
   const [isStepsOpen, setIsStepsOpen] = useState(false);
@@ -130,17 +132,17 @@ export function RecipeInteractiveSections({
             </div>
             <div>
               <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 leading-none">
-                Ingredientes
+                {t('recipe_section_ingredients')}
               </h2>
               <span className="text-xs text-stone-500 font-medium mt-1 block">
-                {servings} {servings === 1 ? 'comensal' : 'comensales'} · {ingredientes.length} items
+                {servings} {servings === 1 ? t('recipe_serving_single') : t('recipe_servings_plural')} · {ingredientes.length} {t('recipe_items')}
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
-              {isIngredientsOpen ? 'Plegar' : 'Desplegar'}
+              {isIngredientsOpen ? t('recipe_collapse') : t('recipe_expand')}
             </span>
             <div
               className={`w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center transition-transform duration-200 ${
@@ -192,18 +194,18 @@ export function RecipeInteractiveSections({
             </div>
             <div>
               <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 leading-none">
-                Preparación
+                {t('recipe_section_prep')}
               </h2>
               <span className="text-xs text-stone-500 font-medium mt-1 block">
-                {pasos.length} pasos
-                {scaledTiempoCoccion ? ` · ~${scaledTiempoCoccion} min cocción` : ''}
+                {pasos.length} {t('recipe_steps_count')}
+                {scaledTiempoCoccion ? ` · ~${scaledTiempoCoccion} ${t('recipe_min_cooking')}` : ''}
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
-              {isStepsOpen ? 'Plegar' : 'Desplegar'}
+              {isStepsOpen ? t('recipe_collapse') : t('recipe_expand')}
             </span>
             <div
               className={`w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center transition-transform duration-200 ${
@@ -248,7 +250,7 @@ export function RecipeInteractiveSections({
 
                         {paso.consejo_pro && (
                           <div className="w-full mt-2 p-3.5 rounded-2xl border border-[#e7dfd5] bg-[#faf7f2] text-stone-700 text-xs sm:text-sm font-light">
-                            <span className="font-semibold text-[#a86224]">Consejo del Chef:</span>{' '}
+                            <span className="font-semibold text-[#a86224]">{t('recipe_chef_tip')}</span>{' '}
                             <FormattedText text={paso.consejo_pro} />
                           </div>
                         )}

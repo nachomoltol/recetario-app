@@ -14,6 +14,7 @@ import { RecetaIngrediente } from '@/types/recipe';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { IngredientRow } from './IngredientRow';
 import { groupItemsByAisle, classifyIngredientAisle } from '@/lib/culinary/aisles';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 
 export type ExtendedIngredient = RecetaIngrediente & {
   cantidad_escalada?: number;
@@ -38,6 +39,7 @@ export function ShoppingListMode({
   ingredientes,
   onSubstituteChange,
 }: ShoppingListModeProps) {
+  const t = useLanguageStore((s) => s.t);
   const [isShoppingMode, setIsShoppingMode] = useState(false);
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
@@ -137,7 +139,7 @@ export function ShoppingListMode({
             }`}
           >
             <ChefHat className="w-4 h-4 text-[#a86224]" />
-            <span>Modo Cocina</span>
+            <span>{t('recipe_control_cook_mode')}</span>
           </button>
 
           <button
@@ -150,7 +152,7 @@ export function ShoppingListMode({
             }`}
           >
             <ShoppingCart className="w-4 h-4 text-[#a86224]" />
-            <span>Lista de Compra</span>
+            <span>{t('recipe_control_shopping_list')}</span>
           </button>
         </div>
 
@@ -164,7 +166,7 @@ export function ShoppingListMode({
               className="min-h-[38px] px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-[#e7dfd5] text-stone-700 font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <Copy className="w-3.5 h-3.5 text-[#a86224]" />
-              <span>{copied ? '¡Copiada!' : 'Copiar'}</span>
+              <span>{copied ? t('planner_copied') : t('recipe_shopping_copy')}</span>
             </button>
 
             <button
@@ -173,7 +175,7 @@ export function ShoppingListMode({
               className="min-h-[38px] px-3 py-1.5 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-white/70 transition flex items-center gap-1.5 cursor-pointer"
             >
               <RotateCcw className="w-3 h-3 text-stone-400" />
-              <span>{completed === total ? 'Desmarcar' : 'Marcar todo'}</span>
+              <span>{completed === total ? t('recipe_shopping_uncheck_all') : t('recipe_shopping_check_all')}</span>
             </button>
           </div>
         )}
@@ -203,10 +205,10 @@ export function ShoppingListMode({
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-stone-800 flex items-center gap-1.5">
                 <ShoppingCart className="w-3.5 h-3.5 text-[#a86224]" />
-                <span>Progreso de compra en el súper</span>
+                <span>{t('recipe_shopping_progress')}</span>
               </span>
               <span className="font-mono font-bold text-[#a86224]">
-                {completed} de {total} ingredientes ({progressPercent}%)
+                {completed} {t('capture_of_label')} {total} {t('recipe_section_ingredients').toLowerCase()} ({progressPercent}%)
               </span>
             </div>
             <div className="w-full h-2.5 rounded-full bg-[#f4efe6] overflow-hidden">
@@ -218,7 +220,7 @@ export function ShoppingListMode({
           </div>
 
           <p className="text-xs text-stone-500 px-1">
-            Ingredientes organizados por pasillo físico para recorrer el supermercado sin idas y vueltas:
+            {t('recipe_shopping_aisles_desc')}
           </p>
 
           {/* Checklist agrupado por pasillos del supermercado */}
@@ -246,7 +248,7 @@ export function ShoppingListMode({
 
                     {isGroupAllChecked && (
                       <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                        <Check className="w-3 h-3 stroke-2" /> Completado
+                        <Check className="w-3 h-3 stroke-2" /> {t('planner_completed')}
                       </span>
                     )}
                   </div>

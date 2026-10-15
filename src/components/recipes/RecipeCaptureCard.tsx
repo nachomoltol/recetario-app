@@ -30,7 +30,7 @@ interface LoadingStage {
   percent: number;
 }
 
-const CULINARY_HUMOR_PHRASES = [
+const CULINARY_HUMOR_PHRASES_ES = [
   'Yendo a por papel y boli...',
   'Lavándome las manos...',
   'Poniéndome el delantal...',
@@ -45,7 +45,22 @@ const CULINARY_HUMOR_PHRASES = [
   'Dando el toque maestro del chef...',
 ];
 
-const LOADING_STAGES: LoadingStage[] = [
+const CULINARY_HUMOR_PHRASES_EN = [
+  'Grabbing pen and paper...',
+  'Washing my hands...',
+  'Putting on the apron...',
+  'Sharpening the knives...',
+  'Tasting for salt balance...',
+  'Preheating the stovetop...',
+  'Searching for the secret spice...',
+  'Chopping onions without crying...',
+  "Decoding the chef's secret sauce...",
+  'Standardizing grams and milliliters...',
+  'Plating the recipe digitally...',
+  "Adding the chef's master touch...",
+];
+
+const LOADING_STAGES_ES: LoadingStage[] = [
   {
     seconds: 0,
     title: 'Conectando con la plataforma',
@@ -74,6 +89,39 @@ const LOADING_STAGES: LoadingStage[] = [
     seconds: 26,
     title: 'Finalizando estandarización y macros',
     description: 'Generando categorización doble (gastronómica + momento de consumo) y guardando...',
+    percent: 96,
+  },
+];
+
+const LOADING_STAGES_EN: LoadingStage[] = [
+  {
+    seconds: 0,
+    title: 'Connecting to platform',
+    description: 'Verifying link and resolving TikTok, Reels, or Facebook redirects...',
+    percent: 15,
+  },
+  {
+    seconds: 4,
+    title: 'Downloading & optimizing footage',
+    description: 'Extracting audio track, keyframes, and original post caption...',
+    percent: 38,
+  },
+  {
+    seconds: 10,
+    title: 'Analyzing with Gemini 3.1 Flash',
+    description: 'Active multimodal inference: decoding culinary techniques and fast speech...',
+    percent: 65,
+  },
+  {
+    seconds: 18,
+    title: 'Structuring steps & inferring measures',
+    description: 'Filling narrative gaps with visual cues and standardizing ingredients...',
+    percent: 85,
+  },
+  {
+    seconds: 26,
+    title: 'Finalizing standardization & macros',
+    description: 'Generating dual categorization and saving recipe...',
     percent: 96,
   },
 ];
@@ -307,13 +355,17 @@ export function RecipeCaptureCard() {
   };
 
   // Calcular etapa actual según segundos transcurridos
+  const loadingStages = language === 'en' ? LOADING_STAGES_EN : LOADING_STAGES_ES;
+  const culinaryHumorPhrases =
+    language === 'en' ? CULINARY_HUMOR_PHRASES_EN : CULINARY_HUMOR_PHRASES_ES;
+
   const currentStage =
-    [...LOADING_STAGES].reverse().find((s) => elapsedSeconds >= s.seconds) || LOADING_STAGES[0];
-  const stageIndex = LOADING_STAGES.findIndex((s) => s.seconds === currentStage.seconds);
+    [...loadingStages].reverse().find((s) => elapsedSeconds >= s.seconds) || loadingStages[0];
+  const stageIndex = loadingStages.findIndex((s) => s.seconds === currentStage.seconds);
 
   // Calcular frase rotativa con humor culinario (rota cada 2.5 - 3 segundos)
-  const humorIndex = Math.floor(elapsedSeconds / 3) % CULINARY_HUMOR_PHRASES.length;
-  const currentHumorPhrase = CULINARY_HUMOR_PHRASES[humorIndex];
+  const humorIndex = Math.floor(elapsedSeconds / 3) % culinaryHumorPhrases.length;
+  const currentHumorPhrase = culinaryHumorPhrases[humorIndex];
 
   return (
     <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-6">
@@ -324,10 +376,10 @@ export function RecipeCaptureCard() {
           </div>
           <div>
             <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 tracking-tight">
-              Captura Rápida de Recetas
+              {t('capture_card_title')}
             </h2>
             <p className="text-xs sm:text-sm text-stone-500">
-              Pega enlaces de TikTok, Instagram Reels, Facebook o notas
+              {t('capture_card_subtitle')}
             </p>
           </div>
         </div>
@@ -376,9 +428,9 @@ export function RecipeCaptureCard() {
             <Share2 className="w-4 h-4" />
           </div>
           <div>
-            <p className="font-semibold text-stone-900">Enlace recibido desde el menú Compartir</p>
+            <p className="font-semibold text-stone-900">{t('capture_native_share_title')}</p>
             <p className="text-xs text-stone-600">
-              Iniciando automáticamente la extracción multimodal en segundo plano...
+              {t('capture_native_share_desc')}
             </p>
           </div>
         </div>
@@ -394,13 +446,13 @@ export function RecipeCaptureCard() {
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#a86224]"></span>
               </span>
               <span className="uppercase tracking-wider">
-                Fase {stageIndex + 1} de {LOADING_STAGES.length}
+                {t('capture_phase_label')} {stageIndex + 1} {t('capture_of_label')} {loadingStages.length}
               </span>
             </div>
 
             <div className="flex items-center gap-1.5 text-stone-500 font-medium">
               <Clock className="w-3.5 h-3.5 text-[#a86224]" />
-              <span>{elapsedSeconds}s transcurridos</span>
+              <span>{elapsedSeconds}{t('capture_elapsed_seconds')}</span>
             </div>
           </div>
 
@@ -438,7 +490,7 @@ export function RecipeCaptureCard() {
         <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs sm:text-sm flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
           <div className="space-y-0.5">
-            <p className="font-semibold text-red-900">Aviso de extracción</p>
+            <p className="font-semibold text-red-900">{t('capture_extract_notice')}</p>
             <p className="text-red-700 leading-relaxed">{error}</p>
           </div>
         </div>
@@ -452,7 +504,7 @@ export function RecipeCaptureCard() {
             <div>
               <p className="font-semibold text-emerald-950">{success}</p>
               <p className="text-xs text-emerald-800">
-                La receta se ha guardado en tu recetario y está disponible abajo en la vista previa.
+                {t('capture_success_saved')}
               </p>
             </div>
           </div>
@@ -462,7 +514,7 @@ export function RecipeCaptureCard() {
               onClick={() => router.push(`/recipes/${createdRecetaId}`)}
               className="min-h-[40px] px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs transition cursor-pointer self-start sm:self-auto shrink-0 flex items-center gap-1.5 shadow-2xs"
             >
-              <span>Abrir ahora</span>
+              <span>{t('capture_open_now')}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           )}
@@ -480,7 +532,7 @@ export function RecipeCaptureCard() {
                   autoFocus={false}
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://vm.tiktok.com/... o enlace de Facebook / Reels"
+                  placeholder={t('capture_placeholder_url_detailed')}
                   disabled={isPending}
                   className="w-full min-h-[52px] pl-4 pr-12 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition shadow-2xs disabled:opacity-60"
                 />
@@ -502,11 +554,11 @@ export function RecipeCaptureCard() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isPending}
-                title="Subir archivo o foto (.pdf, .txt, .doc, .docx, imágenes)"
+                title={t('capture_title_upload_file')}
                 className="min-h-[52px] px-3.5 sm:px-4 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] active:scale-[0.98] border border-[#e7dfd5] text-[#a86224] hover:text-[#8e511c] font-medium transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs shrink-0 disabled:opacity-50"
               >
                 <Paperclip className="w-5 h-5" />
-                <span className="hidden sm:inline text-xs font-semibold">Subir archivo</span>
+                <span className="hidden sm:inline text-xs font-semibold">{t('capture_btn_upload_file')}</span>
               </button>
             </div>
 
@@ -522,7 +574,7 @@ export function RecipeCaptureCard() {
                   <div className="truncate">
                     <p className="font-semibold text-stone-900 truncate">{selectedFile.name}</p>
                     <p className="text-[11px] text-stone-500">
-                      {(selectedFile.size / 1024).toFixed(1)} KB • Archivo adjunto listo para inferencia
+                      {(selectedFile.size / 1024).toFixed(1)} KB • {t('capture_file_ready')}
                     </p>
                   </div>
                 </div>
@@ -546,7 +598,7 @@ export function RecipeCaptureCard() {
               value={texto}
               onChange={(e) => setTexto(e.target.value)}
               rows={4}
-              placeholder="Pega aquí los ingredientes o la preparación de la receta..."
+              placeholder={t('capture_placeholder_text_detailed')}
               disabled={isPending}
               className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition resize-none shadow-2xs disabled:opacity-60"
             />
@@ -559,7 +611,7 @@ export function RecipeCaptureCard() {
                 className="px-3.5 py-2 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
               >
                 <Paperclip className="w-4 h-4" />
-                <span>Adjuntar foto o documento</span>
+                <span>{t('capture_btn_attach_file')}</span>
               </button>
             </div>
 
@@ -584,7 +636,7 @@ export function RecipeCaptureCard() {
                   <div className="truncate">
                     <p className="font-semibold text-stone-900 truncate">{selectedFile.name}</p>
                     <p className="text-[11px] text-stone-500">
-                      {(selectedFile.size / 1024).toFixed(1)} KB • Archivo adjunto listo para inferencia
+                      {(selectedFile.size / 1024).toFixed(1)} KB • {t('capture_file_ready')}
                     </p>
                   </div>
                 </div>
@@ -618,7 +670,7 @@ export function RecipeCaptureCard() {
             <>
               <span>
                 {selectedFile
-                  ? `${language === 'en' ? 'Process recipe' : 'Procesar receta'} (${selectedFile.name})`
+                  ? `${t('capture_process_recipe')} (${selectedFile.name})`
                   : t('capture_btn_process')}
               </span>
               <ArrowRight className="w-5 h-5" />
@@ -629,7 +681,7 @@ export function RecipeCaptureCard() {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-[#f4efe6] text-xs">
         <span className="text-stone-500 text-[11px] sm:text-xs">
-          💡 En <strong>Android</strong> comparte directo desde TikTok, Reels o Facebook hacia Recetario
+          {t('capture_footer_android')}
         </span>
         <button
           type="button"
@@ -637,7 +689,7 @@ export function RecipeCaptureCard() {
           className="text-[#a86224] hover:text-[#8e511c] font-semibold text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer self-start sm:self-auto hover:underline"
         >
           <Smartphone className="w-3.5 h-3.5" />
-          <span>¿En iPhone? Activar menú Compartir (Atajo iOS)</span>
+          <span>{t('capture_footer_ios')}</span>
         </button>
       </div>
 

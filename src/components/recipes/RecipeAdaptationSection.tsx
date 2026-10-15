@@ -56,6 +56,7 @@ export function RecipeAdaptationSection({
   }
 
   const language = useLanguageStore((s) => s.language);
+  const t = useLanguageStore((s) => s.t);
 
   const handleAdapt = () => {
     setErrorMessage(null);
@@ -86,19 +87,19 @@ export function RecipeAdaptationSection({
             {isPending ? (
               <>
                 <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                <span>Adaptando receta a tu perfil con IA...</span>
+                <span>{t('recipe_adapting_btn')}</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                <span>Adaptar a mi perfil</span>
+                <span>{t('recipe_adapt_btn')}</span>
               </>
             )}
           </button>
 
           {/* Badges sutiles de perfil que motivan la adaptación */}
           <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500">
-            <span>Ajustará para:</span>
+            <span>{t('recipe_adapt_will_adjust')}</span>
             {nivel && (
               <span className="px-2 py-0.5 rounded-full bg-[#f4efe6] text-[#a86224] font-medium border border-[#e7dfd5]">
                 {nivel}
@@ -117,7 +118,7 @@ export function RecipeAdaptationSection({
                 key={al}
                 className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-800 font-medium border border-rose-200"
               >
-                Sin {al}
+                {t('recipe_adapt_without')} {al}
               </span>
             ))}
           </div>
@@ -134,7 +135,7 @@ export function RecipeAdaptationSection({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs sm:text-sm font-bold text-stone-900 font-serif-recipe">
-                  Receta adaptada a tu perfil
+                  {t('recipe_adapted_badge')}
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#a86224] text-white">
                   In-Line
@@ -153,7 +154,7 @@ export function RecipeAdaptationSection({
             title="Volver a los ingredientes y pasos originales"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Ver receta original</span>
+            <span>{t('recipe_view_original')}</span>
           </button>
         </div>
       )}
