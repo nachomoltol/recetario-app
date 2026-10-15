@@ -23,7 +23,11 @@ interface RecipeInteractiveSectionsProps {
   ingredientes: RecetaIngrediente[];
   pasos: Paso[];
   defaultServings?: number;
-  onSubstitutePersist?: (oldName: string, newName: string | null) => void;
+  onSubstitutePersist?: (
+    currentTarget: string,
+    newName: string | null,
+    adaptedBaseName?: string
+  ) => void;
   isAdapted?: boolean;
 }
 
@@ -48,17 +52,27 @@ export function RecipeInteractiveSections({
     setSubstitutions({});
   }, [recetaId, isAdapted]);
 
-  const handleSubstituteChange = (oldName: string, newName: string | null) => {
+  const handleSubstituteChange = (
+    currentTarget: string,
+    newName: string | null,
+    adaptedBaseName?: string
+  ) => {
+    const cleanTarget = currentTarget.replace(/<\/?[^>]+(>|$)/g, '').trim();
+    const cleanNew = newName ? newName.replace(/<\/?[^>]+(>|$)/g, '').trim() : null;
+    const baseKey = (adaptedBaseName || cleanTarget).replace(/<\/?[^>]+(>|$)/g, '').trim();
+
     setSubstitutions((prev) => {
       const next = { ...prev };
-      if (!newName) {
-        delete next[oldName];
-      } else {
-        next[oldName] = newName;
+      delete next[cleanTarget];
+      delete next[baseKey];
+
+      if (cleanNew && cleanNew.toLowerCase() !== baseKey.toLowerCase()) {
+        next[baseKey] = cleanNew;
       }
       return next;
     });
-    onSubstitutePersist?.(oldName, newName);
+
+    onSubstitutePersist?.(cleanTarget, cleanNew, baseKey);
   };
 
   // Reactividad dinámica: sustitución instantánea en el texto de preparación
@@ -70,10 +84,10 @@ export function RecipeInteractiveSections({
       let instruccion = paso.instruccion;
       let consejo = paso.consejo_pro;
 
-      for (const [oldName, newName] of activeSubs) {
-        instruccion = replaceIngredientInText(instruccion, oldName, newName);
+      for (const [adaptedBase, newName] of activeSubs) {
+        instruccion = replaceIngredientInText(instruccion, adaptedBase, newName);
         if (consejo) {
-          consejo = replaceIngredientInText(consejo, oldName, newName);
+          consejo = replaceIngredientInText(consejo, adaptedBase, newName);
         }
       }
 

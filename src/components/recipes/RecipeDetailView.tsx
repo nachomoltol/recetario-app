@@ -237,49 +237,38 @@ export function RecipeDetailView({
   };
 
   // Persistir sustitución de un ingrediente y actualizar pasos reactivos en Supabase
-  const handleSubstitutePersist = async (oldName: string, newName: string | null) => {
-    const cleanOldName = oldName.replace(/<\/?[^>]+(>|$)/g, '').trim().toLowerCase();
-    const cleanNewName = newName ? newName.replace(/<\/?[^>]+(>|$)/g, '').trim() : null;
+  const handleSubstitutePersist = async (
+    currentTarget: string,
+    newName: string | null,
+    adaptedBaseName?: string
+  ) => {
+    const cleanTarget = currentTarget.replace(/<\/?[^>]+(>|$)/g, '').trim();
+    const cleanNew = newName ? newName.replace(/<\/?[^>]+(>|$)/g, '').trim() : null;
+    const cleanBase = (adaptedBaseName || cleanTarget).replace(/<\/?[^>]+(>|$)/g, '').trim();
+
+    const targetLower = cleanTarget.toLowerCase();
+    const baseLower = cleanBase.toLowerCase();
 
     const updatedIngs = currentIngredientes.map((ing) => {
-      const ingName = (ing.nombre_limpio || ing.nombre_crudo).replace(/<\/?[^>]+(>|$)/g, '').trim().toLowerCase();
-      if (ingName === cleanOldName) {
-        if (!cleanNewName) {
-          return {
-            ...ing,
-            nombre_limpio: (ing.nombre_crudo || ing.nombre_limpio).replace(/<\/?[^>]+(>|$)/g, '').trim(),
-            notas: null,
-          };
-        } else {
-          return {
-            ...ing,
-            nombre_limpio: cleanNewName,
-            notas: `Sustituido por ${cleanNewName}`,
-          };
-        }
+      const ingClean = (ing.nombre_limpio || ing.nombre_crudo).replace(/<\/?[^>]+(>|$)/g, '').trim().toLowerCase();
+      if (ingClean === targetLower || ingClean === baseLower) {
+        return {
+          ...ing,
+          nombre_limpio: cleanNew || cleanBase,
+          notas: cleanNew && cleanNew.toLowerCase() !== baseLower ? `Sustituido por ${cleanNew}` : null,
+        };
       }
       return ing;
     });
 
+    const replacement = cleanNew || cleanBase;
     const updatedPasos = currentPasos.map((paso) => {
-      if (!cleanNewName) {
-        const targetIng = currentIngredientes.find(
-          (i) => (i.nombre_limpio || i.nombre_crudo).replace(/<\/?[^>]+(>|$)/g, '').trim().toLowerCase() === cleanOldName
-        );
-        const revertTo = targetIng?.nombre_crudo?.replace(/<\/?[^>]+(>|$)/g, '').trim();
-        if (revertTo && revertTo.toLowerCase() !== cleanOldName) {
-          return {
-            ...paso,
-            instruccion: replaceIngredientInText(paso.instruccion, oldName, revertTo),
-            consejo_pro: paso.consejo_pro ? replaceIngredientInText(paso.consejo_pro, oldName, revertTo) : null,
-          };
-        }
-        return paso;
-      }
       return {
         ...paso,
-        instruccion: replaceIngredientInText(paso.instruccion, oldName, cleanNewName),
-        consejo_pro: paso.consejo_pro ? replaceIngredientInText(paso.consejo_pro, oldName, cleanNewName) : null,
+        instruccion: replaceIngredientInText(paso.instruccion, currentTarget, replacement),
+        consejo_pro: paso.consejo_pro
+          ? replaceIngredientInText(paso.consejo_pro, currentTarget, replacement)
+          : null,
       };
     });
 

@@ -25,7 +25,11 @@ interface ShoppingListModeProps {
   recetaId: string;
   tituloReceta: string;
   ingredientes: ExtendedIngredient[];
-  onSubstituteChange?: (oldName: string, newName: string | null) => void;
+  onSubstituteChange?: (
+    currentTarget: string,
+    newName: string | null,
+    adaptedBaseName?: string
+  ) => void;
 }
 
 export function ShoppingListMode({
