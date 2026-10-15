@@ -116,18 +116,11 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
     foundPatron?.id || 'Omnívora'
   );
 
-  const [isProVip, setIsProVip] = useState(false);
+  const [isVipUpgraded, setIsVipUpgraded] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const vip = localStorage.getItem('recetario_vip_active');
-      setIsProVip(vip === 'true');
-    }
-  }, []);
-
-  const isProUser = initialProfile.plan_suscripcion === 'pro' || isProVip;
+  const isPro = initialProfile.plan_suscripcion === 'pro' || isVipUpgraded;
 
   const [isPending, startTransition] = useTransition();
   const [statusMessage, setStatusMessage] = useState<{
@@ -161,14 +154,14 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
     e.preventDefault();
     setStatusMessage(null);
 
-    const preferenciasActualizadas = isProUser
+    const preferenciasActualizadas = isPro
       ? [objetivoClinico, patronAlimentario].filter(Boolean)
       : initialProfile.preferencias_dieteticas || [];
 
     startTransition(async () => {
       const res = await updateUserProfileAction({
         nombre: nombre.trim(),
-        nivel_culinario: isProUser
+        nivel_culinario: isPro
           ? nivelCulinario
           : initialProfile.nivel_culinario || 'Principiante',
         preferencias_dieteticas: preferenciasActualizadas,
@@ -235,7 +228,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
               <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
                 {nivelCulinario}
               </span>
-              {isProUser && (
+              {isPro && (
                 <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 shadow-2xs">
                   <Sparkles className="w-3 h-3 text-[#a86224]" /> PRO
                 </span>
@@ -365,7 +358,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                 <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
                   {t('level_title')}
                 </h3>
-                {!isProUser && (
+                {!isPro && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-[#a86224] border border-[#a86224]/30 flex items-center gap-1 shadow-2xs">
                     <Lock className="w-3 h-3 text-[#a86224]" /> {t('clinical_pro_badge')}
                   </span>
@@ -378,11 +371,8 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
 
         <div
           className={`grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 transition-opacity ${
-            !isProUser ? 'opacity-60 cursor-pointer' : ''
+            !isPro ? 'opacity-50 pointer-events-none select-none' : ''
           }`}
-          onClick={() => {
-            if (!isProUser) setShowProModal(true);
-          }}
         >
           {NIVELES_CULINARIOS.map((nivel) => {
             const isSelected = nivelCulinario === nivel.id;
@@ -390,17 +380,12 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
               <button
                 key={nivel.id}
                 type="button"
-                disabled={!isProUser}
-                onClick={(e) => {
-                  if (!isProUser) {
-                    e.stopPropagation();
-                    setShowProModal(true);
-                    return;
-                  }
-                  setNivelCulinario(nivel.id);
+                disabled={!isPro}
+                onClick={() => {
+                  if (isPro) setNivelCulinario(nivel.id);
                 }}
                 className={`p-4 rounded-2xl text-left transition border flex flex-col justify-between gap-3 ${
-                  !isProUser ? 'cursor-not-allowed' : 'cursor-pointer'
+                  !isPro ? 'cursor-not-allowed' : 'cursor-pointer'
                 } ${
                   isSelected
                     ? 'bg-[#f4efe6] border-[#a86224] ring-1 ring-[#a86224]/40 shadow-2xs'
@@ -414,7 +399,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                       <Check className="w-3 h-3 stroke-[3]" />
                     </span>
                   )}
-                  {!isProUser && <Lock className="w-3.5 h-3.5 text-stone-400" />}
+                  {!isPro && <Lock className="w-3.5 h-3.5 text-stone-400" />}
                 </div>
                 <div>
                   <h4 className="text-sm font-bold font-serif-recipe text-stone-900">
@@ -442,13 +427,14 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                 <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
                   {t('clinical_showcase_title')}
                 </h3>
-                {!isProUser ? (
+                {!isPro ? (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-[#a86224] border border-[#a86224]/30 flex items-center gap-1 shadow-2xs">
                     <Lock className="w-3 h-3 text-[#a86224]" /> {t('clinical_pro_badge')}
                   </span>
                 ) : (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-emerald-600" /> Cortafuegos Activo
+                    <ShieldCheck className="w-3 h-3 text-emerald-600" />{' '}
+                    {language === 'en' ? 'Firewall Active' : 'Cortafuegos Activo'}
                   </span>
                 )}
               </div>
@@ -459,104 +445,111 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
           </div>
         </div>
 
-        {/* SELECTOR 1: OBJETIVO CLÍNICO */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label
-              htmlFor="select-objetivo-clinico"
-              className="text-xs font-bold text-stone-800 flex items-center gap-1.5"
-            >
-              {!isProUser && <Lock className="w-3.5 h-3.5 text-[#a86224]" />}
-              <span>{t('clinical_objective_label')}</span>
-            </label>
-            <span className="text-[11px] text-stone-500 font-medium">
-              16 patologías clínicas
-            </span>
-          </div>
-
-          <div className="relative">
-            <select
-              id="select-objetivo-clinico"
-              value={objetivoClinico}
-              disabled={!isProUser}
-              onChange={(e) => setObjetivoClinico(e.target.value)}
-              className={`w-full appearance-none min-h-[46px] px-4 py-2.5 pr-10 rounded-2xl border text-sm font-semibold transition bg-[#faf7f2] focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] ${
-                !isProUser
-                  ? 'border-stone-200 text-stone-500 bg-stone-50/80 cursor-not-allowed opacity-75'
-                  : 'border-[#e7dfd5] text-stone-900 cursor-pointer hover:border-stone-400'
-              }`}
-            >
-              {OBJETIVOS_CLINICOS.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {language === 'en' ? opt.labelEn : opt.label}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-stone-500">
-              <ChevronDown className="w-4 h-4" />
+        {/* CONTENEDOR DE SELECTORES CON OPACIDAD 50% Y BLOQUEO DE APERTURA SI !isPro */}
+        <div
+          className={`space-y-6 transition-opacity ${
+            !isPro ? 'opacity-50 pointer-events-none select-none' : ''
+          }`}
+        >
+          {/* SELECTOR 1: OBJETIVO CLÍNICO */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="select-objetivo-clinico"
+                className="text-xs font-bold text-stone-800 flex items-center gap-1.5"
+              >
+                {!isPro && <Lock className="w-3.5 h-3.5 text-[#a86224]" />}
+                <span>{t('clinical_objective_label')}</span>
+              </label>
+              <span className="text-[11px] text-stone-500 font-medium">
+                {language === 'en' ? '16 clinical conditions' : '16 patologías clínicas'}
+              </span>
             </div>
-          </div>
 
-          {selectedObjectiveObj && (
-            <p className="text-xs text-stone-600 font-light px-1">
-              {language === 'en' ? selectedObjectiveObj.descEn : selectedObjectiveObj.desc}
-            </p>
-          )}
-        </div>
-
-        {/* SELECTOR 2: PATRÓN ALIMENTARIO */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label
-              htmlFor="select-patron-alimentario"
-              className="text-xs font-bold text-stone-800 flex items-center gap-1.5"
-            >
-              {!isProUser && <Lock className="w-3.5 h-3.5 text-[#a86224]" />}
-              <span>{t('clinical_pattern_label')}</span>
-            </label>
-            <span className="text-[11px] text-stone-500 font-medium">
-              7 estilos dietéticos
-            </span>
-          </div>
-
-          <div className="relative">
-            <select
-              id="select-patron-alimentario"
-              value={patronAlimentario}
-              disabled={!isProUser}
-              onChange={(e) => setPatronAlimentario(e.target.value)}
-              className={`w-full appearance-none min-h-[46px] px-4 py-2.5 pr-10 rounded-2xl border text-sm font-semibold transition bg-[#faf7f2] focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] ${
-                !isProUser
-                  ? 'border-stone-200 text-stone-500 bg-stone-50/80 cursor-not-allowed opacity-75'
-                  : 'border-[#e7dfd5] text-stone-900 cursor-pointer hover:border-stone-400'
-              }`}
-            >
-              {PATRONES_ALIMENTARIOS.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {language === 'en' ? opt.labelEn : opt.label}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-stone-500">
-              <ChevronDown className="w-4 h-4" />
+            <div className="relative">
+              <select
+                id="select-objetivo-clinico"
+                value={objetivoClinico}
+                disabled={!isPro}
+                onChange={(e) => setObjetivoClinico(e.target.value)}
+                className={`w-full appearance-none min-h-[46px] px-4 py-2.5 pr-10 rounded-2xl border text-sm font-semibold transition bg-[#faf7f2] focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] ${
+                  !isPro
+                    ? 'border-stone-200 text-stone-400 bg-stone-100/90 cursor-not-allowed'
+                    : 'border-[#e7dfd5] text-stone-900 cursor-pointer hover:border-stone-400'
+                }`}
+              >
+                {OBJETIVOS_CLINICOS.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {language === 'en' ? opt.labelEn : opt.label}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-stone-500">
+                <ChevronDown className="w-4 h-4" />
+              </div>
             </div>
+
+            {selectedObjectiveObj && (
+              <p className="text-xs text-stone-600 font-light px-1">
+                {language === 'en' ? selectedObjectiveObj.descEn : selectedObjectiveObj.desc}
+              </p>
+            )}
           </div>
 
-          {selectedPatternObj && (
-            <p className="text-xs text-stone-600 font-light px-1">
-              {language === 'en' ? selectedPatternObj.descEn : selectedPatternObj.desc}
-            </p>
-          )}
+          {/* SELECTOR 2: PATRÓN ALIMENTARIO */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="select-patron-alimentario"
+                className="text-xs font-bold text-stone-800 flex items-center gap-1.5"
+              >
+                {!isPro && <Lock className="w-3.5 h-3.5 text-[#a86224]" />}
+                <span>{t('clinical_pattern_label')}</span>
+              </label>
+              <span className="text-[11px] text-stone-500 font-medium">
+                {language === 'en' ? '7 dietary patterns' : '7 estilos dietéticos'}
+              </span>
+            </div>
+
+            <div className="relative">
+              <select
+                id="select-patron-alimentario"
+                value={patronAlimentario}
+                disabled={!isPro}
+                onChange={(e) => setPatronAlimentario(e.target.value)}
+                className={`w-full appearance-none min-h-[46px] px-4 py-2.5 pr-10 rounded-2xl border text-sm font-semibold transition bg-[#faf7f2] focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] ${
+                  !isPro
+                    ? 'border-stone-200 text-stone-400 bg-stone-100/90 cursor-not-allowed'
+                    : 'border-[#e7dfd5] text-stone-900 cursor-pointer hover:border-stone-400'
+                }`}
+              >
+                {PATRONES_ALIMENTARIOS.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {language === 'en' ? opt.labelEn : opt.label}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-stone-500">
+                <ChevronDown className="w-4 h-4" />
+              </div>
+            </div>
+
+            {selectedPatternObj && (
+              <p className="text-xs text-stone-600 font-light px-1">
+                {language === 'en' ? selectedPatternObj.descEn : selectedPatternObj.desc}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* ============================================================== */}
         {/* BLOQUEO FREEMIUM / ESCAPARATE DE CONVERSIÓN PRO                */}
         {/* ============================================================== */}
-        {!isProUser ? (
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-50/90 via-[#fbf9f5] to-amber-100/50 border border-amber-200/90 shadow-2xs space-y-4">
+        {!isPro ? (
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-50/95 via-[#fbf9f5] to-amber-100/60 border border-amber-200/90 shadow-sm space-y-4">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-2xl bg-[#a86224] text-white flex items-center justify-center shrink-0 shadow-xs">
-                <ShieldCheck className="w-5 h-5" />
+                <Lock className="w-5 h-5" />
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-stone-900 leading-snug">
@@ -572,7 +565,11 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
             <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div className="text-[11px] text-stone-500 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#a86224]" />
-                <span>Desbloquea adaptación médica ilimitada y sin barreras</span>
+                <span>
+                  {language === 'en'
+                    ? 'Unlock unlimited medical adaptation & dietary filters'
+                    : 'Desbloquea adaptación médica ilimitada y sin barreras'}
+                </span>
               </div>
 
               <button
@@ -584,7 +581,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                 {isCheckoutLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Conectando con Stripe...</span>
+                    <span>{language === 'en' ? 'Connecting to Stripe...' : 'Conectando con Stripe...'}</span>
                   </>
                 ) : (
                   <>
@@ -598,17 +595,42 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
         ) : (
           /* VISTA PRO: Resumen de Exclusiones Activas en Tiempo Real */
           <div className="p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#a86224] flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5" /> Ingredientes Excluidos por tu Perfil ({activeExclusions.length})
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-700" />
+              <span className="text-xs font-bold text-stone-900 font-serif-recipe">
+                {language === 'en'
+                  ? 'Real-Time Active Exclusions Summary'
+                  : 'Resumen de Exclusiones Activas en Tiempo Real'}
               </span>
             </div>
-            <p className="text-xs text-stone-600 leading-relaxed font-light">
-              {activeExclusions.length > 0
-                ? activeExclusions.slice(0, 10).join(', ') +
-                  (activeExclusions.length > 10 ? ` y ${activeExclusions.length - 10} más...` : '')
-                : 'Sin exclusiones estrictas activas (Dieta equilibrada).'}
+            <p className="text-[11px] text-stone-600 leading-snug">
+              {language === 'en'
+                ? 'Ingredients the AI engine will strictly block:'
+                : 'Ingredientes que el motor de IA bloqueará automáticamente:'}
             </p>
+            {activeExclusions.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {activeExclusions.slice(0, 14).map((ing) => (
+                  <span
+                    key={ing}
+                    className="px-2 py-0.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-[10px] font-medium"
+                  >
+                    ✕ {ing}
+                  </span>
+                ))}
+                {activeExclusions.length > 14 && (
+                  <span className="px-2 py-0.5 rounded-lg bg-stone-100 text-stone-600 text-[10px] font-semibold">
+                    +{activeExclusions.length - 14} {language === 'en' ? 'more' : 'más'}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="text-[11px] text-stone-400 italic">
+                {language === 'en'
+                  ? 'No strict restrictions for this profile.'
+                  : 'Sin restricciones estrictas para este perfil.'}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -658,7 +680,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
         onClose={() => setShowProModal(false)}
         context="feature_locked"
         onVipSuccess={() => {
-          setIsProVip(true);
+          setIsVipUpgraded(true);
         }}
       />
     </form>

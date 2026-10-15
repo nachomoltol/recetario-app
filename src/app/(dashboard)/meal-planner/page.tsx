@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ChefHat, ArrowLeft, Calendar } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
+import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { MealPlannerView } from '@/components/planner/MealPlannerView';
 import { getWeeklyPlanAction } from '@/app/actions/mealPlanner';
 
@@ -86,10 +87,13 @@ export default async function MealPlannerPage() {
             </div>
           </div>
 
-          <UserDropdownMenu
-            fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
-            email={user.email || ''}
-          />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <LanguageToggle />
+            <UserDropdownMenu
+              fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
+              email={user.email || ''}
+            />
+          </div>
         </div>
       </header>
 

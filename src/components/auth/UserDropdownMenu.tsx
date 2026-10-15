@@ -113,7 +113,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
             >
               <BookOpen className="w-4 h-4 text-[#a86224]" />
               <div className="flex-1">
-                <span>Mi Recetario (Colección)</span>
+                <span>{t('nav_collection_full')}</span>
               </div>
             </Link>
 
@@ -124,7 +124,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
             >
               <Calendar className="w-4 h-4 text-[#a86224]" />
               <div className="flex-1">
-                <span>Plan de Comidas (Semanal)</span>
+                <span>{t('nav_meal_planner_full')}</span>
               </div>
             </Link>
 
@@ -135,7 +135,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
             >
               <User className="w-4 h-4 text-stone-500" />
               <div className="flex-1">
-                <span>Datos Personales</span>
+                <span>{t('nav_personal_data')}</span>
               </div>
             </Link>
 
@@ -146,7 +146,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
             >
               <Settings className="w-4 h-4 text-stone-500" />
               <div className="flex-1">
-                <span>Configuración</span>
+                <span>{t('nav_settings_full')}</span>
               </div>
             </Link>
 
@@ -157,10 +157,10 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
             >
               <div className="flex items-center gap-3">
                 <CreditCard className="w-4 h-4 text-[#a86224]" />
-                <span>Pasarela de Pago</span>
+                <span>{t('nav_payment_gateway')}</span>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-0.5">
-                <Sparkles className="w-2.5 h-2.5" /> Suscripción
+                <Sparkles className="w-2.5 h-2.5" /> {t('nav_subscription')}
               </span>
             </Link>
           </div>

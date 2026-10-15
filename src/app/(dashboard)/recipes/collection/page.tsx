@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ChefHat, ArrowLeft, BookOpen, Clock, ArrowRight, Utensils, Sparkles } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
+import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { RecipeCollectionOrganizer } from '@/components/recipes/RecipeCollectionOrganizer';
 
 export const dynamic = 'force-dynamic';
@@ -77,10 +78,13 @@ export default async function RecipeCollectionPage() {
             </div>
           </div>
 
-          <UserDropdownMenu
-            fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
-            email={user.email || ''}
-          />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <LanguageToggle />
+            <UserDropdownMenu
+              fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
+              email={user.email || ''}
+            />
+          </div>
         </div>
       </header>
 

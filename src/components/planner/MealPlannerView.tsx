@@ -34,18 +34,40 @@ import {
   generateUnifiedShoppingListAction,
 } from '@/app/actions/mealPlanner';
 import { groupItemsByAisle, SupermarketAisle } from '@/lib/culinary/aisles';
+import { useLanguageStore } from '@/stores/useLanguageStore';
+import { TranslationKey } from '@/lib/i18n/translations';
 
 interface MealPlannerViewProps {
   initialPlans: PlannedSlotItem[];
   userRecipes: Pick<Receta, 'id' | 'titulo' | 'tiempo_total_min' | 'porciones' | 'dificultad'>[];
 }
 
-const SLOTS_CONFIG: { slot: MealSlot; label: string; icon: typeof Sun }[] = [
-  { slot: 'desayuno', label: 'Desayuno', icon: Sun },
-  { slot: 'almuerzo_1', label: 'Almuerzo (1er plato)', icon: Soup },
-  { slot: 'almuerzo_2', label: 'Almuerzo (2do plato)', icon: Utensils },
-  { slot: 'cena', label: 'Cena', icon: Moon },
-  { slot: 'snack_postre', label: 'Snack / Postre', icon: Apple },
+const SLOTS_CONFIG: { slot: MealSlot; labelKey: TranslationKey; icon: typeof Sun }[] = [
+  { slot: 'desayuno', labelKey: 'slot_breakfast', icon: Sun },
+  { slot: 'almuerzo_1', labelKey: 'slot_lunch_1', icon: Soup },
+  { slot: 'almuerzo_2', labelKey: 'slot_lunch_2', icon: Utensils },
+  { slot: 'cena', labelKey: 'slot_dinner', icon: Moon },
+  { slot: 'snack_postre', labelKey: 'slot_snack_dessert', icon: Apple },
+];
+
+const DAY_KEYS: TranslationKey[] = [
+  'day_monday',
+  'day_tuesday',
+  'day_wednesday',
+  'day_thursday',
+  'day_friday',
+  'day_saturday',
+  'day_sunday',
+];
+
+const DAY_SHORT_KEYS: TranslationKey[] = [
+  'day_mon_short',
+  'day_tue_short',
+  'day_wed_short',
+  'day_thu_short',
+  'day_fri_short',
+  'day_sat_short',
+  'day_sun_short',
 ];
 
 function getMonday(d: Date): Date {
@@ -61,9 +83,10 @@ function formatDateISO(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
-const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-
 export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewProps) {
+  const language = useLanguageStore((s) => s.language);
+  const t = useLanguageStore((s) => s.t);
+
   const [currentMonday, setCurrentMonday] = useState<Date>(() => getMonday(new Date()));
   const [plans, setPlans] = useState<PlannedSlotItem[]>(initialPlans);
   const [activeDayIndex, setActiveDayIndex] = useState(0); // Para vista móvil por pestañas
@@ -84,20 +107,22 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
     'snack_postre',
   ]);
 
-  // Fechas de la semana activa
+  // Fechas de la semana activa con locale dinámico y traducción
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
       const day = new Date(currentMonday);
       day.setDate(currentMonday.getDate() + i);
+      const locale = language === 'en' ? 'en-US' : 'es-ES';
       return {
         date: day,
         dateStr: formatDateISO(day),
-        name: DAY_NAMES[i],
+        name: t(DAY_KEYS[i]),
+        shortName: t(DAY_SHORT_KEYS[i]),
         dayNum: day.getDate(),
-        monthName: day.toLocaleDateString('es-ES', { month: 'short' }),
+        monthName: day.toLocaleDateString(locale, { month: 'short' }),
       };
     });
-  }, [currentMonday]);
+  }, [currentMonday, language, t]);
 
   const startDateStr = weekDays[0].dateStr;
   const endDateStr = weekDays[6].dateStr;
@@ -224,11 +249,14 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
   const handleCopyShoppingList = () => {
     if (!shoppingModal) return;
 
+    const isEn = language === 'en';
     const daysCount = selectedDates.length;
     const slotsCount = selectedSlots.length;
     const lines = [
-      `🛒 LISTA DE LA COMPRA SEMANAL UNIFICADA`,
-      `📅 Rango: ${startDateStr} al ${endDateStr} (${daysCount} días · ${slotsCount} comidas/día)`,
+      isEn ? `🛒 UNIFIED WEEKLY SHOPPING LIST` : `🛒 LISTA DE LA COMPRA SEMANAL UNIFICADA`,
+      isEn
+        ? `📅 Range: ${startDateStr} to ${endDateStr} (${daysCount} days · ${slotsCount} meals/day)`
+        : `📅 Rango: ${startDateStr} al ${endDateStr} (${daysCount} días · ${slotsCount} comidas/día)`,
       '=======================================================',
     ];
 
@@ -238,12 +266,13 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
       for (const item of group.items) {
         const isChecked = checkedShoppingItems.includes(item.nombre);
         const prefix = isChecked ? '✓' : '☐';
-        lines.push(`${prefix} ${item.cantidadTotal} ${item.unidad} ${item.nombre} (para: ${item.recetasNombres.join(', ')})`);
+        const forLabel = isEn ? 'for' : 'para';
+        lines.push(`${prefix} ${item.cantidadTotal} ${item.unidad} ${item.nombre} (${forLabel}: ${item.recetasNombres.join(', ')})`);
       }
     }
 
     lines.push('\n=======================================================');
-    lines.push('Creado con Recetario App (Organización por Pasillos)');
+    lines.push(isEn ? 'Created with Smart Cookbook (Organized by Aisles)' : 'Creado con Recetario App (Organización por Pasillos)');
 
     navigator.clipboard.writeText(lines.join('\n'));
     setIsCopied(true);
@@ -259,7 +288,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
             type="button"
             onClick={handlePrevWeek}
             className="w-10 h-10 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-stone-700 transition cursor-pointer"
-            title="Semana anterior"
+            title={t('planner_prev_week')}
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -269,24 +298,26 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
             onClick={handleCurrentWeek}
             className="min-h-[40px] px-3.5 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-xs font-semibold text-stone-800 transition cursor-pointer"
           >
-            Esta semana
+            {t('planner_this_week')}
           </button>
 
           <button
             type="button"
             onClick={handleNextWeek}
             className="w-10 h-10 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-stone-700 transition cursor-pointer"
-            title="Semana siguiente"
+            title={t('planner_next_week')}
           >
             <ChevronRight className="w-4 h-4" />
           </button>
 
           <div className="pl-2">
             <span className="text-xs sm:text-sm font-bold font-serif-recipe text-stone-900 block leading-tight">
-              {weekDays[0].dayNum} {weekDays[0].monthName} – {weekDays[6].dayNum} {weekDays[6].monthName}
+              {language === 'en'
+                ? `${weekDays[0].monthName} ${weekDays[0].dayNum} – ${weekDays[6].monthName} ${weekDays[6].dayNum}`
+                : `${weekDays[0].dayNum} ${weekDays[0].monthName} – ${weekDays[6].dayNum} ${weekDays[6].monthName}`}
             </span>
             <span className="text-[10px] text-stone-500 uppercase tracking-wider font-medium">
-              Planificación Semanal
+              {t('planner_weekly_planning')}
             </span>
           </div>
         </div>
@@ -301,10 +332,10 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                 ? 'bg-[#f4efe6] border-[#a86224] text-[#a86224]'
                 : 'bg-white hover:bg-[#faf7f2] border-[#e7dfd5] text-stone-700'
             }`}
-            title="Personalizar días y bloques de comida para la lista"
+            title={t('planner_customize_export_desc')}
           >
             <SlidersHorizontal className="w-4 h-4 text-[#a86224]" />
-            <span>Filtros compra</span>
+            <span>{t('planner_shopping_filters')}</span>
             <span className="w-5 h-5 rounded-full bg-[#a86224] text-white text-[10px] flex items-center justify-center font-bold">
               {selectedDates.length}
             </span>
@@ -318,7 +349,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
           >
             <ShoppingCart className="w-4 h-4" />
             <span>
-              {isShoppingPending ? 'Calculando ingredientes...' : 'Generar Lista de Compra'}
+              {isShoppingPending ? t('planner_calculating_ingredients') : t('planner_generate_shopping_list')}
             </span>
           </button>
         </div>
@@ -331,11 +362,11 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-[#a86224]" />
               <h3 className="text-sm font-bold text-stone-900 font-serif-recipe">
-                Personalizar Exportación a la Lista de la Compra
+                {t('planner_customize_export_title')}
               </h3>
             </div>
             <span className="text-xs text-stone-500">
-              Selecciona los días y comidas exactas que necesitas comprar
+              {t('planner_customize_export_desc')}
             </span>
           </div>
 
@@ -343,14 +374,16 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
             {/* Control 1: Días de la semana */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-stone-700">Días a incluir ({selectedDates.length} de 7):</span>
+                <span className="font-semibold text-stone-700">
+                  {t('planner_days_to_include')} ({selectedDates.length} / 7):
+                </span>
                 <div className="flex items-center gap-1.5 text-[11px]">
                   <button
                     type="button"
                     onClick={handleSelectAllDays}
                     className="text-[#a86224] hover:underline cursor-pointer"
                   >
-                    Todos
+                    {t('planner_filter_all')}
                   </button>
                   <span>·</span>
                   <button
@@ -358,7 +391,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                     onClick={handleSelectMonToThu}
                     className="text-[#a86224] hover:underline cursor-pointer"
                   >
-                    Lun-Jue
+                    {t('planner_filter_mon_thu')}
                   </button>
                   <span>·</span>
                   <button
@@ -366,7 +399,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                     onClick={handleSelectWorkdays}
                     className="text-[#a86224] hover:underline cursor-pointer"
                   >
-                    Lun-Vie
+                    {t('planner_filter_mon_fri')}
                   </button>
                   <span>·</span>
                   <button
@@ -374,7 +407,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                     onClick={handleSelectWeekend}
                     className="text-[#a86224] hover:underline cursor-pointer"
                   >
-                    Finde
+                    {t('planner_filter_weekend')}
                   </button>
                 </div>
               </div>
@@ -393,7 +426,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                           : 'bg-white border-[#e7dfd5] text-stone-500 hover:bg-stone-50'
                       }`}
                     >
-                      <span className="text-[10px] uppercase font-semibold leading-none">{d.name.slice(0, 3)}</span>
+                      <span className="text-[10px] uppercase font-semibold leading-none">{d.shortName}</span>
                       <span className="text-xs font-bold leading-tight mt-0.5">{d.dayNum}</span>
                     </button>
                   );
@@ -404,14 +437,16 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
             {/* Control 2: Bloques de Comida / Slots */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-stone-700">Bloques de comida ({selectedSlots.length} de 5):</span>
+                <span className="font-semibold text-stone-700">
+                  {t('planner_meal_slots')} ({selectedSlots.length} / 5):
+                </span>
                 <div className="flex items-center gap-1.5 text-[11px]">
                   <button
                     type="button"
                     onClick={handleSelectAllSlots}
                     className="text-[#a86224] hover:underline cursor-pointer"
                   >
-                    Todos
+                    {t('planner_filter_all')}
                   </button>
                   <span>·</span>
                   <button
@@ -419,13 +454,13 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                     onClick={handleSelectMainMeals}
                     className="text-[#a86224] hover:underline cursor-pointer"
                   >
-                    Almuerzos y Cenas
+                    {t('planner_filter_lunches_dinners')}
                   </button>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
-                {SLOTS_CONFIG.map(({ slot, label, icon: SlotIcon }) => {
+                {SLOTS_CONFIG.map(({ slot, labelKey, icon: SlotIcon }) => {
                   const isSelected = selectedSlots.includes(slot);
                   return (
                     <button
@@ -439,7 +474,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                       }`}
                     >
                       <SlotIcon className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{label}</span>
+                      <span className="truncate">{t(labelKey)}</span>
                     </button>
                   );
                 })}
@@ -462,7 +497,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <span>{d.name.slice(0, 3)}</span>
+            <span>{d.shortName}</span>
             <span className="text-[10px] font-normal">{d.dayNum}</span>
           </button>
         ))}
@@ -492,7 +527,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
 
               {/* Los 4 slots fijos diarios */}
               <div className="space-y-3">
-                {SLOTS_CONFIG.map(({ slot, label, icon: SlotIcon }) => {
+                {SLOTS_CONFIG.map(({ slot, labelKey, icon: SlotIcon }) => {
                   const assignedPlan = plans.find(
                     (p) => p.fecha === day.dateStr && p.slot === slot
                   );
@@ -505,7 +540,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                       <div className="flex items-center justify-between text-[11px] font-semibold text-stone-600">
                         <span className="flex items-center gap-1.5 capitalize">
                           <SlotIcon className="w-3.5 h-3.5 text-[#a86224]" />
-                          {label}
+                          {t(labelKey)}
                         </span>
 
                         {assignedPlan && (
@@ -513,7 +548,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                             type="button"
                             onClick={() => handleRemoveSlot(day.dateStr, slot)}
                             className="w-6 h-6 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition cursor-pointer"
-                            title="Quitar receta"
+                            title={t('planner_remove_recipe')}
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -534,7 +569,9 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                               {assignedPlan.receta.tiempo_total_min || 15}m
                             </span>
                             <span>·</span>
-                            <span>{assignedPlan.receta.porciones}p</span>
+                            <span>
+                              {assignedPlan.receta.porciones} {t('planner_servings')}
+                            </span>
                           </div>
                         </div>
                       ) : (
@@ -544,7 +581,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                           className="w-full min-h-[40px] py-1.5 px-2 rounded-xl border border-dashed border-[#d5cabb] hover:border-[#a86224] text-stone-500 hover:text-[#a86224] hover:bg-white text-[11px] font-medium transition flex items-center justify-center gap-1 cursor-pointer"
                         >
                           <Plus className="w-3 h-3" />
-                          <span>Asignar</span>
+                          <span>{t('planner_assign_btn')}</span>
                         </button>
                       )}
                     </div>
@@ -565,9 +602,15 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
             <div className="flex items-center justify-between border-b border-[#e7dfd5] pb-3">
               <div>
                 <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
-                  Asignar Receta a {SLOTS_CONFIG.find((s) => s.slot === pickerModal.slot)?.label || pickerModal.slot}
+                  {t('planner_assign_modal_title')}{' '}
+                  {(() => {
+                    const found = SLOTS_CONFIG.find((s) => s.slot === pickerModal.slot);
+                    return found ? t(found.labelKey) : pickerModal.slot;
+                  })()}
                 </h3>
-                <p className="text-xs text-stone-500">Fecha: {pickerModal.fecha}</p>
+                <p className="text-xs text-stone-500">
+                  {t('planner_assign_date')}: {pickerModal.fecha}
+                </p>
               </div>
               <button
                 type="button"
@@ -582,13 +625,13 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
               <div className="p-8 text-center space-y-3">
                 <BookOpen className="w-10 h-10 text-stone-300 mx-auto" />
                 <p className="text-xs text-stone-500">
-                  Aún no tienes recetas en tu biblioteca. Pega un vídeo en el recetario para comenzar.
+                  {t('planner_no_recipes_title')}
                 </p>
                 <Link
                   href="/recipes"
                   className="inline-block px-4 py-2 rounded-xl bg-[#a86224] text-white text-xs font-semibold"
                 >
-                  Ir al Recetario
+                  {t('planner_go_to_cookbook')}
                 </Link>
               </div>
             ) : (
@@ -605,9 +648,13 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                         {r.titulo}
                       </h4>
                       <div className="flex items-center gap-2 text-[11px] text-stone-500 mt-0.5">
-                        <span>{r.tiempo_total_min || 15} min</span>
+                        <span>
+                          {r.tiempo_total_min || 15} {t('planner_min')}
+                        </span>
                         <span>·</span>
-                        <span>{r.porciones} porciones</span>
+                        <span>
+                          {r.porciones} {t('planner_servings')}
+                        </span>
                       </div>
                     </div>
                     <Plus className="w-4 h-4 text-stone-400 group-hover:text-[#a86224] shrink-0" />
@@ -632,10 +679,11 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                 </div>
                 <div>
                   <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
-                    Lista de Compra Semanal Unificada
+                    {t('planner_shopping_modal_title')}
                   </h3>
                   <p className="text-xs text-stone-500">
-                    {shoppingModal.length} ingredientes agregados · {selectedDates.length} días filtrados
+                    {shoppingModal.length} {t('planner_ingredients_count')} · {selectedDates.length}{' '}
+                    {t('planner_days_filtered')}
                   </p>
                 </div>
               </div>
@@ -652,14 +700,14 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
             {shoppingModal.length === 0 ? (
               <div className="p-8 text-center space-y-2">
                 <p className="text-xs sm:text-sm text-stone-600">
-                  No hay recetas asignadas para los días y comidas seleccionados en el filtro.
+                  {t('planner_no_assigned_recipes')}
                 </p>
               </div>
             ) : (
               <>
                 <div className="flex items-center justify-between gap-2 text-xs">
                   <span className="text-stone-500">
-                    Organizados por pasillo de supermercado para comprar sin rodeos:
+                    {t('planner_organized_by_aisle')}
                   </span>
                   <button
                     type="button"
@@ -667,7 +715,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                     className="min-h-[36px] px-3.5 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] font-semibold text-stone-800 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                   >
                     <Copy className="w-3.5 h-3.5 text-[#a86224]" />
-                    <span>{isCopied ? '¡Copiada!' : 'Copiar por pasillos'}</span>
+                    <span>{isCopied ? t('planner_copied') : t('planner_copy_by_aisle')}</span>
                   </button>
                 </div>
 
@@ -695,7 +743,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
 
                           {isGroupCompleted && (
                             <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                              Completado ✓
+                              {t('planner_completed')} ✓
                             </span>
                           )}
                         </div>
@@ -741,7 +789,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                                       {item.nombre}
                                     </span>
                                     <span className="text-[10px] text-stone-400 block truncate">
-                                      Platos: {item.recetasNombres.join(', ')}
+                                      {t('planner_dishes')}: {item.recetasNombres.join(', ')}
                                     </span>
                                   </div>
                                 </div>
