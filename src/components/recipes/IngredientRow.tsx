@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useRef } from 'react';
 import {
   Loader2,
   X,
@@ -43,6 +43,7 @@ export function IngredientRow({
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const technicalCardRef = useRef<HTMLDivElement>(null);
 
   // El ingrediente activo canónico en el estado actual de la receta adaptada
   const adaptedBaseName = (ingrediente.nombre_limpio || ingrediente.nombre_crudo)
@@ -55,6 +56,19 @@ export function IngredientRow({
     setOptions(null);
     setSelectedOptionIndex(null);
   }, [ingrediente.id, ingrediente.nombre_limpio]);
+
+  // Auto-scroll interno en el Drawer cuando se expande una ficha técnica
+  useEffect(() => {
+    if (selectedOptionIndex !== null) {
+      const timer = setTimeout(() => {
+        technicalCardRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedOptionIndex]);
 
   const handleOpenDrawer = () => {
     setIsOpen(true);
@@ -287,7 +301,10 @@ export function IngredientRow({
 
                   {/* Ficha técnica expandida al tocar una opción */}
                   {activeOption && (
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white border border-[#e7dfd5] space-y-3.5 shadow-2xs animate-fade-in">
+                    <div
+                      ref={technicalCardRef}
+                      className="p-4 sm:p-5 rounded-2xl bg-white border border-[#e7dfd5] space-y-3.5 shadow-2xs animate-fade-in"
+                    >
                       <div className="border-b border-[#f4efe6] pb-2">
                         <span className="text-[10px] uppercase font-bold tracking-wider text-[#a86224]">
                           Ficha técnica culinaria
