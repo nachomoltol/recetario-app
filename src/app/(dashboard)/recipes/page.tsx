@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ChefHat, BookOpen, Clock, ArrowRight, Sparkles, Utensils, Calendar } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
+import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { RecipeCaptureCard } from '@/components/recipes/RecipeCaptureCard';
 import { HomeRecentRecipesSection } from '@/components/recipes/HomeRecentRecipesSection';
 
@@ -63,6 +64,8 @@ export default async function RecipesDashboardPage() {
               <Calendar className="w-3.5 h-3.5" />
               <span className="hidden xs:inline">Plan Semanal</span>
             </Link>
+
+            <LanguageToggle />
 
             {/* Menú de Usuario Desplegable */}
             <UserDropdownMenu

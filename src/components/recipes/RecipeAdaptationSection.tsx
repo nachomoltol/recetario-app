@@ -13,6 +13,7 @@ import {
   AdaptacionCulinaria,
   AdaptRecipeInput,
 } from '@/app/actions/adaptRecipeAction';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 
 interface RecipeAdaptationSectionProps {
   recipe: AdaptRecipeInput;
@@ -54,10 +55,12 @@ export function RecipeAdaptationSection({
     return null;
   }
 
+  const language = useLanguageStore((s) => s.language);
+
   const handleAdapt = () => {
     setErrorMessage(null);
     startTransition(async () => {
-      const result = await adaptRecipeAction(recipe);
+      const result = await adaptRecipeAction({ ...recipe, idioma: language });
       if (result.success && result.data) {
         onApplyAdaptation(result.data);
       } else {

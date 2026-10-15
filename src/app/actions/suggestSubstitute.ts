@@ -3,6 +3,7 @@
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '@/lib/gemini/client';
 import { Type } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
+import { getClinicalExclusions } from '@/lib/clinicalDictionary';
 
 export interface SubstituteOption {
   tipo: 'magra_tradicional' | 'vegetal_umami' | 'accesible_economica';
@@ -87,10 +88,11 @@ Tu objetivo es sugerir EXACTAMENTE TRES alternativas diferentes, viables y organ
    - Enfoque: Alimento básico de despensa común, económico y disponible en cualquier supermercado local, fácil de preparar y con ratio directo de sustitución.
 
 DIRECTRICES TÉCNICAS Y CLÍNICAS:
+- Equivalencia Nutricional: Proporciona EXACTAMENTE 3 alternativas nutricionalmente equivalentes (proteína por proteína, grasa por grasa) y culinariamente lógicas.
 - Comportamiento Culinario: Explica con precisión técnica cómo reacciona al fuego/horno/emulsión y cómo afecta a la textura del plato.
 - Beneficio Nutricional: Cita el impacto en macronutrientes, digestión o salud metabólica.
 - Proporción Exacta: Especifica la ratio de intercambio para garantizar el éxito del plato.
-- SEGURIDAD CLÍNICA ESTRICTA: Si se especifican alérgenos o restricciones dietéticas del usuario, queda TERMINANTEMENTE PROHIBIDO incluir cualquiera de ellos en las alternativas.
+- SEGURIDAD CLÍNICA ESTRICTA: Si se especifican alérgenos o exclusiones clínicas del usuario, queda TERMINANTEMENTE PROHIBIDO incluir cualquiera de ellos en las alternativas.
 `.trim();
 
 export async function suggestSubstituteAction({
@@ -98,11 +100,13 @@ export async function suggestSubstituteAction({
   cantidad,
   unidad,
   tituloReceta,
+  idioma = 'es',
 }: {
   nombreIngrediente: string;
   cantidad?: number;
   unidad?: string;
   tituloReceta: string;
+  idioma?: 'es' | 'en';
 }): Promise<SuggestSubstituteResult> {
   if (!nombreIngrediente || !tituloReceta) {
     return {
@@ -136,24 +140,43 @@ export async function suggestSubstituteAction({
             : 'Ninguna declarada';
         const nivelStr = perfil.nivel_culinario || 'medio';
 
+        const exclusionesClinicas = getClinicalExclusions({
+          preferencias: perfil.preferencias_dieteticas || [],
+          alergenos: perfil.alergenos || [],
+        });
+
+        const exclusionesStr =
+          exclusionesClinicas.length > 0
+            ? `\nCORTAFUEGOS CLÍNICO ACTIVO:
+ESTRICTAMENTE PROHIBIDO sugerir los siguientes ingredientes: [${exclusionesClinicas.join(
+                ', '
+              )}].`
+            : '';
+
         clinicalContext = `
 PERFIL CLÍNICO E INTOLERANCIAS DEL USUARIO:
 - Alérgenos e intolerancias médicas estrictas: ${alergenosStr}
 - Preferencias dietéticas / estilo de vida: ${preferenciasStr}
 - Nivel culinario del usuario: ${nivelStr}
+${exclusionesStr}
 
 PROHIBICIÓN ESTRICTA: La IA tiene TERMINANTEMENTE PROHIBIDO sugerir cualquier ingrediente o alternativa que contenga, derive o active las intolerancias, alergias o restricciones del usuario (${alergenosStr}, ${preferenciasStr}). Todas las alternativas sugeridas deben ser 100% aptas y seguras para este perfil clínico.`;
       }
     }
 
     const ai = getGeminiClient();
+    const langName = idioma === 'en' ? 'English' : 'Spanish';
 
     const userPrompt = `
 RECETA: "${tituloReceta}"
 INGREDIENTE A SUSTITUIR: ${cantidad ? `${cantidad} ` : ''}${unidad ? `${unidad} de ` : ''}${nombreIngrediente}
 ${clinicalContext}
 
-Proporciona las tres alternativas requeridas (1. Magra tradicional, 2. Vegetal rica en umami, 3. Accesible y cotidiana) adaptadas al perfil culinario de esta receta respetando estrictamente las restricciones clínicas del usuario.
+DIRECTIVA NUTRICIONAL OBLIGATORIA:
+Proporciona EXACTAMENTE 3 alternativas nutricionalmente equivalentes (proteína por proteína, grasa por grasa) y culinariamente lógicas.
+
+GESTIÓN DINÁMICA DE IDIOMA:
+Redacta todas las alternativas, razones culinarias, beneficios y modos de uso estrictamente en ${langName}. NUNCA mezcles idiomas.
 `.trim();
 
     const candidateModels = [PRIMARY_GEMINI_MODEL, ...FALLBACK_GEMINI_MODELS];

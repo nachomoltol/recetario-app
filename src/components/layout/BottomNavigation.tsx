@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, BookOpen, Calendar } from 'lucide-react';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 
 export function BottomNavigation() {
   const pathname = usePathname();
+  const t = useLanguageStore((s) => s.t);
 
   // No mostrar en pantallas de autenticación o callbacks
   if (
@@ -18,19 +20,19 @@ export function BottomNavigation() {
 
   const navItems = [
     {
-      label: 'Inicio',
+      label: t('nav_home'),
       href: '/',
       icon: Home,
       isActive: pathname === '/' || pathname === '/recipes',
     },
     {
-      label: 'Recetario',
+      label: t('nav_recipes'),
       href: '/recipes/collection',
       icon: BookOpen,
       isActive: pathname.startsWith('/recipes/collection') || pathname.startsWith('/collection'),
     },
     {
-      label: 'Plan semanal',
+      label: t('nav_plan'),
       href: '/meal-planner',
       icon: Calendar,
       isActive: pathname.startsWith('/meal-planner'),

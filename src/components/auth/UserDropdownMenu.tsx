@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 import { signOutAction } from '@/app/actions/auth';
 
 interface UserDropdownMenuProps {
@@ -28,6 +29,8 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
 
   const profile = useProfileStore((s) => s.profile);
   const user = useAuthStore((s) => s.user);
+  const language = useLanguageStore((s) => s.language);
+  const t = useLanguageStore((s) => s.t);
 
   const displayName = profile?.nombre || user?.user_metadata?.nombre || fallbackName;
   const displayEmail = user?.email || email;
@@ -67,7 +70,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
             {displayName}
           </p>
           <p className="text-[10px] text-stone-500 font-medium uppercase tracking-wider">
-            Mi Cuenta
+            {t('header_my_account')}
           </p>
         </div>
 
@@ -95,7 +98,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
               </p>
               <div className="mt-1 flex items-center gap-1.5">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
-                  <ChefHat className="w-3 h-3" /> Plan Chef Activo
+                  <ChefHat className="w-3 h-3" /> {t('header_active_plan')}
                 </span>
               </div>
             </div>
@@ -170,7 +173,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
                 className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-red-600 hover:text-red-700 hover:bg-red-50 transition cursor-pointer font-medium"
               >
                 <LogOut className="w-4 h-4" />
-                <span>Cerrar Sesión</span>
+                <span>{t('nav_logout')}</span>
               </button>
             </form>
           </div>

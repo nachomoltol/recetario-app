@@ -21,6 +21,7 @@ import {
 import { ingestRecipeAction } from '@/app/actions/recipeIngest';
 import { IosShortcutTutorialModal } from '@/components/pwa/IosShortcutTutorialModal';
 import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 
 interface LoadingStage {
   seconds: number;
@@ -78,6 +79,8 @@ const LOADING_STAGES: LoadingStage[] = [
 ];
 
 export function RecipeCaptureCard() {
+  const language = useLanguageStore((s) => s.language);
+  const t = useLanguageStore((s) => s.t);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -151,6 +154,7 @@ export function RecipeCaptureCard() {
       textInputRef.current?.blur();
 
       const formData = new FormData();
+      formData.set('idioma', language);
       if (selectedFile) {
         formData.set('archivo', selectedFile);
       }
@@ -183,7 +187,7 @@ export function RecipeCaptureCard() {
             setError(res.error);
           }
         } else if (res.success) {
-          setSuccess('¡Receta extraída, estandarizada y guardada en tu recetario!');
+          setSuccess(t('capture_success'));
           setCreatedRecetaId(res.recetaId || null);
           setUrl('');
           setTexto('');
@@ -344,7 +348,7 @@ export function RecipeCaptureCard() {
             } disabled:opacity-50`}
           >
             <LinkIcon className="w-4 h-4 text-[#a86224]" />
-            <span>Enlace</span>
+            <span>{t('capture_tab_url')}</span>
           </button>
           <button
             type="button"
@@ -360,7 +364,7 @@ export function RecipeCaptureCard() {
             } disabled:opacity-50`}
           >
             <FileText className="w-4 h-4 text-[#a86224]" />
-            <span>Texto</span>
+            <span>{t('capture_tab_text')}</span>
           </button>
         </div>
       </div>
@@ -423,7 +427,7 @@ export function RecipeCaptureCard() {
           <div className="p-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs text-stone-600 flex items-start gap-2.5 shadow-2xs">
             <Sparkles className="w-4 h-4 text-[#a86224] shrink-0 mt-0.5" />
             <span className="leading-relaxed">
-              Los vídeos largos requieren tiempo de generación mientras la IA visualiza el metraje y estructura los pasos. Por favor, mantén la app encendida.
+              {t('capture_loading_long_video')}
             </span>
           </div>
         </div>
@@ -614,8 +618,8 @@ export function RecipeCaptureCard() {
             <>
               <span>
                 {selectedFile
-                  ? `Procesar receta (${selectedFile.name})`
-                  : 'Procesar la receta'}
+                  ? `${language === 'en' ? 'Process recipe' : 'Procesar receta'} (${selectedFile.name})`
+                  : t('capture_btn_process')}
               </span>
               <ArrowRight className="w-5 h-5" />
             </>

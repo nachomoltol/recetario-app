@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { Sparkles, Eye, Clock, Utensils, ArrowRight, BookOpen } from 'lucide-react';
 import { Receta } from '@/types/recipe';
 import { DeleteRecipeButton } from './DeleteRecipeButton';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 
 interface HomeRecentRecipesSectionProps {
   recetas: Receta[];
 }
 
 export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionProps) {
+  const t = useLanguageStore((s) => s.t);
   // Estado local para alternar pestañas: recuerda la última pestaña seleccionada
   const [activeTab, setActiveTab] = useState<'capturada' | 'vista'>('capturada');
   const [lastViewedId, setLastViewedId] = useState<string | null>(null);
@@ -82,7 +84,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-[#a86224]" />
-            <span>Última receta capturada</span>
+            <span>{t('capture_tab_latest')}</span>
           </button>
 
           <button
@@ -95,7 +97,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
             }`}
           >
             <Eye className="w-3.5 h-3.5 text-[#a86224]" />
-            <span>Última receta vista</span>
+            <span>{t('capture_tab_viewed')}</span>
           </button>
         </div>
 

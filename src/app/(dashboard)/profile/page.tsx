@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ArrowLeft, Settings, ChefHat } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
+import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { ProfileForm } from '@/components/profile/ProfileForm';
 
 export const dynamic = 'force-dynamic';
@@ -80,10 +81,13 @@ export default async function ProfilePage() {
             </div>
           </div>
 
-          <UserDropdownMenu
-            fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
-            email={user.email || ''}
-          />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <LanguageToggle />
+            <UserDropdownMenu
+              fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
+              email={user.email || ''}
+            />
+          </div>
         </div>
       </header>
 
@@ -97,6 +101,7 @@ export default async function ProfilePage() {
             nivel_culinario: profile?.nivel_culinario || 'Principiante',
             preferencias_dieteticas: profile?.preferencias_dieteticas || [],
             alergenos: profile?.alergenos || [],
+            plan_suscripcion: profile?.plan_suscripcion || 'gratis',
             created_at: profile?.created_at || user.created_at,
           }}
           stats={stats}

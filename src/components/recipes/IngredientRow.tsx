@@ -17,6 +17,7 @@ import { Drawer } from 'vaul';
 import { suggestSubstituteAction, SubstituteOption } from '@/app/actions/suggestSubstitute';
 import { RecetaIngrediente } from '@/types/recipe';
 import { FormattedText } from '@/components/ui/FormattedText';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 
 interface IngredientRowProps {
   ingrediente: RecetaIngrediente;
@@ -44,6 +45,7 @@ export function IngredientRow({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const technicalCardRef = useRef<HTMLDivElement>(null);
+  const language = useLanguageStore((s) => s.language);
 
   // El ingrediente activo canónico en el estado actual de la receta adaptada
   const adaptedBaseName = (ingrediente.nombre_limpio || ingrediente.nombre_crudo)
@@ -84,6 +86,7 @@ export function IngredientRow({
         cantidad: Number(ingrediente.cantidad),
         unidad: ingrediente.unidad,
         tituloReceta,
+        idioma: language,
       });
 
       if (res.success && res.data && res.data.length > 0) {

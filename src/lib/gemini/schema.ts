@@ -212,9 +212,34 @@ export const recipeExtractionSchema = {
 };
 
 /**
- * Directiva Nutricional Holística y de Ingeniería Culinaria con Tolerancia Cero a la Alucinación
+ * Construye la directiva de sistema para Gemini incorporando la gestión dinámica de idioma
+ * y el cortafuegos clínico personalizado del usuario.
  */
-export const SYSTEM_INSTRUCTION_RECIPES = `
+export function buildRecipeSystemInstruction(options?: {
+  idioma?: 'es' | 'en';
+  exclusionesClinicas?: string[];
+}): string {
+  const idioma = options?.idioma || 'es';
+  const exclusiones = options?.exclusionesClinicas || [];
+  const langName = idioma === 'en' ? 'English' : 'Spanish';
+
+  let firewallSection = '';
+  if (exclusiones.length > 0) {
+    firewallSection = `
+9. CORTAFUEGOS CLÍNICO Y SEGURIDAD MÉDICA OBLIGATORIA:
+   - ESTRICTAMENTE PROHIBIDO sugerir los siguientes ingredientes: [${exclusiones.join(', ')}].
+   - Tolerancia Cero: Si el vídeo o texto original contiene alguno de estos ingredientes prohibidos o sus derivados, DEBES sustituirlos OBLIGATORIAMENTE en la lista de ingredientes y en los pasos por alternativas nutricionalmente equivalentes y culinariamente afines que sean 100% seguras.
+   - Jamás incluyas los ingredientes prohibidos en los campos del JSON.
+`.trim();
+  }
+
+  const languageSection = `
+10. GESTIÓN DINÁMICA DE IDIOMA (VITAL Y ESTRICTO):
+   - Traduce el audio/texto del vídeo original y redacta el JSON de la receta estrictamente en ${langName}. NUNCA mezcles idiomas.
+   - Todos los campos textuales (titulo, descripcion, ingredientes, notas, pasos, consejos, etiquetas) DEBEN estar redactados de forma nativa e íntegra en ${langName}.
+`.trim();
+
+  return `
 Eres un Chef Ejecutivo y Nutricionista Clínico de élite especializado en estandarización culinaria, análisis audiovisual y salud sostenible.
 Tu misión es recibir información culinaria multimodal (vídeos/audio de TikTok, Reels de Instagram, YouTube Shorts, o textos/recetas) y convertirlas en una ficha culinaria técnica estandarizada.
 
@@ -272,7 +297,7 @@ REGLAS SUPREMAS DE FIDELIDAD Y CONTRA ALUCINACIONES:
      b) INGREDIENTE O FUENTE PRINCIPAL: Identifica siempre la materia prima o proteína protagonista (ej: "Pollo", "Carne", "Pescado", "Marisco", "Legumbres", "Verduras", "Huevo", "Queso").
      c) MOMENTO O TÉCNICA: Identifica el momento o función idónea (ej: "Almuerzo", "Cena", "Desayuno", "Rápido (<20m)", "Batch Cooking").
    - EJEMPLOS OBLIGATORIOS:
-     * Para 'Pasta con pollo y salsa pesto': asigna ["Pasta", "Carnes y Aves", "Pollo", "Aliños y Salsas", "Almuerzo"]. (Permite que la receta se renderice tanto en 'Pasta y Arroces' como en 'Carnes y Aves' y en 'Aliños y Salsas').
+     * Para 'Pasta con pollo y salsa pesto': asigna ["Pasta", "Carnes y Aves", "Pollo", "Aliños y Salsas", "Almuerzo"].
      * Para 'Sopa de pescado y marisco': asigna ["Sopas y Cremas", "Pescados y Mariscos", "Cena Ligera"].
      * Para 'Ensalada de garbanzos con atún': asigna ["Ensaladas y Entrantes", "Legumbres", "Pescados y Mariscos", "Atún", "Almuerzo Saludable"].
 
@@ -282,7 +307,17 @@ REGLAS SUPREMAS DE FIDELIDAD Y CONTRA ALUCINACIONES:
    - Haz esto con todos los ingredientes posibles para facilitar la cocina.
    - Si las raciones originales del metraje difieren de las raciones objetivo del usuario, DEBES aplicar obligatoriamente un factor de conversión matemático a TODOS los ingredientes. Ejemplo: si la receta original es para 8 raciones y el objetivo del usuario es 4, debes dividir absolutamente todos los pesos, volúmenes y unidades entre 2. Plasma estas cantidades ya calculadas (escaladas) tanto en el array de 'ingredientes' como inyectadas en el relato de 'preparación'.
    - Establece el campo 'porciones' exactamente con el número final de raciones ya escaladas.
+
+${firewallSection}
+
+${languageSection}
 `.trim();
+}
+
+/**
+ * Directiva Nutricional Holística por defecto (Español)
+ */
+export const SYSTEM_INSTRUCTION_RECIPES = buildRecipeSystemInstruction({ idioma: 'es' });
 
 export interface ExtractedIngredient {
   nombre_crudo: string;

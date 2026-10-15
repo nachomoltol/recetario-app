@@ -11,6 +11,7 @@ import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '.
 import {
   recipeExtractionSchema,
   SYSTEM_INSTRUCTION_RECIPES,
+  buildRecipeSystemInstruction,
   ExtractedRecipe,
 } from './schema';
 import { FuenteTipoReceta } from '@/types/database';
@@ -719,11 +720,15 @@ export async function extractRecipeWithGemini({
   texto,
   file,
   porcionesUsuario,
+  idioma = 'es',
+  exclusionesClinicas = [],
 }: {
   url?: string;
   texto?: string;
   file?: File;
   porcionesUsuario?: number;
+  idioma?: 'es' | 'en';
+  exclusionesClinicas?: string[];
 }): Promise<ExtractedRecipe> {
   const ai = getGeminiClient();
 
@@ -867,6 +872,14 @@ DIRECTIVA ESTRICTA DE ESCALADO MATEMÁTICO: Si las raciones originales del metra
     }
 
     // 2. Prompt de Fusión Contextual (Multimodal)
+    const langName = idioma === 'en' ? 'English' : 'Spanish';
+    const firewallDirective =
+      exclusionesClinicas.length > 0
+        ? `\n4. CORTAFUEGOS CLÍNICO ACTIVO: ESTRICTAMENTE PROHIBIDO sugerir los siguientes ingredientes: [${exclusionesClinicas.join(
+            ', '
+          )}]. Sustitúyelos obligatoriamente por alternativas seguras y aptas.`
+        : '';
+
     const promptFinal = `
 Eres un Chef Ejecutivo y Nutricionista especializado en extracción culinaria multimodal y perfilado nutricional.
 
@@ -877,6 +890,8 @@ DIRECTIVAS CRÍTICAS DE PRECISIÓN Y TOLERANCIA CERO A LA ALUCINACIÓN:
    - Especifica en "motivo_invalido" el motivo exacto (ej: "Vídeo no culinario", "Contenido sin ingredientes ni pasos de cocina").
    - NO inventes ingredientes ni pasos.
 3. Si el contenido SÍ es una receta real, establece "es_receta_valida": true y cruza exhaustivamente el vídeo/audio con el texto del post para extraer cantidades, ingredientes canónicos, pasos y tiempos.
+${firewallDirective}
+5. GESTIÓN DINÁMICA DE IDIOMA (VITAL): Traduce el audio/texto del vídeo original y redacta el JSON de la receta estrictamente en ${langName}. NUNCA mezcles idiomas.
 
 Estandariza la receta al esquema JSON estricto requerido:
 
@@ -899,6 +914,11 @@ ${contextPrompt.trim()}
       ...FALLBACK_GEMINI_MODELS.filter((m) => m !== primaryModel),
     ];
 
+    const dynamicSystemInstruction = buildRecipeSystemInstruction({
+      idioma,
+      exclusionesClinicas,
+    });
+
     let lastError: unknown = null;
 
     for (const model of candidateModels) {
@@ -907,7 +927,7 @@ ${contextPrompt.trim()}
           model,
           contents,
           config: {
-            systemInstruction: SYSTEM_INSTRUCTION_RECIPES,
+            systemInstruction: dynamicSystemInstruction,
             responseMimeType: 'application/json',
             responseJsonSchema: recipeExtractionSchema,
             maxOutputTokens: 8192,

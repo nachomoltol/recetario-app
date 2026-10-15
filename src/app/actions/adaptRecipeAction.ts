@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '@/lib/gemini/client';
+import { getClinicalExclusions } from '@/lib/clinicalDictionary';
 import { Type } from '@google/genai';
 
 export interface AdaptedIngredient {
@@ -55,6 +56,7 @@ export interface AdaptRecipeInput {
     instruccion: string;
     consejo_pro?: string | null;
   }[];
+  idioma?: 'es' | 'en';
 }
 
 const adaptRecipeSchema = {
@@ -216,6 +218,23 @@ export async function adaptRecipeAction(
       };
     }
 
+    // Calcular cortafuegos clínico cruzado
+    const exclusionesClinicas = getClinicalExclusions({
+      preferencias: preferenciasDieteticas,
+      alergenos,
+    });
+
+    const idioma = receta.idioma || 'es';
+    const langName = idioma === 'en' ? 'English' : 'Spanish';
+    const firewallDirective =
+      exclusionesClinicas.length > 0
+        ? `\nCORTAFUEGOS CLÍNICO ACTIVO:
+ESTRICTAMENTE PROHIBIDO sugerir los siguientes ingredientes: [${exclusionesClinicas.join(
+            ', '
+          )}].
+Cualquier ingrediente prohibido debe ser sustituido obligatoriamente por una alternativa apta y equivalente.`
+        : '';
+
     // 2. Construir prompt para Gemini
     const userPrompt = `
 PERFIL DEL USUARIO:
@@ -228,6 +247,10 @@ PERFIL DEL USUARIO:
 - Alérgenos e intolerancias médicas: ${
       alergenos.length > 0 ? alergenos.join(', ') : 'Ninguno especificado'
     }
+${firewallDirective}
+
+GESTIÓN DINÁMICA DE IDIOMA (VITAL):
+Traduce el texto original y redacta el JSON de la receta adaptada estrictamente en ${langName}. NUNCA mezcles idiomas.
 
 RECETA ORIGINAL A ADAPTAR:
 - Título: "${receta.titulo}"

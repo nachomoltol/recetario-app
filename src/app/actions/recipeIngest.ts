@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { extractRecipeWithGemini, detectFuenteTipo } from '@/lib/gemini/extractor';
+import { getClinicalExclusions } from '@/lib/clinicalDictionary';
 import { ExtractedIngredient } from '@/lib/gemini/schema';
 import { calcularGramos } from '@/lib/nutrition/converter';
 import { IngredienteMaestro } from '@/types/recipe';
@@ -17,6 +18,8 @@ export interface IngestRecipeResult {
 export async function ingestRecipeAction(formData: FormData): Promise<IngestRecipeResult> {
   const url = (formData.get('url') as string)?.trim() || undefined;
   const texto = (formData.get('texto') as string)?.trim() || undefined;
+  const rawIdioma = (formData.get('idioma') as string)?.trim().toLowerCase();
+  const idioma: 'es' | 'en' = rawIdioma === 'en' ? 'en' : 'es';
   const fileEntry = formData.get('archivo') || formData.get('file');
   const file = fileEntry instanceof File && fileEntry.size > 0 ? fileEntry : undefined;
 
@@ -39,7 +42,9 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
   // 2. Control de Cuotas Freemium (Paywall) ANTES de invocar a Gemini
   const { data: perfilUsuario } = await supabase
     .from('usuarios')
-    .select('id, plan_suscripcion, capturas_mes_actual, fecha_ultimo_reinicio, raciones_defecto')
+    .select(
+      'id, plan_suscripcion, capturas_mes_actual, fecha_ultimo_reinicio, raciones_defecto, preferencias_dieteticas, alergenos'
+    )
     .eq('id', user.id)
     .single();
 
@@ -77,6 +82,12 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     };
   }
 
+  // Calcular cortafuegos clínico del usuario basado en su modelo clínico y alérgenos
+  const exclusionesClinicas = getClinicalExclusions({
+    preferencias: perfilUsuario?.preferencias_dieteticas || [],
+    alergenos: perfilUsuario?.alergenos || [],
+  });
+
   try {
     // 3. Extracción multimodal autónoma con Gemini
     const extracted = await extractRecipeWithGemini({
@@ -84,6 +95,8 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       texto,
       file,
       porcionesUsuario: perfilUsuario?.raciones_defecto || undefined,
+      idioma,
+      exclusionesClinicas,
     });
 
     // 4. Consultar ingredientes maestros para cruce relacional y cálculo volumétrico
