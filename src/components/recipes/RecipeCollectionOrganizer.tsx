@@ -22,12 +22,14 @@ import {
 } from 'lucide-react';
 import { Receta } from '@/types/recipe';
 import { DeleteRecipeButton } from './DeleteRecipeButton';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 export interface RecetaConIngredientes extends Receta {
   ingredientesNombres?: string[];
 }
 interface CategoryConfig {
   id: string;
   nombre: string;
+  nombreEn: string;
   icono: React.ElementType;
   color: string;
   badgeColor: string;
@@ -41,6 +43,7 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
   {
     id: 'desayunos',
     nombre: 'Desayunos y Meriendas',
+    nombreEn: 'Breakfast & Snacks',
     icono: Coffee,
     color: 'text-amber-700 bg-amber-50 border-amber-200',
     badgeColor: 'bg-amber-100/70 text-amber-800 border-amber-200',
@@ -71,6 +74,7 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
   {
     id: 'carnes-aves',
     nombre: 'Carnes y Aves',
+    nombreEn: 'Meat & Poultry',
     icono: Beef,
     color: 'text-rose-700 bg-rose-50 border-rose-200',
     badgeColor: 'bg-rose-100/70 text-rose-800 border-rose-200',
@@ -111,6 +115,7 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
   {
     id: 'pescados-mariscos',
     nombre: 'Pescados y Mariscos',
+    nombreEn: 'Fish & Seafood',
     icono: Fish,
     color: 'text-cyan-700 bg-cyan-50 border-cyan-200',
     badgeColor: 'bg-cyan-100/70 text-cyan-800 border-cyan-200',
@@ -151,6 +156,7 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
   {
     id: 'pasta-arroces',
     nombre: 'Pasta y Arroces',
+    nombreEn: 'Pasta & Rice',
     icono: UtensilsCrossed,
     color: 'text-orange-700 bg-orange-50 border-orange-200',
     badgeColor: 'bg-orange-100/70 text-orange-800 border-orange-200',
@@ -186,6 +192,7 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
   {
     id: 'legumbres-guisos',
     nombre: 'Legumbres y Guisos',
+    nombreEn: 'Legumes & Stews',
     icono: Layers,
     color: 'text-amber-800 bg-[#f7f2ea] border-[#e2d5c3]',
     badgeColor: 'bg-[#ede5d8] text-[#8e511c] border-[#d8cbbb]',
@@ -218,6 +225,7 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
   {
     id: 'sopas-cremas',
     nombre: 'Sopas, Cremas y Caldos',
+    nombreEn: 'Soups & Broths',
     icono: Soup,
     color: 'text-yellow-800 bg-yellow-50 border-yellow-200',
     badgeColor: 'bg-yellow-100/70 text-yellow-800 border-yellow-200',
@@ -247,6 +255,7 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
   {
     id: 'ensaladas-entrantes',
     nombre: 'Ensaladas y Entrantes',
+    nombreEn: 'Salads & Appetizers',
     icono: Salad,
     color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
     badgeColor: 'bg-emerald-100/70 text-emerald-800 border-emerald-200',
@@ -275,6 +284,7 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
   {
     id: 'verduras-salteados',
     nombre: 'Verduras y Salteados',
+    nombreEn: 'Vegetables & Stir-fries',
     icono: Leaf,
     color: 'text-green-700 bg-green-50 border-green-200',
     badgeColor: 'bg-green-100/70 text-green-800 border-green-200',
@@ -310,6 +320,7 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
   {
     id: 'alinos-salsas',
     nombre: 'Aliños, Salsas y Dips',
+    nombreEn: 'Dressings, Sauces & Dips',
     icono: Sparkles,
     color: 'text-[#a86224] bg-[#f4efe6] border-[#e7dfd5]',
     badgeColor: 'bg-[#ebdcc9] text-[#a86224] border-[#dfcbb3]',
@@ -338,6 +349,7 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
   {
     id: 'panaderia-pizzas',
     nombre: 'Panadería, Masas y Pizzas',
+    nombreEn: 'Bakery, Doughs & Pizza',
     icono: Wheat,
     color: 'text-amber-800 bg-[#faf5ec] border-[#e8dac7]',
     badgeColor: 'bg-[#ede0ce] text-[#7d481b] border-[#dbc5ab]',
@@ -366,6 +378,7 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
   {
     id: 'postres-dulces',
     nombre: 'Postres y Dulces',
+    nombreEn: 'Desserts & Sweets',
     icono: Cake,
     color: 'text-pink-700 bg-pink-50 border-pink-200',
     badgeColor: 'bg-pink-100/70 text-pink-800 border-pink-200',
@@ -401,6 +414,7 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
   {
     id: 'bebidas-batidos',
     nombre: 'Bebidas y Batidos',
+    nombreEn: 'Drinks & Smoothies',
     icono: Wine,
     color: 'text-purple-700 bg-purple-50 border-purple-200',
     badgeColor: 'bg-purple-100/70 text-purple-800 border-purple-200',
@@ -449,6 +463,8 @@ export function RecipeCollectionOrganizer({
   recetas,
   userProfile,
 }: RecipeCollectionOrganizerProps) {
+  const language = useLanguageStore((s) => s.language);
+  const t = useLanguageStore((s) => s.t);
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroActivo, setFiltroActivo] = useState<string>('Todas');
   const tieneAdaptacionClinica = Boolean(
@@ -510,11 +526,15 @@ export function RecipeCollectionOrganizer({
             {tieneAdaptacionClinica && (
               <span
                 className="px-2 py-0.5 rounded-lg bg-amber-50 text-[#a86224] border border-amber-200/80 text-[10px] font-semibold flex items-center gap-1 shadow-2xs"
-                title="Esta receta cuenta con adaptación personalizada según tu perfil de salud y nivel"
+                title={
+                  language === 'en'
+                    ? 'This recipe features custom adaptation according to your health profile'
+                    : 'Esta receta cuenta con adaptación personalizada según tu perfil de salud y nivel'
+                }
               >
                 <Sparkles className="w-2.5 h-2.5" />
-                <span className="hidden sm:inline">Adaptable con IA</span>
-                <span className="sm:hidden">Adaptable</span>
+                <span className="hidden sm:inline">{t('collection_ai_adaptable')}</span>
+                <span className="sm:hidden">{t('collection_ai_adaptable_short')}</span>
               </span>
             )}
           </div>
@@ -559,7 +579,7 @@ export function RecipeCollectionOrganizer({
           href={`/recipes/${r.id}`}
           className="text-[#a86224] hover:text-[#8e511c] font-semibold inline-flex items-center gap-1 transition-colors"
         >
-          <span>Abrir receta</span>
+          <span>{t('collection_open_recipe')}</span>
           <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
         </Link>
       </div>
@@ -581,7 +601,7 @@ export function RecipeCollectionOrganizer({
                 setFiltroActivo('Todas');
               }
             }}
-            placeholder="Buscar por receta, ingrediente (ej. pollo, ajo, tomate) o etiqueta..."
+            placeholder={t('collection_search_placeholder')}
             className="w-full min-h-[54px] pl-12 pr-12 py-3.5 rounded-2xl bg-white border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] shadow-2xs transition"
           />
           {searchQuery && (
@@ -589,7 +609,7 @@ export function RecipeCollectionOrganizer({
               type="button"
               onClick={() => setSearchQuery('')}
               className="w-8 h-8 rounded-full bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-500 absolute right-3 flex items-center justify-center transition cursor-pointer"
-              title="Borrar búsqueda"
+              title={t('collection_clear_search')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -598,8 +618,9 @@ export function RecipeCollectionOrganizer({
         {searchQuery.trim() && (
           <div className="flex items-center justify-between text-xs text-stone-500 px-1 pt-0.5">
             <span>
-              Mostrando <strong>{filteredRecipes.length}</strong>{' '}
-              {filteredRecipes.length === 1 ? 'receta encontrada' : 'recetas encontradas'} para{' '}
+              {t('collection_showing_label')} <strong>{filteredRecipes.length}</strong>{' '}
+              {filteredRecipes.length === 1 ? t('collection_showing_singular') : t('collection_showing_plural')}{' '}
+              {t('collection_showing_for')}{' '}
               <strong className="text-stone-800">&ldquo;{searchQuery}&rdquo;</strong>
             </span>
             <button
@@ -607,7 +628,7 @@ export function RecipeCollectionOrganizer({
               onClick={() => setSearchQuery('')}
               className="text-[#a86224] hover:underline font-semibold cursor-pointer"
             >
-              Limpiar búsqueda
+              {t('collection_clear_search')}
             </button>
           </div>
         )}
@@ -624,7 +645,7 @@ export function RecipeCollectionOrganizer({
           }`}
         >
           <BookOpen className="w-3.5 h-3.5 shrink-0" />
-          <span>Todas ({filteredRecipes.length})</span>
+          <span>{t('collection_tab_all')} ({filteredRecipes.length})</span>
           <span className="text-[9px] opacity-75 font-mono ml-0.5">v.2.0</span>
         </button>
         {populatedCategories.map(({ category, recetas: groupRecetas }) => {
@@ -642,7 +663,7 @@ export function RecipeCollectionOrganizer({
               }`}
             >
               <IconComponent className="w-3.5 h-3.5 shrink-0" />
-              <span>{category.nombre}</span>
+              <span>{language === 'en' ? category.nombreEn : category.nombre}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded-md ${
                   isSelected ? 'bg-white/20 text-white' : 'bg-[#faf7f2] text-stone-500'
@@ -662,10 +683,10 @@ export function RecipeCollectionOrganizer({
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-bold text-stone-900 font-serif-recipe">
-              No se encontraron recetas
+              {t('collection_empty_title')}
             </h3>
             <p className="text-xs sm:text-sm text-stone-500 max-w-sm mx-auto">
-              Prueba buscando por otro ingrediente o término de cocina.
+              {t('collection_empty_desc')}
             </p>
           </div>
           {searchQuery && (
@@ -674,7 +695,7 @@ export function RecipeCollectionOrganizer({
               onClick={() => setSearchQuery('')}
               className="px-4 py-2 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold shadow-xs transition cursor-pointer"
             >
-              Ver todas las recetas
+              {t('collection_see_all')}
             </button>
           )}
         </div>
@@ -698,14 +719,14 @@ export function RecipeCollectionOrganizer({
               return (
                 <div className="p-8 text-center rounded-3xl bg-white border border-[#e7dfd5] space-y-2">
                   <p className="text-sm text-stone-600">
-                    No hay recetas en esta categoría para la búsqueda actual.
+                    {t('collection_empty_category')}
                   </p>
                   <button
                     type="button"
                     onClick={() => setFiltroActivo('Todas')}
                     className="text-xs text-[#a86224] font-semibold hover:underline cursor-pointer"
                   >
-                    Volver a Todas
+                    {t('collection_back_to_all')}
                   </button>
                 </div>
               );
@@ -723,7 +744,7 @@ export function RecipeCollectionOrganizer({
                     </div>
                     <div>
                       <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 leading-tight">
-                        {activeGroup.category.nombre}
+                        {language === 'en' ? activeGroup.category.nombreEn : activeGroup.category.nombre}
                       </h2>
                     </div>
                   </div>
@@ -731,7 +752,7 @@ export function RecipeCollectionOrganizer({
                     className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${activeGroup.category.badgeColor}`}
                   >
                     {activeGroup.recetas.length}{' '}
-                    {activeGroup.recetas.length === 1 ? 'receta' : 'recetas'}
+                    {activeGroup.recetas.length === 1 ? t('collection_recipe_singular') : t('collection_recipe_plural')}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

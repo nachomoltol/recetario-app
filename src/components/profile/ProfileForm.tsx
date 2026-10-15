@@ -26,7 +26,6 @@ import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionM
 import {
   OBJETIVOS_CLINICOS,
   PATRONES_ALIMENTARIOS,
-  getClinicalExclusions,
 } from '@/lib/clinicalDictionary';
 
 interface ChefStats {
@@ -156,7 +155,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
 
     const preferenciasActualizadas = isPro
       ? [objetivoClinico, patronAlimentario].filter(Boolean)
-      : initialProfile.preferencias_dieteticas || [];
+      : ['General', 'Omnívora'];
 
     startTransition(async () => {
       const res = await updateUserProfileAction({
@@ -206,11 +205,6 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
 
   const selectedObjectiveObj = OBJETIVOS_CLINICOS.find((o) => o.id === objetivoClinico);
   const selectedPatternObj = PATRONES_ALIMENTARIOS.find((p) => p.id === patronAlimentario);
-
-  const activeExclusions = getClinicalExclusions({
-    objetivoClinico,
-    patronAlimentario,
-  });
 
   return (
     <form onSubmit={handleSave} className="space-y-6">
@@ -380,13 +374,14 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
               <button
                 key={nivel.id}
                 type="button"
-                disabled={!isPro}
                 onClick={() => {
-                  if (isPro) setNivelCulinario(nivel.id);
+                  if (isPro) {
+                    setNivelCulinario(nivel.id);
+                  } else {
+                    setShowProModal(true);
+                  }
                 }}
-                className={`p-4 rounded-2xl text-left transition border flex flex-col justify-between gap-3 ${
-                  !isPro ? 'cursor-not-allowed' : 'cursor-pointer'
-                } ${
+                className={`p-4 rounded-2xl text-left transition border flex flex-col justify-between gap-3 cursor-pointer ${
                   isSelected
                     ? 'bg-[#f4efe6] border-[#a86224] ring-1 ring-[#a86224]/40 shadow-2xs'
                     : 'bg-[#faf7f2] border-[#e7dfd5] hover:border-stone-400'
@@ -445,12 +440,8 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
           </div>
         </div>
 
-        {/* CONTENEDOR DE SELECTORES CON OPACIDAD 50% Y BLOQUEO DE APERTURA SI !isPro */}
-        <div
-          className={`space-y-6 transition-opacity ${
-            !isPro ? 'opacity-50 pointer-events-none select-none' : ''
-          }`}
-        >
+        {/* CONTENEDOR DE SELECTORES: VISIBLE E INTERACTIVO PARA TODOS (TEASER FREEMIUM) */}
+        <div className="space-y-6">
           {/* SELECTOR 1: OBJETIVO CLÍNICO */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -462,7 +453,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                 <span>{t('clinical_objective_label')}</span>
               </label>
               <span className="text-[11px] text-stone-500 font-medium">
-                {language === 'en' ? '16 clinical conditions' : '16 patologías clínicas'}
+                {t('profile_conditions_count')}
               </span>
             </div>
 
@@ -470,13 +461,21 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
               <select
                 id="select-objetivo-clinico"
                 value={objetivoClinico}
-                disabled={!isPro}
-                onChange={(e) => setObjetivoClinico(e.target.value)}
-                className={`w-full appearance-none min-h-[46px] px-4 py-2.5 pr-10 rounded-2xl border text-sm font-semibold transition bg-[#faf7f2] focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] ${
-                  !isPro
-                    ? 'border-stone-200 text-stone-400 bg-stone-100/90 cursor-not-allowed'
-                    : 'border-[#e7dfd5] text-stone-900 cursor-pointer hover:border-stone-400'
-                }`}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!isPro && val !== 'General') {
+                    // Revertir a General para usuario gratuito
+                    setObjetivoClinico('General');
+                    setStatusMessage({
+                      type: 'error',
+                      text: t('clinical_free_notice'),
+                    });
+                    setShowProModal(true);
+                    return;
+                  }
+                  setObjetivoClinico(val);
+                }}
+                className="w-full appearance-none min-h-[46px] px-4 py-2.5 pr-10 rounded-2xl border border-[#e7dfd5] text-stone-900 text-sm font-semibold transition bg-[#faf7f2] focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] cursor-pointer hover:border-stone-400"
               >
                 {OBJETIVOS_CLINICOS.map((opt) => (
                   <option key={opt.id} value={opt.id}>
@@ -507,7 +506,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                 <span>{t('clinical_pattern_label')}</span>
               </label>
               <span className="text-[11px] text-stone-500 font-medium">
-                {language === 'en' ? '7 dietary patterns' : '7 estilos dietéticos'}
+                {t('profile_patterns_count')}
               </span>
             </div>
 
@@ -515,13 +514,21 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
               <select
                 id="select-patron-alimentario"
                 value={patronAlimentario}
-                disabled={!isPro}
-                onChange={(e) => setPatronAlimentario(e.target.value)}
-                className={`w-full appearance-none min-h-[46px] px-4 py-2.5 pr-10 rounded-2xl border text-sm font-semibold transition bg-[#faf7f2] focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] ${
-                  !isPro
-                    ? 'border-stone-200 text-stone-400 bg-stone-100/90 cursor-not-allowed'
-                    : 'border-[#e7dfd5] text-stone-900 cursor-pointer hover:border-stone-400'
-                }`}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!isPro && val !== 'Omnívora') {
+                    // Revertir a Omnívora para usuario gratuito
+                    setPatronAlimentario('Omnívora');
+                    setStatusMessage({
+                      type: 'error',
+                      text: t('clinical_free_pattern_notice'),
+                    });
+                    setShowProModal(true);
+                    return;
+                  }
+                  setPatronAlimentario(val);
+                }}
+                className="w-full appearance-none min-h-[46px] px-4 py-2.5 pr-10 rounded-2xl border border-[#e7dfd5] text-stone-900 text-sm font-semibold transition bg-[#faf7f2] focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] cursor-pointer hover:border-stone-400"
               >
                 {PATRONES_ALIMENTARIOS.map((opt) => (
                   <option key={opt.id} value={opt.id}>
@@ -565,11 +572,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
             <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div className="text-[11px] text-stone-500 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#a86224]" />
-                <span>
-                  {language === 'en'
-                    ? 'Unlock unlimited medical adaptation & dietary filters'
-                    : 'Desbloquea adaptación médica ilimitada y sin barreras'}
-                </span>
+                <span>{t('profile_unlock_unlimited')}</span>
               </div>
 
               <button
@@ -581,7 +584,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                 {isCheckoutLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{language === 'en' ? 'Connecting to Stripe...' : 'Conectando con Stripe...'}</span>
+                    <span>{t('profile_connecting_stripe')}</span>
                   </>
                 ) : (
                   <>
@@ -593,44 +596,14 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
             </div>
           </div>
         ) : (
-          /* VISTA PRO: Resumen de Exclusiones Activas en Tiempo Real */
-          <div className="p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-700" />
-              <span className="text-xs font-bold text-stone-900 font-serif-recipe">
-                {language === 'en'
-                  ? 'Real-Time Active Exclusions Summary'
-                  : 'Resumen de Exclusiones Activas en Tiempo Real'}
-              </span>
-            </div>
-            <p className="text-[11px] text-stone-600 leading-snug">
+          /* VISTA PRO: Confirmación de Cortafuegos Clínico Activo (Sin exponer ingredientes ni chips) */
+          <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 flex items-center gap-3">
+            <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+            <p className="text-xs font-semibold text-emerald-900">
               {language === 'en'
-                ? 'Ingredients the AI engine will strictly block:'
-                : 'Ingredientes que el motor de IA bloqueará automáticamente:'}
+                ? 'Clinical firewall active: AI recipes will strictly exclude pro-inflammatory ingredients and adapt to your health profile.'
+                : 'Cortafuegos clínico activo: Nuestro algoritmo adaptará tus recetas excluyendo de forma estricta los ingredientes proinflamatorios según tu salud.'}
             </p>
-            {activeExclusions.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {activeExclusions.slice(0, 14).map((ing) => (
-                  <span
-                    key={ing}
-                    className="px-2 py-0.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-[10px] font-medium"
-                  >
-                    ✕ {ing}
-                  </span>
-                ))}
-                {activeExclusions.length > 14 && (
-                  <span className="px-2 py-0.5 rounded-lg bg-stone-100 text-stone-600 text-[10px] font-semibold">
-                    +{activeExclusions.length - 14} {language === 'en' ? 'more' : 'más'}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <p className="text-[11px] text-stone-400 italic">
-                {language === 'en'
-                  ? 'No strict restrictions for this profile.'
-                  : 'Sin restricciones estrictas para este perfil.'}
-              </p>
-            )}
           </div>
         )}
       </div>

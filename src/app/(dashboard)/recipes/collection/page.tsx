@@ -5,6 +5,10 @@ import { ChefHat, ArrowLeft, BookOpen, Clock, ArrowRight, Utensils, Sparkles } f
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { RecipeCollectionOrganizer } from '@/components/recipes/RecipeCollectionOrganizer';
+import {
+  CollectionHeaderTitle,
+  CollectionHeroHeader,
+} from '@/components/recipes/CollectionHeaderComponents';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -68,14 +72,7 @@ export default async function RecipeCollectionPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <div>
-              <span className="text-base font-bold font-serif-recipe tracking-tight text-stone-900 block leading-tight">
-                Mi Recetario
-              </span>
-              <span className="text-[10px] text-stone-500 tracking-wider uppercase block font-medium">
-                Colección Completa ({total}) <span className="font-mono text-stone-400 font-bold ml-1">v.2.0</span>
-              </span>
-            </div>
+            <CollectionHeaderTitle total={total} />
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -89,24 +86,7 @@ export default async function RecipeCollectionPage() {
       </header>
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e7dfd5] pb-5">
-          <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-bold font-serif-recipe text-stone-900">
-              Todas tus Recetas Guardadas
-            </h1>
-            <p className="text-xs sm:text-sm text-stone-500">
-              Fichas culinarias estandarizadas con cálculo volumétrico y macronutrientes
-            </p>
-          </div>
-
-          <Link
-            href="/recipes"
-            className="min-h-[44px] px-4 py-2 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs sm:text-sm font-semibold inline-flex items-center justify-center gap-2 shadow-xs transition self-start sm:self-auto"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Capturar Nueva Receta</span>
-          </Link>
-        </div>
+        <CollectionHeroHeader />
 
         {total === 0 ? (
           <div className="p-12 text-center rounded-3xl bg-white border border-dashed border-[#e7dfd5] space-y-4">

@@ -3,7 +3,8 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ArrowLeft } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
-import { BillingPlanView } from '@/components/subscription/BillingPlanView';
+import { LanguageToggle } from '@/components/layout/LanguageToggle';
+import { BillingPlanView, BillingHeaderTitle } from '@/components/subscription/BillingPlanView';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,20 +36,16 @@ export default async function BillingPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <div>
-              <span className="text-base font-bold font-serif-recipe tracking-tight text-stone-900 block">
-                Suscripción PRO
-              </span>
-              <span className="text-[10px] text-stone-500 tracking-wider uppercase block font-medium">
-                Gestión de Planes
-              </span>
-            </div>
+            <BillingHeaderTitle />
           </div>
 
-          <UserDropdownMenu
-            fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
-            email={user.email || ''}
-          />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <LanguageToggle />
+            <UserDropdownMenu
+              fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
+              email={user.email || ''}
+            />
+          </div>
         </div>
       </header>
 

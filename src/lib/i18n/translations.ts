@@ -19,6 +19,7 @@ export const TRANSLATIONS = {
     home_tag: 'Cuaderno Gastronómico Personal',
     home_greeting: 'Hola',
     home_subtitle: 'Pega cualquier vídeo de cocina para extraer sus pasos y calcular sus ingredientes al instante.',
+    home_loading_capture: 'Cargando panel de captura...',
     capture_tab_url: 'Enlace de Vídeo',
     capture_tab_text: 'Texto o Pasos',
     capture_tab_file: 'Subir Foto o PDF',
@@ -35,6 +36,13 @@ export const TRANSLATIONS = {
     capture_tab_viewed: 'Última receta vista',
     capture_success: '¡Receta extraída, estandarizada y guardada en tu recetario!',
 
+    // Recent section in Home
+    home_visited_badge: 'Visitada',
+    home_no_visits: 'Sin visitas registradas en este navegador (mostrando última capturada)',
+    home_view_in_kitchen: 'Ver receta en modo cocina',
+    home_more_tags: 'más',
+    home_servings: 'porciones',
+
     // Profile & Showcase PRO
     profile_title: 'Datos Personales',
     profile_subtitle: 'Perfil Culinario y Modelo Clínico',
@@ -47,8 +55,16 @@ export const TRANSLATIONS = {
     profile_stat_planned: 'Días planificados',
     profile_stat_cooked: 'Platos cocinados',
     profile_stat_favorites: 'Favoritas',
+    profile_conditions_count: '16 patologías clínicas',
+    profile_patterns_count: '7 estilos dietéticos',
+    profile_firewall_active: 'Cortafuegos Activo',
+    profile_unlock_unlimited: 'Desbloquea adaptación médica ilimitada y sin barreras',
+    profile_connecting_stripe: 'Conectando con Stripe...',
+    profile_to_settings_title: 'Ajustes y Raciones por defecto',
+    profile_to_settings_desc: 'Configura el modo manos en la masa y la integración de compartir',
+    profile_to_settings_btn: 'Ir a Configuración',
 
-    // Escaparate PRO (Dropdowns clínicos)
+    // Escaparate PRO (Dropdowns clínicos e interceptor freemium)
     clinical_showcase_title: 'Modelo Clínico & Patrón Alimentario',
     clinical_showcase_desc:
       'Personaliza el cortafuegos médico de la IA para adaptar automáticamente cada receta a tu salud.',
@@ -57,7 +73,11 @@ export const TRANSLATIONS = {
     clinical_pro_badge: 'Exclusivo PRO',
     clinical_locked_title: 'Cortafuegos y Adaptación Médica con Rigor Clínico',
     clinical_locked_desc:
-      'Personaliza el motor de IA con tu objetivo médico y patrón alimentario. Al activar PRO, nuestro algoritmo excluye de forma estricta los ingredientes proinflamatorios, recalcula alérgenos y sustituye equivalencias respetando tu salud digestiva, hormonal y metabólica.',
+      'Personaliza el motor de IA con tu objetivo médico y patrón alimentario. Al activar PRO, nuestro algoritmo adapta tus recetas generadas excluyendo de forma estricta los ingredientes proinflamatorios, recalcula alérgenos y sustituye equivalencias respetando tu salud digestiva, hormonal y metabólica.',
+    clinical_free_notice:
+      'Seleccionar este objetivo médico requiere suscripción PRO. Puedes revisar todas las opciones, pero para activarlo en tus recetas necesitas mejorar tu cuenta.',
+    clinical_free_pattern_notice:
+      'Seleccionar este patrón alimentario requiere suscripción PRO. Para personalizar la adaptación culinaria en tus recetas necesitas mejorar tu cuenta.',
     clinical_upgrade_btn: 'Mejorar a PRO',
     clinical_save_btn: 'Guardar Preferencias Culinarias',
     clinical_saving_btn: 'Guardando preferencias...',
@@ -67,9 +87,13 @@ export const TRANSLATIONS = {
     level_title: 'Nivel Culinario',
     level_desc: 'Adapta las sugerencias de la IA y la dificultad recomendada',
 
-    // Modal PRO
+    // Modal PRO & Billing
     pro_modal_title: 'Desbloquea el Rigor Clínico con Recetario PRO',
     pro_modal_subtitle: 'Adaptación médica en tiempo real, capturas ilimitadas y rigor nutricional.',
+    pro_modal_limit_title: 'Desbloquea el recetario sin límites',
+    pro_modal_limit_desc: 'Has alcanzado tu límite de recetas gratuitas. Pásate a PRO para seguir capturando.',
+    pro_modal_feature_title: 'Potencia tu recetario con IA',
+    pro_modal_feature_desc: 'Pásate a PRO para desbloquear el motor clínico, adaptar recetas a tus intolerancias y disfrutar de capturas ilimitadas.',
 
     // Menú de Usuario / Sidebar (Navegación extendida)
     nav_collection_full: 'Mi Recetario (Colección)',
@@ -144,6 +168,87 @@ export const TRANSLATIONS = {
     slot_lunch_short: 'Almuerzo',
     slot_course_1: '1er Plato',
     slot_course_2: '2do Plato',
+
+    // Configuración (Settings)
+    settings_title: 'Configuración',
+    settings_subtitle: 'Ajustes Culinarios',
+    settings_main_title: 'Ajustes de Cocina',
+    settings_main_desc: 'Personaliza cómo cocinas y cómo interactúa tu recetario',
+    settings_servings_title: 'Raciones por defecto',
+    settings_servings_desc: 'Escala inicial automática para las recetas que captures o consultes',
+    settings_diners_label: 'Comensales habituales',
+    settings_diners_desc: 'Las recetas capturadas ajustarán sus ingredientes a estas porciones.',
+    settings_serving_singular: 'ración',
+    settings_serving_plural: 'raciones',
+    settings_frequent_servings: 'Raciones frecuentes:',
+    settings_person_singular: 'persona',
+    settings_person_plural: 'personas',
+    settings_saved: 'Guardado',
+    settings_saving: 'Guardando...',
+    settings_wakelock_title: 'Modo Manos en la Masa',
+    settings_wakelock_active: 'Activo',
+    settings_wakelock_subtitle: 'Mantiene la pantalla siempre encendida mientras cocinas',
+    settings_wakelock_desc:
+      'Evita que la pantalla de tu móvil o tablet se bloquee automáticamente mientras tienes abierta una receta. Así podrás consultar los ingredientes y los pasos sin necesidad de tocar la pantalla con las manos húmedas o manchadas de comida.',
+    settings_wakelock_supported: 'Compatible con la función Screen Wake Lock de tu navegador.',
+    settings_wakelock_unsupported: 'Esta función se activará en dispositivos móviles y navegadores compatibles.',
+    settings_share_title: 'Compartir desde otras apps',
+    settings_share_desc: 'Importa recetas en 1 segundo desde TikTok, Instagram o YouTube',
+    settings_share_integrated: 'Integrado',
+    settings_share_body:
+      'Cuando encuentres un vídeo o receta en redes sociales, pulsa el botón habitual de Compartir en tu teléfono y selecciona el icono de nuestra aplicación. La IA leerá el contenido y preparará los ingredientes y pasos de cocina al instante.',
+    settings_share_ios_label: '¿Usas iPhone o iPad? Puedes añadir un acceso directo al menú Compartir:',
+    settings_share_ios_btn: 'Configurar Atajo de iPhone',
+    settings_profile_link_title: 'Perfil y Preferencias Alimentarias',
+    settings_profile_link_desc: 'Alergias, nivel de cocina y estadísticas de chef',
+    settings_profile_link_btn: 'Gestionar perfil',
+
+    // Recetario / Colección (Cookbook)
+    collection_title: 'Mi Recetario',
+    collection_subtitle: 'Colección Completa',
+    collection_main_title: 'Todas tus Recetas Guardadas',
+    collection_main_desc: 'Fichas culinarias estandarizadas con cálculo volumétrico y macronutrientes',
+    collection_search_placeholder: 'Buscar por receta, ingrediente (ej. pollo, ajo, tomate) o etiqueta...',
+    collection_clear_search: 'Limpiar búsqueda',
+    collection_showing_label: 'Mostrando',
+    collection_showing_singular: 'receta encontrada',
+    collection_showing_plural: 'recetas encontradas',
+    collection_showing_for: 'para',
+    collection_tab_all: 'Todas',
+    collection_open_recipe: 'Abrir receta',
+    collection_empty_title: 'No se encontraron recetas',
+    collection_empty_desc: 'Prueba buscando por otro ingrediente o término de cocina.',
+    collection_see_all: 'Ver todas las recetas',
+    collection_empty_category: 'No hay recetas en esta categoría para la búsqueda actual.',
+    collection_back_to_all: 'Volver a Todas',
+    collection_recipe_singular: 'receta',
+    collection_recipe_plural: 'recetas',
+    collection_ai_adaptable: 'Adaptable con IA',
+    collection_ai_adaptable_short: 'Adaptable',
+
+    // Pasarela de Pago / Suscripción (Billing & Stripe)
+    billing_title: 'Suscripción PRO',
+    billing_subtitle: 'Gestión de Planes',
+    billing_hero_desc:
+      'Eleva tu experiencia en la cocina. Disfruta de capturas ilimitadas, cero publicidad y un motor clínico que adapta cada receta a ti.',
+    billing_plan_name: 'Plan PRO Mensual',
+    billing_price_month: '/ mes',
+    billing_subscribe_btn: 'Suscribirse ahora — 3,50€/mes',
+    billing_connecting: 'Conectando de forma segura...',
+    billing_cancel_anytime: 'Cancela cuando quieras. Transacción segura procesada por Stripe',
+    billing_vip_question: '¿Tienes un código promocional o VIP?',
+    billing_vip_placeholder: 'Introduce tu código (ej. NACHOVIP)',
+    billing_vip_redeem: 'Canjear',
+    billing_vip_success: '¡Nivel VIP desbloqueado! Generaciones ilimitadas activas.',
+    billing_vip_active_banner: 'Suscripción PRO Activa con Código VIP',
+    billing_advantages_title: 'Ventajas incluidas en tu membresía PRO',
+    billing_adv_1_title: 'Capturas ilimitadas',
+    billing_adv_1_desc: 'Guarda recetas desde TikTok, Instagram, Facebook, YouTube y Reels sin límites mensuales.',
+    billing_adv_2_title: 'Motor de Adaptación Clínica',
+    billing_adv_2_desc:
+      'Función exclusiva. Desbloquea tu perfil de salud, nivel culinario y preferencias alimentarias (alergias/dietas).',
+    billing_adv_3_title: 'Experiencia sin publicidad',
+    billing_adv_3_desc: 'Navegación limpia, cero interrupciones ni anuncios.',
   },
   en: {
     // Header & Global Nav
@@ -163,6 +268,7 @@ export const TRANSLATIONS = {
     home_tag: 'Personal Culinary Journal',
     home_greeting: 'Hello',
     home_subtitle: 'Paste any cooking video to extract its steps and compute ingredients instantly.',
+    home_loading_capture: 'Loading capture panel...',
     capture_tab_url: 'Video Link',
     capture_tab_text: 'Recipe Text',
     capture_tab_file: 'Upload Photo or PDF',
@@ -179,6 +285,13 @@ export const TRANSLATIONS = {
     capture_tab_viewed: 'Latest viewed recipe',
     capture_success: 'Recipe extracted, standardized, and saved to your cookbook!',
 
+    // Recent section in Home
+    home_visited_badge: 'Visited',
+    home_no_visits: 'No visits recorded in this browser (showing latest captured)',
+    home_view_in_kitchen: 'View recipe in cooking mode',
+    home_more_tags: 'more',
+    home_servings: 'servings',
+
     // Profile & Showcase PRO
     profile_title: 'Personal Info',
     profile_subtitle: 'Culinary Profile & Clinical Model',
@@ -191,8 +304,16 @@ export const TRANSLATIONS = {
     profile_stat_planned: 'Planned days',
     profile_stat_cooked: 'Cooked meals',
     profile_stat_favorites: 'Favorites',
+    profile_conditions_count: '16 clinical conditions',
+    profile_patterns_count: '7 dietary patterns',
+    profile_firewall_active: 'Firewall Active',
+    profile_unlock_unlimited: 'Unlock unlimited medical adaptation & dietary filters',
+    profile_connecting_stripe: 'Connecting to Stripe...',
+    profile_to_settings_title: 'Cooking Settings & Default Servings',
+    profile_to_settings_desc: 'Configure Hands-in-the-Dough mode and share integration',
+    profile_to_settings_btn: 'Go to Settings',
 
-    // Escaparate PRO (Dropdowns clínicos)
+    // Escaparate PRO (Dropdowns clínicos e interceptor freemium)
     clinical_showcase_title: 'Clinical Model & Dietary Pattern',
     clinical_showcase_desc:
       'Configure the medical AI firewall to automatically tailor every recipe to your health needs.',
@@ -201,7 +322,11 @@ export const TRANSLATIONS = {
     clinical_pro_badge: 'PRO Exclusive',
     clinical_locked_title: 'Medical Firewall & Clinical Adaptation',
     clinical_locked_desc:
-      'Customize the AI engine with your medical goal and eating pattern. With PRO, our algorithm strictly excludes pro-inflammatory ingredients, recalculates allergens, and adapts cooking steps to protect your digestive, metabolic, and hormonal health.',
+      'Customize the AI engine with your medical goal and dietary pattern. When activating PRO, our algorithm adapts your generated recipes by strictly excluding pro-inflammatory ingredients, recalculating allergens, and substituting culinary equivalents while protecting your digestive, hormonal, and metabolic health.',
+    clinical_free_notice:
+      'Selecting this medical goal requires a PRO subscription. You can explore all options, but activating it on your recipes requires upgrading your account.',
+    clinical_free_pattern_notice:
+      'Selecting this dietary pattern requires a PRO subscription. Upgrading your account is required to activate custom culinary adaptation.',
     clinical_upgrade_btn: 'Upgrade to PRO',
     clinical_save_btn: 'Save Culinary Preferences',
     clinical_saving_btn: 'Saving preferences...',
@@ -211,9 +336,13 @@ export const TRANSLATIONS = {
     level_title: 'Culinary Level',
     level_desc: 'Adapts AI suggestions and recommended difficulty',
 
-    // Modal PRO
+    // Modal PRO & Billing
     pro_modal_title: 'Unlock Clinical Rigor with Smart Cookbook PRO',
     pro_modal_subtitle: 'Real-time medical adaptation, unlimited captures, and clinical nutrition.',
+    pro_modal_limit_title: 'Unlock unlimited cookbook captures',
+    pro_modal_limit_desc: 'You have reached your free monthly limit. Switch to PRO to keep capturing recipes.',
+    pro_modal_feature_title: 'Power your cookbook with AI',
+    pro_modal_feature_desc: 'Upgrade to PRO to unlock the clinical engine, adapt recipes to intolerances, and enjoy unlimited captures.',
 
     // User Menu / Sidebar (Extended navigation)
     nav_collection_full: 'My Cookbook (Collection)',
@@ -288,6 +417,87 @@ export const TRANSLATIONS = {
     slot_lunch_short: 'Lunch',
     slot_course_1: '1st Course',
     slot_course_2: '2nd Course',
+
+    // Settings
+    settings_title: 'Settings',
+    settings_subtitle: 'Culinary Settings',
+    settings_main_title: 'Kitchen Settings',
+    settings_main_desc: 'Customize how you cook and how your cookbook interacts',
+    settings_servings_title: 'Default Servings',
+    settings_servings_desc: 'Automatic initial scale for captured or viewed recipes',
+    settings_diners_label: 'Regular diners',
+    settings_diners_desc: 'Captured recipes will scale ingredients to these servings.',
+    settings_serving_singular: 'serving',
+    settings_serving_plural: 'servings',
+    settings_frequent_servings: 'Frequent servings:',
+    settings_person_singular: 'person',
+    settings_person_plural: 'people',
+    settings_saved: 'Saved',
+    settings_saving: 'Saving...',
+    settings_wakelock_title: 'Hands-in-the-Dough Mode',
+    settings_wakelock_active: 'Active',
+    settings_wakelock_subtitle: 'Keeps your screen awake while cooking',
+    settings_wakelock_desc:
+      'Prevents your phone or tablet screen from dimming or locking while cooking. View ingredients and steps without having to touch your screen with wet or messy hands.',
+    settings_wakelock_supported: 'Compatible with your browser Screen Wake Lock feature.',
+    settings_wakelock_unsupported: 'This feature activates on compatible mobile devices and browsers.',
+    settings_share_title: 'Share from other apps',
+    settings_share_desc: 'Import recipes in 1 second from TikTok, Instagram, or YouTube',
+    settings_share_integrated: 'Integrated',
+    settings_share_body:
+      'When you find a cooking video on social media, tap your phone Share button and select our app icon. The AI will parse the content and structure ingredients and steps instantly.',
+    settings_share_ios_label: 'Using iPhone or iPad? You can add a shortcut to the Share menu:',
+    settings_share_ios_btn: 'Configure iPhone Shortcut',
+    settings_profile_link_title: 'Profile & Dietary Preferences',
+    settings_profile_link_desc: 'Allergies, cooking level, and chef stats',
+    settings_profile_link_btn: 'Manage profile',
+
+    // Recetario / Colección (Cookbook)
+    collection_title: 'My Cookbook',
+    collection_subtitle: 'Full Collection',
+    collection_main_title: 'All Your Saved Recipes',
+    collection_main_desc: 'Standardized culinary cards with volumetric calculation and macronutrients',
+    collection_search_placeholder: 'Search by recipe, ingredient (e.g. chicken, garlic, tomato), or tag...',
+    collection_clear_search: 'Clear search',
+    collection_showing_label: 'Showing',
+    collection_showing_singular: 'recipe found',
+    collection_showing_plural: 'recipes found',
+    collection_showing_for: 'for',
+    collection_tab_all: 'All',
+    collection_open_recipe: 'Open recipe',
+    collection_empty_title: 'No recipes found',
+    collection_empty_desc: 'Try searching with another ingredient or cooking term.',
+    collection_see_all: 'View all recipes',
+    collection_empty_category: 'No recipes in this category for current search.',
+    collection_back_to_all: 'Back to All',
+    collection_recipe_singular: 'recipe',
+    collection_recipe_plural: 'recipes',
+    collection_ai_adaptable: 'AI Adaptable',
+    collection_ai_adaptable_short: 'Adaptable',
+
+    // Billing & Stripe
+    billing_title: 'PRO Subscription',
+    billing_subtitle: 'Plan Management',
+    billing_hero_desc:
+      'Elevate your kitchen experience. Enjoy unlimited captures, zero ads, and a clinical engine that tailors every recipe to you.',
+    billing_plan_name: 'Monthly PRO Plan',
+    billing_price_month: '/ month',
+    billing_subscribe_btn: 'Subscribe now — €3.50/month',
+    billing_connecting: 'Connecting securely...',
+    billing_cancel_anytime: 'Cancel anytime. Secure transaction processed by Stripe',
+    billing_vip_question: 'Have a promo or VIP code?',
+    billing_vip_placeholder: 'Enter your code (e.g. NACHOVIP)',
+    billing_vip_redeem: 'Redeem',
+    billing_vip_success: 'VIP unlocked! Unlimited generations active.',
+    billing_vip_active_banner: 'PRO Subscription Active with VIP Code',
+    billing_advantages_title: 'Benefits included in your PRO membership',
+    billing_adv_1_title: 'Unlimited captures',
+    billing_adv_1_desc: 'Save recipes from TikTok, Instagram, Facebook, YouTube, and Reels with no monthly limits.',
+    billing_adv_2_title: 'Clinical Adaptation Engine',
+    billing_adv_2_desc:
+      'Exclusive feature. Unlocks health profile, culinary level, and dietary preferences (allergies/diets).',
+    billing_adv_3_title: 'Ad-free experience',
+    billing_adv_3_desc: 'Clean navigation, zero interruptions or ads.',
   },
 } as const;
 

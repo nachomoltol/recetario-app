@@ -3,12 +3,14 @@
 import { useState, useEffect, useTransition } from 'react';
 import { Users, Sparkles, Check, Minus, Plus, Flame, ShieldCheck } from 'lucide-react';
 import { updateCookingSettingsAction } from '@/app/actions/userPreferences';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 
 interface CookingSettingsFormProps {
   initialServings: number;
 }
 
 export function CookingSettingsForm({ initialServings }: CookingSettingsFormProps) {
+  const t = useLanguageStore((s) => s.t);
   const [servings, setServings] = useState(initialServings || 2);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   const [wakeLockSupported, setWakeLockSupported] = useState(true);
@@ -73,22 +75,22 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
             </div>
             <div>
               <h3 className="text-base font-bold font-serif-recipe text-stone-900">
-                Raciones por defecto
+                {t('settings_servings_title')}
               </h3>
               <p className="text-xs text-stone-500 mt-0.5">
-                Escala inicial automática para las recetas que captures o consultes
+                {t('settings_servings_desc')}
               </p>
             </div>
           </div>
 
           {saveStatus === 'saved' && (
             <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 animate-fade-in flex items-center gap-1 shrink-0">
-              <Check className="w-3 h-3" /> Guardado
+              <Check className="w-3 h-3" /> {t('settings_saved')}
             </span>
           )}
           {saveStatus === 'saving' && (
             <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 animate-pulse shrink-0">
-              Guardando...
+              {t('settings_saving')}
             </span>
           )}
         </div>
@@ -96,10 +98,10 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5]">
           <div className="space-y-1 text-center sm:text-left">
             <span className="text-xs font-semibold text-stone-700 uppercase tracking-wider block">
-              Comensales habituales
+              {t('settings_diners_label')}
             </span>
             <p className="text-xs text-stone-500">
-              Las recetas capturadas ajustarán sus ingredientes a estas porciones.
+              {t('settings_diners_desc')}
             </p>
           </div>
 
@@ -119,7 +121,7 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
                 {servings}
               </span>
               <span className="text-[11px] text-stone-500 font-medium">
-                {servings === 1 ? 'ración' : 'raciones'}
+                {servings === 1 ? t('settings_serving_singular') : t('settings_serving_plural')}
               </span>
             </div>
 
@@ -137,7 +139,7 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
 
         {/* Accesos rápidos de raciones */}
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-xs text-stone-500 mr-1">Raciones frecuentes:</span>
+          <span className="text-xs text-stone-500 mr-1">{t('settings_frequent_servings')}</span>
           {[1, 2, 4, 6].map((num) => (
             <button
               key={num}
@@ -149,7 +151,7 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
                   : 'bg-[#faf7f2] hover:bg-[#ebdcc9] text-stone-700 border-[#e7dfd5]'
               }`}
             >
-              {num} {num === 1 ? 'persona' : 'personas'}
+              {num} {num === 1 ? t('settings_person_singular') : t('settings_person_plural')}
             </button>
           ))}
         </div>
@@ -165,16 +167,16 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold font-serif-recipe text-stone-900">
-                  Modo Manos en la Masa
+                  {t('settings_wakelock_title')}
                 </h3>
                 {wakeLockEnabled && (
                   <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                    Activo
+                    {t('settings_wakelock_active')}
                   </span>
                 )}
               </div>
               <p className="text-xs text-stone-500 mt-0.5">
-                Mantiene la pantalla siempre encendida mientras cocinas
+                {t('settings_wakelock_subtitle')}
               </p>
             </div>
           </div>
@@ -199,19 +201,17 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
         </div>
 
         <p className="text-xs text-stone-600 leading-relaxed">
-          Evita que la pantalla de tu móvil o tablet se bloquee automáticamente mientras tienes
-          abierta una receta. Así podrás consultar los ingredientes y los pasos sin necesidad de
-          tocar la pantalla con las manos húmedas o manchadas de comida.
+          {t('settings_wakelock_desc')}
         </p>
 
         {wakeLockSupported ? (
           <div className="flex items-center gap-2 text-[11px] text-stone-500 bg-[#faf7f2] px-3.5 py-2 rounded-xl border border-[#e7dfd5]">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>Compatible con la función Screen Wake Lock de tu navegador.</span>
+            <span>{t('settings_wakelock_supported')}</span>
           </div>
         ) : (
           <div className="flex items-center gap-2 text-[11px] text-stone-500 bg-[#faf7f2] px-3.5 py-2 rounded-xl border border-[#e7dfd5]">
-            <span>Esta función se activará en dispositivos móviles y navegadores compatibles.</span>
+            <span>{t('settings_wakelock_unsupported')}</span>
           </div>
         )}
       </div>

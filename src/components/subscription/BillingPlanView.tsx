@@ -14,12 +14,31 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { redeemVipCodeAction } from '@/app/actions/subscription';
+import { useLanguageStore } from '@/stores/useLanguageStore';
+
+export function BillingHeaderTitle() {
+  const t = useLanguageStore((s) => s.t);
+
+  return (
+    <div>
+      <span className="text-base font-bold font-serif-recipe tracking-tight text-stone-900 block">
+        {t('billing_title')}
+      </span>
+      <span className="text-[10px] text-stone-500 tracking-wider uppercase block font-medium">
+        {t('billing_subtitle')}
+      </span>
+    </div>
+  );
+}
 
 interface BillingPlanViewProps {
   userEmail?: string;
 }
 
 export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
+  const language = useLanguageStore((s) => s.language);
+  const t = useLanguageStore((s) => s.t);
+
   const [vipCode, setVipCode] = useState('');
   const [isVipValidating, setIsVipValidating] = useState(false);
   const [vipSuccess, setVipSuccess] = useState(false);
@@ -42,7 +61,7 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
     const cleanCode = vipCode.trim().toUpperCase();
 
     if (!cleanCode) {
-      setVipError('Por favor introduce un código.');
+      setVipError(language === 'en' ? 'Please enter a code.' : 'Por favor introduce un código.');
       return;
     }
 
@@ -59,11 +78,16 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
           localStorage.setItem('recetario_vip_active', 'true');
         }
       } else {
-        setVipError(res.error || 'Código no válido o caducado. Prueba de nuevo.');
+        setVipError(
+          res.error ||
+            (language === 'en'
+              ? 'Invalid or expired code. Please try again.'
+              : 'Código no válido o caducado. Prueba de nuevo.')
+        );
       }
     } catch (err) {
       setIsVipValidating(false);
-      setVipError('Error al conectar con el servidor.');
+      setVipError(language === 'en' ? 'Error connecting to server.' : 'Error al conectar con el servidor.');
     }
   };
 
@@ -83,12 +107,21 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
         window.location.href = data.url;
       } else {
         setIsCheckoutLoading(false);
-        setCheckoutError(data.error || 'No se pudo conectar con Stripe.');
+        setCheckoutError(
+          data.error ||
+            (language === 'en'
+              ? 'Could not connect with Stripe.'
+              : 'No se pudo conectar con Stripe.')
+        );
       }
     } catch (err) {
       console.error('Error al conectar con Stripe Checkout:', err);
       setIsCheckoutLoading(false);
-      setCheckoutError('Error de red al conectar con la pasarela de pago.');
+      setCheckoutError(
+        language === 'en'
+          ? 'Network error connecting to payment gateway.'
+          : 'Error de red al conectar con la pasarela de pago.'
+      );
     }
   };
 
@@ -101,31 +134,33 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-bold font-serif-recipe text-stone-900 tracking-tight">
-          Suscripción PRO
+          {t('billing_title')}
         </h1>
 
         <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
-          Eleva tu experiencia en la cocina. Disfruta de capturas ilimitadas, cero publicidad y un motor clínico que adapta cada receta a ti.
+          {t('billing_hero_desc')}
         </p>
       </div>
 
       {/* 2. ÚNICO PLAN Y BOTÓN CTA (STRIPE) */}
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs text-center space-y-4">
         <div className="inline-block px-3 py-1 rounded-full bg-[#f4efe6] text-[#a86224] text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
-          Plan PRO Mensual
+          {t('billing_plan_name')}
         </div>
 
         <div className="flex items-baseline justify-center gap-1.5">
           <span className="text-4xl sm:text-5xl font-extrabold font-serif-recipe text-stone-900 tracking-tight">
             3,50€
           </span>
-          <span className="text-stone-500 font-medium text-sm sm:text-base">/ mes</span>
+          <span className="text-stone-500 font-medium text-sm sm:text-base">
+            {t('billing_price_month')}
+          </span>
         </div>
 
         {vipSuccess ? (
           <div className="w-full py-4 px-6 rounded-2xl font-bold text-sm sm:text-base bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center justify-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-emerald-700" />
-            <span>Suscripción PRO Activa con Código VIP</span>
+            <span>{t('billing_vip_active_banner')}</span>
           </div>
         ) : (
           <button
@@ -137,12 +172,12 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
             {isCheckoutLoading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin text-white shrink-0" />
-                <span>Conectando de forma segura...</span>
+                <span>{t('billing_connecting')}</span>
               </>
             ) : (
               <>
                 <CreditCard className="w-4 h-4" />
-                <span>Suscribirse ahora — 3,50€/mes</span>
+                <span>{t('billing_subscribe_btn')}</span>
               </>
             )}
           </button>
@@ -157,7 +192,7 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
 
         <div className="flex items-center justify-center gap-1.5 text-xs text-stone-500 pt-1">
           <Lock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-          <span>Cancela cuando quieras. Transacción segura procesada por Stripe</span>
+          <span>{t('billing_cancel_anytime')}</span>
         </div>
       </div>
 
@@ -166,14 +201,14 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
         <div className="flex items-center gap-2">
           <Ticket className="w-4 h-4 text-[#a86224]" />
           <h3 className="text-sm font-bold text-stone-900">
-            ¿Tienes un código promocional o VIP?
+            {t('billing_vip_question')}
           </h3>
         </div>
 
         {vipSuccess ? (
           <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-semibold flex items-center gap-2.5 animate-fade-in">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            <span>¡Nivel VIP desbloqueado! Generaciones ilimitadas activas.</span>
+            <span>{t('billing_vip_success')}</span>
           </div>
         ) : (
           <form onSubmit={handleRedeemVip} className="space-y-2">
@@ -185,7 +220,7 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
                   setVipCode(e.target.value);
                   if (vipError) setVipError(null);
                 }}
-                placeholder="Introduce tu código (ej. NACHOVIP)"
+                placeholder={t('billing_vip_placeholder')}
                 className="flex-1 min-h-[44px] px-4 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#a86224]/30 focus:border-[#a86224] uppercase tracking-wider font-mono font-medium transition"
                 disabled={isVipValidating}
               />
@@ -197,7 +232,7 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
                 {isVipValidating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  'Canjear'
+                  t('billing_vip_redeem')
                 )}
               </button>
             </div>
@@ -215,7 +250,7 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
       {/* 4. LISTA DE BENEFICIOS (LO QUE INCLUYE EL PLAN PRO) */}
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4">
         <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
-          Ventajas incluidas en tu membresía PRO
+          {t('billing_advantages_title')}
         </h4>
 
         <div className="grid grid-cols-1 gap-3">
@@ -226,10 +261,10 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
             </div>
             <div className="space-y-0.5">
               <h5 className="text-sm font-bold text-stone-900">
-                Capturas ilimitadas
+                {t('billing_adv_1_title')}
               </h5>
               <p className="text-xs text-stone-600 leading-relaxed">
-                Guarda recetas desde TikTok, Instagram, Facebook, YouTube y Reels sin límites mensuales.
+                {t('billing_adv_1_desc')}
               </p>
             </div>
           </div>
@@ -241,10 +276,10 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
             </div>
             <div className="space-y-0.5">
               <h5 className="text-sm font-bold text-stone-900">
-                Motor de Adaptación Clínica
+                {t('billing_adv_2_title')}
               </h5>
               <p className="text-xs text-stone-600 leading-relaxed">
-                Función exclusiva. Desbloquea tu perfil de salud, nivel culinario y preferencias alimentarias (alergias/dietas).
+                {t('billing_adv_2_desc')}
               </p>
             </div>
           </div>
@@ -256,10 +291,10 @@ export function BillingPlanView({ userEmail }: BillingPlanViewProps) {
             </div>
             <div className="space-y-0.5">
               <h5 className="text-sm font-bold text-stone-900">
-                Experiencia sin publicidad
+                {t('billing_adv_3_title')}
               </h5>
               <p className="text-xs text-stone-600 leading-relaxed">
-                Navegación limpia, cero interrupciones ni vídeos.
+                {t('billing_adv_3_desc')}
               </p>
             </div>
           </div>

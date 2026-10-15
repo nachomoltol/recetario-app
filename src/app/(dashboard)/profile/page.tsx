@@ -5,6 +5,10 @@ import { ArrowLeft, Settings, ChefHat } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { ProfileForm } from '@/components/profile/ProfileForm';
+import {
+  ProfileHeaderTitle,
+  ProfileSettingsBanner,
+} from '@/components/profile/ProfileHeaderComponents';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,14 +75,7 @@ export default async function ProfilePage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <div>
-              <span className="text-base font-bold font-serif-recipe tracking-tight text-stone-900 block">
-                Datos Personales
-              </span>
-              <span className="text-[10px] text-stone-500 tracking-wider uppercase block font-medium">
-                Perfil Culinario B2C
-              </span>
-            </div>
+            <ProfileHeaderTitle />
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -108,28 +105,7 @@ export default async function ProfilePage() {
         />
 
         {/* Acceso a Configuración y Recetas */}
-        <div className="p-6 rounded-3xl bg-[#f4efe6] border border-[#e7dfd5] flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3 text-center sm:text-left">
-            <div className="w-10 h-10 rounded-2xl bg-white border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
-              <Settings className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold font-serif-recipe text-stone-900">
-                Ajustes y Raciones por defecto
-              </h4>
-              <p className="text-xs text-stone-600">
-                Configura el modo manos en la masa y la integración de compartir
-              </p>
-            </div>
-          </div>
-
-          <Link
-            href="/settings"
-            className="w-full sm:w-auto min-h-[42px] px-5 py-2.5 rounded-xl bg-white hover:bg-stone-100 text-[#a86224] border border-[#e7dfd5] text-xs font-semibold flex items-center justify-center transition shadow-2xs"
-          >
-            Ir a Configuración
-          </Link>
-        </div>
+        <ProfileSettingsBanner />
       </main>
     </div>
   );

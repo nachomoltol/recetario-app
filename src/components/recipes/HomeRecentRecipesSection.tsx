@@ -12,6 +12,7 @@ interface HomeRecentRecipesSectionProps {
 }
 
 export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionProps) {
+  const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
   // Estado local para alternar pestañas: recuerda la última pestaña seleccionada
   const [activeTab, setActiveTab] = useState<'capturada' | 'vista'>('capturada');
@@ -104,10 +105,14 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
         <div className="flex items-center gap-2 text-xs text-stone-400 self-end sm:self-auto">
           {activeTab === 'vista' && !ultimaVista && (
             <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-              Sin visitas registradas en este navegador (mostrando última capturada)
+              {t('home_no_visits')}
             </span>
           )}
-          <span>{new Date(recipeToShow.created_at).toLocaleDateString()}</span>
+          <span>
+            {new Date(recipeToShow.created_at).toLocaleDateString(
+              language === 'en' ? 'en-US' : 'es-ES'
+            )}
+          </span>
         </div>
       </div>
 
@@ -124,7 +129,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
               </span>
               {activeTab === 'vista' && ultimaVista && (
                 <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
-                  <Eye className="w-3 h-3" /> Visitada
+                  <Eye className="w-3 h-3" /> {t('home_visited_badge')}
                 </span>
               )}
             </div>
@@ -165,7 +170,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
               ))}
               {recipeToShow.etiquetas.length > 4 && (
                 <span className="text-[11px] text-stone-400 font-medium self-center">
-                  +{recipeToShow.etiquetas.length - 4} más
+                  +{recipeToShow.etiquetas.length - 4} {t('home_more_tags')}
                 </span>
               )}
             </div>
@@ -180,7 +185,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
             </span>
             <span>·</span>
             <span className="flex items-center gap-1.5">
-              <Utensils className="w-4 h-4 text-[#a86224]" /> {recipeToShow.porciones} porciones
+              <Utensils className="w-4 h-4 text-[#a86224]" /> {recipeToShow.porciones} {t('home_servings')}
             </span>
           </div>
 
@@ -188,7 +193,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
             href={`/recipes/${recipeToShow.id}`}
             className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
           >
-            <span>Ver receta en modo cocina</span>
+            <span>{t('home_view_in_kitchen')}</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
