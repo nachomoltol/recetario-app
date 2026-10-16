@@ -13,7 +13,7 @@ import {
 import { RecetaIngrediente } from '@/types/recipe';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { IngredientRow } from './IngredientRow';
-import { groupItemsByAisle, classifyIngredientAisle } from '@/lib/culinary/aisles';
+import { groupItemsByAisle, classifyIngredientAisle, getAisleTranslationKey, formatIngredientUnit } from '@/lib/culinary/aisles';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 
 export type ExtendedIngredient = RecetaIngrediente & {
@@ -40,6 +40,7 @@ export function ShoppingListMode({
   onSubstituteChange,
 }: ShoppingListModeProps) {
   const t = useLanguageStore((s) => s.t);
+  const language = useLanguageStore((s) => s.language);
   const [isShoppingMode, setIsShoppingMode] = useState(false);
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
@@ -87,31 +88,27 @@ export function ShoppingListMode({
 
   const handleCopyList = () => {
     const textLines = [
-      `🛒 LISTA DE LA COMPRA - ${tituloReceta.toUpperCase()}`,
+      `🛒 ${t('recipe_shopping_list_title')} - ${tituloReceta.toUpperCase()}`,
       '========================================',
     ];
 
     for (const group of groupedAisles) {
-      textLines.push(`\n📍 ${group.aisle.toUpperCase()}`);
+      const aisleTitle = t(getAisleTranslationKey(group.aisle) as any);
+      textLines.push(`\n📍 ${aisleTitle.toUpperCase()}`);
       textLines.push('----------------------------------------');
       for (const ing of group.items) {
         const isChecked = checkedIds.includes(ing.id);
         const prefix = isChecked ? '✓' : '☐';
         const qtyNum = ing.cantidad_escalada !== undefined ? ing.cantidad_escalada : ing.cantidad;
-        const unidadFormat =
-          ing.unidad === 'unidad' || ing.unidad === 'unidades'
-            ? Number(qtyNum) > 1
-              ? 'unidades'
-              : 'unidad'
-            : ing.unidad;
-        const qty = `${qtyNum} ${unidadFormat}`;
+        const unidadFormat = formatIngredientUnit(ing.unidad, qtyNum, language);
+        const qty = `${qtyNum} ${unidadFormat}`.trim();
         const name = ing.nombre_limpio || ing.nombre_crudo;
         textLines.push(`${prefix} ${qty} ${name}${ing.notas ? ` (${ing.notas})` : ''}`);
       }
     }
 
     textLines.push('\n========================================');
-    textLines.push('Creado con Recetario App (Organización por Pasillos)');
+    textLines.push(t('recipe_shopping_list_created_with'));
 
     navigator.clipboard.writeText(textLines.join('\n'));
     setCopied(true);
@@ -239,7 +236,7 @@ export function ShoppingListMode({
                         className={`px-3 py-1 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${group.config.colorBg} ${group.config.colorText} ${group.config.colorBorder}`}
                       >
                         <Tag className="w-3.5 h-3.5" />
-                        <span>{group.aisle}</span>
+                        <span>{t(getAisleTranslationKey(group.aisle) as any)}</span>
                       </span>
                       <span className="text-[11px] text-stone-400 font-medium font-mono">
                         {groupCompleted}/{groupTotal}
@@ -309,12 +306,7 @@ export function ShoppingListMode({
                             </div>
 
                             {(() => {
-                              const unidadFormat =
-                                ing.unidad === 'unidad' || ing.unidad === 'unidades'
-                                  ? Number(qtyNum) > 1
-                                    ? 'unidades'
-                                    : 'unidad'
-                                  : ing.unidad;
+                              const unidadFormat = formatIngredientUnit(ing.unidad, qtyNum, language);
                               return (
                                 <span
                                   className={`text-sm sm:text-base font-bold shrink-0 tabular-nums ${

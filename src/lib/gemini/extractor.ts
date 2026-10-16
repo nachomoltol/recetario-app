@@ -880,6 +880,12 @@ DIRECTIVA ESTRICTA DE ESCALADO MATEMÁTICO: Si las raciones originales del metra
           )}]. Sustitúyelos obligatoriamente por alternativas seguras y aptas.`
         : '';
 
+    const langDirective =
+      idioma === 'en'
+        ? `5. ADVERTENCIA CRÍTICA DE IDIOMA (EL FIN DEL SPANGLISH):
+ADVERTENCIA CRÍTICA DE IDIOMA: Si el idioma solicitado es Inglés ('en'), estás ESTRICTAMENTE PROHIBIDO de usar la palabra 'unidades', 'cucharadas', 'gramos' en español. Debes usar sus equivalentes en inglés ('units/pieces', 'tbsp/tsp', 'grams'). Las etiquetas de dificultad ('Fácil', 'Principiante') DEBEN traducirse al inglés ('Easy', 'Beginner'). TODO EL JSON DEBE SER INGLÉS NATIVO. NUNCA mezcles idiomas.`
+        : `5. GESTIÓN DINÁMICA DE IDIOMA (VITAL): Traduce el audio/texto del vídeo original y redacta el JSON de la receta estrictamente en Spanish. NUNCA mezcles idiomas.`;
+
     const promptFinal = `
 Eres un Chef Ejecutivo y Nutricionista especializado en extracción culinaria multimodal y perfilado nutricional.
 
@@ -891,7 +897,7 @@ DIRECTIVAS CRÍTICAS DE PRECISIÓN Y TOLERANCIA CERO A LA ALUCINACIÓN:
    - NO inventes ingredientes ni pasos.
 3. Si el contenido SÍ es una receta real, establece "es_receta_valida": true y cruza exhaustivamente el vídeo/audio con el texto del post para extraer cantidades, ingredientes canónicos, pasos y tiempos.
 ${firewallDirective}
-5. GESTIÓN DINÁMICA DE IDIOMA (VITAL): Traduce el audio/texto del vídeo original y redacta el JSON de la receta estrictamente en ${langName}. NUNCA mezcles idiomas.
+${langDirective}
 
 Estandariza la receta al esquema JSON estricto requerido:
 

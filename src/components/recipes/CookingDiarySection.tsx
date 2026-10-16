@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Camera, Image as ImageIcon, Star, Clock, Plus, Loader2, CheckCircle2, AlertCircle, X, Trash2 } from 'lucide-react';
 import { addCookEntryAction, deleteDiaryEntryAction } from '@/app/actions/diary';
 import { DiarioCocinados } from '@/types/recipe';
+import { ensureStandardImage } from '@/lib/utils/imageCompress';
 
 interface CookingDiarySectionProps {
   recetaId: string;
@@ -41,13 +42,23 @@ export function CookingDiarySection({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+      try {
+        const standard = await ensureStandardImage(file);
+        setSelectedImageFile(standard);
+        const url = URL.createObjectURL(standard);
+        setPreviewUrl(url);
+      } catch {
+        setSelectedImageFile(file);
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
+      }
     } else {
+      setSelectedImageFile(null);
       setPreviewUrl(null);
     }
   };
@@ -63,6 +74,9 @@ export function CookingDiarySection({
     formData.set('tiempoEmpleadoMin', tiempoEmpleadoMin);
     formData.set('notas', notas);
     formData.set('modificaciones', modificaciones);
+    if (selectedImageFile) {
+      formData.set('foto', selectedImageFile);
+    }
 
     startTransition(async () => {
       const res = await addCookEntryAction(formData);
@@ -219,7 +233,7 @@ export function CookingDiarySection({
                   ref={fileInputRef}
                   type="file"
                   name="foto"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif"
                   capture="environment"
                   onChange={handleImageChange}
                   className="hidden"

@@ -369,11 +369,11 @@ export function RecipeDetailView({
 
       // 6. Actualizar vista local, coronar la receta y mostrar toast
       setCurrentFotoUrl(publicUrl);
-      setToast({ message: 'Fotografía guardada con éxito', type: 'success' });
+      setToast({ message: t('recipe_photo_success'), type: 'success' });
       router.refresh();
     } catch (err) {
       console.error('Error al procesar la fotografía:', err);
-      setToast({ message: 'Error inesperado al procesar la fotografía', type: 'error' });
+      setToast({ message: t('recipe_photo_error'), type: 'error' });
     } finally {
       setIsUploadingPhoto(false);
       if (cameraInputRef.current) {
@@ -501,14 +501,14 @@ export function RecipeDetailView({
 
       setCurrentIngredientes(updatedLocalIngredientes);
       setIsEditing(false);
-      setToast({ message: 'Receta actualizada correctamente', type: 'success' });
+      setToast({ message: t('recipe_edit_success'), type: 'success' });
 
       // Sincronizar Server Component en segundo plano
       router.refresh();
     } catch (err) {
       console.error('Error al guardar la edición de la receta:', err);
       setIsSaving(false);
-      setToast({ message: 'Error de conexión al guardar los cambios', type: 'error' });
+      setToast({ message: t('recipe_edit_error_conn'), type: 'error' });
     }
   };
 
@@ -538,7 +538,7 @@ export function RecipeDetailView({
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         capture="environment"
         onChange={handlePhotoCapture}
         className="hidden"
@@ -547,7 +547,7 @@ export function RecipeDetailView({
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         onChange={handlePhotoCapture}
         className="hidden"
         id="recipe-photo-gallery-input"
@@ -653,14 +653,14 @@ export function RecipeDetailView({
         {isEditing ? (
           <div className="space-y-1.5 pt-1 animate-fade-in">
             <label className="block text-xs font-bold uppercase tracking-wider text-[#a86224]">
-              Título del plato
+              {t('recipe_edit_title_label')}
             </label>
             <input
               type="text"
               value={editTitulo}
               onChange={(e) => setEditTitulo(e.target.value)}
               disabled={isSaving}
-              placeholder="Nombre de la receta..."
+              placeholder={t('recipe_edit_title_placeholder')}
               className="w-full p-3.5 sm:p-4 rounded-2xl bg-white border-2 border-[#a86224] text-stone-900 font-serif-recipe font-bold text-2xl sm:text-4xl focus:outline-none focus:ring-4 focus:ring-[#a86224]/20 shadow-xs transition"
             />
           </div>
@@ -738,10 +738,10 @@ export function RecipeDetailView({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#e7dfd5] pb-4">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900">
-                Editar Ingredientes
+                {t('recipe_edit_ingredients_title')}
               </h2>
               <p className="text-xs text-stone-500 mt-0.5">
-                Corrige las cantidades o nombres manuscritos capturados por la IA
+                {t('recipe_edit_ingredients_desc')}
               </p>
             </div>
             <button
@@ -751,7 +751,7 @@ export function RecipeDetailView({
               className="px-3.5 py-2 rounded-xl bg-[#f4efe6] hover:bg-[#e7dfd5] text-[#a86224] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer self-start sm:self-auto"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Añadir ingrediente</span>
+              <span>{t('recipe_edit_add_ingredient')}</span>
             </button>
           </div>
 
@@ -769,7 +769,7 @@ export function RecipeDetailView({
                     type="text"
                     value={item.nombre_limpio}
                     onChange={(e) => handleIngredientChange(idx, 'nombre_limpio', e.target.value)}
-                    placeholder="Nombre del ingrediente (ej. Tomate triturado)"
+                    placeholder={t('recipe_edit_name_placeholder')}
                     disabled={isSaving}
                     className="flex-1 min-h-[42px] px-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 font-medium focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] shadow-2xs"
                   />
@@ -785,7 +785,7 @@ export function RecipeDetailView({
                       onChange={(e) =>
                         handleIngredientChange(idx, 'cantidad', parseFloat(e.target.value) || 0)
                       }
-                      placeholder="Cantidad"
+                      placeholder={t('recipe_edit_qty_placeholder')}
                       disabled={isSaving}
                       className="w-full min-h-[42px] px-3 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 font-mono font-medium focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] shadow-2xs"
                     />
@@ -796,7 +796,7 @@ export function RecipeDetailView({
                       type="text"
                       value={item.unidad}
                       onChange={(e) => handleIngredientChange(idx, 'unidad', e.target.value)}
-                      placeholder="Unidad (g, ml...)"
+                      placeholder={t('recipe_edit_unit_placeholder')}
                       disabled={isSaving}
                       className="w-full min-h-[42px] px-3 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 font-medium focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] shadow-2xs"
                     />
@@ -806,7 +806,7 @@ export function RecipeDetailView({
                     type="button"
                     onClick={() => handleRemoveIngredient(idx)}
                     disabled={isSaving || editIngredientes.length <= 1}
-                    title="Eliminar ingrediente"
+                    title={t('recipe_edit_delete_ingredient')}
                     className="w-9 h-9 rounded-xl text-stone-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -823,7 +823,7 @@ export function RecipeDetailView({
               disabled={isSaving}
               className="min-h-[44px] px-4 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs sm:text-sm font-semibold transition cursor-pointer"
             >
-              Cancelar
+              {t('recipe_cancel_btn')}
             </button>
             <button
               type="button"
@@ -834,12 +834,12 @@ export function RecipeDetailView({
               {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Guardando...</span>
+                  <span>{t('recipe_saving_btn')}</span>
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  <span>Guardar cambios</span>
+                  <span>{t('recipe_save_btn')}</span>
                 </>
               )}
             </button>

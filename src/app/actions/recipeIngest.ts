@@ -146,7 +146,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     );
 
     // Normalizar dificultad contra el constraint SQL: ('facil', 'media', 'dificil', 'experto')
-    // Muy importante: Gemini suele devolver 'fácil' o 'difícil' con tilde, lo que violaba el CHECK constraint.
+    // Soporta variantes en español ('fácil' con tilde) e inglés ('easy', 'beginner', 'hard', etc.)
     const DIFICULTADES_VALIDAS: DificultadReceta[] = ['facil', 'media', 'dificil', 'experto'];
     const cleanDificultad = (extracted.dificultad || 'media')
       .toLowerCase()
@@ -157,6 +157,14 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     let dificultadNormalizada: DificultadReceta = 'media';
     if (DIFICULTADES_VALIDAS.includes(cleanDificultad as DificultadReceta)) {
       dificultadNormalizada = cleanDificultad as DificultadReceta;
+    } else if (cleanDificultad === 'easy' || cleanDificultad === 'beginner') {
+      dificultadNormalizada = 'facil';
+    } else if (cleanDificultad === 'medium' || cleanDificultad === 'intermediate') {
+      dificultadNormalizada = 'media';
+    } else if (cleanDificultad === 'hard' || cleanDificultad === 'advanced') {
+      dificultadNormalizada = 'dificil';
+    } else if (cleanDificultad === 'expert') {
+      dificultadNormalizada = 'experto';
     }
 
     const prepMin = Math.max(0, Number(extracted.tiempo_preparacion_min) || 0);
@@ -240,10 +248,28 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         ? Math.round(baseCantidad * factorEscalado * 10) / 10
         : baseCantidad;
 
-      let rawUnidad = (ing.unidad || 'unidad').trim();
-      // Regla lógica de pluralización: si cantidad > 1 y unidad es 'unidad', salida estrictamente 'unidades'
-      if (rawUnidad === 'unidad' || rawUnidad === 'unidades') {
-        rawUnidad = rawCantidad > 1 ? 'unidades' : 'unidad';
+      let rawUnidad = (ing.unidad || (idioma === 'en' ? 'unit' : 'unidad')).trim();
+      const uLower = rawUnidad.toLowerCase();
+
+      // Regla lógica de pluralización con soporte estricto de idioma (fin del Spanglish)
+      if (
+        uLower === 'unidad' ||
+        uLower === 'unidades' ||
+        uLower === 'unit' ||
+        uLower === 'units' ||
+        uLower === 'piece' ||
+        uLower === 'pieces'
+      ) {
+        if (idioma === 'en') {
+          rawUnidad = rawCantidad > 1 ? 'units' : 'unit';
+        } else {
+          rawUnidad = rawCantidad > 1 ? 'unidades' : 'unidad';
+        }
+      } else if (idioma === 'en') {
+        if (uLower === 'cucharada' || uLower === 'cucharadas') rawUnidad = 'tbsp';
+        else if (uLower === 'cucharadita' || uLower === 'cucharaditas') rawUnidad = 'tsp';
+        else if (uLower === 'gramo' || uLower === 'gramos') rawUnidad = 'g';
+        else if (uLower === 'mililitro' || uLower === 'mililitros') rawUnidad = 'ml';
       }
 
       const conv = calcularGramos({

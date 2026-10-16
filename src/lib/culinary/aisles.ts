@@ -219,3 +219,116 @@ export function groupItemsByAisle<T>(
 
   return result;
 }
+
+const ENGLISH_AISLE_MAP: Record<string, SupermarketAisle> = {
+  produce: 'Frutas y Verduras',
+  'produce & greens': 'Frutas y Verduras',
+  'fruits & vegetables': 'Frutas y Verduras',
+  meat: 'Carnes y Aves',
+  'meat & poultry': 'Carnes y Aves',
+  poultry: 'Carnes y Aves',
+  seafood: 'Pescados y Mariscos',
+  'seafood & fish': 'Pescados y Mariscos',
+  fish: 'Pescados y Mariscos',
+  dairy: 'Lácteos y Huevos',
+  'dairy & eggs': 'Lácteos y Huevos',
+  bakery: 'Panadería y Pastelería',
+  'bakery & pastry': 'Panadería y Pastelería',
+  pantry: 'Despensa y Especias',
+  'pantry & spices': 'Despensa y Especias',
+  spices: 'Despensa y Especias',
+  frozen: 'Congelados',
+  'frozen foods': 'Congelados',
+  beverages: 'Bebidas',
+  drinks: 'Bebidas',
+  refrigerated: 'Refrigerados',
+  other: 'Otros',
+};
+
+/**
+ * Normaliza un pasillo independientemente de si viene en inglés o español
+ */
+export function normalizeAisleName(raw?: string | null): SupermarketAisle {
+  if (!raw) return 'Otros';
+  const clean = raw.trim();
+  if (SUPERMARKET_AISLES.includes(clean as SupermarketAisle)) {
+    return clean as SupermarketAisle;
+  }
+  const lower = clean.toLowerCase();
+  if (ENGLISH_AISLE_MAP[lower]) {
+    return ENGLISH_AISLE_MAP[lower];
+  }
+  return 'Otros';
+}
+
+/**
+ * Obtiene la clave de traducción correspondiente a un pasillo
+ */
+export function getAisleTranslationKey(aisle: SupermarketAisle | string): string {
+  switch (aisle) {
+    case 'Frutas y Verduras':
+      return 'aisle_produce';
+    case 'Carnes y Aves':
+      return 'aisle_meat';
+    case 'Pescados y Mariscos':
+      return 'aisle_seafood';
+    case 'Lácteos y Huevos':
+      return 'aisle_dairy';
+    case 'Panadería y Pastelería':
+      return 'aisle_bakery';
+    case 'Despensa y Especias':
+      return 'aisle_pantry';
+    case 'Refrigerados':
+      return 'aisle_refrigerated';
+    case 'Congelados':
+      return 'aisle_frozen';
+    case 'Bebidas':
+      return 'aisle_beverages';
+    default:
+      return 'aisle_other';
+  }
+}
+
+/**
+ * Formatea la unidad de un ingrediente según el idioma y pluralidad
+ */
+export function formatIngredientUnit(
+  unidad?: string | null,
+  cantidad?: number | string | null,
+  lang: 'es' | 'en' = 'es'
+): string {
+  if (!unidad) return '';
+  const u = unidad.toLowerCase().trim();
+  const qty = Number(cantidad) || 1;
+
+  if (
+    u === 'unidad' ||
+    u === 'unidades' ||
+    u === 'unit' ||
+    u === 'units' ||
+    u === 'piece' ||
+    u === 'pieces'
+  ) {
+    if (lang === 'en') {
+      return qty > 1 ? 'units' : 'unit';
+    } else {
+      return qty > 1 ? 'unidades' : 'unidad';
+    }
+  }
+
+  if (lang === 'en') {
+    if (u === 'cucharada' || u === 'cucharadas') return 'tbsp';
+    if (u === 'cucharadita' || u === 'cucharaditas') return 'tsp';
+    if (u === 'gramo' || u === 'gramos') return 'g';
+    if (u === 'mililitro' || u === 'mililitros') return 'ml';
+    if (u === 'litro' || u === 'litros') return 'l';
+    if (u === 'kilo' || u === 'kilos' || u === 'kilogramo' || u === 'kilogramos') return 'kg';
+  } else {
+    if (u === 'unit' || u === 'units') return qty > 1 ? 'unidades' : 'unidad';
+    if (u === 'piece' || u === 'pieces') return qty > 1 ? 'piezas' : 'pieza';
+    if (u === 'tbsp') return qty > 1 ? 'cucharadas' : 'cucharada';
+    if (u === 'tsp') return qty > 1 ? 'cucharaditas' : 'cucharadita';
+  }
+
+  return unidad;
+}

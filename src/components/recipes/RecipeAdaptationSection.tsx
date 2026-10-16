@@ -58,6 +58,30 @@ export function RecipeAdaptationSection({
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
 
+  const getNivelLabel = (n: string) => {
+    const nl = n.toLowerCase();
+    if (nl === 'principiante' || nl === 'beginner') return language === 'en' ? 'Beginner' : 'Principiante';
+    if (nl === 'avanzado' || nl === 'advanced') return language === 'en' ? 'Advanced' : 'Avanzado';
+    return n;
+  };
+
+  const getDietaryLabel = (pref: string) => {
+    if (language !== 'en') return pref;
+    const p = pref.toLowerCase();
+    if (p.includes('gluten')) return 'Gluten-Free';
+    if (p.includes('vegan') || p.includes('vegetal')) return 'Vegan';
+    if (p.includes('vegetariana')) return 'Vegetarian';
+    if (p.includes('lact')) return 'Lactose-Free';
+    if (p.includes('fodmap')) return 'Low-FODMAP';
+    if (p.includes('histamina')) return 'Low Histamine';
+    if (p.includes('keto')) return 'Keto';
+    if (p.includes('paleo')) return 'Paleo';
+    if (p.includes('blanda')) return 'Bland Diet';
+    if (p.includes('reflujo')) return 'Anti-Reflux';
+    if (p.includes('inflamatorio')) return 'Anti-Inflammatory';
+    return pref;
+  };
+
   const handleAdapt = () => {
     setErrorMessage(null);
     startTransition(async () => {
@@ -66,7 +90,7 @@ export function RecipeAdaptationSection({
         onApplyAdaptation(result.data);
       } else {
         setErrorMessage(
-          result.error || 'No se pudo generar la adaptación para tu perfil.'
+          result.error || t('recipe_adapt_error_fallback')
         );
       }
     });
@@ -82,7 +106,7 @@ export function RecipeAdaptationSection({
             onClick={handleAdapt}
             disabled={isPending}
             className="min-h-[44px] px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#a86224] to-[#c47732] hover:from-[#8e511c] hover:to-[#a86224] text-white font-semibold text-xs sm:text-sm inline-flex items-center gap-2 shadow-xs hover:shadow-md transition-all cursor-pointer disabled:opacity-50 active:scale-95"
-            title="Reescribe los ingredientes y pasos in-line adaptados a tus alergias y nivel técnico"
+            title={t('recipe_adapt_tooltip')}
           >
             {isPending ? (
               <>
@@ -102,7 +126,7 @@ export function RecipeAdaptationSection({
             <span>{t('recipe_adapt_will_adjust')}</span>
             {nivel && (
               <span className="px-2 py-0.5 rounded-full bg-[#f4efe6] text-[#a86224] font-medium border border-[#e7dfd5]">
-                {nivel}
+                {getNivelLabel(nivel)}
               </span>
             )}
             {userProfile?.preferencias_dieteticas?.slice(0, 2).map((pref) => (
@@ -110,7 +134,7 @@ export function RecipeAdaptationSection({
                 key={pref}
                 className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-medium border border-emerald-200"
               >
-                {pref}
+                {getDietaryLabel(pref)}
               </span>
             ))}
             {userProfile?.alergenos?.slice(0, 2).map((al) => (
@@ -118,7 +142,7 @@ export function RecipeAdaptationSection({
                 key={al}
                 className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-800 font-medium border border-rose-200"
               >
-                {t('recipe_adapt_without')} {al}
+                {t('recipe_adapt_without')} {getDietaryLabel(al)}
               </span>
             ))}
           </div>
@@ -142,7 +166,7 @@ export function RecipeAdaptationSection({
                 </span>
               </div>
               <p className="text-xs text-stone-600 mt-0.5 leading-relaxed font-light">
-                {adaptationSummary || 'Ingredientes y pasos reformulados con las modificaciones destacadas visualmente.'}
+                {adaptationSummary || t('recipe_adapt_summary_fallback')}
               </p>
             </div>
           </div>
@@ -151,7 +175,7 @@ export function RecipeAdaptationSection({
             type="button"
             onClick={onRevertAdaptation}
             className="min-h-[40px] px-3.5 py-2 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-[#a86224] text-xs font-semibold text-stone-700 hover:text-[#a86224] transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-2xs self-start sm:self-auto"
-            title="Volver a los ingredientes y pasos originales"
+            title={t('recipe_adapt_revert_tooltip')}
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>{t('recipe_view_original')}</span>

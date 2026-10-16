@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Sparkles, Eye, EyeOff } from 'lucide-react';
+import { useLanguageStore } from '@/stores/useLanguageStore';
 
 export function RecipeWakeLock() {
   const [isLocked, setIsLocked] = useState(false);
@@ -90,6 +91,8 @@ export function RecipeWakeLock() {
     }
   };
 
+  const t = useLanguageStore((s) => s.t);
+
   return (
     <button
       type="button"
@@ -101,8 +104,8 @@ export function RecipeWakeLock() {
       }`}
       title={
         isLocked
-          ? 'Modo Manos en la Masa: Tu pantalla no se apagará mientras cocinas. Pulsa para pausar.'
-          : 'Modo Manos en la Masa pausado. Pulsa para mantener la pantalla siempre activa.'
+          ? t('wakelock_title_active')
+          : t('wakelock_title_paused')
       }
     >
       <span
@@ -111,10 +114,10 @@ export function RecipeWakeLock() {
         }`}
       />
       <span className="hidden sm:inline">
-        {isLocked ? 'Manos en la Masa (Pantalla encendida)' : 'Pantalla normal'}
+        {isLocked ? t('wakelock_label_active') : t('wakelock_label_normal')}
       </span>
       <span className="sm:hidden">
-        {isLocked ? 'Pantalla activa' : 'Normal'}
+        {isLocked ? t('wakelock_label_mobile_active') : t('wakelock_label_mobile_normal')}
       </span>
       {isLocked ? (
         <Eye className="w-3.5 h-3.5 opacity-80" />

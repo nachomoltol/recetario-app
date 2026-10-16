@@ -18,6 +18,7 @@ import { suggestSubstituteAction, SubstituteOption } from '@/app/actions/suggest
 import { RecetaIngrediente } from '@/types/recipe';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { formatIngredientUnit } from '@/lib/culinary/aisles';
 
 interface IngredientRowProps {
   ingrediente: RecetaIngrediente;
@@ -49,9 +50,32 @@ export function IngredientRow({
   const t = useLanguageStore((s) => s.t);
 
   const getOptionChipLabel = (tipo: string, fallback: string) => {
-    if (tipo === 'magra_tradicional') return t('drawer_chip_lean');
-    if (tipo === 'vegetal_umami') return t('drawer_chip_umami');
-    if (tipo === 'accesible_economica') return t('drawer_chip_accessible');
+    const tLower = (tipo || '').toLowerCase();
+    const fLower = (fallback || '').toLowerCase();
+    if (
+      tLower === 'magra_tradicional' ||
+      fLower.includes('magra') ||
+      fLower.includes('lean')
+    ) {
+      return t('drawer_chip_lean');
+    }
+    if (
+      tLower === 'vegetal_umami' ||
+      fLower.includes('vegetal') ||
+      fLower.includes('plant') ||
+      fLower.includes('umami')
+    ) {
+      return t('drawer_chip_umami');
+    }
+    if (
+      tLower === 'accesible_economica' ||
+      fLower.includes('accesible') ||
+      fLower.includes('econ') ||
+      fLower.includes('everyday') ||
+      fLower.includes('accessible')
+    ) {
+      return t('drawer_chip_accessible');
+    }
     return fallback;
   };
 
@@ -135,12 +159,7 @@ export function IngredientRow({
   };
 
   const baseCantidadNum = scaledCantidad !== undefined ? scaledCantidad : Number(ingrediente.cantidad);
-  const unidadAjustada =
-    ingrediente.unidad === 'unidad' || ingrediente.unidad === 'unidades'
-      ? Number(baseCantidadNum) > 1
-        ? 'unidades'
-        : 'unidad'
-      : ingrediente.unidad;
+  const unidadAjustada = formatIngredientUnit(ingrediente.unidad, baseCantidadNum, language);
 
   const nombreMostrado = appliedOption
     ? appliedOption.nombre_sustituto

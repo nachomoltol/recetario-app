@@ -63,7 +63,7 @@ export const recipeExtractionSchema = {
           unidad: {
             type: Type.STRING,
             description:
-              'Unidad métrica estricta. EXCLUSIVAMENTE "g" para sólidos/pastas o "ml" para líquidos/emulsiones (o "unidad" / "unidades" si son piezas enteras indivisibles). REGLA LÓGICA DE PLURALIZACIÓN: si la cantidad es > 1 y la unidad es de piezas enteras, el texto de salida en unidad debe ser estrictamente "unidades" en plural; si es 1, estrictamente "unidad". Está TAJANTEMENTE PROHIBIDO usar "taza", "cucharada", "cucharadita", "pizca", "chorro", "vaso" u otras medidas volumétricas ambiguas.',
+              'Unidad métrica estricta. EXCLUSIVAMENTE "g" para sólidos/pastas o "ml" para líquidos/emulsiones (o "unit" / "units" si idioma es inglés; "unidad" / "unidades" si idioma es español). REGLA LÓGICA DE PLURALIZACIÓN: si la cantidad es > 1 y la unidad es de piezas enteras, el texto de salida en unidad debe ser estrictamente plural ("units" en inglés, "unidades" en español); si es 1, singular ("unit" en inglés, "unidad" en español). Está TAJANTEMENTE PROHIBIDO usar "taza", "cucharada", "cucharadita", "pizca", "chorro", "vaso" u otras medidas volumétricas ambiguas.',
           },
           gramos_estimados: {
             type: Type.NUMBER,
@@ -233,11 +233,35 @@ export function buildRecipeSystemInstruction(options?: {
 `.trim();
   }
 
-  const languageSection = `
-10. GESTIÓN DINÁMICA DE IDIOMA (VITAL Y ESTRICTO):
+  const languageSection =
+    idioma === 'en'
+      ? `10. ADVERTENCIA CRÍTICA DE IDIOMA Y DIRECTIVA ANTI-SPANGLISH (MANDATORIA Y ESTRICTA):
+   - ADVERTENCIA CRÍTICA DE IDIOMA: Si el idioma solicitado es Inglés ('en'), estás ESTRICTAMENTE PROHIBIDO de usar la palabra 'unidades', 'cucharadas', 'gramos' en español. Debes usar sus equivalentes en inglés ('units/pieces', 'tbsp/tsp', 'grams'). Las etiquetas de dificultad ('Fácil', 'Principiante') DEBEN traducirse al inglés ('Easy', 'Beginner'). TODO EL JSON DEBE SER INGLÉS NATIVO.
+   - For piece units: output strictly 'unit' for singular (1) or 'units' for plural (>1). NEVER 'unidad' or 'unidades'.
+   - All text fields (titulo, descripcion, ingredientes, notas, pasos, consejos, etiquetas, categorias_gastronomicas, momentos_consumo) MUST be 100% native English without a single word of Spanish.`.trim()
+      : `10. GESTIÓN DINÁMICA DE IDIOMA (VITAL Y ESTRICTO):
    - Traduce el audio/texto del vídeo original y redacta el JSON de la receta estrictamente en ${langName}. NUNCA mezcles idiomas.
-   - Todos los campos textuales (titulo, descripcion, ingredientes, notas, pasos, consejos, etiquetas) DEBEN estar redactados de forma nativa e íntegra en ${langName}.
-`.trim();
+   - Todos los campos textuales (titulo, descripcion, ingredientes, notas, pasos, consejos, etiquetas) DEBEN estar redactados de forma nativa e íntegra en ${langName}.`.trim();
+
+  const rule4Units =
+    idioma === 'en'
+      ? `4. STRICT METRIC CONVERSION AND PIECE PLURALIZATION RULES:
+   - YOU ARE STRICTLY FORBIDDEN from using vague volumetric terms like 'cup', 'tablespoon', 'teaspoon', 'pinch', 'dash', 'glass', or 'handful'.
+   - The AI MUST estimate food physical density and convert quantities EXCLUSIVELY to standardized units: grams ('g') for solids/pastes or milliliters ('ml') for liquids/oils/emulsions.
+   - If content states '1 cup flour', convert to 120 g (unit: 'g', amount: 120). If '2 tbsp oil', convert to 30 ml (unit: 'ml', amount: 30).
+   - STRICT LOGICAL RULE FOR INDIVISIBLE PIECES ('unit' vs 'units'):
+     * If the detected quantity is 1 (or <= 1), the unit MUST strictly be "unit" in singular (e.g. quantity: 1, unit: "unit").
+     * If the detected quantity is > 1 (e.g. 2, 3, 4, etc.), the output unit MUST STRICTLY BE "units" in plural (e.g. quantity: 2, unit: "units").
+     * NEVER use 'unidad' or 'unidades' in English mode.
+     * Always complete 'gramos_estimados' according to the standard piece weight (e.g. 2 units of egg = 120 g).`
+      : `4. CONVERSIÓN MÉTRICA ESTRICTA Y REGLA DE PLURALIZACIÓN DE UNIDADES:
+   - Está TAJANTEMENTE PROHIBIDO el uso de medidas volumétricas o coloquiales ambiguas como 'taza', 'cucharada', 'cucharadita', 'pizca', 'chorro', 'vaso' o 'puñado'.
+   - La IA DEBE estimar la densidad física del alimento y convertir la cantidad EXCLUSIVAMENTE a medidas estandarizadas: gramos ('g') para ingredientes sólidos/pastosos o mililitros ('ml') para líquidos/aceites/emulsiones.
+   - Si el contenido indica '1 taza de harina', conviértelo a 120 g (unidad: 'g', cantidad: 120). Si dice '2 cucharadas de aceite', conviértelo a 30 ml (unidad: 'ml', cantidad: 30). Si dice 'una pizca de sal', conviértelo a 1 g o 2 g (unidad: 'g', cantidad: 2).
+   - REGLA LÓGICA ESTRICTA PARA PIEZAS INDIVISIBLES ('unidad' vs 'unidades'):
+     * Si la cantidad detectada es 1 (o <= 1), la unidad debe ser estrictamente "unidad" en singular (ej: cantidad: 1, unidad: "unidad").
+     * Si la cantidad detectada es > 1 (ej: 2, 3, 4, etc.), la unidad de salida DEBE SER ESTRICTAMENTE "unidades" en plural (ej: cantidad: 2, unidad: "unidades").
+     * Siempre completa los gramos_estimados equivalentes según el peso estándar de la pieza (ej. 2 unidades de huevo = 120 g).`;
 
   return `
 Eres un Chef Ejecutivo y Nutricionista Clínico de élite especializado en estandarización culinaria, análisis audiovisual y salud sostenible.
@@ -262,14 +286,7 @@ REGLAS SUPREMAS DE FIDELIDAD Y CONTRA ALUCINACIONES:
      * Identifica ingredientes que el creador añade visualmente aunque no los mencione en el audio o texto (ej. un chorro de aceite de oliva en la sartén, sal, pimienta negra, ajo en polvo o perejil fresco al emplatar).
      * Estandariza la instrucción en lenguaje profesional de cocina con tiempos y temperaturas realistas basados en lo observado en el vídeo.
 
-4. CONVERSIÓN MÉTRICA ESTRICTA Y REGLA DE PLURALIZACIÓN DE UNIDADES:
-   - Está TAJANTEMENTE PROHIBIDO el uso de medidas volumétricas o coloquiales ambiguas como 'taza', 'cucharada', 'cucharadita', 'pizca', 'chorro', 'vaso' o 'puñado'.
-   - La IA DEBE estimar la densidad física del alimento y convertir la cantidad EXCLUSIVAMENTE a medidas estandarizadas: gramos ('g') para ingredientes sólidos/pastosos o mililitros ('ml') para líquidos/aceites/emulsiones.
-   - Si el contenido indica '1 taza de harina', conviértelo a 120 g (unidad: 'g', cantidad: 120). Si dice '2 cucharadas de aceite', conviértelo a 30 ml (unidad: 'ml', cantidad: 30). Si dice 'una pizca de sal', conviértelo a 1 g o 2 g (unidad: 'g', cantidad: 2).
-   - REGLA LÓGICA ESTRICTA PARA PIEZAS INDIVISIBLES ('unidad' vs 'unidades'):
-     * Si la cantidad detectada es 1 (o <= 1), la unidad debe ser estrictamente "unidad" en singular (ej: cantidad: 1, unidad: "unidad").
-     * Si la cantidad detectada es > 1 (ej: 2, 3, 4, etc.), la unidad de salida DEBE SER ESTRICTAMENTE "unidades" en plural (ej: cantidad: 2, unidad: "unidades").
-     * Siempre completa los gramos_estimados equivalentes según el peso estándar de la pieza (ej. 2 unidades de huevo = 120 g).
+${rule4Units}
 
 5. CATEGORIZACIÓN PRECISA Y ESTRICTA DE PASILLOS DE SUPERMERCADO FÍSICO:
    - Asigna obligatoriamente a cada ingrediente su 'pasillo_supermercado' exacto. Está TERMINANTEMENTE PROHIBIDO desviar a 'Despensa' productos que pertenecen a su pasillo natural:

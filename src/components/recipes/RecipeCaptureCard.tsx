@@ -22,6 +22,7 @@ import { ingestRecipeAction } from '@/app/actions/recipeIngest';
 import { IosShortcutTutorialModal } from '@/components/pwa/IosShortcutTutorialModal';
 import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { ensureStandardImage } from '@/lib/utils/imageCompress';
 
 interface LoadingStage {
   seconds: number;
@@ -155,11 +156,16 @@ export function RecipeCaptureCard() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const hasAutoStarted = useRef(false);
 
-  // Manejador del input de archivos
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Manejador del input de archivos con conversión automática de iPhone HEIC/HEIF
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (f) {
-      setSelectedFile(f);
+      try {
+        const standardFile = await ensureStandardImage(f);
+        setSelectedFile(standardFile);
+      } catch {
+        setSelectedFile(f);
+      }
       setError(null);
     }
   };
@@ -203,9 +209,6 @@ export function RecipeCaptureCard() {
 
       const formData = new FormData();
       formData.set('idioma', language);
-      if (selectedFile) {
-        formData.set('archivo', selectedFile);
-      }
 
       if (targetMode === 'url') {
         if (!targetValue.trim() && !selectedFile) {
@@ -226,6 +229,14 @@ export function RecipeCaptureCard() {
       }
 
       startTransition(async () => {
+        if (selectedFile) {
+          try {
+            const standardFile = await ensureStandardImage(selectedFile);
+            formData.set('archivo', standardFile);
+          } catch {
+            formData.set('archivo', selectedFile);
+          }
+        }
         const res = await ingestRecipeAction(formData);
         if (res.error) {
           if (res.error === 'PAYWALL_LIMIT_REACHED') {
@@ -544,7 +555,7 @@ export function RecipeCaptureCard() {
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                accept="image/*,.pdf,.txt,.doc,.docx"
+                accept="image/*,.heic,.heif,.pdf,.txt,.doc,.docx"
                 className="hidden"
                 disabled={isPending}
               />
@@ -620,7 +631,7 @@ export function RecipeCaptureCard() {
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
-              accept="image/*,.pdf,.txt,.doc,.docx"
+              accept="image/*,.heic,.heif,.pdf,.txt,.doc,.docx"
               className="hidden"
               disabled={isPending}
             />

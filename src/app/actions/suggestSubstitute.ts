@@ -166,6 +166,10 @@ PROHIBICIÓN ESTRICTA: La IA tiene TERMINANTEMENTE PROHIBIDO sugerir cualquier i
 
     const ai = getGeminiClient();
     const langName = idioma === 'en' ? 'English' : 'Spanish';
+    const antiSpanglishDirective =
+      idioma === 'en'
+        ? `\nADVERTENCIA CRÍTICA DE IDIOMA: Si el idioma solicitado es Inglés ('en'), estás ESTRICTAMENTE PROHIBIDO de usar la palabra 'unidades', 'cucharadas', 'gramos' en español. Debes usar sus equivalentes en inglés ('units/pieces', 'tbsp/tsp', 'grams'). Las etiquetas de dificultad ('Fácil', 'Principiante') DEBEN traducirse al inglés ('Easy', 'Beginner'). TODO EL JSON DEBE SER INGLÉS NATIVO.`
+        : '';
 
     const userPrompt = `
 RECETA: "${tituloReceta}"
@@ -176,7 +180,7 @@ DIRECTIVA NUTRICIONAL OBLIGATORIA:
 Proporciona EXACTAMENTE 3 alternativas nutricionalmente equivalentes (proteína por proteína, grasa por grasa) y culinariamente lógicas.
 
 GESTIÓN DINÁMICA DE IDIOMA:
-Redacta todas las alternativas, razones culinarias, beneficios y modos de uso estrictamente en ${langName}. NUNCA mezcles idiomas.
+Redacta todas las alternativas, razones culinarias, beneficios y modos de uso estrictamente en ${langName}. NUNCA mezcles idiomas.${antiSpanglishDirective}
 `.trim();
 
     const candidateModels = [PRIMARY_GEMINI_MODEL, ...FALLBACK_GEMINI_MODELS];

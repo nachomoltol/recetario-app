@@ -236,7 +236,16 @@ Cualquier ingrediente prohibido debe ser sustituido obligatoriamente por una alt
         : '';
 
     // 2. Construir prompt para Gemini
+    const langDirective =
+      idioma === 'en'
+        ? `GESTIÓN DINÁMICA DE IDIOMA Y DIRECTIVA ANTI-SPANGLISH (VITAL):
+ADVERTENCIA CRÍTICA DE IDIOMA: Si el idioma solicitado es Inglés ('en'), estás ESTRICTAMENTE PROHIBIDO de usar la palabra 'unidades', 'cucharadas', 'gramos' en español. Debes usar sus equivalentes en inglés ('units/pieces', 'tbsp/tsp', 'grams'). Las etiquetas de dificultad ('Fácil', 'Principiante') DEBEN traducirse al inglés ('Easy', 'Beginner'). TODO EL JSON DEBE SER INGLÉS NATIVO. NUNCA mezcles idiomas.`
+        : `GESTIÓN DINÁMICA DE IDIOMA (VITAL):
+Traduce el texto original y redacta el JSON de la receta adaptada estrictamente en Spanish. NUNCA mezcles idiomas.`;
+
     const userPrompt = `
+Eres un Chef Consultor de Élite y Nutricionista Clínico. Tu misión es adaptar integralmente una receta al perfil dietético y nivel de un usuario.
+
 PERFIL DEL USUARIO:
 - Nivel culinario del usuario: ${nivelCulinario}
 - Preferencias y estilos de alimentación: ${
@@ -249,8 +258,7 @@ PERFIL DEL USUARIO:
     }
 ${firewallDirective}
 
-GESTIÓN DINÁMICA DE IDIOMA (VITAL):
-Traduce el texto original y redacta el JSON de la receta adaptada estrictamente en ${langName}. NUNCA mezcles idiomas.
+${langDirective}
 
 RECETA ORIGINAL A ADAPTAR:
 - Título: "${receta.titulo}"
@@ -307,12 +315,36 @@ IMPORTANTE: Cuando modifiques un ingrediente o cambies un paso para hacerlo más
 
         const parsedData: AdaptacionCulinaria = JSON.parse(response.text);
 
+        const sanitizedIngredientes = (parsedData.ingredientes || []).map((ing) => {
+          let u = (ing.unidad || '').trim();
+          const uLower = u.toLowerCase();
+          if (
+            uLower === 'unidad' ||
+            uLower === 'unidades' ||
+            uLower === 'unit' ||
+            uLower === 'units' ||
+            uLower === 'piece' ||
+            uLower === 'pieces'
+          ) {
+            u = idioma === 'en' ? (Number(ing.cantidad) > 1 ? 'units' : 'unit') : (Number(ing.cantidad) > 1 ? 'unidades' : 'unidad');
+          } else if (idioma === 'en') {
+            if (uLower === 'cucharada' || uLower === 'cucharadas') u = 'tbsp';
+            else if (uLower === 'cucharadita' || uLower === 'cucharaditas') u = 'tsp';
+            else if (uLower === 'gramo' || uLower === 'gramos') u = 'g';
+            else if (uLower === 'mililitro' || uLower === 'mililitros') u = 'ml';
+          }
+          return {
+            ...ing,
+            unidad: u,
+          };
+        });
+
         return {
           success: true,
           data: {
-            resumen_adaptacion: parsedData.resumen_adaptacion || 'Receta adaptada a tu perfil.',
+            resumen_adaptacion: parsedData.resumen_adaptacion || (idioma === 'en' ? 'Recipe adapted to your profile.' : 'Receta adaptada a tu perfil.'),
             titulo: parsedData.titulo,
-            ingredientes: parsedData.ingredientes || [],
+            ingredientes: sanitizedIngredientes,
             pasos: parsedData.pasos || [],
           },
           perfilAplicado: {

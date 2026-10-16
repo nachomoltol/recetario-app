@@ -356,6 +356,51 @@ export const TRANSLATIONS = {
     drawer_loading_title: 'Consultando alternativas con IA...',
     drawer_loading_desc: 'Analizando equivalencias de textura, cocción y nutrición para tu plato.',
     drawer_retry: 'Reintentar',
+
+    // Modo Manos en la Masa (WakeLock) (Fase 3.9)
+    wakelock_title_active: 'Modo Manos en la Masa: Tu pantalla no se apagará mientras cocinas. Pulsa para pausar.',
+    wakelock_title_paused: 'Modo Manos en la Masa pausado. Pulsa para mantener la pantalla siempre activa.',
+    wakelock_label_active: 'Manos en la Masa (Pantalla encendida)',
+    wakelock_label_normal: 'Pantalla normal',
+    wakelock_label_mobile_active: 'Pantalla activa',
+    wakelock_label_mobile_normal: 'Normal',
+
+    // Edición de Receta & Fotos (Fase 3.9)
+    recipe_edit_title_label: 'Título del plato',
+    recipe_edit_title_placeholder: 'Nombre de la receta...',
+    recipe_edit_ingredients_title: 'Editar Ingredientes',
+    recipe_edit_ingredients_desc: 'Corrige las cantidades o nombres manuscritos capturados por la IA',
+    recipe_edit_add_ingredient: 'Añadir ingrediente',
+    recipe_edit_name_placeholder: 'Nombre del ingrediente (ej. Tomate triturado)',
+    recipe_edit_qty_placeholder: 'Cantidad',
+    recipe_edit_unit_placeholder: 'Unidad (g, ml...)',
+    recipe_edit_delete_ingredient: 'Eliminar ingrediente',
+    recipe_edit_success: 'Receta actualizada correctamente',
+    recipe_edit_error_conn: 'Error de conexión al guardar los cambios',
+    recipe_photo_success: 'Fotografía guardada con éxito',
+    recipe_photo_error: 'Error inesperado al procesar la fotografía',
+
+    // Adaptación a Perfil (Fase 3.9)
+    recipe_adapt_tooltip: 'Reescribe los ingredientes y pasos in-line adaptados a tus alergias y nivel técnico',
+    recipe_adapt_revert_tooltip: 'Volver a los ingredientes y pasos originales',
+    recipe_adapt_summary_fallback: 'Ingredientes y pasos reformulados con las modificaciones destacadas visualmente.',
+    recipe_adapt_error_fallback: 'No se pudo generar la adaptación para tu perfil.',
+
+    // Pasillos de Supermercado & Unidades (Fase 3.9)
+    aisle_produce: 'Frutas y Verduras',
+    aisle_meat: 'Carnes y Aves',
+    aisle_seafood: 'Pescados y Mariscos',
+    aisle_dairy: 'Lácteos y Huevos',
+    aisle_bakery: 'Panadería y Pastelería',
+    aisle_pantry: 'Despensa y Especias',
+    aisle_refrigerated: 'Refrigerados',
+    aisle_frozen: 'Congelados',
+    aisle_beverages: 'Bebidas',
+    aisle_other: 'Otros',
+    unit_unit_singular: 'unidad',
+    unit_unit_plural: 'unidades',
+    recipe_shopping_list_title: 'LISTA DE LA COMPRA',
+    recipe_shopping_list_created_with: 'Creado con Recetario App (Organización por Pasillos)',
   },
   en: {
     // Header & Global Nav
@@ -712,6 +757,51 @@ export const TRANSLATIONS = {
     drawer_loading_title: 'Checking alternatives with AI...',
     drawer_loading_desc: 'Analyzing texture, cooking, and nutrition equivalents for your dish.',
     drawer_retry: 'Retry',
+
+    // Modo Manos en la Masa (WakeLock) (Fase 3.9)
+    wakelock_title_active: 'Hands-on Mode: Your screen will stay on while cooking. Tap to pause.',
+    wakelock_title_paused: 'Hands-on Mode paused. Tap to keep screen active.',
+    wakelock_label_active: 'Hands-on Mode (Screen on)',
+    wakelock_label_normal: 'Normal screen',
+    wakelock_label_mobile_active: 'Active screen',
+    wakelock_label_mobile_normal: 'Normal',
+
+    // Edición de Receta & Fotos (Fase 3.9)
+    recipe_edit_title_label: 'Dish title',
+    recipe_edit_title_placeholder: 'Recipe name...',
+    recipe_edit_ingredients_title: 'Edit Ingredients',
+    recipe_edit_ingredients_desc: 'Adjust quantities or handwritten names captured by the AI',
+    recipe_edit_add_ingredient: 'Add ingredient',
+    recipe_edit_name_placeholder: 'Ingredient name (e.g. Crushed tomato)',
+    recipe_edit_qty_placeholder: 'Quantity',
+    recipe_edit_unit_placeholder: 'Unit (g, ml...)',
+    recipe_edit_delete_ingredient: 'Delete ingredient',
+    recipe_edit_success: 'Recipe updated successfully',
+    recipe_edit_error_conn: 'Connection error saving changes',
+    recipe_photo_success: 'Photo saved successfully',
+    recipe_photo_error: 'Unexpected error processing photo',
+
+    // Adaptación a Perfil (Fase 3.9)
+    recipe_adapt_tooltip: 'Rewrites ingredients and steps in-line adapted to your allergies and skill level',
+    recipe_adapt_revert_tooltip: 'Return to original ingredients and steps',
+    recipe_adapt_summary_fallback: 'Ingredients and steps reformulated with visually highlighted adjustments.',
+    recipe_adapt_error_fallback: 'Could not generate adaptation for your profile.',
+
+    // Pasillos de Supermercado & Unidades (Fase 3.9)
+    aisle_produce: 'Produce & Greens',
+    aisle_meat: 'Meat & Poultry',
+    aisle_seafood: 'Seafood & Fish',
+    aisle_dairy: 'Dairy & Eggs',
+    aisle_bakery: 'Bakery & Pastry',
+    aisle_pantry: 'Pantry & Spices',
+    aisle_refrigerated: 'Refrigerated',
+    aisle_frozen: 'Frozen Foods',
+    aisle_beverages: 'Beverages',
+    aisle_other: 'Other',
+    unit_unit_singular: 'unit',
+    unit_unit_plural: 'units',
+    recipe_shopping_list_title: 'SHOPPING LIST',
+    recipe_shopping_list_created_with: 'Created with Recipe App (Aisle-organized)',
   },
 } as const;
 
