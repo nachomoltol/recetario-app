@@ -30,13 +30,9 @@ export const metadata: Metadata = {
     startupImage: '/icons/apple-touch-icon.png',
   },
   icons: {
-    icon: [
-      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-    ],
-    apple: [
-      { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
-    ],
+    icon: '/miga-logo.svg',
+    shortcut: '/miga-logo.svg',
+    apple: '/miga-logo.svg',
   },
 };
 
@@ -57,6 +53,9 @@ export default function RootLayout({
     <html lang="es" className={`${serifFont.variable} ${sansFont.variable}`}>
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" type="image/svg+xml" href="/miga-logo.svg" />
+        <link rel="shortcut icon" href="/miga-logo.svg" />
+        <link rel="apple-touch-icon" href="/miga-logo.svg" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Miga" />

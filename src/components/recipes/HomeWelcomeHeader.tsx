@@ -11,14 +11,33 @@ export function HomeWelcomeHeader({ userName }: HomeWelcomeHeaderProps) {
   const t = useLanguageStore((s) => s.t);
 
   return (
-    <section className="space-y-1 sm:space-y-2">
-      <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-[#a86224]">
-        {t('home_tag')}
-      </span>
-      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-serif-recipe text-stone-900 tracking-tight">
+    <section className="space-y-2.5 sm:space-y-3">
+      {/* Contenedor horizontal: Logo de presencia aumentada + Tag Miga: recetas de redes */}
+      <div className="flex flex-row items-center gap-3">
+        <Link
+          href="/recipes"
+          className="focus:outline-none transition opacity-95 hover:opacity-100 shrink-0"
+          aria-label="Logo Miga"
+        >
+          <img
+            src="/miga-logo.svg"
+            alt="Logo Miga"
+            className="h-10 sm:h-12 w-auto max-w-[140px] sm:max-w-[160px] object-contain"
+          />
+        </Link>
+        <div className="h-5 w-px bg-[#e7dfd5]" />
+        <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#a86224]">
+          {t('home_tag')}
+        </span>
+      </div>
+
+      {/* Saludo con escala armónica y jerarquía equilibrada */}
+      <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight font-serif-recipe">
         {t('home_greeting')}, {userName}
       </h1>
-      <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-light max-w-2xl">
+
+      {/* Tagline descriptivo legible y alineado a la izquierda */}
+      <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-light max-w-2xl text-left">
         {t('home_subtitle')}
       </p>
     </section>
@@ -35,7 +54,7 @@ export function HomeBrandHeader() {
       <img
         src="/miga-logo.svg"
         alt="Logo Miga"
-        className="h-8 sm:h-9 w-auto max-w-[120px] sm:max-w-[150px] object-contain"
+        className="h-9 sm:h-10 w-auto max-w-[130px] sm:max-w-[160px] object-contain"
       />
     </Link>
   );

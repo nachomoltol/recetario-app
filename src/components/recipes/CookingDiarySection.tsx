@@ -43,37 +43,48 @@ export function CookingDiarySection({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
-  const [isProcessingImage, setIsProcessingImage] = useState(false);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) {
       setSelectedImageFile(null);
       setPreviewUrl(null);
       return;
     }
 
-    setIsProcessingImage(true);
+    e.target.value = '';
 
-    (async () => {
-      try {
-        const standard = await ensureStandardImage(file);
-        const url = URL.createObjectURL(standard);
-        startTransition(() => {
-          setSelectedImageFile(standard);
-          setPreviewUrl(url);
-          setIsProcessingImage(false);
-        });
-      } catch (err) {
-        console.warn('Advertencia en carga de imagen para el diario:', err);
-        const url = URL.createObjectURL(file);
-        startTransition(() => {
-          setSelectedImageFile(file);
-          setPreviewUrl(url);
-          setIsProcessingImage(false);
-        });
-      }
-    })();
+    setTimeout(() => {
+      (async () => {
+        try {
+          const standard = await ensureStandardImage(rawFile);
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result as string;
+            startTransition(() => {
+              setSelectedImageFile(standard);
+              setPreviewUrl(dataUrl);
+            });
+          };
+          reader.onerror = (err) => {
+            console.error('Error al precargar imagen en memoria base64 en diario:', err);
+            const fallbackUrl = URL.createObjectURL(standard);
+            startTransition(() => {
+              setSelectedImageFile(standard);
+              setPreviewUrl(fallbackUrl);
+            });
+          };
+          reader.readAsDataURL(standard);
+        } catch (err) {
+          console.error('Error riguroso en procesamiento de imagen para el diario:', err);
+          const fallbackUrl = URL.createObjectURL(rawFile);
+          startTransition(() => {
+            setSelectedImageFile(rawFile);
+            setPreviewUrl(fallbackUrl);
+          });
+        }
+      })();
+    }, 0);
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {

@@ -142,7 +142,6 @@ export function RecipeCaptureCard() {
   const [success, setSuccess] = useState<string | null>(null);
   const [createdRecetaId, setCreatedRecetaId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -154,30 +153,48 @@ export function RecipeCaptureCard() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const hasAutoStarted = useRef(false);
 
-  // Manejador del input de archivos con conversión asíncrona segura para iPhone HEIC/HEIF (Previene Crash #441)
+  // Manejador del input de archivos con aislamiento radical de iOS (Previene Crash React #441)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
+    // 1. Extraer el archivo a una variable temporal fuera del estado de React
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
 
-    setError(null);
-    setIsProcessingFile(true);
+    // Resetear valor nativo del input para futuras selecciones sin mutar React
+    e.target.value = '';
 
-    // Ejecución asíncrona desacoplada del render cycle para no bloquear iOS
-    (async () => {
-      try {
-        const standardFile = await ensureStandardImage(f);
-        startTransition(() => {
-          setSelectedFile(standardFile);
-          setIsProcessingFile(false);
-        });
-      } catch (err) {
-        console.warn('Advertencia en conversión de imagen, manteniendo archivo original:', err);
-        startTransition(() => {
-          setSelectedFile(f);
-          setIsProcessingFile(false);
-        });
-      }
-    })();
+    // 2. Sacar absolutamente toda la lógica pesada de la pila de llamadas del motor con setTimeout 0
+    setTimeout(() => {
+      (async () => {
+        try {
+          // Procesar HEIC o conversión pesada
+          const standardFile = await ensureStandardImage(rawFile);
+
+          // Cargar completamente en memoria base64 antes de tocar el estado de React
+          const reader = new FileReader();
+          reader.onload = () => {
+            // 3. UN ÚNICO setState dentro de startTransition cuando la imagen final esté 100% lista en memoria
+            startTransition(() => {
+              setSelectedFile(standardFile);
+              setError(null);
+            });
+          };
+          reader.onerror = (readErr) => {
+            console.error('Error al precargar archivo en memoria base64 en iOS:', readErr);
+            startTransition(() => {
+              setSelectedFile(standardFile);
+              setError(null);
+            });
+          };
+          reader.readAsDataURL(standardFile);
+        } catch (err) {
+          console.error('Error riguroso al procesar/convertir archivo en iOS:', err);
+          startTransition(() => {
+            setSelectedFile(rawFile);
+            setError(null);
+          });
+        }
+      })();
+    }, 0);
   };
 
   const handleRemoveFile = () => {
@@ -578,13 +595,6 @@ export function RecipeCaptureCard() {
               </button>
             </div>
 
-            {/* Estado explícito de procesamiento de archivo para iPhone / HEIC */}
-            {isProcessingFile && (
-              <div className="flex items-center gap-2.5 p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-600 animate-pulse shadow-2xs">
-                <Loader2 className="w-4 h-4 animate-spin text-[#a86224] shrink-0" />
-                <span className="font-medium">Procesando y optimizando imagen...</span>
-              </div>
-            )}
 
             {/* Tarjeta de visualización de archivo adjunto */}
             {selectedFile && (
@@ -649,13 +659,6 @@ export function RecipeCaptureCard() {
               disabled={isPending}
             />
 
-            {/* Estado explícito de procesamiento de archivo para iPhone / HEIC */}
-            {isProcessingFile && (
-              <div className="flex items-center gap-2.5 p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-600 animate-pulse shadow-2xs">
-                <Loader2 className="w-4 h-4 animate-spin text-[#a86224] shrink-0" />
-                <span className="font-medium">Procesando y optimizando imagen...</span>
-              </div>
-            )}
 
             {selectedFile && (
               <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs">
@@ -688,7 +691,7 @@ export function RecipeCaptureCard() {
 
         <button
           type="submit"
-          disabled={isPending || isProcessingFile}
+          disabled={isPending}
           className="w-full min-h-[54px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-sm shadow-[#a86224]/20 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
         >
           {isPending ? (
@@ -697,11 +700,6 @@ export function RecipeCaptureCard() {
               <span className="truncate">
                 {currentHumorPhrase} ({elapsedSeconds}s)
               </span>
-            </>
-          ) : isProcessingFile ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin text-white shrink-0" />
-              <span>Optimizando imagen...</span>
             </>
           ) : (
             <>
