@@ -190,13 +190,14 @@ export default function UpdatePasswordPage() {
       <div className="w-full max-w-md mx-auto space-y-6 animate-fade-in">
         {/* Cabecera / Marca */}
         <div className="text-center space-y-2.5">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white border border-[#e7dfd5] text-[#a86224] shadow-xs">
-            <ChefHat className="w-7 h-7" />
+          <div className="flex justify-center">
+            <img
+              src="/miga-logo.svg"
+              alt="Logo Miga"
+              className="h-12 sm:h-14 w-auto max-w-[180px] object-contain"
+            />
           </div>
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 font-serif-recipe">
-              Recetario Inteligente
-            </h1>
             <p className="text-xs sm:text-sm text-stone-500 mt-1 font-light">
               {t('auth_update_password_desc')}
             </p>

@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { ChefHat, BookOpen, Calendar } from 'lucide-react';
+import { BookOpen, Calendar } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { RecipeCaptureCard } from '@/components/recipes/RecipeCaptureCard';
@@ -47,10 +47,7 @@ export default async function RecipesDashboardPage() {
       {/* Barra de navegación superior luminosa */}
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shadow-2xs">
-              <ChefHat className="w-5 h-5" />
-            </div>
+          <div className="flex items-center">
             <HomeBrandHeader />
           </div>
 

@@ -43,24 +43,37 @@ export function CookingDiarySection({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      try {
-        const standard = await ensureStandardImage(file);
-        setSelectedImageFile(standard);
-        const url = URL.createObjectURL(standard);
-        setPreviewUrl(url);
-      } catch {
-        setSelectedImageFile(file);
-        const url = URL.createObjectURL(file);
-        setPreviewUrl(url);
-      }
-    } else {
+    if (!file) {
       setSelectedImageFile(null);
       setPreviewUrl(null);
+      return;
     }
+
+    setIsProcessingImage(true);
+
+    (async () => {
+      try {
+        const standard = await ensureStandardImage(file);
+        const url = URL.createObjectURL(standard);
+        startTransition(() => {
+          setSelectedImageFile(standard);
+          setPreviewUrl(url);
+          setIsProcessingImage(false);
+        });
+      } catch (err) {
+        console.warn('Advertencia en carga de imagen para el diario:', err);
+        const url = URL.createObjectURL(file);
+        startTransition(() => {
+          setSelectedImageFile(file);
+          setPreviewUrl(url);
+          setIsProcessingImage(false);
+        });
+      }
+    })();
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {

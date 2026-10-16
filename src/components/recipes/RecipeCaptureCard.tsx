@@ -13,13 +13,11 @@ import {
   Clock,
   Radio,
   Share2,
-  Smartphone,
   Paperclip,
   X,
   Camera,
 } from 'lucide-react';
 import { ingestRecipeAction } from '@/app/actions/recipeIngest';
-import { IosShortcutTutorialModal } from '@/components/pwa/IosShortcutTutorialModal';
 import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { ensureStandardImage } from '@/lib/utils/imageCompress';
@@ -144,7 +142,7 @@ export function RecipeCaptureCard() {
   const [success, setSuccess] = useState<string | null>(null);
   const [createdRecetaId, setCreatedRecetaId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [showIosTutorial, setShowIosTutorial] = useState(false);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -156,18 +154,30 @@ export function RecipeCaptureCard() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const hasAutoStarted = useRef(false);
 
-  // Manejador del input de archivos con conversión automática de iPhone HEIC/HEIF
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Manejador del input de archivos con conversión asíncrona segura para iPhone HEIC/HEIF (Previene Crash #441)
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f) {
+    if (!f) return;
+
+    setError(null);
+    setIsProcessingFile(true);
+
+    // Ejecución asíncrona desacoplada del render cycle para no bloquear iOS
+    (async () => {
       try {
         const standardFile = await ensureStandardImage(f);
-        setSelectedFile(standardFile);
-      } catch {
-        setSelectedFile(f);
+        startTransition(() => {
+          setSelectedFile(standardFile);
+          setIsProcessingFile(false);
+        });
+      } catch (err) {
+        console.warn('Advertencia en conversión de imagen, manteniendo archivo original:', err);
+        startTransition(() => {
+          setSelectedFile(f);
+          setIsProcessingFile(false);
+        });
       }
-      setError(null);
-    }
+    })();
   };
 
   const handleRemoveFile = () => {
@@ -230,12 +240,7 @@ export function RecipeCaptureCard() {
 
       startTransition(async () => {
         if (selectedFile) {
-          try {
-            const standardFile = await ensureStandardImage(selectedFile);
-            formData.set('archivo', standardFile);
-          } catch {
-            formData.set('archivo', selectedFile);
-          }
+          formData.set('archivo', selectedFile);
         }
         const res = await ingestRecipeAction(formData);
         if (res.error) {
@@ -573,6 +578,14 @@ export function RecipeCaptureCard() {
               </button>
             </div>
 
+            {/* Estado explícito de procesamiento de archivo para iPhone / HEIC */}
+            {isProcessingFile && (
+              <div className="flex items-center gap-2.5 p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-600 animate-pulse shadow-2xs">
+                <Loader2 className="w-4 h-4 animate-spin text-[#a86224] shrink-0" />
+                <span className="font-medium">Procesando y optimizando imagen...</span>
+              </div>
+            )}
+
             {/* Tarjeta de visualización de archivo adjunto */}
             {selectedFile && (
               <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs">
@@ -636,6 +649,14 @@ export function RecipeCaptureCard() {
               disabled={isPending}
             />
 
+            {/* Estado explícito de procesamiento de archivo para iPhone / HEIC */}
+            {isProcessingFile && (
+              <div className="flex items-center gap-2.5 p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-600 animate-pulse shadow-2xs">
+                <Loader2 className="w-4 h-4 animate-spin text-[#a86224] shrink-0" />
+                <span className="font-medium">Procesando y optimizando imagen...</span>
+              </div>
+            )}
+
             {selectedFile && (
               <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs">
                 <div className="flex items-center gap-2.5 overflow-hidden">
@@ -667,7 +688,7 @@ export function RecipeCaptureCard() {
 
         <button
           type="submit"
-          disabled={isPending}
+          disabled={isPending || isProcessingFile}
           className="w-full min-h-[54px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-sm shadow-[#a86224]/20 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
         >
           {isPending ? (
@@ -676,6 +697,11 @@ export function RecipeCaptureCard() {
               <span className="truncate">
                 {currentHumorPhrase} ({elapsedSeconds}s)
               </span>
+            </>
+          ) : isProcessingFile ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin text-white shrink-0" />
+              <span>Optimizando imagen...</span>
             </>
           ) : (
             <>
@@ -690,24 +716,11 @@ export function RecipeCaptureCard() {
         </button>
       </form>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-[#f4efe6] text-xs">
+      <div className="flex items-center justify-between gap-2 pt-3 border-t border-[#f4efe6] text-xs">
         <span className="text-stone-500 text-[11px] sm:text-xs">
           {t('capture_footer_android')}
         </span>
-        <button
-          type="button"
-          onClick={() => setShowIosTutorial(true)}
-          className="text-[#a86224] hover:text-[#8e511c] font-semibold text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer self-start sm:self-auto hover:underline"
-        >
-          <Smartphone className="w-3.5 h-3.5" />
-          <span>{t('capture_footer_ios')}</span>
-        </button>
       </div>
-
-      <IosShortcutTutorialModal
-        isOpen={showIosTutorial}
-        onClose={() => setShowIosTutorial(false)}
-      />
 
       <ProSubscriptionModal
         isOpen={showProModal}

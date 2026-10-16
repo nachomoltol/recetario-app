@@ -3,8 +3,8 @@ export type Language = 'es' | 'en';
 export const TRANSLATIONS = {
   es: {
     // Header & Global Nav
-    header_title: 'Recetario Inteligente',
-    header_subtitle: 'Modo Cocina Mobile-First',
+    header_title: 'Miga',
+    header_subtitle: 'Recetas de Redes',
     header_meal_plan: 'Plan Semanal',
     header_my_account: 'Mi Cuenta',
     header_active_plan: 'Plan Chef Activo',
@@ -16,9 +16,9 @@ export const TRANSLATIONS = {
     nav_logout: 'Cerrar sesión',
 
     // Home & Capture Card
-    home_tag: 'Cuaderno Gastronómico Personal',
+    home_tag: 'Miga: recetas de redes',
     home_greeting: 'Hola',
-    home_subtitle: 'Pega cualquier vídeo de cocina para extraer sus pasos y calcular sus ingredientes al instante.',
+    home_subtitle: 'Captura recetas desde cualquier red social, imagen o texto libre, y dales tu toque personal.',
     home_loading_capture: 'Cargando panel de captura...',
     capture_tab_url: 'Enlace de Vídeo',
     capture_tab_text: 'Texto o Pasos',
@@ -428,8 +428,8 @@ export const TRANSLATIONS = {
   },
   en: {
     // Header & Global Nav
-    header_title: 'Smart Cookbook',
-    header_subtitle: 'Mobile-First Cooking Mode',
+    header_title: 'Miga',
+    header_subtitle: 'Social Recipes',
     header_meal_plan: 'Meal Plan',
     header_my_account: 'My Account',
     header_active_plan: 'Chef Plan Active',
@@ -441,9 +441,9 @@ export const TRANSLATIONS = {
     nav_logout: 'Sign Out',
 
     // Home & Capture Card
-    home_tag: 'Personal Culinary Journal',
+    home_tag: 'Miga: social recipes',
     home_greeting: 'Hello',
-    home_subtitle: 'Paste any cooking video to extract its steps and compute ingredients instantly.',
+    home_subtitle: 'Capture recipes from any social network, image, or free text, and give them your personal touch.',
     home_loading_capture: 'Loading capture panel...',
     capture_tab_url: 'Video Link',
     capture_tab_text: 'Recipe Text',

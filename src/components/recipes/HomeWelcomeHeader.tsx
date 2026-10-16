@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 
 interface HomeWelcomeHeaderProps {
@@ -25,17 +26,18 @@ export function HomeWelcomeHeader({ userName }: HomeWelcomeHeaderProps) {
 }
 
 export function HomeBrandHeader() {
-  const t = useLanguageStore((s) => s.t);
-
   return (
-    <div>
-      <span className="text-base font-bold font-serif-recipe tracking-tight text-stone-900 block leading-tight">
-        {t('header_title')}
-      </span>
-      <span className="text-[10px] text-stone-500 tracking-wider uppercase block font-medium">
-        {t('header_subtitle')}
-      </span>
-    </div>
+    <Link
+      href="/recipes"
+      className="flex items-center gap-2 focus:outline-none transition opacity-95 hover:opacity-100"
+      aria-label="Logo Miga"
+    >
+      <img
+        src="/miga-logo.svg"
+        alt="Logo Miga"
+        className="h-8 sm:h-9 w-auto max-w-[120px] sm:max-w-[150px] object-contain"
+      />
+    </Link>
   );
 }
 

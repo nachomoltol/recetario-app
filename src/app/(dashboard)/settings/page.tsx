@@ -5,7 +5,6 @@ import { ArrowLeft } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { CookingSettingsForm } from '@/components/settings/CookingSettingsForm';
-import { ShareAppsCard } from '@/components/settings/ShareAppsCard';
 import {
   SettingsHeaderTitle,
   SettingsHeroCard,
@@ -63,9 +62,6 @@ export default async function SettingsPage() {
 
         {/* Formulario de Preferencias: Raciones por defecto + Modo Manos en la Masa */}
         <CookingSettingsForm initialServings={profile?.raciones_defecto || 2} />
-
-        {/* Panel limpio: Compartir desde otras apps */}
-        <ShareAppsCard />
 
         {/* Acceso a Datos Personales y Recetario */}
         <SettingsProfileBanner />

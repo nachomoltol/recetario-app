@@ -19,14 +19,14 @@ const sansFont = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'Recetario Inteligente | Gestión Gastronómica & Nutricional',
+  title: 'Miga | Recetas de Redes & Gestión Culinaria',
   description:
-    'Estandarización culinaria, ingesta multicanal de recetas y análisis nutricional clínico impulsado por IA multimodal.',
+    'Captura recetas desde cualquier red social, imagen o texto libre, y dales tu toque personal con IA multimodal.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Recetario',
+    title: 'Miga',
     startupImage: '/icons/apple-touch-icon.png',
   },
   icons: {
@@ -59,7 +59,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Recetario" />
+        <meta name="apple-mobile-web-app-title" content="Miga" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#faf7f2" />
       </head>
