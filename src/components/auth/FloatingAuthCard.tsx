@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useActionState } from 'react';
+import { useState, useActionState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChefHat, ArrowRight, Lock, Mail, User, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { loginAction, registerAction, AuthActionResult } from '@/app/actions/auth';
 import { createClient } from '@/lib/supabase/client';
@@ -17,8 +18,32 @@ export function FloatingAuthCard({
   redirectTo = '/recipes',
   callbackError = null,
 }: FloatingAuthCardProps) {
+  const router = useRouter();
   const t = useLanguageStore((s) => s.t);
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(initialTab);
+
+  // Redirigir a /update-password si se detecta un enlace o evento de recuperación
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      if (hash.includes('type=recovery') || search.includes('type=recovery')) {
+        router.replace('/update-password');
+        return;
+      }
+    }
+
+    const supabase = createClient();
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        router.replace('/update-password');
+      }
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe?.();
+    };
+  }, [router]);
 
   // Estados de recuperación de contraseña
   const [showForgotPassword, setShowForgotPassword] = useState(false);

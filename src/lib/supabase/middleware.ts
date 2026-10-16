@@ -45,6 +45,7 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute =
     path === '/' ||
     path.startsWith('/auth') ||
+    path.startsWith('/update-password') ||
     path.startsWith('/api/stripe/webhook') ||
     path.startsWith('/share-target') ||
     path.startsWith('/robots.txt') ||
@@ -52,6 +53,12 @@ export async function updateSession(request: NextRequest) {
     path.startsWith('/manifest.json') ||
     path.startsWith('/sw.js') ||
     path.startsWith('/icons');
+
+  // Detectar si la petición contiene parámetros de recuperación de cuenta o autenticación
+  const isRecoveryIntent =
+    request.nextUrl.searchParams.get('type') === 'recovery' ||
+    request.nextUrl.searchParams.has('token_hash') ||
+    request.nextUrl.searchParams.get('next') === '/update-password';
 
   // 1. Si no hay usuario y no es una ruta pública ni de login/registro, redirigir a /login
   if (!user && !isAuthRoute && !isPublicRoute) {
@@ -62,7 +69,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   // 2. Si el usuario ya está autenticado e intenta entrar a login, registro o raíz, redirigir al recetario
-  if (user && (isAuthRoute || path === '/')) {
+  // IMPORTANTE: Si la petición tiene intención de recuperación (recovery token/code), NO interceptar para no bloquear el paso a /update-password
+  if (user && (isAuthRoute || path === '/') && !isRecoveryIntent) {
     const url = request.nextUrl.clone();
     url.pathname = '/recipes';
     return NextResponse.redirect(url);

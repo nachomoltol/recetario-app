@@ -37,6 +37,10 @@ export async function GET(request: Request) {
       });
 
       if (!error) {
+        // Si el tipo es recovery, redirigir obligatoriamente a /update-password
+        if (type === 'recovery') {
+          return NextResponse.redirect(new URL('/update-password', request.url));
+        }
         return NextResponse.redirect(`${targetBase}${next}`);
       }
 
@@ -51,6 +55,10 @@ export async function GET(request: Request) {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
 
       if (!error) {
+        // Si el tipo es recovery o el destino solicitado es update-password, forzar redirección
+        if (type === 'recovery' || next === '/update-password') {
+          return NextResponse.redirect(new URL('/update-password', request.url));
+        }
         return NextResponse.redirect(`${targetBase}${next}`);
       }
 
@@ -58,6 +66,16 @@ export async function GET(request: Request) {
       return NextResponse.redirect(
         `${targetBase}/login?error=auth_callback_failed&message=${encodeURIComponent(error.message)}`
       );
+    }
+
+    // 3. Si viene únicamente type=recovery pero ya existe sesión activa
+    if (type === 'recovery') {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        return NextResponse.redirect(new URL('/update-password', request.url));
+      }
     }
 
     // Si no vino ni code ni token_hash

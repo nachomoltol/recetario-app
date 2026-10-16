@@ -1,13 +1,27 @@
 'use client';
 
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FloatingAuthCard } from '@/components/auth/FloatingAuthCard';
 
 function LoginContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirectTo') || '/recipes';
   const callbackError = searchParams.get('error');
+  const type = searchParams.get('type');
+  const code = searchParams.get('code');
+  const token_hash = searchParams.get('token_hash');
+
+  useEffect(() => {
+    if (type === 'recovery') {
+      router.replace('/update-password');
+      return;
+    }
+    if (code || token_hash) {
+      router.replace(`/auth/callback?${searchParams.toString()}`);
+    }
+  }, [type, code, token_hash, searchParams, router]);
 
   return (
     <FloatingAuthCard
