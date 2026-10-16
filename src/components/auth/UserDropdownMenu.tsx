@@ -12,11 +12,15 @@ import {
   ChevronDown,
   Sparkles,
   ChefHat,
+  Trash2,
+  AlertTriangle,
+  Loader2,
+  X,
 } from 'lucide-react';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useLanguageStore } from '@/stores/useLanguageStore';
-import { signOutAction } from '@/app/actions/auth';
+import { signOutAction, deleteAccountAction } from '@/app/actions/auth';
 
 interface UserDropdownMenuProps {
   fallbackName: string;
@@ -25,12 +29,32 @@ interface UserDropdownMenuProps {
 
 export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const profile = useProfileStore((s) => s.profile);
   const user = useAuthStore((s) => s.user);
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
+
+  const handleDeleteAccount = async () => {
+    setDeleteError(null);
+    setIsDeleting(true);
+    try {
+      const res = await deleteAccountAction();
+      if (res?.error) {
+        setDeleteError(res.error);
+        setIsDeleting(false);
+      } else {
+        window.location.href = '/';
+      }
+    } catch (err: any) {
+      setDeleteError(err?.message || 'Error al eliminar la cuenta');
+      setIsDeleting(false);
+    }
+  };
 
   const displayName = profile?.nombre || user?.user_metadata?.nombre || fallbackName;
   const displayEmail = user?.email || email;
@@ -166,7 +190,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
           </div>
 
           {/* Separador */}
-          <div className="border-t border-[#e7dfd5] pt-1">
+          <div className="border-t border-[#e7dfd5] pt-1 space-y-0.5">
             <form action={signOutAction}>
               <button
                 type="submit"
@@ -176,6 +200,78 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
                 <span>{t('nav_logout')}</span>
               </button>
             </form>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                setShowDeleteModal(true);
+              }}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-500 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer font-medium"
+            >
+              <Trash2 className="w-4 h-4 text-stone-400" />
+              <span>{t('user_delete_account')}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación para Eliminar Cuenta */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fade-in">
+          <div className="max-w-md w-full bg-white rounded-3xl border border-[#e7dfd5] p-6 sm:p-7 shadow-2xl space-y-5">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-stone-900 font-serif-recipe leading-tight">
+                  {t('user_delete_confirm_title')}
+                </h3>
+                <p className="text-xs sm:text-sm text-stone-500 leading-relaxed font-light">
+                  {t('user_delete_confirm_desc')}
+                </p>
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            <div className="pt-2 flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteError(null);
+                }}
+                className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 transition cursor-pointer disabled:opacity-50"
+              >
+                {t('user_delete_cancel_btn')}
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDeleteAccount}
+                className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 active:scale-95 transition shadow-xs cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{t('user_deleting')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>{t('user_delete_confirm_btn')}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

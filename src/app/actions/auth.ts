@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 export interface AuthActionResult {
   error?: string;
@@ -90,6 +91,60 @@ export async function signOutAction(): Promise<void> {
   await supabase.auth.signOut();
   revalidatePath('/', 'layout');
   redirect('/login');
+}
+
+export async function deleteAccountAction(): Promise<AuthActionResult> {
+  try {
+    const userClient = await createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await userClient.auth.getUser();
+
+    if (userError || !user) {
+      return { error: 'No se encontró una sesión activa.' };
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('Falta SUPABASE_SERVICE_ROLE_KEY para eliminar usuario.');
+      return { error: 'Error de configuración del servidor al eliminar la cuenta.' };
+    }
+
+    const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    // 1. Eliminar datos asociados del usuario en la base de datos
+    try {
+      await adminClient.from('diario_cocinados').delete().eq('usuario_id', user.id);
+      await adminClient.from('recetas').delete().eq('usuario_id', user.id);
+      await adminClient.from('usuarios').delete().eq('id', user.id);
+    } catch (cleanupErr) {
+      console.warn('Advertencia durante la limpieza de datos del usuario:', cleanupErr);
+    }
+
+    // 2. Eliminar al usuario de Supabase Auth usando el API admin
+    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(user.id);
+    if (deleteAuthError) {
+      console.error('Error al eliminar usuario en auth.admin:', deleteAuthError);
+      return { error: deleteAuthError.message };
+    }
+
+    // 3. Cerrar sesión en el cliente y purgar cookies de sesión
+    await userClient.auth.signOut();
+    revalidatePath('/', 'layout');
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Excepción en deleteAccountAction:', error);
+    return { error: error?.message || 'Error inesperado al eliminar la cuenta.' };
+  }
 }
 
 function splitEmail(email: string): string {
