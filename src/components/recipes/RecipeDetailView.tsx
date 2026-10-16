@@ -720,6 +720,20 @@ export function RecipeDetailView({
               </span>
             </div>
           </div>
+
+          {receta.dificultad && (
+            <div className="flex items-center gap-2.5 shrink-0">
+              <ChefHat className="w-5 h-5 text-[#a86224] shrink-0" />
+              <div>
+                <span className="text-[10px] uppercase text-stone-500 font-medium block leading-none">
+                  {t('level_title')}
+                </span>
+                <span className="text-base font-bold text-stone-900 mt-0.5 block whitespace-nowrap capitalize">
+                  {typeof receta.dificultad === 'string' ? receta.dificultad : String(receta.dificultad || '')}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

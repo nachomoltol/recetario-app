@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type DificultadReceta = 'facil' | 'media' | 'dificil' | 'experto';
+export type DificultadReceta = string;
 export type FuenteTipoReceta =
   | 'manual'
   | 'tiktok'

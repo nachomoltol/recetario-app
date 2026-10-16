@@ -19,13 +19,28 @@ export function RecipeDetailHeader({
   const t = useLanguageStore((s) => s.t);
   const language = useLanguageStore((s) => s.language);
 
-  const getDificultadLabel = (dif?: string | null) => {
+  const getDificultadLabel = (dif?: any) => {
     if (!dif) return '';
-    const d = dif.toLowerCase();
-    if (d === 'fácil' || d === 'facil') return t('recipe_difficulty_easy');
-    if (d === 'media') return t('recipe_difficulty_medium');
-    if (d === 'difícil' || d === 'dificil' || d === 'alta') return t('recipe_difficulty_hard');
-    return dif;
+    try {
+      const raw = typeof dif === 'string' ? dif : String(dif);
+      const d = raw.toLowerCase().trim();
+      if (d === 'fácil' || d === 'facil' || d === 'easy' || d === 'beginner') return t('recipe_difficulty_easy');
+      if (d === 'media' || d === 'medium' || d === 'intermediate') return t('recipe_difficulty_medium');
+      if (
+        d === 'difícil' ||
+        d === 'dificil' ||
+        d === 'alta' ||
+        d === 'hard' ||
+        d === 'advanced' ||
+        d === 'experto' ||
+        d === 'expert'
+      ) {
+        return t('recipe_difficulty_hard');
+      }
+      return raw;
+    } catch {
+      return String(dif || '');
+    }
   };
 
   return (

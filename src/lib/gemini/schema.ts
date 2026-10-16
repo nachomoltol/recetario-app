@@ -39,8 +39,7 @@ export const recipeExtractionSchema = {
     },
     dificultad: {
       type: Type.STRING,
-      enum: ['facil', 'media', 'dificil', 'experto'],
-      description: 'Nivel de dificultad técnica de la receta.',
+      description: 'Nivel de dificultad técnica de la receta en el idioma solicitado (ej: Fácil, Media, Difícil o Easy, Medium, Hard).',
     },
     ingredientes: {
       type: Type.ARRAY,
@@ -373,7 +372,7 @@ export interface ExtractedRecipe {
   tiempo_preparacion_min: number;
   tiempo_coccion_min: number;
   porciones: number;
-  dificultad: 'facil' | 'media' | 'dificil' | 'experto';
+  dificultad: string;
   ingredientes: ExtractedIngredient[];
   pasos: ExtractedStep[];
   macros_estimados_por_porcion: ExtractedMacros;

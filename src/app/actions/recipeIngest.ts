@@ -7,7 +7,7 @@ import { getClinicalExclusions } from '@/lib/clinicalDictionary';
 import { ExtractedIngredient } from '@/lib/gemini/schema';
 import { calcularGramos } from '@/lib/nutrition/converter';
 import { IngredienteMaestro } from '@/types/recipe';
-import { DificultadReceta, FuenteTipoReceta } from '@/types/database';
+import { FuenteTipoReceta } from '@/types/database';
 
 export interface IngestRecipeResult {
   success?: boolean;
@@ -145,27 +145,8 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       ].filter((t): t is string => typeof t === 'string' && t.trim().length > 0))
     );
 
-    // Normalizar dificultad contra el constraint SQL: ('facil', 'media', 'dificil', 'experto')
-    // Soporta variantes en español ('fácil' con tilde) e inglés ('easy', 'beginner', 'hard', etc.)
-    const DIFICULTADES_VALIDAS: DificultadReceta[] = ['facil', 'media', 'dificil', 'experto'];
-    const cleanDificultad = (extracted.dificultad || 'media')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim();
-
-    let dificultadNormalizada: DificultadReceta = 'media';
-    if (DIFICULTADES_VALIDAS.includes(cleanDificultad as DificultadReceta)) {
-      dificultadNormalizada = cleanDificultad as DificultadReceta;
-    } else if (cleanDificultad === 'easy' || cleanDificultad === 'beginner') {
-      dificultadNormalizada = 'facil';
-    } else if (cleanDificultad === 'medium' || cleanDificultad === 'intermediate') {
-      dificultadNormalizada = 'media';
-    } else if (cleanDificultad === 'hard' || cleanDificultad === 'advanced') {
-      dificultadNormalizada = 'dificil';
-    } else if (cleanDificultad === 'expert') {
-      dificultadNormalizada = 'experto';
-    }
+    // Dificultad libre generada por Gemini según el idioma solicitado
+    const dificultadReceta = (extracted.dificultad || 'media').trim();
 
     const prepMin = Math.max(0, Number(extracted.tiempo_preparacion_min) || 0);
     const coccMin = Math.max(0, Number(extracted.tiempo_coccion_min) || 0);
@@ -201,7 +182,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         tiempo_preparacion_min: prepMin,
         tiempo_coccion_min: coccMin,
         porciones: porcionesFinales,
-        dificultad: dificultadNormalizada,
+        dificultad: dificultadReceta,
         fuente_tipo: fuenteTipo,
         fuente_url: fuenteUrl,
         calorias_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.calorias) || 0),
