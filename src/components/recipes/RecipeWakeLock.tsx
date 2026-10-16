@@ -5,6 +5,7 @@ import { Sparkles, Eye, EyeOff } from 'lucide-react';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 
 export function RecipeWakeLock() {
+  const t = useLanguageStore((s) => s.t);
   const [isLocked, setIsLocked] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [isEnabled, setIsEnabled] = useState(true);
@@ -78,11 +79,6 @@ export function RecipeWakeLock() {
     };
   }, [isSupported, isEnabled, requestLock, releaseLock]);
 
-  // Si el navegador no lo soporta, no renderizamos nada molesto
-  if (!isSupported) {
-    return null;
-  }
-
   const toggleManualWakeLock = () => {
     const nextState = !isEnabled;
     setIsEnabled(nextState);
@@ -91,7 +87,10 @@ export function RecipeWakeLock() {
     }
   };
 
-  const t = useLanguageStore((s) => s.t);
+  // Si el navegador no lo soporta, no renderizamos nada molesto
+  if (!isSupported) {
+    return null;
+  }
 
   return (
     <button

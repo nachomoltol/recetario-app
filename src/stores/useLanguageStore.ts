@@ -8,33 +8,46 @@ interface LanguageState {
   setLanguage: (lang: Language) => void;
   toggleLanguage: () => void;
   t: (key: TranslationKey) => string;
+  initLanguage: () => void;
 }
 
 function getInitialLanguage(): Language {
   if (typeof window === 'undefined') return 'es';
 
-  // 1. Prioridad: LocalStorage
-  const stored = localStorage.getItem('recetario_lang');
-  if (stored === 'es' || stored === 'en') {
-    return stored;
-  }
+  try {
+    // 1. Prioridad: LocalStorage
+    const stored = localStorage.getItem('recetario_lang');
+    if (stored === 'es' || stored === 'en') {
+      return stored;
+    }
 
-  // 2. Comprobar cookie
-  const match = document.cookie.match(/(?:^|;\s*)recetario_lang=([^;]+)/);
-  if (match && (match[1] === 'es' || match[1] === 'en')) {
-    return match[1] as Language;
-  }
+    // 2. Comprobar cookie
+    const match = document.cookie.match(/(?:^|;\s*)recetario_lang=([^;]+)/);
+    if (match && (match[1] === 'es' || match[1] === 'en')) {
+      return match[1] as Language;
+    }
 
-  // 3. Comprobar idioma del navegador
-  if (navigator.language && navigator.language.toLowerCase().startsWith('en')) {
-    return 'en';
-  }
+    // 3. Comprobar idioma del navegador
+    if (navigator.language && navigator.language.toLowerCase().startsWith('en')) {
+      return 'en';
+    }
+  } catch {}
 
   return 'es';
 }
 
 export const useLanguageStore = create<LanguageState>((set, get) => ({
-  language: typeof window !== 'undefined' ? getInitialLanguage() : 'es',
+  language: 'es',
+
+  initLanguage: () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const initial = getInitialLanguage();
+      if (get().language !== initial) {
+        set({ language: initial });
+      }
+    } catch {}
+  },
 
   setLanguage: (lang: Language) => {
     if (typeof window !== 'undefined') {

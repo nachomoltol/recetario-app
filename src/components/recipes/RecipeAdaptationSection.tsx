@@ -36,6 +36,8 @@ export function RecipeAdaptationSection({
   onApplyAdaptation,
   onRevertAdaptation,
 }: RecipeAdaptationSectionProps) {
+  const language = useLanguageStore((s) => s.language);
+  const t = useLanguageStore((s) => s.t);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -54,9 +56,6 @@ export function RecipeAdaptationSection({
   if (!canAdapt) {
     return null;
   }
-
-  const language = useLanguageStore((s) => s.language);
-  const t = useLanguageStore((s) => s.t);
 
   const getNivelLabel = (n: string) => {
     try {

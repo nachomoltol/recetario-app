@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { Globe } from 'lucide-react';
 
@@ -11,6 +12,11 @@ interface LanguageToggleProps {
 export function LanguageToggle({ className = '', showIcon = true }: LanguageToggleProps) {
   const language = useLanguageStore((s) => s.language);
   const setLanguage = useLanguageStore((s) => s.setLanguage);
+  const initLanguage = useLanguageStore((s) => s.initLanguage);
+
+  useEffect(() => {
+    initLanguage();
+  }, [initLanguage]);
 
   return (
     <div
