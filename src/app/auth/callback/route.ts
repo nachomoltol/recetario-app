@@ -16,6 +16,16 @@ export async function GET(request: Request) {
   const isLocalEnv = process.env.NODE_ENV === 'development';
   const targetBase = !isLocalEnv && forwardedHost ? `https://${forwardedHost}` : origin;
 
+  // Si Supabase devuelve parámetros de error (ej. enlace expirado o acceso denegado)
+  const authError = searchParams.get('error');
+  const authErrorDesc = searchParams.get('error_description');
+  if (authError) {
+    console.warn('Error recibido en auth callback desde Supabase:', authError, authErrorDesc);
+    return NextResponse.redirect(
+      `${targetBase}/login?error=${encodeURIComponent(authError)}&message=${encodeURIComponent(authErrorDesc || 'El enlace es inválido o ha expirado.')}`
+    );
+  }
+
   try {
     const supabase = await createClient();
 

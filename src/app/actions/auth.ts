@@ -23,23 +23,38 @@ export async function loginAction(
     return { error: 'Por favor, ingresa tu correo electrónico y contraseña.' };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  let shouldRedirect = false;
 
-  if (error) {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      return {
+        error:
+          error.message === 'Invalid login credentials'
+            ? 'Credenciales incorrectas. Verifica tu email y contraseña.'
+            : String(error.message || 'Error al iniciar sesión.'),
+      };
+    }
+
+    shouldRedirect = true;
+  } catch (err: any) {
+    console.error('Error no controlado en loginAction:', err);
     return {
-      error:
-        error.message === 'Invalid login credentials'
-          ? 'Credenciales incorrectas. Verifica tu email y contraseña.'
-          : error.message,
+      error: typeof err?.message === 'string' ? err.message : 'Error inesperado del servidor al iniciar sesión.',
     };
   }
 
-  revalidatePath('/', 'layout');
-  redirect(redirectTo);
+  if (shouldRedirect) {
+    revalidatePath('/', 'layout');
+    redirect(redirectTo);
+  }
+
+  return {};
 }
 
 export async function registerAction(
@@ -58,37 +73,112 @@ export async function registerAction(
     return { error: 'La contraseña debe tener al menos 6 caracteres.' };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        nombre: nombre || splitEmail(email),
-        full_name: nombre || splitEmail(email),
+  let shouldRedirect = false;
+  let confirmEmailMessage: string | null = null;
+
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          nombre: nombre || splitEmail(email),
+          full_name: nombre || splitEmail(email),
+        },
       },
-    },
-  });
+    });
 
-  if (error) {
-    return { error: error.message };
-  }
+    if (error) {
+      return { error: String(error.message || 'Error al registrar la cuenta.') };
+    }
 
-  // Si Supabase requiere confirmación por email y la sesión no es inmediata
-  if (data.user && (!data.session || data.user.identities?.length === 0)) {
+    // Si Supabase requiere confirmación por email y la sesión no es inmediata
+    if (data.user && (!data.session || data.user.identities?.length === 0)) {
+      confirmEmailMessage =
+        'Cuenta creada con éxito. Por favor, revisa tu correo electrónico para confirmar tu cuenta.';
+    } else {
+      shouldRedirect = true;
+    }
+  } catch (err: any) {
+    console.error('Error no controlado en registerAction:', err);
     return {
-      success: true,
-      message: 'Cuenta creada con éxito. Por favor, revisa tu correo electrónico para confirmar tu cuenta.',
+      error: typeof err?.message === 'string' ? err.message : 'Error inesperado del servidor al registrar la cuenta.',
     };
   }
 
-  revalidatePath('/', 'layout');
-  redirect('/recipes');
+  if (confirmEmailMessage) {
+    return {
+      success: true,
+      message: confirmEmailMessage,
+    };
+  }
+
+  if (shouldRedirect) {
+    revalidatePath('/', 'layout');
+    redirect('/recipes');
+  }
+
+  return {};
+}
+
+export async function updatePasswordAction(
+  _prevState: AuthActionResult | null,
+  formData: FormData
+): Promise<AuthActionResult> {
+  try {
+    const password = (formData.get('password') as string) || '';
+    const confirmPassword = (formData.get('confirmPassword') as string) || '';
+
+    if (!password || password.length < 6) {
+      return { error: 'La contraseña debe tener al menos 6 caracteres.' };
+    }
+
+    if (confirmPassword && password !== confirmPassword) {
+      return { error: 'Las contraseñas no coinciden.' };
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return {
+        error:
+          'No se encontró una sesión activa válida o el enlace ha caducado. Por favor, solicita un nuevo enlace de recuperación.',
+      };
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      password,
+    });
+
+    if (updateError) {
+      return { error: String(updateError.message || 'No se pudo actualizar la contraseña.') };
+    }
+
+    revalidatePath('/', 'layout');
+    return {
+      success: true,
+      message: '¡Contraseña actualizada con éxito!',
+    };
+  } catch (err: any) {
+    console.error('Error no controlado en updatePasswordAction:', err);
+    return {
+      error: typeof err?.message === 'string' ? err.message : 'Error inesperado del servidor al actualizar la contraseña.',
+    };
+  }
 }
 
 export async function signOutAction(): Promise<void> {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  try {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+  } catch (e) {
+    console.error('Error al cerrar sesión:', e);
+  }
   revalidatePath('/', 'layout');
   redirect('/login');
 }
