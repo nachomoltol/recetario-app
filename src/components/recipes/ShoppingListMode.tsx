@@ -74,21 +74,24 @@ export function ShoppingListMode({
     } catch {}
   };
 
+  const safeIngredientes = Array.isArray(ingredientes) ? ingredientes : [];
+
   const handleSelectAll = () => {
-    const all = ingredientes.map((i) => i.id);
+    const all = safeIngredientes.map((i) => i?.id).filter(Boolean);
     setCheckedIds(all);
     try {
       localStorage.setItem(storageKey, JSON.stringify(all));
     } catch {}
   };
 
-  const groupedAisles = groupItemsByAisle(ingredientes, (i) =>
-    classifyIngredientAisle(i.nombre_limpio || i.nombre_crudo, i.pasillo_supermercado)
+  const groupedAisles = groupItemsByAisle(safeIngredientes, (i) =>
+    classifyIngredientAisle(i?.nombre_limpio || i?.nombre_crudo || '', i?.pasillo_supermercado)
   );
 
   const handleCopyList = () => {
+    const safeTitle = String(tituloReceta || '').toUpperCase();
     const textLines = [
-      `🛒 ${t('recipe_shopping_list_title')} - ${tituloReceta.toUpperCase()}`,
+      `🛒 ${t('recipe_shopping_list_title')} - ${safeTitle}`,
       '========================================',
     ];
 
@@ -97,12 +100,13 @@ export function ShoppingListMode({
       textLines.push(`\n📍 ${aisleTitle.toUpperCase()}`);
       textLines.push('----------------------------------------');
       for (const ing of group.items) {
+        if (!ing) continue;
         const isChecked = checkedIds.includes(ing.id);
         const prefix = isChecked ? '✓' : '☐';
         const qtyNum = ing.cantidad_escalada !== undefined ? ing.cantidad_escalada : ing.cantidad;
         const unidadFormat = formatIngredientUnit(ing.unidad, qtyNum, language);
-        const qty = `${qtyNum} ${unidadFormat}`.trim();
-        const name = ing.nombre_limpio || ing.nombre_crudo;
+        const qty = `${qtyNum ?? ''} ${unidadFormat}`.trim();
+        const name = ing.nombre_limpio || ing.nombre_crudo || '';
         textLines.push(`${prefix} ${qty} ${name}${ing.notas ? ` (${ing.notas})` : ''}`);
       }
     }
@@ -110,14 +114,16 @@ export function ShoppingListMode({
     textLines.push('\n========================================');
     textLines.push(t('recipe_shopping_list_created_with'));
 
-    navigator.clipboard.writeText(textLines.join('\n'));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    try {
+      navigator.clipboard?.writeText?.(textLines.join('\n'));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {}
   };
 
-  const total = ingredientes.length;
+  const total = safeIngredientes.length;
   const completed = checkedIds.filter((id) =>
-    ingredientes.some((i) => i.id === id)
+    safeIngredientes.some((i) => i?.id === id)
   ).length;
   const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
 

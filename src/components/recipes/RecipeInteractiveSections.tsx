@@ -59,9 +59,9 @@ export function RecipeInteractiveSections({
     newName: string | null,
     adaptedBaseName?: string
   ) => {
-    const cleanTarget = currentTarget.replace(/<\/?[^>]+(>|$)/g, '').trim();
-    const cleanNew = newName ? newName.replace(/<\/?[^>]+(>|$)/g, '').trim() : null;
-    const baseKey = (adaptedBaseName || cleanTarget).replace(/<\/?[^>]+(>|$)/g, '').trim();
+    const cleanTarget = String(currentTarget || '').replace(/<\/?[^>]+(>|$)/g, '').trim();
+    const cleanNew = newName ? String(newName).replace(/<\/?[^>]+(>|$)/g, '').trim() : null;
+    const baseKey = String(adaptedBaseName || cleanTarget).replace(/<\/?[^>]+(>|$)/g, '').trim();
 
     setSubstitutions((prev) => {
       const next = { ...prev };
@@ -77,14 +77,17 @@ export function RecipeInteractiveSections({
     onSubstitutePersist?.(cleanTarget, cleanNew, baseKey);
   };
 
+  const safePasos = Array.isArray(pasos) ? pasos : [];
+  const safeIngredientes = Array.isArray(ingredientes) ? ingredientes : [];
+
   // Reactividad dinámica: sustitución instantánea en el texto de preparación
   const reactivePasos = useMemo(() => {
     const activeSubs = Object.entries(substitutions).filter(([_, newName]) => Boolean(newName));
-    if (activeSubs.length === 0) return pasos;
+    if (activeSubs.length === 0) return safePasos;
 
-    return pasos.map((paso) => {
-      let instruccion = paso.instruccion;
-      let consejo = paso.consejo_pro;
+    return safePasos.map((paso) => {
+      let instruccion = String(paso?.instruccion || '');
+      let consejo = paso?.consejo_pro ? String(paso.consejo_pro) : undefined;
 
       for (const [adaptedBase, newName] of activeSubs) {
         instruccion = replaceIngredientInText(instruccion, adaptedBase, newName);
@@ -99,11 +102,11 @@ export function RecipeInteractiveSections({
         consejo_pro: consejo,
       };
     });
-  }, [pasos, substitutions]);
+  }, [safePasos, substitutions]);
 
   // Escalado inteligente con conciencia culinaria
   const scaledIngredientes = scaleIngredientsWithCulinaryHeuristics(
-    ingredientes,
+    safeIngredientes,
     basePorciones || 2,
     servings
   );
@@ -135,7 +138,7 @@ export function RecipeInteractiveSections({
                 {t('recipe_section_ingredients')}
               </h2>
               <span className="text-xs text-stone-500 font-medium mt-1 block">
-                {servings} {servings === 1 ? t('recipe_serving_single') : t('recipe_servings_plural')} · {ingredientes.length} {t('recipe_items')}
+                {servings} {servings === 1 ? t('recipe_serving_single') : t('recipe_servings_plural')} · {safeIngredientes.length} {t('recipe_items')}
               </span>
             </div>
           </div>
@@ -197,7 +200,7 @@ export function RecipeInteractiveSections({
                 {t('recipe_section_prep')}
               </h2>
               <span className="text-xs text-stone-500 font-medium mt-1 block">
-                {pasos.length} {t('recipe_steps_count')}
+                {safePasos.length} {t('recipe_steps_count')}
                 {scaledTiempoCoccion ? ` · ~${scaledTiempoCoccion} ${t('recipe_min_cooking')}` : ''}
               </span>
             </div>
@@ -221,10 +224,10 @@ export function RecipeInteractiveSections({
         {isStepsOpen && (
           <div className="p-5 sm:p-6 pt-4 border-t border-[#f4efe6] animate-fade-in">
             <ol className="space-y-7">
-              {reactivePasos.map((paso) => (
-                <li key={paso.id} className="flex gap-4 sm:gap-5 group">
+              {reactivePasos.map((paso, idx) => (
+                <li key={paso?.id || `paso-${idx}`} className="flex gap-4 sm:gap-5 group">
                   <span className="w-10 h-10 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] font-serif-recipe font-bold text-base flex items-center justify-center shrink-0 self-start mt-0.5 shadow-2xs">
-                    {paso.orden}
+                    {paso?.orden ?? (idx + 1)}
                   </span>
 
                   <div className="space-y-2.5 flex-1">

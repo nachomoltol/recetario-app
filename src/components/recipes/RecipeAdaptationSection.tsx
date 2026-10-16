@@ -59,27 +59,35 @@ export function RecipeAdaptationSection({
   const t = useLanguageStore((s) => s.t);
 
   const getNivelLabel = (n: string) => {
-    const nl = n.toLowerCase();
-    if (nl === 'principiante' || nl === 'beginner') return language === 'en' ? 'Beginner' : 'Principiante';
-    if (nl === 'avanzado' || nl === 'advanced') return language === 'en' ? 'Advanced' : 'Avanzado';
-    return n;
+    try {
+      const nl = String(n || '').toLowerCase();
+      if (nl === 'principiante' || nl === 'beginner') return language === 'en' ? 'Beginner' : 'Principiante';
+      if (nl === 'avanzado' || nl === 'advanced') return language === 'en' ? 'Advanced' : 'Avanzado';
+      return String(n || '');
+    } catch {
+      return String(n || '');
+    }
   };
 
   const getDietaryLabel = (pref: string) => {
-    if (language !== 'en') return pref;
-    const p = pref.toLowerCase();
-    if (p.includes('gluten')) return 'Gluten-Free';
-    if (p.includes('vegan') || p.includes('vegetal')) return 'Vegan';
-    if (p.includes('vegetariana')) return 'Vegetarian';
-    if (p.includes('lact')) return 'Lactose-Free';
-    if (p.includes('fodmap')) return 'Low-FODMAP';
-    if (p.includes('histamina')) return 'Low Histamine';
-    if (p.includes('keto')) return 'Keto';
-    if (p.includes('paleo')) return 'Paleo';
-    if (p.includes('blanda')) return 'Bland Diet';
-    if (p.includes('reflujo')) return 'Anti-Reflux';
-    if (p.includes('inflamatorio')) return 'Anti-Inflammatory';
-    return pref;
+    if (language !== 'en') return String(pref || '');
+    try {
+      const p = String(pref || '').toLowerCase();
+      if (p.includes('gluten')) return 'Gluten-Free';
+      if (p.includes('vegan') || p.includes('vegetal')) return 'Vegan';
+      if (p.includes('vegetariana')) return 'Vegetarian';
+      if (p.includes('lact')) return 'Lactose-Free';
+      if (p.includes('fodmap')) return 'Low-FODMAP';
+      if (p.includes('histamina')) return 'Low Histamine';
+      if (p.includes('keto')) return 'Keto';
+      if (p.includes('paleo')) return 'Paleo';
+      if (p.includes('blanda')) return 'Bland Diet';
+      if (p.includes('reflujo')) return 'Anti-Reflux';
+      if (p.includes('inflamatorio')) return 'Anti-Inflammatory';
+      return String(pref || '');
+    } catch {
+      return String(pref || '');
+    }
   };
 
   const handleAdapt = () => {

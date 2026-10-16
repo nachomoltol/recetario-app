@@ -4,6 +4,7 @@ import { RecipeDetailHeader } from '@/components/recipes/RecipeDetailHeader';
 import { RecipeDateFooter } from '@/components/recipes/RecipeDateFooter';
 import { RecipeDetailView } from '@/components/recipes/RecipeDetailView';
 import { DeleteRecipeButton } from '@/components/recipes/DeleteRecipeButton';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe';
 
 export const dynamic = 'force-dynamic';
@@ -74,21 +75,21 @@ export default async function RecipeDetailPage({ params }: PageProps) {
   const diarioEntries = (diarioData as DiarioCocinados[]) || [];
 
   const recipeDataForAdapt = {
-    recetaId: receta.id,
-    titulo: receta.titulo,
-    descripcion: receta.descripcion,
-    porciones: receta.porciones || 2,
-    dificultad: receta.dificultad,
-    ingredientes: ingredientes.map((i) => ({
-      nombre_limpio: i.nombre_limpio,
-      cantidad: i.cantidad,
-      unidad: i.unidad,
-      pasillo_supermercado: i.pasillo_supermercado,
+    recetaId: receta?.id || id,
+    titulo: receta?.titulo || '',
+    descripcion: receta?.descripcion || '',
+    porciones: Number(receta?.porciones) || 2,
+    dificultad: receta?.dificultad || 'media',
+    ingredientes: (ingredientes || []).map((i) => ({
+      nombre_limpio: i?.nombre_limpio || i?.nombre_crudo || '',
+      cantidad: Number(i?.cantidad) || 1,
+      unidad: i?.unidad || 'unidad',
+      pasillo_supermercado: i?.pasillo_supermercado || 'Despensa y Especias',
     })),
-    pasos: pasos.map((p) => ({
-      orden: p.orden,
-      instruccion: p.instruccion,
-      consejo_pro: p.consejo_pro,
+    pasos: (pasos || []).map((p, idx) => ({
+      orden: p?.orden || idx + 1,
+      instruccion: p?.instruccion || '',
+      consejo_pro: p?.consejo_pro || null,
     })),
   };
 
@@ -96,31 +97,33 @@ export default async function RecipeDetailPage({ params }: PageProps) {
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
       {/* Barra de navegación superior luminosa */}
       <RecipeDetailHeader
-        fuenteUrl={receta.fuente_url}
-        fuenteTipo={receta.fuente_tipo}
-        dificultad={receta.dificultad}
+        fuenteUrl={receta?.fuente_url}
+        fuenteTipo={receta?.fuente_tipo}
+        dificultad={receta?.dificultad}
       />
 
       {/* Contenido Editorial con Modo Cocina */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10">
-        <RecipeDetailView
-          receta={receta}
-          ingredientes={ingredientes}
-          pasos={pasos}
-          userProfile={userProfile}
-          userRacionesDefecto={userRacionesDefecto}
-          recipeDataForAdapt={recipeDataForAdapt}
-          diarioEntries={diarioEntries}
-        />
+        <ErrorBoundary fallbackTitle="Error en la vista de la receta">
+          <RecipeDetailView
+            receta={receta}
+            ingredientes={ingredientes || []}
+            pasos={pasos || []}
+            userProfile={userProfile}
+            userRacionesDefecto={userRacionesDefecto}
+            recipeDataForAdapt={recipeDataForAdapt}
+            diarioEntries={diarioEntries || []}
+          />
+        </ErrorBoundary>
 
         {/* Zona de gestión y borrado de la receta */}
         <section className="pt-8 border-t border-[#e7dfd5] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="text-xs text-stone-500">
-            <RecipeDateFooter createdAt={receta.created_at} />
+            <RecipeDateFooter createdAt={receta?.created_at} />
           </div>
           <DeleteRecipeButton
-            recipeId={receta.id}
-            recipeTitle={receta.titulo}
+            recipeId={receta?.id || id}
+            recipeTitle={receta?.titulo}
             redirectTo="/recipes"
             variant="button"
           />

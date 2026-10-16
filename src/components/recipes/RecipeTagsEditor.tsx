@@ -55,23 +55,31 @@ export function RecipeTagsEditor({ recetaId, initialTags }: RecipeTagsEditorProp
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const isGastronomic = (tag: string) => {
-    const t = tag.toLowerCase().trim();
-    return CATEGORIAS_GASTRONOMICAS_PRESET.some(
-      (p) => p.toLowerCase() === t || t.includes(p.toLowerCase())
-    );
+    try {
+      const t = String(tag || '').toLowerCase().trim();
+      return CATEGORIAS_GASTRONOMICAS_PRESET.some(
+        (p) => p.toLowerCase() === t || t.includes(p.toLowerCase())
+      );
+    } catch {
+      return false;
+    }
   };
 
   const isMoment = (tag: string) => {
-    const t = tag.toLowerCase().trim();
-    return MOMENTOS_CONSUMO_PRESET.some(
-      (p) => p.toLowerCase() === t || t.includes(p.toLowerCase())
-    );
+    try {
+      const t = String(tag || '').toLowerCase().trim();
+      return MOMENTOS_CONSUMO_PRESET.some(
+        (p) => p.toLowerCase() === t || t.includes(p.toLowerCase())
+      );
+    } catch {
+      return false;
+    }
   };
 
   const handleAddTag = (newTag: string) => {
-    const trimmed = newTag.trim();
+    const trimmed = String(newTag || '').trim();
     if (!trimmed) return;
-    if (tags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) return;
+    if (tags.some((t) => String(t || '').toLowerCase() === trimmed.toLowerCase())) return;
     setTags([...tags, trimmed]);
   };
 

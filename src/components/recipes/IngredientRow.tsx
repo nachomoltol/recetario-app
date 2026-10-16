@@ -80,16 +80,17 @@ export function IngredientRow({
   };
 
   // El ingrediente activo canónico en el estado actual de la receta adaptada
-  const adaptedBaseName = (ingrediente.nombre_limpio || ingrediente.nombre_crudo)
+  const rawBaseName = ingrediente?.nombre_limpio || ingrediente?.nombre_crudo || 'Ingrediente';
+  const adaptedBaseName = String(rawBaseName)
     .replace(/<\/?[^>]+(>|$)/g, '')
-    .trim();
+    .trim() || 'Ingrediente';
 
   // Resetear estados locales si la receta cambia de adaptación o de ingrediente
   useEffect(() => {
     setAppliedOption(null);
     setOptions(null);
     setSelectedOptionIndex(null);
-  }, [ingrediente.id, ingrediente.nombre_limpio]);
+  }, [ingrediente?.id, ingrediente?.nombre_limpio]);
 
   // Auto-scroll interno en el Drawer cuando se expande una ficha técnica
   useEffect(() => {
@@ -158,8 +159,8 @@ export function IngredientRow({
     setIsOpen(false);
   };
 
-  const baseCantidadNum = scaledCantidad !== undefined ? scaledCantidad : Number(ingrediente.cantidad);
-  const unidadAjustada = formatIngredientUnit(ingrediente.unidad, baseCantidadNum, language);
+  const baseCantidadNum = scaledCantidad !== undefined ? scaledCantidad : Number(ingrediente?.cantidad) || 1;
+  const unidadAjustada = formatIngredientUnit(ingrediente?.unidad, baseCantidadNum, language);
 
   const nombreMostrado = appliedOption
     ? appliedOption.nombre_sustituto
@@ -167,7 +168,7 @@ export function IngredientRow({
 
   const cantidadMostrada = appliedOption
     ? appliedOption.cantidad_sugerida
-    : `${baseCantidadNum} ${unidadAjustada}`;
+    : `${baseCantidadNum} ${unidadAjustada}`.trim();
 
   const getOptionIcon = (tipo: string) => {
     if (tipo === 'magra_tradicional') return <Beef className="w-3.5 h-3.5 shrink-0" />;

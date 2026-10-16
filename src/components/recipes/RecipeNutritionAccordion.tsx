@@ -51,7 +51,7 @@ export function RecipeNutritionAccordion({
         <div className="flex items-center gap-2">
           {calorias && !isOpen && (
             <span className="text-xs font-bold text-[#a86224] bg-[#f4efe6] px-2 py-0.5 rounded-lg border border-[#e7dfd5]">
-              {Math.round(calorias)} kcal
+              {Math.round(Number(calorias) || 0)} kcal
             </span>
           )}
           <div
@@ -72,7 +72,7 @@ export function RecipeNutritionAccordion({
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#e7dfd5] shrink-0 shadow-2xs">
                 <Flame className="w-3.5 h-3.5 text-orange-500" />
                 <span className="text-stone-500 font-medium">{t('recipe_nutrition_calories')}:</span>
-                <strong className="text-stone-900 font-bold">{Math.round(calorias)} kcal</strong>
+                <strong className="text-stone-900 font-bold">{Math.round(Number(calorias) || 0)} kcal</strong>
               </div>
             )}
 

@@ -69,22 +69,22 @@ export function RecipeDetailView({
   const [isSaving, setIsSaving] = useState(false);
 
   // Estados de datos
-  const [currentTitulo, setCurrentTitulo] = useState(receta.titulo);
-  const [editTitulo, setEditTitulo] = useState(receta.titulo);
+  const [currentTitulo, setCurrentTitulo] = useState(receta?.titulo || 'Receta');
+  const [editTitulo, setEditTitulo] = useState(receta?.titulo || 'Receta');
 
-  const [currentIngredientes, setCurrentIngredientes] = useState<RecetaIngrediente[]>(ingredientes);
-  const [currentPasos, setCurrentPasos] = useState<Paso[]>(pasos);
+  const [currentIngredientes, setCurrentIngredientes] = useState<RecetaIngrediente[]>(ingredientes || []);
+  const [currentPasos, setCurrentPasos] = useState<Paso[]>(pasos || []);
   const [editIngredientes, setEditIngredientes] = useState<EditableIngredient[]>([]);
 
   // Estado de adaptación in-line a perfil: detecta persistencia previa en Supabase tras F5
-  const [isAdapted, setIsAdapted] = useState(Boolean(receta.receta_original));
+  const [isAdapted, setIsAdapted] = useState(Boolean(receta?.receta_original));
   const [adaptationSummary, setAdaptationSummary] = useState<string | null>(
-    receta.receta_original ? 'Receta adaptada y sincronizada con tu perfil' : null
+    receta?.receta_original ? 'Receta adaptada y sincronizada con tu perfil' : null
   );
 
   // Estados de fotografía
   const [currentFotoUrl, setCurrentFotoUrl] = useState<string | null>(
-    receta.foto_url || receta.imagen_portada_url || null
+    receta?.foto_url || receta?.imagen_portada_url || null
   );
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -113,93 +113,95 @@ export function RecipeDetailView({
 
   // Sincronizar estado local con props cuando la receta es actualizada desde servidor
   useEffect(() => {
-    setCurrentTitulo(receta.titulo);
-    setCurrentIngredientes(ingredientes);
-    setCurrentPasos(pasos);
-    setIsAdapted(Boolean(receta.receta_original));
-    if (receta.receta_original) {
+    setCurrentTitulo(receta?.titulo || 'Receta');
+    setCurrentIngredientes(ingredientes || []);
+    setCurrentPasos(pasos || []);
+    setIsAdapted(Boolean(receta?.receta_original));
+    if (receta?.receta_original) {
       setAdaptationSummary('Receta adaptada y sincronizada con tu perfil');
     }
-  }, [receta.id, receta.updated_at, receta.receta_original]);
+  }, [receta?.id, receta?.updated_at, receta?.receta_original]);
 
   const handleApplyAdaptation = async (data: AdaptacionCulinaria) => {
-    const adaptedIngs: RecetaIngrediente[] = data.ingredientes.map((ai, index) => {
-      const orig = ingredientes[index];
-      const cleanNombre = ai.nombre_limpio.replace(/<\/?mark>/gi, '').trim();
+    const adaptedIngs: RecetaIngrediente[] = (data?.ingredientes || []).map((ai, index) => {
+      const orig = (ingredientes || [])[index];
+      const cleanNombre = (ai?.nombre_limpio || '').replace(/<\/?mark>/gi, '').trim() || 'Ingrediente';
       return {
         id: orig?.id || `adapted-ing-${index}`,
-        receta_id: receta.id,
+        receta_id: receta?.id || '',
         ingrediente_maestro_id: orig?.ingrediente_maestro_id || null,
         nombre_crudo: cleanNombre,
         nombre_limpio: cleanNombre,
-        cantidad: ai.cantidad,
-        unidad: ai.unidad,
+        cantidad: Number(ai?.cantidad) || 1,
+        unidad: ai?.unidad || orig?.unidad || 'unidad',
         gramos_calculados: orig?.gramos_calculados || 0,
-        pasillo_supermercado: ai.pasillo_supermercado || orig?.pasillo_supermercado || 'Despensa y Especias',
-        notas: ai.notas || orig?.notas || null,
+        pasillo_supermercado: ai?.pasillo_supermercado || orig?.pasillo_supermercado || 'Despensa y Especias',
+        notas: ai?.notas || orig?.notas || null,
         es_opcional: orig?.es_opcional || false,
         orden: index + 1,
         created_at: orig?.created_at || new Date().toISOString(),
       };
     });
 
-    const adaptedP: Paso[] = data.pasos.map((ap, index) => {
-      const orig = pasos[index];
+    const adaptedP: Paso[] = (data?.pasos || []).map((ap, index) => {
+      const orig = (pasos || [])[index];
       return {
         id: orig?.id || `adapted-paso-${index}`,
-        receta_id: receta.id,
-        orden: ap.orden || index + 1,
-        instruccion: ap.instruccion,
+        receta_id: receta?.id || '',
+        orden: ap?.orden || index + 1,
+        instruccion: ap?.instruccion || '',
         tiempo_estimado_min:
-          ap.tiempo_estimado_min !== undefined ? ap.tiempo_estimado_min : orig?.tiempo_estimado_min || null,
+          ap?.tiempo_estimado_min !== undefined ? ap.tiempo_estimado_min : orig?.tiempo_estimado_min || null,
         temperatura_celsius:
-          ap.temperatura_celsius !== undefined ? ap.temperatura_celsius : orig?.temperatura_celsius || null,
+          ap?.temperatura_celsius !== undefined ? ap.temperatura_celsius : orig?.temperatura_celsius || null,
         utensilios_sugeridos: orig?.utensilios_sugeridos || [],
-        consejo_pro: ap.consejo_pro !== undefined ? ap.consejo_pro : orig?.consejo_pro || null,
+        consejo_pro: ap?.consejo_pro !== undefined ? ap.consejo_pro : orig?.consejo_pro || null,
         imagen_paso_url: orig?.imagen_paso_url || null,
         created_at: orig?.created_at || new Date().toISOString(),
       };
     });
 
-    if (data.titulo) {
+    if (data?.titulo) {
       setCurrentTitulo(data.titulo);
     }
     setCurrentIngredientes(adaptedIngs);
     setCurrentPasos(adaptedP);
     setIsAdapted(true);
-    setAdaptationSummary(data.resumen_adaptacion);
+    setAdaptationSummary(data?.resumen_adaptacion || null);
 
     // Persistir adaptación en Supabase (sobrescribe JSON con respaldo en receta_original)
     try {
-      const res = await saveRecipeAdaptationAction({
-        recetaId: receta.id,
-        titulo: data.titulo || currentTitulo,
-        descripcion: data.resumen_adaptacion || receta.descripcion,
-        ingredientes: adaptedIngs.map((i, idx) => ({
-          id: i.id,
-          nombre_limpio: i.nombre_limpio,
-          nombre_crudo: i.nombre_crudo,
-          cantidad: i.cantidad,
-          unidad: i.unidad,
-          gramos_calculados: i.gramos_calculados,
-          pasillo_supermercado: i.pasillo_supermercado,
-          notas: i.notas,
-          orden: idx + 1,
-        })),
-        pasos: adaptedP.map((p, idx) => ({
-          id: p.id,
-          orden: p.orden || idx + 1,
-          instruccion: p.instruccion,
-          tiempo_estimado_min: p.tiempo_estimado_min,
-          temperatura_celsius: p.temperatura_celsius,
-          consejo_pro: p.consejo_pro,
-        })),
-      });
+      if (receta?.id) {
+        const res = await saveRecipeAdaptationAction({
+          recetaId: receta.id,
+          titulo: data?.titulo || currentTitulo,
+          descripcion: data?.resumen_adaptacion || receta?.descripcion,
+          ingredientes: adaptedIngs.map((i, idx) => ({
+            id: i.id,
+            nombre_limpio: i.nombre_limpio,
+            nombre_crudo: i.nombre_crudo,
+            cantidad: i.cantidad,
+            unidad: i.unidad,
+            gramos_calculados: i.gramos_calculados,
+            pasillo_supermercado: i.pasillo_supermercado,
+            notas: i.notas,
+            orden: idx + 1,
+          })),
+          pasos: adaptedP.map((p, idx) => ({
+            id: p.id,
+            orden: p.orden || idx + 1,
+            instruccion: p.instruccion,
+            tiempo_estimado_min: p.tiempo_estimado_min,
+            temperatura_celsius: p.temperatura_celsius,
+            consejo_pro: p.consejo_pro,
+          })),
+        });
 
-      if (res.success) {
-        setToast({ message: 'Adaptación guardada en tu recetario', type: 'success' });
-      } else if (res.error) {
-        setToast({ message: res.error, type: 'error' });
+        if (res.success) {
+          setToast({ message: 'Adaptación guardada en tu recetario', type: 'success' });
+        } else if (res.error) {
+          setToast({ message: res.error, type: 'error' });
+        }
       }
     } catch (e) {
       console.error('Error guardando adaptación en Supabase:', e);
@@ -209,30 +211,29 @@ export function RecipeDetailView({
 
   const handleRevertAdaptation = async () => {
     try {
-      const res = await revertRecipeAdaptationAction(receta.id);
-      if (res.success && res.originalData) {
-        setCurrentTitulo(res.originalData.titulo);
-        setCurrentIngredientes(res.originalData.ingredientes);
-        setCurrentPasos(res.originalData.pasos);
-        setIsAdapted(false);
-        setAdaptationSummary(null);
-        setToast({ message: 'Receta restaurada a su versión original', type: 'success' });
-      } else {
-        // Fallback a los props originales
-        setCurrentTitulo(receta.titulo);
-        setCurrentIngredientes(ingredientes);
-        setCurrentPasos(pasos);
-        setIsAdapted(false);
-        setAdaptationSummary(null);
-        if (res.error) {
-          setToast({ message: res.error, type: 'error' });
+      if (receta?.id) {
+        const res = await revertRecipeAdaptationAction(receta.id);
+        if (res.success && res.originalData) {
+          setCurrentTitulo(res.originalData.titulo);
+          setCurrentIngredientes(res.originalData.ingredientes);
+          setCurrentPasos(res.originalData.pasos);
+          setIsAdapted(false);
+          setAdaptationSummary(null);
+          setToast({ message: 'Receta restaurada a su versión original', type: 'success' });
+          return;
         }
       }
+      // Fallback a los props originales
+      setCurrentTitulo(receta?.titulo || 'Receta');
+      setCurrentIngredientes(ingredientes || []);
+      setCurrentPasos(pasos || []);
+      setIsAdapted(false);
+      setAdaptationSummary(null);
     } catch (e) {
       console.error('Error al revertir receta en Supabase:', e);
-      setCurrentTitulo(receta.titulo);
-      setCurrentIngredientes(ingredientes);
-      setCurrentPasos(pasos);
+      setCurrentTitulo(receta?.titulo || 'Receta');
+      setCurrentIngredientes(ingredientes || []);
+      setCurrentPasos(pasos || []);
       setIsAdapted(false);
       setAdaptationSummary(null);
     }
@@ -244,37 +245,39 @@ export function RecipeDetailView({
     newName: string | null,
     adaptedBaseName?: string
   ) => {
-    const cleanTarget = currentTarget.replace(/<\/?[^>]+(>|$)/g, '').trim();
-    const cleanNew = newName ? newName.replace(/<\/?[^>]+(>|$)/g, '').trim() : null;
-    const cleanBase = (adaptedBaseName || cleanTarget).replace(/<\/?[^>]+(>|$)/g, '').trim();
-
-    const targetLower = cleanTarget.toLowerCase();
-    const baseLower = cleanBase.toLowerCase();
-
-    const updatedIngs = currentIngredientes.map((ing) => {
-      const ingClean = (ing.nombre_limpio || ing.nombre_crudo).replace(/<\/?[^>]+(>|$)/g, '').trim().toLowerCase();
-      if (ingClean === targetLower || ingClean === baseLower) {
-        return {
-          ...ing,
-          nombre_limpio: cleanNew || cleanBase,
-          notas: cleanNew && cleanNew.toLowerCase() !== baseLower ? `Sustituido por ${cleanNew}` : null,
-        };
-      }
-      return ing;
-    });
-
-    const replacement = cleanNew || cleanBase;
-    const updatedPasos = currentPasos.map((paso) => {
-      return {
-        ...paso,
-        instruccion: replaceIngredientInText(paso.instruccion, currentTarget, replacement),
-        consejo_pro: paso.consejo_pro
-          ? replaceIngredientInText(paso.consejo_pro, currentTarget, replacement)
-          : null,
-      };
-    });
-
     try {
+      const cleanTarget = String(currentTarget || '').replace(/<\/?[^>]+(>|$)/g, '').trim();
+      const cleanNew = newName ? String(newName).replace(/<\/?[^>]+(>|$)/g, '').trim() : null;
+      const cleanBase = String(adaptedBaseName || cleanTarget).replace(/<\/?[^>]+(>|$)/g, '').trim();
+
+      const targetLower = cleanTarget.toLowerCase();
+      const baseLower = cleanBase.toLowerCase();
+
+      const updatedIngs = (currentIngredientes || []).map((ing) => {
+        const rawName = ing?.nombre_limpio || ing?.nombre_crudo || '';
+        const ingClean = String(rawName).replace(/<\/?[^>]+(>|$)/g, '').trim().toLowerCase();
+        if (ingClean === targetLower || ingClean === baseLower) {
+          return {
+            ...ing,
+            nombre_limpio: cleanNew || cleanBase,
+            notas: cleanNew && cleanNew.toLowerCase() !== baseLower ? `Sustituido por ${cleanNew}` : null,
+          };
+        }
+        return ing;
+      });
+
+      const replacement = cleanNew || cleanBase;
+      const updatedPasos = (currentPasos || []).map((paso) => {
+        return {
+          ...paso,
+          instruccion: replaceIngredientInText(paso.instruccion, currentTarget, replacement),
+          consejo_pro: paso.consejo_pro
+            ? replaceIngredientInText(paso.consejo_pro, currentTarget, replacement)
+            : null,
+        };
+      });
+
+      if (!receta?.id) return;
       const res = await saveRecipeAdaptationAction({
         recetaId: receta.id,
         titulo: currentTitulo,
@@ -356,6 +359,7 @@ export function RecipeDetailView({
       } = supabase.storage.from('recetas_fotos').getPublicUrl(filePath);
 
       // 5. Guardar URL en recetas.foto_url
+      if (!receta?.id) return;
       const resUpdate = await updateRecipePhotoAction({
         recetaId: receta.id,
         fotoUrl: publicUrl,
@@ -459,6 +463,7 @@ export function RecipeDetailView({
     setIsSaving(true);
 
     try {
+      if (!receta?.id) return;
       const res = await updateRecipeAction({
         recetaId: receta.id,
         titulo: cleanTitle,
@@ -485,7 +490,7 @@ export function RecipeDetailView({
 
       const updatedLocalIngredientes: RecetaIngrediente[] = editIngredientes.map((ing, idx) => ({
         id: ing.id,
-        receta_id: receta.id,
+        receta_id: receta?.id || '',
         nombre_crudo: ing.nombre_limpio.trim() || `Ingrediente ${idx + 1}`,
         nombre_limpio: ing.nombre_limpio.trim() || `Ingrediente ${idx + 1}`,
         cantidad: Number(ing.cantidad) > 0 ? Number(ing.cantidad) : 1,
@@ -642,9 +647,9 @@ export function RecipeDetailView({
 
             {/* Sistema de Valoración y Favoritos Interactivo */}
             <RecipeRatingHeader
-              recetaId={receta.id}
-              initialFavorite={receta.es_favorita || false}
-              initialRating={receta.puntuacion || 0}
+              recetaId={receta?.id || ''}
+              initialFavorite={receta?.es_favorita || false}
+              initialRating={receta?.puntuacion || 0}
             />
           </div>
         </div>
@@ -670,7 +675,7 @@ export function RecipeDetailView({
           </h1>
         )}
 
-        {receta.descripcion && (
+        {receta?.descripcion && (
           <p className="text-base sm:text-lg text-stone-700 font-light leading-relaxed max-w-2xl">
             {receta.descripcion}
           </p>
@@ -681,11 +686,11 @@ export function RecipeDetailView({
           recipe={{
             ...recipeDataForAdapt,
             titulo: currentTitulo,
-            ingredientes: currentIngredientes.map((i) => ({
-              nombre_limpio: i.nombre_limpio,
-              cantidad: i.cantidad,
-              unidad: i.unidad,
-              pasillo_supermercado: i.pasillo_supermercado,
+            ingredientes: (currentIngredientes || []).map((i) => ({
+              nombre_limpio: i?.nombre_limpio || i?.nombre_crudo || '',
+              cantidad: Number(i?.cantidad) || 1,
+              unidad: i?.unidad || 'unidad',
+              pasillo_supermercado: i?.pasillo_supermercado || 'Despensa y Especias',
             })),
           }}
           userProfile={userProfile}
@@ -704,7 +709,7 @@ export function RecipeDetailView({
                 {t('recipe_total_time')}
               </span>
               <span className="text-base font-bold text-stone-900 mt-0.5 block whitespace-nowrap">
-                {receta.tiempo_total_min || 15} {t('planner_min')}
+                {receta?.tiempo_total_min || 15} {t('planner_min')}
               </span>
             </div>
           </div>
@@ -716,12 +721,12 @@ export function RecipeDetailView({
                 {t('recipe_base_servings')}
               </span>
               <span className="text-base font-bold text-stone-900 mt-0.5 block whitespace-nowrap">
-                {receta.porciones} {t('planner_servings')}
+                {receta?.porciones || 2} {t('planner_servings')}
               </span>
             </div>
           </div>
 
-          {receta.dificultad && (
+          {receta?.dificultad && (
             <div className="flex items-center gap-2.5 shrink-0">
               <ChefHat className="w-5 h-5 text-[#a86224] shrink-0" />
               <div>
@@ -729,7 +734,7 @@ export function RecipeDetailView({
                   {t('level_title')}
                 </span>
                 <span className="text-base font-bold text-stone-900 mt-0.5 block whitespace-nowrap capitalize">
-                  {typeof receta.dificultad === 'string' ? receta.dificultad : String(receta.dificultad || '')}
+                  {typeof receta?.dificultad === 'string' ? receta.dificultad : String(receta?.dificultad || '')}
                 </span>
               </div>
             </div>
@@ -739,11 +744,11 @@ export function RecipeDetailView({
 
       {/* Pestaña / Acordeón Plegable Compacto de Valores Nutricionales */}
       <RecipeNutritionAccordion
-        calorias={receta.calorias_por_porcion}
-        proteinas={receta.proteinas_por_porcion}
-        carbohidratos={receta.carbohidratos_por_porcion}
-        grasas={receta.grasas_por_porcion}
-        fibra={receta.fibra_por_porcion}
+        calorias={receta?.calorias_por_porcion}
+        proteinas={receta?.proteinas_por_porcion}
+        carbohidratos={receta?.carbohidratos_por_porcion}
+        grasas={receta?.grasas_por_porcion}
+        fibra={receta?.fibra_por_porcion}
       />
 
       {/* PANEL DE EDICIÓN DE INGREDIENTES EN MODO EDICIÓN */}
@@ -862,12 +867,12 @@ export function RecipeDetailView({
       ) : (
         /* Acordeones Plegables con Escalado Inteligente y Modo Compra */
         <RecipeInteractiveSections
-          recetaId={receta.id}
-          tituloReceta={currentTitulo}
-          basePorciones={receta.porciones || 2}
-          tiempoCoccionMin={receta.tiempo_coccion_min}
-          ingredientes={currentIngredientes}
-          pasos={currentPasos}
+          recetaId={receta?.id || ''}
+          tituloReceta={currentTitulo || ''}
+          basePorciones={receta?.porciones || 2}
+          tiempoCoccionMin={receta?.tiempo_coccion_min ?? null}
+          ingredientes={currentIngredientes || []}
+          pasos={currentPasos || []}
           defaultServings={userRacionesDefecto}
           onSubstitutePersist={handleSubstitutePersist}
           isAdapted={isAdapted}
@@ -876,8 +881,8 @@ export function RecipeDetailView({
 
       {/* Sección: Fotografía del plato, valoración y notas de la receta */}
       <CookingDiarySection
-        recetaId={receta.id}
-        entradas={diarioEntries}
+        recetaId={receta?.id || ''}
+        entradas={diarioEntries || []}
         onTriggerCamera={() => cameraInputRef.current?.click()}
         onTriggerGallery={() => galleryInputRef.current?.click()}
         isUploadingPhoto={isUploadingPhoto}

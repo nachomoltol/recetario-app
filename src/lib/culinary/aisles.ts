@@ -97,25 +97,26 @@ export const AISLE_CONFIGS: Record<SupermarketAisle, AisleConfig> = {
 /**
  * Heurística de clasificación de pasillo para ingredientes sin asignar o heredados
  */
-export function classifyIngredientAisle(nombre: string, existingAisle?: string | null): SupermarketAisle {
-  const n = (nombre || '').toLowerCase();
+export function classifyIngredientAisle(nombre?: string | null, existingAisle?: string | null): SupermarketAisle {
+  try {
+    const n = String(nombre || '').toLowerCase();
 
-  // Corrección estricta: si vino marcado erróneamente como Despensa, re-enrutar
-  if (existingAisle && SUPERMARKET_AISLES.includes(existingAisle as SupermarketAisle)) {
-    if (existingAisle === 'Despensa y Especias') {
-      if (
-        /tomate|cebolla|ajo|albahaca|limon|limón|lima|patata|papa|zanahoria|perejil|seta|champinon|champiñón|espinaca|lechuga|fruta|aguacate|calabacin|calabacín|berenjena|pimiento|brocoli|brócoli|col|manzana|platano|plátano|fresa|cilantro|romero|tomillo/i.test(
-          n
-        )
-      ) {
-        return 'Frutas y Verduras';
+    // Corrección estricta: si vino marcado erróneamente como Despensa, re-enrutar
+    if (existingAisle && SUPERMARKET_AISLES.includes(existingAisle as SupermarketAisle)) {
+      if (existingAisle === 'Despensa y Especias') {
+        if (
+          /tomate|cebolla|ajo|albahaca|limon|limón|lima|patata|papa|zanahoria|perejil|seta|champinon|champiñón|espinaca|lechuga|fruta|aguacate|calabacin|calabacín|berenjena|pimiento|brocoli|brócoli|col|manzana|platano|plátano|fresa|cilantro|romero|tomillo/i.test(
+            n
+          )
+        ) {
+          return 'Frutas y Verduras';
+        }
+        if (/^agua\b|agua mineral|agua del grifo|agua tibia|agua fría|vino|cerveza|licor|refresco|zumo|caldo/i.test(n)) {
+          return 'Bebidas';
+        }
       }
-      if (/^agua\b|agua mineral|agua del grifo|agua tibia|agua fría|vino|cerveza|licor|refresco|zumo|caldo/i.test(n)) {
-        return 'Bebidas';
-      }
+      return existingAisle as SupermarketAisle;
     }
-    return existingAisle as SupermarketAisle;
-  }
 
   // 1. Carnes y Aves
   if (
@@ -175,34 +176,36 @@ export function classifyIngredientAisle(nombre: string, existingAisle?: string |
 
   // 9. Por defecto: Despensa y Especias (arroz, pasta, especias, aceite, sal, etc.)
   return 'Despensa y Especias';
+  } catch {
+    return 'Otros';
+  }
 }
 
 /**
  * Agrupa una lista de elementos por pasillo manteniendo el orden físico del supermercado
  */
 export function groupItemsByAisle<T>(
-  items: T[],
-  getAisle: (item: T) => string | undefined | null
+  items?: T[] | null,
+  getAisle?: (item: T) => string | undefined | null
 ): { aisle: SupermarketAisle; config: AisleConfig; items: T[] }[] {
-  const map = new Map<SupermarketAisle, T[]>();
+  try {
+    if (!Array.isArray(items) || items.length === 0) return [];
 
-  for (const aisle of SUPERMARKET_AISLES) {
-    map.set(aisle, []);
-  }
+    const map = new Map<SupermarketAisle, T[]>();
 
-  for (const item of items) {
-    const rawAisle = getAisle(item);
-    const assignedAisle = (
-      rawAisle && SUPERMARKET_AISLES.includes(rawAisle as SupermarketAisle)
-        ? rawAisle
-        : 'Otros'
-    ) as SupermarketAisle;
-
-    if (!map.has(assignedAisle)) {
-      map.set(assignedAisle, []);
+    for (const aisle of SUPERMARKET_AISLES) {
+      map.set(aisle, []);
     }
-    map.get(assignedAisle)!.push(item);
-  }
+
+    for (const item of items) {
+      const rawAisle = getAisle ? getAisle(item) : 'Otros';
+      const assignedAisle = normalizeAisleName(rawAisle);
+
+      if (!map.has(assignedAisle)) {
+        map.set(assignedAisle, []);
+      }
+      map.get(assignedAisle)!.push(item);
+    }
 
   const result: { aisle: SupermarketAisle; config: AisleConfig; items: T[] }[] = [];
 
@@ -217,7 +220,10 @@ export function groupItemsByAisle<T>(
     }
   }
 
-  return result;
+    return result;
+  } catch {
+    return [];
+  }
 }
 
 const ENGLISH_AISLE_MAP: Record<string, SupermarketAisle> = {
@@ -293,42 +299,48 @@ export function getAisleTranslationKey(aisle: SupermarketAisle | string): string
  * Formatea la unidad de un ingrediente según el idioma y pluralidad
  */
 export function formatIngredientUnit(
-  unidad?: string | null,
+  unidad?: any,
   cantidad?: number | string | null,
   lang: 'es' | 'en' = 'es'
 ): string {
-  if (!unidad) return '';
-  const u = unidad.toLowerCase().trim();
-  const qty = Number(cantidad) || 1;
+  try {
+    if (!unidad) return '';
+    const raw = typeof unidad === 'string' ? unidad : String(unidad || '');
+    const u = raw.toLowerCase().trim();
+    if (!u) return '';
+    const qty = Number(cantidad) || 1;
 
-  if (
-    u === 'unidad' ||
-    u === 'unidades' ||
-    u === 'unit' ||
-    u === 'units' ||
-    u === 'piece' ||
-    u === 'pieces'
-  ) {
-    if (lang === 'en') {
-      return qty > 1 ? 'units' : 'unit';
-    } else {
-      return qty > 1 ? 'unidades' : 'unidad';
+    if (
+      u === 'unidad' ||
+      u === 'unidades' ||
+      u === 'unit' ||
+      u === 'units' ||
+      u === 'piece' ||
+      u === 'pieces'
+    ) {
+      if (lang === 'en') {
+        return qty > 1 ? 'units' : 'unit';
+      } else {
+        return qty > 1 ? 'unidades' : 'unidad';
+      }
     }
-  }
 
-  if (lang === 'en') {
-    if (u === 'cucharada' || u === 'cucharadas') return 'tbsp';
-    if (u === 'cucharadita' || u === 'cucharaditas') return 'tsp';
-    if (u === 'gramo' || u === 'gramos') return 'g';
-    if (u === 'mililitro' || u === 'mililitros') return 'ml';
-    if (u === 'litro' || u === 'litros') return 'l';
-    if (u === 'kilo' || u === 'kilos' || u === 'kilogramo' || u === 'kilogramos') return 'kg';
-  } else {
-    if (u === 'unit' || u === 'units') return qty > 1 ? 'unidades' : 'unidad';
-    if (u === 'piece' || u === 'pieces') return qty > 1 ? 'piezas' : 'pieza';
-    if (u === 'tbsp') return qty > 1 ? 'cucharadas' : 'cucharada';
-    if (u === 'tsp') return qty > 1 ? 'cucharaditas' : 'cucharadita';
-  }
+    if (lang === 'en') {
+      if (u === 'cucharada' || u === 'cucharadas') return 'tbsp';
+      if (u === 'cucharadita' || u === 'cucharaditas') return 'tsp';
+      if (u === 'gramo' || u === 'gramos') return 'g';
+      if (u === 'mililitro' || u === 'mililitros') return 'ml';
+      if (u === 'litro' || u === 'litros') return 'l';
+      if (u === 'kilo' || u === 'kilos' || u === 'kilogramo' || u === 'kilogramos') return 'kg';
+    } else {
+      if (u === 'unit' || u === 'units') return qty > 1 ? 'unidades' : 'unidad';
+      if (u === 'piece' || u === 'pieces') return qty > 1 ? 'piezas' : 'pieza';
+      if (u === 'tbsp') return qty > 1 ? 'cucharadas' : 'cucharada';
+      if (u === 'tsp') return qty > 1 ? 'cucharaditas' : 'cucharadita';
+    }
 
-  return unidad;
+    return raw;
+  } catch {
+    return typeof unidad === 'string' ? unidad : '';
+  }
 }

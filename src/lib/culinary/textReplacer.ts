@@ -78,16 +78,19 @@ function getFirstSubstantiveWord(name: string): string | null {
  *    no aparece textualmente en el paso porque Gemini lo resumió, busca la palabra sustantiva clave (ej. "arroz").
  * 4. Respeto a etiquetas HTML: No anida <mark> si ya estaba resaltado, pero añade <mark> si estaba en texto plano.
  */
-export function replaceIngredientInText(text: string, oldName: string, newName: string): string {
-  if (!text || !oldName || !newName) return text;
+export function replaceIngredientInText(text?: string | null, oldName?: string | null, newName?: string | null): string {
+  if (!text) return '';
+  if (!oldName || !newName) return text;
 
-  // Limpiar cualquier etiqueta HTML de los nombres para comparar texto puro
-  const cleanOld = oldName.replace(/<\/?[^>]+(>|$)/g, '').trim();
-  const cleanNew = newName.replace(/<\/?[^>]+(>|$)/g, '').trim();
+  try {
+    const rawText = typeof text === 'string' ? text : String(text);
+    // Limpiar cualquier etiqueta HTML de los nombres para comparar texto puro
+    const cleanOld = String(oldName).replace(/<\/?[^>]+(>|$)/g, '').trim();
+    const cleanNew = String(newName).replace(/<\/?[^>]+(>|$)/g, '').trim();
 
-  if (!cleanOld || cleanOld.toLowerCase() === cleanNew.toLowerCase()) {
-    return text;
-  }
+    if (!cleanOld || cleanOld.toLowerCase() === cleanNew.toLowerCase()) {
+      return rawText;
+    }
 
   // Generar variantes del nombre original completo
   const baseVariants = [cleanOld];
@@ -203,8 +206,11 @@ export function replaceIngredientInText(text: string, oldName: string, newName: 
     return text;
   }
 
-  // Limpieza de seguridad contra etiquetas <mark> duplicadas o anidadas accidentalmente
-  return result
-    .replace(/<mark>\s*<mark>/gi, '<mark>')
-    .replace(/<\/mark>\s*<\/mark>/gi, '</mark>');
+    // Limpieza de seguridad contra etiquetas <mark> duplicadas o anidadas accidentalmente
+    return result
+      .replace(/<mark>\s*<mark>/gi, '<mark>')
+      .replace(/<\/mark>\s*<\/mark>/gi, '</mark>');
+  } catch {
+    return text || '';
+  }
 }
