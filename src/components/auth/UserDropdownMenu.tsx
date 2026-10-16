@@ -83,14 +83,14 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-haspopup="true"
-        className="flex items-center gap-2 sm:gap-3 p-1.5 sm:px-3 sm:py-2 rounded-2xl bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] transition-all cursor-pointer shadow-2xs group"
+        className="flex items-center gap-2.5 sm:gap-3 px-4 py-2 sm:px-3 sm:py-2 rounded-2xl bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] transition-all cursor-pointer shadow-2xs group shrink-0"
       >
-        <div className="w-8 h-8 rounded-xl bg-[#f4efe6] group-hover:bg-white border border-[#e7dfd5] text-[#a86224] font-bold text-xs flex items-center justify-center transition-colors">
+        <div className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl bg-[#f4efe6] group-hover:bg-white border border-[#e7dfd5] text-[#a86224] font-bold text-sm sm:text-xs flex items-center justify-center transition-colors shrink-0">
           {initials}
         </div>
 
-        <div className="hidden sm:block text-left pr-1">
-          <p className="text-xs font-semibold text-stone-900 leading-tight truncate max-w-[120px]">
+        <div className="text-left pr-1 min-w-0">
+          <p className="text-sm xs:text-base sm:text-xs font-semibold text-stone-900 leading-tight truncate max-w-[110px] xs:max-w-[140px] sm:max-w-[120px]">
             {displayName}
           </p>
           <p className="text-[10px] text-stone-500 font-medium uppercase tracking-wider">
@@ -99,7 +99,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
         </div>
 
         <ChevronDown
-          className={`w-4 h-4 text-stone-400 group-hover:text-stone-700 transition-transform duration-200 ${
+          className={`w-4 h-4 text-stone-400 group-hover:text-stone-700 transition-transform duration-200 shrink-0 ${
             isOpen ? 'rotate-180 text-[#a86224]' : ''
           }`}
         />

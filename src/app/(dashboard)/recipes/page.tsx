@@ -1,15 +1,13 @@
 import { Suspense } from 'react';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { BookOpen, Calendar } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { RecipeCaptureCard } from '@/components/recipes/RecipeCaptureCard';
 import { HomeRecentRecipesSection } from '@/components/recipes/HomeRecentRecipesSection';
 import {
   HomeWelcomeHeader,
-  HomeBrandHeader,
   HomeEmptyCookbookState,
 } from '@/components/recipes/HomeWelcomeHeader';
 
@@ -47,20 +45,10 @@ export default async function RecipesDashboardPage() {
       {/* Barra de navegación superior luminosa */}
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center">
-            <HomeBrandHeader />
-          </div>
+          {/* Zona izquierda limpia sin logo */}
+          <div className="flex items-center" aria-hidden="true" />
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link
-              href="/meal-planner"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-[#f4efe6] hover:bg-[#e7dfd5] text-[#a86224] text-xs font-semibold border border-[#e7dfd5] transition shadow-2xs"
-              title="Plan Semanal"
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Plan</span>
-            </Link>
-
             <LanguageToggle />
 
             {/* Menú de Usuario Desplegable */}

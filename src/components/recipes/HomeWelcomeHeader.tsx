@@ -11,9 +11,9 @@ export function HomeWelcomeHeader({ userName }: HomeWelcomeHeaderProps) {
   const t = useLanguageStore((s) => s.t);
 
   return (
-    <section className="space-y-2.5 sm:space-y-3">
-      {/* Contenedor horizontal: Logo de presencia aumentada + Tag Miga: recetas de redes */}
-      <div className="flex flex-row items-center gap-3">
+    <section className="space-y-3 sm:space-y-4">
+      {/* Contenedor horizontal: Logo gigante maximizado + Tag Miga: recetas de redes centrado en el eje Y */}
+      <div className="flex flex-row items-center gap-3.5 sm:gap-5">
         <Link
           href="/recipes"
           className="focus:outline-none transition opacity-95 hover:opacity-100 shrink-0"
@@ -22,11 +22,11 @@ export function HomeWelcomeHeader({ userName }: HomeWelcomeHeaderProps) {
           <img
             src="/miga-logo.svg"
             alt="Logo Miga"
-            className="h-10 sm:h-12 w-auto max-w-[140px] sm:max-w-[160px] object-contain"
+            className="h-24 xs:h-28 sm:h-32 md:h-36 w-auto object-contain"
           />
         </Link>
-        <div className="h-5 w-px bg-[#e7dfd5]" />
-        <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#a86224]">
+        <div className="h-10 sm:h-14 w-px bg-[#e7dfd5] shrink-0" />
+        <span className="text-xs sm:text-base font-bold uppercase tracking-wider text-[#a86224] leading-snug">
           {t('home_tag')}
         </span>
       </div>
