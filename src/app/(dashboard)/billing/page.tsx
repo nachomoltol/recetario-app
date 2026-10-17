@@ -1,14 +1,19 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { BillingPlanView, BillingHeaderTitle } from '@/components/subscription/BillingPlanView';
 
 export const dynamic = 'force-dynamic';
 
-export default async function BillingPage() {
+interface BillingPageProps {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function BillingPage({ searchParams }: BillingPageProps) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -23,6 +28,13 @@ export default async function BillingPage() {
     .select('*')
     .eq('id', user.id)
     .single();
+
+  const resolvedParams = await searchParams;
+  const isLimitParam = resolvedParams?.limit === 'reached';
+  const hasReachedLimit =
+    profile?.plan_suscripcion !== 'pro' && (profile?.capturas_mes_actual ?? 0) >= 5;
+
+  const isLimitReached = Boolean(isLimitParam || hasReachedLimit);
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
@@ -50,7 +62,18 @@ export default async function BillingPage() {
       </header>
 
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        <BillingPlanView userEmail={user.email || ''} />
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center py-20 text-stone-500">
+              <Loader2 className="w-8 h-8 animate-spin text-[#a86224]" />
+            </div>
+          }
+        >
+          <BillingPlanView
+            userEmail={user.email || ''}
+            initialLimitReached={isLimitReached}
+          />
+        </Suspense>
       </main>
     </div>
   );

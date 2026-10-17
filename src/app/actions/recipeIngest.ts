@@ -73,9 +73,9 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       .eq('id', user.id);
   }
 
-  // Lógica de Permisos:
-  // Si es 'gratis' y capturas_mes_actual >= 10: Bloquear ANTES de Gemini
-  if (planSuscripcion !== 'pro' && capturasMesActual >= 10) {
+  // Lógica de Permisos (Fase 6):
+  // Si el usuario no tiene plan 'pro' y capturas_mes_actual >= 5: Bloquear ANTES de Gemini
+  if (planSuscripcion !== 'pro' && capturasMesActual >= 5) {
     return {
       success: false,
       error: 'PAYWALL_LIMIT_REACHED',

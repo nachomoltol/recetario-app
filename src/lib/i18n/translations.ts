@@ -250,6 +250,27 @@ export const TRANSLATIONS = {
     billing_adv_3_title: 'Experiencia sin publicidad',
     billing_adv_3_desc: 'Navegación limpia, cero interrupciones ni anuncios.',
 
+    // Fase 6: Paywall Dual, Límite Mensual y AdMob
+    billing_limit_reached_badge: 'Límite mensual alcanzado',
+    billing_limit_reached_alert: 'Has consumido tus 5 recetas gratuitas de este mes',
+    billing_limit_reached_desc:
+      'Para continuar estandarizando recetas al instante, mejora a PRO sin límites o desbloquea una receta viendo un breve anuncio publicitario en tu móvil.',
+    billing_dual_or: 'O bien',
+    billing_ad_card_badge: 'Opción Gratuita',
+    billing_ad_card_heading: 'Desbloquea 1 receta viendo un anuncio',
+    billing_ad_card_desc:
+      'Visualiza un breve vídeo publicitario para sumar 1 receta extra a tu cuenta este mes de forma 100% gratuita.',
+    billing_ad_watch_btn: 'Ver anuncio',
+    billing_ad_loading: 'Preparando anuncio...',
+    billing_ad_rewarding: 'Aplicando tu crédito...',
+    billing_ad_success: '¡Receta desbloqueada con éxito! Redirigiendo a captura...',
+    billing_ad_error: 'No se pudo cargar o completar el anuncio. Inténtalo de nuevo.',
+    billing_ad_web_notice:
+      'Abre Miga en tu móvil para conseguir una receta gratis viendo un anuncio. Una vez desbloqueada, podrás generarla desde aquí.',
+    billing_ad_web_badge: 'Disponible en App Móvil',
+    billing_ad_benefit_1: '+1 crédito inmediato de generación',
+    billing_ad_benefit_2: 'Sin necesidad de introducir tarjeta',
+
     // Home & Capture Card (Fase 3.8)
     capture_card_title: 'Captura Rápida de Recetas',
     capture_card_subtitle: 'Pega enlaces de TikTok, Instagram Reels, Facebook o notas',
@@ -674,6 +695,27 @@ export const TRANSLATIONS = {
       'Exclusive feature. Unlocks health profile, culinary level, and dietary preferences (allergies/diets).',
     billing_adv_3_title: 'Ad-free experience',
     billing_adv_3_desc: 'Clean navigation, zero interruptions or ads.',
+
+    // Phase 6: Dual Paywall, Monthly Limit & AdMob
+    billing_limit_reached_badge: 'Monthly limit reached',
+    billing_limit_reached_alert: 'You have used your 5 free recipes for this month',
+    billing_limit_reached_desc:
+      'To continue standardizing recipes instantly, upgrade to unlimited PRO or unlock a recipe by watching a short ad on your mobile device.',
+    billing_dual_or: 'Or',
+    billing_ad_card_badge: 'Free Option',
+    billing_ad_card_heading: 'Unlock 1 recipe by watching an ad',
+    billing_ad_card_desc:
+      'Watch a short video ad to add 1 extra recipe to your account this month completely free.',
+    billing_ad_watch_btn: 'Watch ad',
+    billing_ad_loading: 'Preparing ad...',
+    billing_ad_rewarding: 'Applying your credit...',
+    billing_ad_success: 'Recipe unlocked successfully! Redirecting to capture...',
+    billing_ad_error: 'Could not load or complete the ad. Please try again.',
+    billing_ad_web_notice:
+      'Open Miga on your mobile device to get a free recipe by watching an ad. Once unlocked, you can generate it from here.',
+    billing_ad_web_badge: 'Available on Mobile App',
+    billing_ad_benefit_1: '+1 instant generation credit',
+    billing_ad_benefit_2: 'No credit card required',
 
     // Home & Capture Card (Fase 3.8)
     capture_card_title: 'Quick Recipe Capture',

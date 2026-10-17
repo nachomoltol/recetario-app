@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Sparkles,
   X,
@@ -14,9 +15,13 @@ import {
   CheckCircle2,
   AlertCircle,
   CreditCard,
+  PlayCircle,
+  Smartphone,
+  Gift,
 } from 'lucide-react';
-import { redeemVipCodeAction } from '@/app/actions/subscription';
+import { redeemVipCodeAction, claimRewardCreditAction } from '@/app/actions/subscription';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { isNativePlatform, showRewardVideoAdFlow } from '@/lib/admob/admobService';
 
 export interface ProSubscriptionModalProps {
   isOpen?: boolean;
@@ -33,9 +38,11 @@ export function ProSubscriptionModal({
   onSubscribe,
   context = 'feature_locked',
 }: ProSubscriptionModalProps) {
+  const router = useRouter();
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
 
+  const [isNative, setIsNative] = useState(false);
   const [vipCode, setVipCode] = useState('');
   const [isVipValidating, setIsVipValidating] = useState(false);
   const [vipSuccess, setVipSuccess] = useState(false);
@@ -43,8 +50,15 @@ export function ProSubscriptionModal({
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  // Comprobar si ya tenía VIP activo previamente en localStorage
+  // Estados para AdMob
+  const [isAdLoading, setIsAdLoading] = useState(false);
+  const [adLoadingStep, setAdLoadingStep] = useState<'loading' | 'rewarding'>('loading');
+  const [adSuccess, setAdSuccess] = useState(false);
+  const [adError, setAdError] = useState<string | null>(null);
+
   useEffect(() => {
+    setIsNative(isNativePlatform());
+
     if (typeof window !== 'undefined') {
       const storedVip = localStorage.getItem('recetario_vip_active');
       if (storedVip === 'true') {
@@ -102,7 +116,7 @@ export function ProSubscriptionModal({
               : 'Código no válido o caducado. Prueba de nuevo.')
         );
       }
-    } catch (err) {
+    } catch {
       setIsVipValidating(false);
       setVipError(language === 'en' ? 'Error connecting to server.' : 'Error al conectar con el servidor.');
     }
@@ -147,6 +161,46 @@ export function ProSubscriptionModal({
     }
   };
 
+  const handleWatchAd = async () => {
+    if (!isNative) return;
+
+    setIsAdLoading(true);
+    setAdLoadingStep('loading');
+    setAdError(null);
+    setAdSuccess(false);
+
+    try {
+      const adResult = await showRewardVideoAdFlow();
+
+      if (adResult.rewarded) {
+        setAdLoadingStep('rewarding');
+        const creditRes = await claimRewardCreditAction();
+
+        if (creditRes.success) {
+          setAdSuccess(true);
+          setIsAdLoading(false);
+
+          setTimeout(() => {
+            if (onClose) onClose();
+            router.push('/recipes');
+          }, 1400);
+        } else {
+          setIsAdLoading(false);
+          setAdError(creditRes.error || t('billing_ad_error'));
+        }
+      } else {
+        setIsAdLoading(false);
+        if (adResult.error && adResult.error !== 'AD_DISMISSED_WITHOUT_REWARD') {
+          setAdError(t('billing_ad_error'));
+        }
+      }
+    } catch (err) {
+      console.error('[AdMob] Error al ver anuncio bonificado:', err);
+      setIsAdLoading(false);
+      setAdError(t('billing_ad_error'));
+    }
+  };
+
   return (
     <div
       role="dialog"
@@ -172,6 +226,23 @@ export function ProSubscriptionModal({
           </button>
         )}
 
+        {/* 0. AVISO DESTACADO SI SE ALCANZÓ EL LÍMITE */}
+        {context === 'limit_reached' && (
+          <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 border-2 border-[#a86224]/30 shadow-xs flex items-center gap-3.5 text-left">
+            <div className="w-10 h-10 rounded-xl bg-[#a86224] text-white flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#a86224] block">
+                {t('billing_limit_reached_badge')}
+              </span>
+              <h3 className="text-sm sm:text-base font-bold font-serif-recipe text-stone-900 leading-snug">
+                {t('billing_limit_reached_alert')}
+              </h3>
+            </div>
+          </div>
+        )}
+
         {/* 1. CABECERA Y MENSAJE DE CONTEXTO */}
         <div className="text-center space-y-2 pt-2">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] shadow-2xs mb-1">
@@ -194,7 +265,7 @@ export function ProSubscriptionModal({
           </p>
         </div>
 
-        {/* 2. ÚNICO PLAN Y BOTÓN CTA (STRIPE) */}
+        {/* 2. TARJETA PRINCIPAL: SUSCRIPCIÓN PRO (3,50€/mes) */}
         <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#e7dfd5] shadow-xs text-center space-y-4">
           <div className="inline-block px-3 py-1 rounded-full bg-[#f4efe6] text-[#a86224] text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
             {t('billing_plan_name')}
@@ -248,7 +319,85 @@ export function ProSubscriptionModal({
           </div>
         </div>
 
-        {/* 3. SISTEMA DE CÓDIGO VIP */}
+        {/* 3. TARJETA SECUNDARIA: OPCIÓN GRATUITA CON ADMOB (EN LÍMITE ALCANZADO) */}
+        {context === 'limit_reached' && (
+          <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#e7dfd5] shadow-xs text-center space-y-3.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f4efe6] text-[#a86224] text-[10px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
+              <Gift className="w-3 h-3" />
+              <span>{t('billing_ad_card_badge')}</span>
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-lg sm:text-xl font-bold font-serif-recipe text-stone-900 tracking-tight">
+                {t('billing_ad_card_heading')}
+              </h3>
+              <p className="text-xs text-stone-600 max-w-sm mx-auto leading-relaxed">
+                {t('billing_ad_card_desc')}
+              </p>
+            </div>
+
+            {/* Plataforma: Nativa vs Web */}
+            {isNative ? (
+              <div className="space-y-2 pt-1">
+                {adSuccess ? (
+                  <div className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span>{t('billing_ad_success')}</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleWatchAd}
+                    disabled={isAdLoading}
+                    className="w-full min-h-[48px] py-3 px-5 rounded-xl font-bold text-xs sm:text-sm text-stone-900 bg-[#f4efe6] hover:bg-[#ebdcc8] active:scale-[0.99] border-2 border-[#a86224]/30 shadow-2xs hover:border-[#a86224] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
+                  >
+                    {isAdLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-[#a86224] shrink-0" />
+                        <span>
+                          {adLoadingStep === 'rewarding'
+                            ? t('billing_ad_rewarding')
+                            : t('billing_ad_loading')}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <PlayCircle className="w-4 h-4 text-[#a86224]" />
+                        <span>{t('billing_ad_watch_btn')}</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {adError && (
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 font-medium">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{adError}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-xl bg-[#f4efe6]/80 border border-[#e7dfd5] text-left space-y-2.5">
+                <div className="flex items-start gap-2.5">
+                  <Smartphone className="w-4 h-4 text-[#a86224] shrink-0 mt-0.5" />
+                  <p className="text-xs text-stone-700 leading-relaxed font-medium">
+                    {t('billing_ad_web_notice')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled
+                  className="w-full min-h-[40px] py-2 px-3 rounded-lg text-xs font-semibold text-stone-400 bg-stone-100 border border-stone-200 cursor-not-allowed flex items-center justify-center gap-1.5 opacity-80"
+                >
+                  <PlayCircle className="w-3.5 h-3.5 text-stone-400" />
+                  <span>{t('billing_ad_watch_btn')}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 4. SISTEMA DE CÓDIGO VIP */}
         <div className="p-4 sm:p-5 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5]/80 space-y-3">
           <div className="flex items-center gap-2">
             <Ticket className="w-4 h-4 text-[#a86224]" />
@@ -299,53 +448,50 @@ export function ProSubscriptionModal({
           )}
         </div>
 
-        {/* 4. LISTA DE BENEFICIOS (LO QUE INCLUYE EL PLAN PRO) */}
-        <div className="space-y-3 pt-1">
-          <h4 className="text-[11px] font-bold uppercase tracking-wider text-stone-500 px-1">
+        {/* 5. LISTA DE BENEFICIOS (VENTAJAS PRO) */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-[#e7dfd5] shadow-xs space-y-3">
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
             {t('billing_advantages_title')}
           </h4>
 
-          <div className="grid grid-cols-1 gap-2.5">
-            {/* Beneficio 1 */}
-            <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-white border border-[#e7dfd5] transition hover:border-[#a86224]/40">
-              <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
+          <div className="space-y-2.5">
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]">
+              <div className="w-8 h-8 rounded-lg bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
                 <InfinityIcon className="w-4 h-4" />
               </div>
               <div className="space-y-0.5">
-                <h5 className="text-xs sm:text-sm font-bold text-stone-900">
+                <h5 className="text-xs font-bold text-stone-900">
                   {t('billing_adv_1_title')}
                 </h5>
-                <p className="text-[11px] sm:text-xs text-stone-600 leading-snug">
+                <p className="text-[11px] text-stone-600 leading-relaxed">
                   {t('billing_adv_1_desc')}
                 </p>
               </div>
             </div>
 
-            {/* Beneficio 2 */}
-            <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-white border border-[#e7dfd5] transition hover:border-[#a86224]/40">
-              <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]">
+              <div className="w-8 h-8 rounded-lg bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
                 <HeartPulse className="w-4 h-4" />
               </div>
               <div className="space-y-0.5">
-                <h5 className="text-xs sm:text-sm font-bold text-stone-900">
+                <h5 className="text-xs font-bold text-stone-900">
                   {t('billing_adv_2_title')}
                 </h5>
-                <p className="text-[11px] sm:text-xs text-stone-600 leading-snug">
+                <p className="text-[11px] text-stone-600 leading-relaxed">
                   {t('billing_adv_2_desc')}
                 </p>
               </div>
             </div>
 
-            {/* Beneficio 3 */}
-            <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-white border border-[#e7dfd5] transition hover:border-[#a86224]/40">
-              <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]">
+              <div className="w-8 h-8 rounded-lg bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div className="space-y-0.5">
-                <h5 className="text-xs sm:text-sm font-bold text-stone-900">
+                <h5 className="text-xs font-bold text-stone-900">
                   {t('billing_adv_3_title')}
                 </h5>
-                <p className="text-[11px] sm:text-xs text-stone-600 leading-snug">
+                <p className="text-[11px] text-stone-600 leading-relaxed">
                   {t('billing_adv_3_desc')}
                 </p>
               </div>

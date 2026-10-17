@@ -78,3 +78,78 @@ export async function redeemVipCodeAction(code: string): Promise<RedeemVipResult
     return { error: 'Error inesperado al validar el código VIP.' };
   }
 }
+
+export interface ClaimRewardCreditResult {
+  success?: boolean;
+  error?: string;
+  remainingUsed?: number;
+}
+
+export async function claimRewardCreditAction(): Promise<ClaimRewardCreditResult> {
+  try {
+    const userClient = await createServerUserClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await userClient.auth.getUser();
+
+    if (authError || !user) {
+      return { error: 'Debes iniciar sesión para obtener créditos de receta.' };
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    let targetClient = userClient;
+    if (supabaseUrl && serviceRoleKey) {
+      targetClient = createAdminClient<Database>(supabaseUrl, serviceRoleKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }) as any;
+    }
+
+    const { data: usuario, error: fetchErr } = await targetClient
+      .from('usuarios')
+      .select('id, capturas_mes_actual, plan_suscripcion')
+      .eq('id', user.id)
+      .single();
+
+    if (fetchErr || !usuario) {
+      console.error('Error al obtener usuario en claimRewardCreditAction:', fetchErr);
+      return { error: 'No se pudo obtener el perfil de usuario.' };
+    }
+
+    // Sumar 1 crédito: al restar 1 a capturas_mes_actual, se permite generar 1 receta adicional
+    const nuevoConteo = Math.max(0, (usuario.capturas_mes_actual || 0) - 1);
+
+    const { error: updateErr } = await targetClient
+      .from('usuarios')
+      .update({
+        capturas_mes_actual: nuevoConteo,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id);
+
+    if (updateErr) {
+      console.error('Error actualizando capturas_mes_actual en claimRewardCreditAction:', updateErr);
+      return { error: 'Error al aplicar el crédito de receta en la base de datos.' };
+    }
+
+    // Revalidar cachés de rutas
+    revalidatePath('/', 'layout');
+    revalidatePath('/recipes', 'page');
+    revalidatePath('/billing', 'page');
+    revalidatePath('/settings', 'page');
+
+    return {
+      success: true,
+      remainingUsed: nuevoConteo,
+    };
+  } catch (err) {
+    console.error('Error inesperado en claimRewardCreditAction:', err);
+    return { error: 'Error inesperado al reclamar el crédito publicitario.' };
+  }
+}
+

@@ -247,7 +247,7 @@ export function RecipeCaptureCard() {
           const res = await ingestRecipeAction(formData);
           if (res?.error) {
             if (res.error === 'PAYWALL_LIMIT_REACHED') {
-              setShowProModal(true);
+              router.push('/billing?limit=reached');
               setError(null);
             } else {
               setError(res.error);
