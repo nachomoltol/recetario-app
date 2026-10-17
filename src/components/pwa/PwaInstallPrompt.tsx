@@ -111,15 +111,15 @@ export function PwaInstallPrompt() {
 
         {/* Cabecera del aviso */}
         <div className="flex items-start gap-3.5 pr-8">
-          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] flex items-center justify-center shrink-0 shadow-2xs">
-            <ChefHat className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] flex items-center justify-center shrink-0 shadow-2xs overflow-hidden p-1.5">
+            <img src="/miga-logo.svg" alt="Logo Miga" className="w-full h-full object-contain" />
           </div>
           <div className="space-y-0.5">
             <span className="text-[10px] uppercase font-bold tracking-wider text-[#a86224] flex items-center gap-1">
               <Sparkles className="w-3 h-3" /> Aplicación PWA
             </span>
             <h3 className="text-base font-bold text-stone-900 font-serif-recipe leading-snug">
-              Instala Recetario Inteligente
+              Instala Miga
             </h3>
             <p className="text-xs text-stone-600 leading-relaxed font-light">
               Modo Cocina offline, acceso rápido en tu pantalla de inicio e integración con el menú

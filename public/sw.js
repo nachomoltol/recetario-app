@@ -1,10 +1,11 @@
-const CACHE_NAME = 'recetario-pwa-v2.0';
+const CACHE_NAME = 'miga-pwa-v5.3';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/apple-touch-icon.png',
+  '/web-app-manifest-192x192.png',
+  '/web-app-manifest-512x512.png',
+  '/apple-touch-icon.png',
+  '/miga-logo.svg',
 ];
 
 // Install: precache essential shell assets

@@ -51,6 +51,7 @@ export async function updateSession(request: NextRequest) {
     path.startsWith('/robots.txt') ||
     path.startsWith('/sitemap.xml') ||
     path.startsWith('/manifest.json') ||
+    path.startsWith('/site.webmanifest') ||
     path.startsWith('/sw.js') ||
     path.startsWith('/icons');
 
