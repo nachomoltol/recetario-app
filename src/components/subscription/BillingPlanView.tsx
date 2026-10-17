@@ -14,7 +14,6 @@ import {
   AlertCircle,
   CreditCard,
   PlayCircle,
-  Smartphone,
   Gift,
 } from 'lucide-react';
 import { redeemVipCodeAction, claimRewardCreditAction } from '@/app/actions/subscription';
@@ -63,7 +62,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
 
   // Estados para el flujo de AdMob Rewarded Video
   const [isAdLoading, setIsAdLoading] = useState(false);
-  const [adLoadingStep, setAdLoadingStep] = useState<'loading' | 'rewarding'>('loading');
+  const [adLoadingStep, setAdLoadingStep] = useState<'loading' | 'simulating' | 'rewarding'>('loading');
   const [adSuccess, setAdSuccess] = useState(false);
   const [adError, setAdError] = useState<string | null>(null);
 
@@ -157,43 +156,49 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
     }
   };
 
-  // Manejador del vídeo bonificado de AdMob
+  // Manejador del vídeo bonificado de AdMob (con simulador en Web/PWA)
   const handleWatchAd = async () => {
-    if (!isNative) return;
-
     setIsAdLoading(true);
-    setAdLoadingStep('loading');
     setAdError(null);
     setAdSuccess(false);
 
     try {
-      const adResult = await showRewardVideoAdFlow();
+      if (isNativePlatform()) {
+        // Entorno nativo (iOS / Android): invocar SDK de AdMob
+        setAdLoadingStep('loading');
+        const adResult = await showRewardVideoAdFlow();
 
-      if (adResult.rewarded) {
-        // Vídeo visualizado con éxito: reclamar 1 crédito en el servidor
-        setAdLoadingStep('rewarding');
-        const creditRes = await claimRewardCreditAction();
-
-        if (creditRes.success) {
-          setAdSuccess(true);
+        if (!adResult.rewarded) {
           setIsAdLoading(false);
-
-          // Redirigir de vuelta a la captura tras mostrar confirmación
-          setTimeout(() => {
-            router.push('/recipes');
-          }, 1400);
-        } else {
-          setIsAdLoading(false);
-          setAdError(creditRes.error || t('billing_ad_error'));
+          if (adResult.error && adResult.error !== 'AD_DISMISSED_WITHOUT_REWARD') {
+            setAdError(t('billing_ad_error'));
+          }
+          return;
         }
       } else {
+        // Entorno Web / PWA: Simulador de anuncio durante 3 segundos
+        setAdLoadingStep('simulating');
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+
+      // Vídeo visualizado (o simulado con éxito): reclamar 1 crédito en el servidor
+      setAdLoadingStep('rewarding');
+      const creditRes = await claimRewardCreditAction();
+
+      if (creditRes.success) {
+        setAdSuccess(true);
         setIsAdLoading(false);
-        if (adResult.error && adResult.error !== 'AD_DISMISSED_WITHOUT_REWARD') {
-          setAdError(t('billing_ad_error'));
-        }
+
+        // Redirigir de vuelta a la captura tras mostrar confirmación
+        setTimeout(() => {
+          router.push('/recipes');
+        }, 1400);
+      } else {
+        setIsAdLoading(false);
+        setAdError(creditRes.error || t('billing_ad_error'));
       }
     } catch (err) {
-      console.error('[AdMob] Error al ejecutar vídeo recompensado:', err);
+      console.error('[AdMob] Error al ejecutar anuncio:', err);
       setIsAdLoading(false);
       setAdError(t('billing_ad_error'));
     }
@@ -201,8 +206,8 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
 
   return (
     <div className="space-y-6">
-      {/* 0. AVISO DESTACADO SI SE ALCANZÓ EL LÍMITE DE 5 RECETAS */}
-      {isLimitReached && (
+      {/* 1º. BLOQUE DE AVISO: LÍMITE MENSUAL ALCANZADO (O CABECERA SI NO SE ALCANZÓ) */}
+      {isLimitReached ? (
         <div className="p-5 sm:p-6 rounded-3xl bg-amber-50 border-2 border-[#a86224]/30 shadow-xs flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left animate-fade-in">
           <div className="w-12 h-12 rounded-2xl bg-[#a86224] text-white flex items-center justify-center shrink-0 shadow-sm">
             <AlertCircle className="w-6 h-6" />
@@ -219,24 +224,102 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
             </p>
           </div>
         </div>
+      ) : (
+        <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs text-center space-y-3">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] shadow-2xs">
+            <Sparkles className="w-6 h-6 animate-pulse" />
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-bold font-serif-recipe text-stone-900 tracking-tight">
+            {t('billing_title')}
+          </h1>
+
+          <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
+            {t('billing_hero_desc')}
+          </p>
+        </div>
       )}
 
-      {/* 1. CABECERA Y MENSAJE DE CONTEXTO */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs text-center space-y-3">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] shadow-2xs">
-          <Sparkles className="w-6 h-6 animate-pulse" />
+      {/* 2º. BLOQUE OPCIÓN GRATUITA (ADMOB): PEGADA JUSTO DEBAJO DEL AVISO */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-white border-2 border-[#a86224]/30 shadow-xs text-center space-y-4 transition hover:border-[#a86224]">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f4efe6] text-[#a86224] text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
+          <Gift className="w-3.5 h-3.5" />
+          <span>{t('billing_ad_card_badge')}</span>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-bold font-serif-recipe text-stone-900 tracking-tight">
-          {t('billing_title')}
-        </h1>
+        <div className="space-y-1.5">
+          <h3 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 tracking-tight">
+            {t('billing_ad_card_heading')}
+          </h3>
+          <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
+            {t('billing_ad_card_desc')}
+          </p>
+        </div>
 
-        <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
-          {t('billing_hero_desc')}
-        </p>
+        {/* Beneficios de la opción gratuita */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-1">
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]/80 text-xs text-stone-700">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{t('billing_ad_benefit_1')}</span>
+          </div>
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]/80 text-xs text-stone-700">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{t('billing_ad_benefit_2')}</span>
+          </div>
+        </div>
+
+        {/* Botón activo para TODO el mundo (nativo ejecuta AdMob, Web/PWA simula 3s) */}
+        <div className="space-y-3 pt-2">
+          {adSuccess ? (
+            <div className="w-full py-4 px-6 rounded-2xl font-bold text-sm bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center justify-center gap-2 animate-fade-in">
+              <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
+              <span>{t('billing_ad_success')}</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleWatchAd}
+              disabled={isAdLoading}
+              className="w-full min-h-[52px] py-4 px-6 rounded-2xl font-bold text-sm sm:text-base text-stone-900 bg-[#f4efe6] hover:bg-[#ebdcc8] active:scale-[0.99] border-2 border-[#a86224]/30 shadow-xs hover:border-[#a86224] transition-all cursor-pointer flex items-center justify-center gap-2.5 disabled:opacity-75 disabled:cursor-not-allowed"
+            >
+              {isAdLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin text-[#a86224] shrink-0" />
+                  <span>
+                    {adLoadingStep === 'rewarding'
+                      ? t('billing_ad_rewarding')
+                      : adLoadingStep === 'simulating'
+                      ? t('billing_ad_simulating')
+                      : t('billing_ad_loading')}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <PlayCircle className="w-5 h-5 text-[#a86224]" />
+                  <span>{t('billing_ad_watch_btn')}</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {adError && (
+            <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 font-medium pt-1">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>{adError}</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* 2. TARJETA PRINCIPAL: SUSCRIPCIÓN PRO (3,50€/mes) - MANTENIDA INTACTA */}
+      {/* SEPARADOR VISUAL DUAL */}
+      <div className="relative flex items-center justify-center py-1">
+        <div className="w-full border-t border-[#e7dfd5]" />
+        <span className="absolute px-4 bg-[#faf7f2] text-xs font-bold uppercase tracking-wider text-stone-500">
+          {t('billing_dual_or')}
+        </span>
+      </div>
+
+      {/* 3º. BLOQUE SUSCRIPCIÓN PRO (3,50€/mes) - MANTENIDO INTACTO */}
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs text-center space-y-4">
         <div className="inline-block px-3 py-1 rounded-full bg-[#f4efe6] text-[#a86224] text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
           {t('billing_plan_name')}
@@ -290,111 +373,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
         </div>
       </div>
 
-      {/* SEPARADOR VISUAL DUAL */}
-      <div className="relative flex items-center justify-center py-1">
-        <div className="w-full border-t border-[#e7dfd5]" />
-        <span className="absolute px-4 bg-[#faf7f2] text-xs font-bold uppercase tracking-wider text-stone-500">
-          {t('billing_dual_or')}
-        </span>
-      </div>
-
-      {/* 3. TARJETA SECUNDARIA: OPCIÓN GRATUITA CON ADMOB (DESBLOQUEA 1 RECETA) */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs text-center space-y-4 transition hover:border-[#a86224]/40">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f4efe6] text-[#a86224] text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
-          <Gift className="w-3.5 h-3.5" />
-          <span>{t('billing_ad_card_badge')}</span>
-        </div>
-
-        <div className="space-y-1.5">
-          <h3 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 tracking-tight">
-            {t('billing_ad_card_heading')}
-          </h3>
-          <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
-            {t('billing_ad_card_desc')}
-          </p>
-        </div>
-
-        {/* Beneficios de la opción gratuita */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-1">
-          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]/80 text-xs text-stone-700">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{t('billing_ad_benefit_1')}</span>
-          </div>
-          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]/80 text-xs text-stone-700">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{t('billing_ad_benefit_2')}</span>
-          </div>
-        </div>
-
-        {/* Lógica de Plataforma (App Nativa vs Web/PC) */}
-        {isNative ? (
-          <div className="space-y-3 pt-2">
-            {adSuccess ? (
-              <div className="w-full py-4 px-6 rounded-2xl font-bold text-sm bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center justify-center gap-2 animate-fade-in">
-                <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
-                <span>{t('billing_ad_success')}</span>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleWatchAd}
-                disabled={isAdLoading}
-                className="w-full min-h-[52px] py-4 px-6 rounded-2xl font-bold text-sm sm:text-base text-stone-900 bg-[#f4efe6] hover:bg-[#ebdcc8] active:scale-[0.99] border-2 border-[#a86224]/30 shadow-xs hover:border-[#a86224] transition-all cursor-pointer flex items-center justify-center gap-2.5 disabled:opacity-75 disabled:cursor-not-allowed"
-              >
-                {isAdLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin text-[#a86224] shrink-0" />
-                    <span>
-                      {adLoadingStep === 'rewarding'
-                        ? t('billing_ad_rewarding')
-                        : t('billing_ad_loading')}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <PlayCircle className="w-5 h-5 text-[#a86224]" />
-                    <span>{t('billing_ad_watch_btn')}</span>
-                  </>
-                )}
-              </button>
-            )}
-
-            {adError && (
-              <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 font-medium pt-1">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>{adError}</span>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* En PC/Web: Aviso informativo y botón deshabilitado según instrucciones */
-          <div className="p-4 sm:p-5 rounded-2xl bg-[#f4efe6]/80 border border-[#e7dfd5] text-center sm:text-left space-y-3 pt-3">
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0 shadow-2xs">
-                <Smartphone className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <div className="inline-block px-2 py-0.5 rounded-full bg-stone-200/80 text-stone-700 text-[10px] font-bold tracking-wider uppercase">
-                  {t('billing_ad_web_badge')}
-                </div>
-                <p className="text-xs sm:text-sm text-stone-700 leading-relaxed font-medium">
-                  {t('billing_ad_web_notice')}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              disabled
-              className="w-full min-h-[44px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold text-stone-400 bg-stone-100 border border-stone-200 cursor-not-allowed flex items-center justify-center gap-2 opacity-80"
-            >
-              <PlayCircle className="w-4 h-4 text-stone-400" />
-              <span>{t('billing_ad_watch_btn')}</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* 4. SISTEMA DE CÓDIGO VIP */}
+      {/* 4º. BLOQUE CÓDIGO PROMOCIONAL */}
       <div className="p-5 sm:p-6 rounded-3xl bg-[#f4efe6] border border-[#e7dfd5]/80 space-y-3">
         <div className="flex items-center gap-2">
           <Ticket className="w-4 h-4 text-[#a86224]" />
