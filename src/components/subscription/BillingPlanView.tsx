@@ -48,6 +48,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
 
   // Detección de límite mensual alcanzado (por prop o por query param ?limit=reached)
   const isLimitReached = initialLimitReached || searchParams.get('limit') === 'reached';
+  const pendingUrl = searchParams.get('pendingUrl') || '';
 
   // Detección de plataforma nativa (iOS/Android) vs Web/PC
   const [isNative, setIsNative] = useState<boolean>(false);
@@ -189,9 +190,13 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
         setAdSuccess(true);
         setIsAdLoading(false);
 
-        // Redirigir de vuelta a la captura tras mostrar confirmación
+        // Redirigir de vuelta a la captura con el enlace guardado y orden de arranque
         setTimeout(() => {
-          router.push('/recipes');
+          if (pendingUrl) {
+            router.push(`/recipes?url=${encodeURIComponent(pendingUrl)}&autoStart=true`);
+          } else {
+            router.push('/recipes');
+          }
         }, 1400);
       } else {
         setIsAdLoading(false);

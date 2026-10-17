@@ -130,9 +130,9 @@ export function RecipeCaptureCard() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const initialUrl = searchParams.get('captureUrl') || '';
+  const initialUrl = searchParams.get('url') || searchParams.get('captureUrl') || '';
   const initialText = searchParams.get('captureText') || '';
-  const autoStart = searchParams.get('autoStart') === '1';
+  const autoStart = searchParams.get('autoStart') === 'true' || searchParams.get('autoStart') === '1';
 
   const [mode, setMode] = useState<'url' | 'texto'>(initialText && !initialUrl ? 'texto' : 'url');
   const [url, setUrl] = useState(initialUrl);
@@ -249,7 +249,11 @@ export function RecipeCaptureCard() {
           const res = await ingestRecipeAction(formData);
           if (res?.error) {
             if (res.error === 'PAYWALL_LIMIT_REACHED') {
-              router.push('/billing?limit=reached');
+              const pendingVal = targetValue.trim() || url.trim() || texto.trim();
+              const billingTarget = pendingVal
+                ? `/billing?limit=reached&pendingUrl=${encodeURIComponent(pendingVal)}`
+                : '/billing?limit=reached';
+              router.push(billingTarget);
               setError(null);
             } else {
               setError(res.error);
@@ -319,11 +323,13 @@ export function RecipeCaptureCard() {
     return () => clearTimeout(timer);
   }, [createdRecetaId]);
 
-  // Soporte nativo para Web Share Target: disparo automático al recibir enlace
+  // Soporte nativo para Autopilot post-AdMob y Web Share Target
   useEffect(() => {
     if (initialUrl) {
       setUrl(initialUrl);
-      setMode('url');
+      const isHttp = initialUrl.startsWith('http://') || initialUrl.startsWith('https://');
+      setMode(isHttp ? 'url' : 'texto');
+      if (!isHttp) setTexto(initialUrl);
     } else if (initialText) {
       setTexto(initialText);
       setMode('texto');
@@ -331,17 +337,22 @@ export function RecipeCaptureCard() {
 
     if (autoStart && initialUrl && !hasAutoStarted.current) {
       hasAutoStarted.current = true;
-      // Limpiar query params de la URL visual para evitar re-ejecuciones al recargar
-      if (typeof window !== 'undefined') {
-        const cleanUrl = new URL(window.location.href);
-        cleanUrl.searchParams.delete('autoStart');
-        cleanUrl.searchParams.delete('captureUrl');
-        cleanUrl.searchParams.delete('captureText');
-        window.history.replaceState({}, '', cleanUrl.pathname);
+
+      // IMPORTANTE: Limpiar inmediatamente los parámetros de la URL sin recargar la página
+      try {
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, '', '/recipes');
+        }
+        router.replace('/recipes');
+      } catch (err) {
+        console.error('Error al limpiar parámetros de la URL:', err);
       }
-      executeIngest('url', initialUrl);
+
+      // Ejecutar automáticamente la función de generación
+      const isHttp = initialUrl.startsWith('http://') || initialUrl.startsWith('https://');
+      executeIngest(isHttp ? 'url' : 'texto', initialUrl);
     }
-  }, [initialUrl, initialText, autoStart, executeIngest]);
+  }, [initialUrl, initialText, autoStart, executeIngest, router]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -712,6 +723,7 @@ export function RecipeCaptureCard() {
         isOpen={showProModal}
         onClose={() => setShowProModal(false)}
         context="limit_reached"
+        pendingUrl={url || texto}
         onVipSuccess={() => {
           setShowProModal(false);
         }}

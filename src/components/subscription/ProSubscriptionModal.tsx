@@ -27,6 +27,7 @@ export interface ProSubscriptionModalProps {
   onVipSuccess?: () => void;
   onSubscribe?: () => void;
   context?: 'limit_reached' | 'feature_locked';
+  pendingUrl?: string;
 }
 
 export function ProSubscriptionModal({
@@ -35,6 +36,7 @@ export function ProSubscriptionModal({
   onVipSuccess,
   onSubscribe,
   context = 'feature_locked',
+  pendingUrl = '',
 }: ProSubscriptionModalProps) {
   const router = useRouter();
   const language = useLanguageStore((s) => s.language);
@@ -203,7 +205,11 @@ export function ProSubscriptionModal({
 
         setTimeout(() => {
           if (onClose) onClose();
-          router.push('/recipes');
+          if (pendingUrl) {
+            router.push(`/recipes?url=${encodeURIComponent(pendingUrl)}&autoStart=true`);
+          } else {
+            router.push('/recipes');
+          }
         }, 1400);
       } else {
         setIsAdLoading(false);
