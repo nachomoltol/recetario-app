@@ -47,6 +47,9 @@ export async function redeemVipCodeAction(code: string): Promise<RedeemVipResult
         autoRefreshToken: false,
         persistSession: false,
       },
+      global: {
+        fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }),
+      },
     });
 
     let updatePayload: {
@@ -131,6 +134,9 @@ export async function claimRewardCreditAction(): Promise<ClaimRewardCreditResult
           autoRefreshToken: false,
           persistSession: false,
         },
+        global: {
+          fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }),
+        },
       }) as any;
     }
 
@@ -145,26 +151,31 @@ export async function claimRewardCreditAction(): Promise<ClaimRewardCreditResult
       return { error: 'No se pudo obtener el perfil de usuario.' };
     }
 
-    // Sumar 1 crédito: al restar 1 a capturas_mes_actual, se permite generar 1 receta adicional
-    const nuevoConteo = Math.max(0, (usuario.capturas_mes_actual || 0) - 1);
+    // Sumar 1 crédito de forma garantizada:
+    // Si capturas_mes_actual >= 5, bajarlo directamente a 4 para que quede estrictamente < 5
+    // y desbloquee con total certeza la siguiente generación sin que el paywall lo vuelva a atrapar en bucle.
+    const cuotaActual = Number(usuario.capturas_mes_actual) || 0;
+    const nuevoConteo = cuotaActual >= 5 ? 4 : Math.max(0, cuotaActual - 1);
 
-    const { error: updateErr } = await targetClient
+    const { data: updatedRows, error: updateErr } = await targetClient
       .from('usuarios')
       .update({
         capturas_mes_actual: nuevoConteo,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', user.id);
+      .eq('id', user.id)
+      .select('id, capturas_mes_actual');
 
     if (updateErr) {
       console.error('Error actualizando capturas_mes_actual en claimRewardCreditAction:', updateErr);
       return { error: 'Error al aplicar el crédito de receta en la base de datos.' };
     }
 
-    // Revalidar cachés de rutas
-    revalidatePath('/', 'layout');
+    // Revalidación obligatoria de rutas según Fase 6.5
     revalidatePath('/recipes', 'page');
     revalidatePath('/billing', 'page');
+    revalidatePath('/', 'layout');
+    revalidatePath('/recipes', 'layout');
     revalidatePath('/settings', 'page');
 
     return {

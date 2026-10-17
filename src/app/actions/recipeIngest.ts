@@ -47,6 +47,9 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     supabaseUrl && serviceRoleKey
       ? createAdminClient<Database>(supabaseUrl, serviceRoleKey, {
           auth: { autoRefreshToken: false, persistSession: false },
+          global: {
+            fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }),
+          },
         })
       : null;
 

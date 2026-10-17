@@ -203,6 +203,9 @@ export function ProSubscriptionModal({
         setAdSuccess(true);
         setIsAdLoading(false);
 
+        // Purgar caché del router cliente de Next.js
+        router.refresh();
+
         setTimeout(() => {
           if (onClose) onClose();
           if (pendingUrl) {

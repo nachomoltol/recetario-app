@@ -190,6 +190,9 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
         setAdSuccess(true);
         setIsAdLoading(false);
 
+        // Purgar caché del router cliente de Next.js
+        router.refresh();
+
         // Redirigir de vuelta a la captura con el enlace guardado y orden de arranque
         setTimeout(() => {
           if (pendingUrl) {
