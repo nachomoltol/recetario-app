@@ -25,7 +25,11 @@ export async function redeemVipCodeAction(code: string): Promise<RedeemVipResult
 
     const cleanCode = (code || '').trim().toUpperCase();
 
-    if (cleanCode !== 'NACHOVIP') {
+    const isVipCode = cleanCode === 'NACHOVIP';
+    const isResetFree = cleanCode === 'RESETFREE' || cleanCode === 'FREE' || cleanCode === 'FREE5';
+    const isResetZero = cleanCode === 'RESET0';
+
+    if (!isVipCode && !isResetFree && !isResetZero) {
       return { error: 'Código inválido' };
     }
 
@@ -45,19 +49,39 @@ export async function redeemVipCodeAction(code: string): Promise<RedeemVipResult
       },
     });
 
+    let updatePayload: {
+      plan_suscripcion: 'gratis' | 'pro';
+      capturas_mes_actual?: number;
+      updated_at: string;
+    } = {
+      plan_suscripcion: 'pro',
+      updated_at: new Date().toISOString(),
+    };
+
+    if (isResetFree) {
+      updatePayload = {
+        plan_suscripcion: 'gratis',
+        capturas_mes_actual: 5,
+        updated_at: new Date().toISOString(),
+      };
+    } else if (isResetZero) {
+      updatePayload = {
+        plan_suscripcion: 'gratis',
+        capturas_mes_actual: 0,
+        updated_at: new Date().toISOString(),
+      };
+    }
+
     // 3. Verificación Estricta de Filas Modificadas con .select()
     const { data: updatedRows, error: updateError } = await adminClient
       .from('usuarios')
-      .update({
-        plan_suscripcion: 'pro',
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', user.id)
       .select();
 
     if (updateError) {
-      console.error('Error al actualizar plan a PRO en usuarios:', updateError);
-      return { error: 'No se pudo activar la suscripción en el servidor.' };
+      console.error('Error al actualizar plan en usuarios:', updateError);
+      return { error: 'No se pudo actualizar el plan en el servidor.' };
     }
 
     if (!updatedRows || updatedRows.length === 0) {

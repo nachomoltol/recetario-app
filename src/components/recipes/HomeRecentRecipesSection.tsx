@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Sparkles, Eye, Clock, Utensils, ArrowRight, BookOpen } from 'lucide-react';
 import { Receta } from '@/types/recipe';
@@ -32,18 +32,24 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
     } catch {}
   }, []);
 
+  const sectionRef = useRef<HTMLElement>(null);
+  const pendingScrollRef = useRef<string | null>(null);
+  const lastScrolledIdRef = useRef<string | null>(null);
+
   // Escuchar evento de nueva receta capturada para saltar a 'capturada' automáticamente
   useEffect(() => {
-    const handleRecipeCaptured = () => {
+    const handleRecipeCaptured = (e: any) => {
       setActiveTab('capturada');
+      const targetId = e?.detail?.recetaId || 'latest';
+      pendingScrollRef.current = targetId;
       try {
         localStorage.setItem('home_recent_tab', 'capturada');
       } catch {}
     };
 
-    window.addEventListener('recipe-captured', handleRecipeCaptured);
+    window.addEventListener('recipe-captured', handleRecipeCaptured as EventListener);
     return () => {
-      window.removeEventListener('recipe-captured', handleRecipeCaptured);
+      window.removeEventListener('recipe-captured', handleRecipeCaptured as EventListener);
     };
   }, []);
 
@@ -59,19 +65,41 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
     ? recetas.find((r) => r.id === lastViewedId) || null
     : null;
 
+  const recipeToShow = activeTab === 'vista' ? (ultimaVista || ultimaCapturada) : ultimaCapturada;
+
+  // Ejecutar el scroll suave hacia la nueva receta SOLO UNA VEZ cuando la receta ha terminado de cargar completamente
+  useEffect(() => {
+    if (pendingScrollRef.current && recipeToShow) {
+      const targetId = pendingScrollRef.current;
+      if (lastScrolledIdRef.current !== targetId) {
+        lastScrolledIdRef.current = targetId;
+        pendingScrollRef.current = null;
+
+        // Desactivar foco de cualquier input activo para evitar rebotes
+        if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 150);
+        });
+      }
+    }
+  }, [recipeToShow]);
+
   // Si no hay ninguna receta capturada ni vista
   if (!ultimaCapturada && !ultimaVista) {
     return null;
   }
-
-  const recipeToShow = activeTab === 'vista' ? (ultimaVista || ultimaCapturada) : ultimaCapturada;
 
   if (!recipeToShow) {
     return null;
   }
 
   return (
-    <section className="space-y-4 scroll-mt-24 outline-none" id="ultima-receta" tabIndex={-1}>
+    <section ref={sectionRef} className="space-y-4 scroll-mt-24 outline-none" id="ultima-receta" tabIndex={-1}>
       {/* Controles Toggle / Tabs de acceso directo */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center p-1 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] w-full sm:w-auto shadow-2xs">

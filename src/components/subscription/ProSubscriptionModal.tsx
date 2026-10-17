@@ -101,9 +101,18 @@ export function ProSubscriptionModal({
       setIsVipValidating(false);
 
       if (res.success) {
-        setVipSuccess(true);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('recetario_vip_active', 'true');
+        const isReset = cleanCode === 'RESETFREE' || cleanCode === 'FREE' || cleanCode === 'FREE5' || cleanCode === 'RESET0';
+        if (isReset) {
+          setVipSuccess(false);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('recetario_vip_active');
+          }
+          router.refresh();
+        } else {
+          setVipSuccess(true);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('recetario_vip_active', 'true');
+          }
         }
         if (onVipSuccess) {
           onVipSuccess();

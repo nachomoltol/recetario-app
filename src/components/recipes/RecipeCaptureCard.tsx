@@ -144,9 +144,11 @@ export function RecipeCaptureCard() {
   const [showProModal, setShowProModal] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  const captureCardRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
+  const scrolledOnceRef = useRef<string | null>(null);
 
   // Estados de carga progresiva
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -281,70 +283,40 @@ export function RecipeCaptureCard() {
     [selectedFile, router]
   );
 
-  // Arreglo del rebote: Desplazamiento suave y anclado ejecutado en useEffect dependiente de createdRecetaId
+  // Desplazamiento suave al panel de captura si el componente se monta con un parámetro URL (texto/enlace compartido)
   useEffect(() => {
-    if (!createdRecetaId) return;
+    if (initialUrl || initialText) {
+      const timer = setTimeout(() => {
+        captureCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [initialUrl, initialText]);
 
-    // Bloquear explícitamente el foco en los inputs superiores
+  // Arreglo del rebote: Desplazamiento suave de una sola vez hacia la nueva receta tras la captura (sin robos de foco ni rebotes)
+  useEffect(() => {
+    if (!createdRecetaId || scrolledOnceRef.current === createdRecetaId) return;
+    scrolledOnceRef.current = createdRecetaId;
+
+    // Bloquear explícitamente el foco en los inputs para evitar que el viewport rebote hacia arriba
     if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
     urlInputRef.current?.blur();
     textInputRef.current?.blur();
 
-    let isMounted = true;
-    let attempts = 0;
-    const maxAttempts = 25;
-    let timeoutId: NodeJS.Timeout | null = null;
-
-    const scrollToNewRecipe = () => {
-      if (!isMounted) return;
-
-      // Asegurar que ningún input retenga foco durante el desplazamiento
-      if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
-      }
-      urlInputRef.current?.blur();
-      textInputRef.current?.blur();
-
+    const timer = setTimeout(() => {
       const el =
         document.getElementById('ultima-receta') ||
         document.getElementById(`receta-${createdRecetaId}`) ||
         document.getElementById('capture-success-anchor');
 
       if (el) {
-        el.setAttribute('tabindex', '-1');
-        el.focus({ preventScroll: true });
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-        // Afianzar el foco durante los siguientes ticks para neutralizar cualquier rebote del navegador
-        [50, 150, 300, 600, 1000].forEach((delay) => {
-          setTimeout(() => {
-            if (!isMounted) return;
-            if (
-              document.activeElement === urlInputRef.current ||
-              document.activeElement === textInputRef.current
-            ) {
-              (document.activeElement as HTMLElement)?.blur();
-            }
-            if (document.activeElement !== el) {
-              el.focus({ preventScroll: true });
-            }
-          }, delay);
-        });
-      } else if (attempts < maxAttempts) {
-        attempts++;
-        timeoutId = setTimeout(scrollToNewRecipe, 150);
       }
-    };
+    }, 250);
 
-    // Retardo inicial para dar tiempo a que React Server Components re-renderice la sección
-    timeoutId = setTimeout(scrollToNewRecipe, 200);
-
-    return () => {
-      isMounted = false;
-      if (timeoutId) clearTimeout(timeoutId);
-    };
+    return () => clearTimeout(timer);
   }, [createdRecetaId]);
 
   // Soporte nativo para Web Share Target: disparo automático al recibir enlace
@@ -390,7 +362,11 @@ export function RecipeCaptureCard() {
   const currentHumorPhrase = culinaryHumorPhrases[humorIndex];
 
   return (
-    <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-6">
+    <div
+      ref={captureCardRef}
+      id="panel-captura"
+      className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-6 scroll-mt-20"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0 shadow-2xs">

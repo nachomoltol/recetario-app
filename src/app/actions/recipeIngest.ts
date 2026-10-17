@@ -2,12 +2,13 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { extractRecipeWithGemini, detectFuenteTipo } from '@/lib/gemini/extractor';
 import { getClinicalExclusions } from '@/lib/clinicalDictionary';
 import { ExtractedIngredient } from '@/lib/gemini/schema';
 import { calcularGramos } from '@/lib/nutrition/converter';
 import { IngredienteMaestro } from '@/types/recipe';
-import { FuenteTipoReceta } from '@/types/database';
+import { FuenteTipoReceta, Database } from '@/types/database';
 
 export interface IngestRecipeResult {
   success?: boolean;
@@ -39,8 +40,20 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     return { error: 'Debes haber iniciado sesión para procesar y guardar recetas.' };
   }
 
+  // Cliente con permisos de administración para saltarse RLS al gestionar cuotas
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const adminClient =
+    supabaseUrl && serviceRoleKey
+      ? createAdminClient<Database>(supabaseUrl, serviceRoleKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        })
+      : null;
+
+  const db = adminClient || supabase;
+
   // 2. Control de Cuotas Freemium (Paywall) ANTES de invocar a Gemini
-  const { data: perfilUsuario } = await supabase
+  const { data: perfilUsuario, error: perfilError } = await db
     .from('usuarios')
     .select(
       'id, plan_suscripcion, capturas_mes_actual, fecha_ultimo_reinicio, raciones_defecto, preferencias_dieteticas, alergenos'
@@ -48,34 +61,53 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     .eq('id', user.id)
     .single();
 
-  let capturasMesActual = perfilUsuario?.capturas_mes_actual ?? 0;
-  const planSuscripcion = perfilUsuario?.plan_suscripcion || 'gratis';
+  if (perfilError) {
+    console.error('[recipeIngest] Error al obtener perfil de usuario:', perfilError);
+  }
+
+  let capturasMesActual = Number(perfilUsuario?.capturas_mes_actual) || 0;
+  const rawPlan = (perfilUsuario?.plan_suscripcion || '').trim().toLowerCase();
+  const isPro = rawPlan === 'pro';
   const ahora = new Date();
 
-  // Verificación de Mes: Si el mes/año actual no coincide con fecha_ultimo_reinicio, resetear a 0
-  const fechaReinicio = perfilUsuario?.fecha_ultimo_reinicio
-    ? new Date(perfilUsuario.fecha_ultimo_reinicio)
-    : ahora;
+  // Verificación de Mes: Si fecha_ultimo_reinicio existe y es de un mes previo, reiniciar a 0
+  if (perfilUsuario?.fecha_ultimo_reinicio) {
+    const fechaReinicio = new Date(perfilUsuario.fecha_ultimo_reinicio);
+    if (!isNaN(fechaReinicio.getTime())) {
+      const esMismoMesYAno =
+        fechaReinicio.getUTCFullYear() === ahora.getUTCFullYear() &&
+        fechaReinicio.getUTCMonth() === ahora.getUTCMonth();
 
-  const esMismoMesYAno =
-    fechaReinicio.getUTCFullYear() === ahora.getUTCFullYear() &&
-    fechaReinicio.getUTCMonth() === ahora.getUTCMonth();
-
-  if (!esMismoMesYAno) {
-    capturasMesActual = 0;
-    await supabase
+      if (!esMismoMesYAno) {
+        capturasMesActual = 0;
+        await db
+          .from('usuarios')
+          .update({
+            capturas_mes_actual: 0,
+            fecha_ultimo_reinicio: ahora.toISOString(),
+            updated_at: ahora.toISOString(),
+          })
+          .eq('id', user.id);
+        console.log(`[recipeIngest] Nuevo mes detectado: cuota mensual reseteada a 0 para ${user.id}`);
+      }
+    }
+  } else {
+    // Si no existía fecha_ultimo_reinicio, inicializarla para evitar falsos reseteos en el futuro
+    await db
       .from('usuarios')
       .update({
-        capturas_mes_actual: 0,
         fecha_ultimo_reinicio: ahora.toISOString(),
         updated_at: ahora.toISOString(),
       })
       .eq('id', user.id);
   }
 
-  // Lógica de Permisos (Fase 6):
-  // Si el usuario no tiene plan 'pro' y capturas_mes_actual >= 5: Bloquear ANTES de Gemini
-  if (planSuscripcion !== 'pro' && capturasMesActual >= 5) {
+  // Lógica de Permisos (Fase 6.1):
+  // Si el usuario no tiene plan 'pro' y lleva >= 5 recetas este mes: Bloquear ANTES de Gemini
+  if (!isPro && capturasMesActual >= 5) {
+    console.warn(
+      `[recipeIngest] BLOQUEO PAYWALL: Usuario ${user.id} (plan: '${rawPlan || 'gratis'}', capturas: ${capturasMesActual}) >= 5. Bloqueando antes de invocar IA.`
+    );
     return {
       success: false,
       error: 'PAYWALL_LIMIT_REACHED',
@@ -332,15 +364,35 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       return { error: `Error guardando los pasos: ${errPasos.message}` };
     }
 
-    // 6. Si el usuario es de plan 'gratis', incrementar cuota mensual en +1
-    if (planSuscripcion !== 'pro') {
-      await supabase
+    // 6. Si el usuario no tiene plan PRO, incrementar cuota mensual en +1 de forma atómica y verificada
+    if (!isPro) {
+      // Reconsultar cuota fresca directamente en la base de datos para evitar desincronización
+      const { data: usuarioFresco } = await db
+        .from('usuarios')
+        .select('capturas_mes_actual')
+        .eq('id', user.id)
+        .single();
+
+      const conteoBase = Number(usuarioFresco?.capturas_mes_actual) || capturasMesActual;
+      const nuevoConteo = conteoBase + 1;
+
+      const { data: updatedRows, error: errUpdateCuota } = await db
         .from('usuarios')
         .update({
-          capturas_mes_actual: capturasMesActual + 1,
+          capturas_mes_actual: nuevoConteo,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select('id, capturas_mes_actual');
+
+      if (errUpdateCuota) {
+        console.error('[recipeIngest] ERROR CRÍTICO al incrementar capturas_mes_actual:', errUpdateCuota);
+      } else {
+        console.log(
+          `[recipeIngest] Cuota incrementada con éxito a ${nuevoConteo} para usuario ${user.id}. Filas actualizadas:`,
+          updatedRows?.length ?? 0
+        );
+      }
     }
 
     // 7. Revalidación exhaustiva de caché de Next.js

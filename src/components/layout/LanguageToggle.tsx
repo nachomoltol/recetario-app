@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { Globe } from 'lucide-react';
 
@@ -10,6 +11,7 @@ interface LanguageToggleProps {
 }
 
 export function LanguageToggle({ className = '', showIcon = true }: LanguageToggleProps) {
+  const pathname = usePathname();
   const language = useLanguageStore((s) => s.language);
   const setLanguage = useLanguageStore((s) => s.setLanguage);
   const initLanguage = useLanguageStore((s) => s.initLanguage);
@@ -17,6 +19,13 @@ export function LanguageToggle({ className = '', showIcon = true }: LanguageTogg
   useEffect(() => {
     initLanguage();
   }, [initLanguage]);
+
+  // Solo mostrar el selector de idioma en la portada / home principal ('/' o '/recipes')
+  // En páginas como perfil (/profile), facturación (/billing), planificador o vista de receta individual, debe desaparecer.
+  const isHome = pathname === '/' || pathname === '/recipes';
+  if (!isHome) {
+    return null;
+  }
 
   return (
     <div
