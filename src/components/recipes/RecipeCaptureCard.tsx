@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
+import { useState, useTransition, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Sparkles,
@@ -20,7 +20,6 @@ import {
 import { ingestRecipeAction } from '@/app/actions/recipeIngest';
 import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
 import { useLanguageStore } from '@/stores/useLanguageStore';
-import { ensureStandardImage } from '@/lib/utils/imageCompress';
 
 interface LoadingStage {
   seconds: number;
@@ -153,48 +152,33 @@ export function RecipeCaptureCard() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const hasAutoStarted = useRef(false);
 
-  // Manejador del input de archivos con aislamiento radical de iOS (Previene Crash React #441)
+  // Previsualización ligera para miniaturas sin re-renders masivos ni fugas de memoria
+  const filePreviewUrl = useMemo(() => {
+    if (selectedFile && selectedFile.type.startsWith('image/')) {
+      return URL.createObjectURL(selectedFile);
+    }
+    return null;
+  }, [selectedFile]);
+
+  useEffect(() => {
+    return () => {
+      if (filePreviewUrl) {
+        URL.revokeObjectURL(filePreviewUrl);
+      }
+    };
+  }, [filePreviewUrl]);
+
+  // Manejador "Dumb Input": iOS convierte nativamente HEIC a JPEG por hardware al usar accept estricto
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // 1. Extraer el archivo a una variable temporal fuera del estado de React
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
 
-    // Resetear valor nativo del input para futuras selecciones sin mutar React
+    // Resetear valor nativo del input para permitir re-selección
     e.target.value = '';
 
-    // 2. Sacar absolutamente toda la lógica pesada de la pila de llamadas del motor con setTimeout 0
-    setTimeout(() => {
-      (async () => {
-        try {
-          // Procesar HEIC o conversión pesada
-          const standardFile = await ensureStandardImage(rawFile);
-
-          // Cargar completamente en memoria base64 antes de tocar el estado de React
-          const reader = new FileReader();
-          reader.onload = () => {
-            // 3. UN ÚNICO setState dentro de startTransition cuando la imagen final esté 100% lista en memoria
-            startTransition(() => {
-              setSelectedFile(standardFile);
-              setError(null);
-            });
-          };
-          reader.onerror = (readErr) => {
-            console.error('Error al precargar archivo en memoria base64 en iOS:', readErr);
-            startTransition(() => {
-              setSelectedFile(standardFile);
-              setError(null);
-            });
-          };
-          reader.readAsDataURL(standardFile);
-        } catch (err) {
-          console.error('Error riguroso al procesar/convertir archivo en iOS:', err);
-          startTransition(() => {
-            setSelectedFile(rawFile);
-            setError(null);
-          });
-        }
-      })();
-    }, 0);
+    // Guardar el archivo nativo directamente en el estado sin procesamientos pesados en JS
+    setSelectedFile(rawFile);
+    setError(null);
   };
 
   const handleRemoveFile = () => {
@@ -256,36 +240,41 @@ export function RecipeCaptureCard() {
       }
 
       startTransition(async () => {
-        if (selectedFile) {
-          formData.set('archivo', selectedFile);
-        }
-        const res = await ingestRecipeAction(formData);
-        if (res.error) {
-          if (res.error === 'PAYWALL_LIMIT_REACHED') {
-            setShowProModal(true);
-            setError(null);
-          } else {
-            setError(res.error);
+        try {
+          if (selectedFile) {
+            formData.set('archivo', selectedFile);
           }
-        } else if (res.success) {
-          setSuccess(t('capture_success'));
-          setCreatedRecetaId(res.recetaId || null);
-          setUrl('');
-          setTexto('');
-          setSelectedFile(null);
-          if (fileInputRef.current) fileInputRef.current.value = '';
+          const res = await ingestRecipeAction(formData);
+          if (res?.error) {
+            if (res.error === 'PAYWALL_LIMIT_REACHED') {
+              setShowProModal(true);
+              setError(null);
+            } else {
+              setError(res.error);
+            }
+          } else if (res?.success) {
+            setSuccess(t('capture_success'));
+            setCreatedRecetaId(res.recetaId || null);
+            setUrl('');
+            setTexto('');
+            setSelectedFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
 
-          // Disparar evento para que la sección de inicio salte a 'Última receta capturada'
-          if (typeof window !== 'undefined') {
-            try {
-              localStorage.setItem('home_recent_tab', 'capturada');
-              window.dispatchEvent(
-                new CustomEvent('recipe-captured', { detail: { recetaId: res.recetaId } })
-              );
-            } catch {}
+            // Disparar evento para que la sección de inicio salte a 'Última receta capturada'
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem('home_recent_tab', 'capturada');
+                window.dispatchEvent(
+                  new CustomEvent('recipe-captured', { detail: { recetaId: res.recetaId } })
+                );
+              } catch {}
+            }
+
+            router.refresh();
           }
-
-          router.refresh();
+        } catch (e: any) {
+          console.error('Error al procesar la receta:', e);
+          setError(e?.message || 'Error desconocido al procesar');
         }
       });
     },
@@ -572,12 +561,12 @@ export function RecipeCaptureCard() {
                 <LinkIcon className="w-5 h-5 text-stone-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
 
-              {/* Input nativo de archivo oculto */}
+              {/* Input nativo de archivo con accept estricto para forzar conversión nativa en iOS */}
               <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                accept="image/*,.heic,.heif,.pdf,.txt,.doc,.docx"
+                accept="image/jpeg, image/png, image/webp, application/pdf"
                 className="hidden"
                 disabled={isPending}
               />
@@ -595,15 +584,26 @@ export function RecipeCaptureCard() {
               </button>
             </div>
 
-
-            {/* Tarjeta de visualización de archivo adjunto */}
+            {/* Tarjeta de visualización de archivo adjunto con miniatura */}
             {selectedFile && (
               <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs">
-                <div className="flex items-center gap-2.5 overflow-hidden">
-                  {selectedFile.type.startsWith('image/') ? (
-                    <Camera className="w-4 h-4 text-[#a86224] shrink-0" />
+                <div className="flex items-center gap-3 overflow-hidden">
+                  {filePreviewUrl ? (
+                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-[#e7dfd5] shrink-0">
+                      <img
+                        src={filePreviewUrl}
+                        alt={selectedFile.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : selectedFile.type.startsWith('image/') ? (
+                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+                      <Camera className="w-5 h-5" />
+                    </div>
                   ) : (
-                    <FileText className="w-4 h-4 text-[#a86224] shrink-0" />
+                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+                      <FileText className="w-5 h-5" />
+                    </div>
                   )}
                   <div className="truncate">
                     <p className="font-semibold text-stone-900 truncate">{selectedFile.name}</p>
@@ -649,24 +649,36 @@ export function RecipeCaptureCard() {
               </button>
             </div>
 
-            {/* Input nativo de archivo oculto para modo texto */}
+            {/* Input nativo de archivo con accept estricto para forzar conversión nativa en iOS */}
             <input
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
-              accept="image/*,.heic,.heif,.pdf,.txt,.doc,.docx"
+              accept="image/jpeg, image/png, image/webp, application/pdf"
               className="hidden"
               disabled={isPending}
             />
 
-
+            {/* Tarjeta de visualización de archivo adjunto con miniatura */}
             {selectedFile && (
               <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs">
-                <div className="flex items-center gap-2.5 overflow-hidden">
-                  {selectedFile.type.startsWith('image/') ? (
-                    <Camera className="w-4 h-4 text-[#a86224] shrink-0" />
+                <div className="flex items-center gap-3 overflow-hidden">
+                  {filePreviewUrl ? (
+                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-[#e7dfd5] shrink-0">
+                      <img
+                        src={filePreviewUrl}
+                        alt={selectedFile.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : selectedFile.type.startsWith('image/') ? (
+                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+                      <Camera className="w-5 h-5" />
+                    </div>
                   ) : (
-                    <FileText className="w-4 h-4 text-[#a86224] shrink-0" />
+                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+                      <FileText className="w-5 h-5" />
+                    </div>
                   )}
                   <div className="truncate">
                     <p className="font-semibold text-stone-900 truncate">{selectedFile.name}</p>

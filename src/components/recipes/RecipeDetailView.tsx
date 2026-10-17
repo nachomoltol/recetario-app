@@ -543,7 +543,7 @@ export function RecipeDetailView({
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/*,.heic,.heif"
+        accept="image/jpeg, image/png, image/webp"
         capture="environment"
         onChange={handlePhotoCapture}
         className="hidden"
@@ -552,7 +552,7 @@ export function RecipeDetailView({
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/*,.heic,.heif"
+        accept="image/jpeg, image/png, image/webp"
         onChange={handlePhotoCapture}
         className="hidden"
         id="recipe-photo-gallery-input"

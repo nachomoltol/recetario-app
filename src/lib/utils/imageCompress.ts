@@ -1,6 +1,6 @@
 /**
  * Utilidad para comprimir y redimensionar imágenes en el cliente antes de subirlas a Storage.
- * Incluye soporte nativo para convertir fotos iPhone en formato HEIC/HEIF a JPEG estándar.
+ * Utiliza Canvas nativo sin librerías pesadas en JS para garantizar máxima fluidez y evitar fugas de memoria en iOS.
  */
 
 /**
@@ -22,46 +22,19 @@ export function isHeicFile(file: File | Blob): boolean {
 }
 
 /**
- * Convierte un archivo HEIC/HEIF a JPEG estándar en el cliente mediante heic2any.
+ * Función de compatibilidad: con el bypass nativo mediante accept="image/jpeg, ...",
+ * iOS realiza la conversión por hardware sin pasar por JS.
  */
-export async function convertHeicToJpeg(file: File | Blob, quality = 0.88): Promise<File> {
-  if (typeof window === 'undefined') {
-    return file instanceof File ? file : new File([file], 'receta_foto.jpg', { type: 'image/jpeg' });
-  }
-
-  try {
-    const heic2any = (await import('heic2any')).default;
-    const conversionResult = await heic2any({
-      blob: file,
-      toType: 'image/jpeg',
-      quality,
-    });
-
-    const resultBlob: Blob = Array.isArray(conversionResult) ? conversionResult[0] : conversionResult;
-    const originalName = 'name' in file ? (file as File).name : 'foto_iphone.heic';
-    const cleanName = originalName.replace(/\.(heic|heif)$/i, '') + '.jpg';
-
-    return new File([resultBlob], cleanName, { type: 'image/jpeg' });
-  } catch (err) {
-    console.warn('Advertencia: No se pudo convertir archivo HEIC con heic2any. Se continuará con el original:', err);
-    return file instanceof File ? file : new File([file], 'receta_foto.jpg', { type: 'image/jpeg' });
-  }
+export async function convertHeicToJpeg(file: File | Blob): Promise<File> {
+  return file instanceof File ? file : new File([file], 'receta_foto.jpg', { type: 'image/jpeg' });
 }
 
-/**
- * Asegura que una imagen esté en formato compatible con navegadores y Gemini.
- * Si es HEIC/HEIF, la convierte inmediatamente a JPEG.
- */
 export async function ensureStandardImage(file: File): Promise<File> {
-  if (isHeicFile(file)) {
-    return await convertHeicToJpeg(file);
-  }
   return file;
 }
 
 /**
- * Comprime y redimensiona imágenes en el cliente. Si la imagen es HEIC,
- * la transforma previamente a JPEG para que Canvas y los decodificadores puedan procesarla.
+ * Comprime y redimensiona imágenes en el cliente usando Canvas nativo ligero y URL.createObjectURL.
  */
 export async function compressImageClient(
   file: File,
@@ -69,74 +42,56 @@ export async function compressImageClient(
   maxHeight = 1600,
   quality = 0.82
 ): Promise<Blob> {
-  let sourceFile = file;
-
-  // Interceptar formato iOS HEIC/HEIF antes del Canvas
-  if (isHeicFile(file)) {
-    sourceFile = await convertHeicToJpeg(file, quality);
-  }
-
   // Si no es imagen o es SVG, retornamos el archivo tal cual
-  if (!sourceFile.type.startsWith('image/') || sourceFile.type.includes('svg')) {
-    return sourceFile;
+  if (!file.type.startsWith('image/') || file.type.includes('svg')) {
+    return file;
   }
 
   return new Promise((resolve) => {
-    const reader = new FileReader();
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
 
-    reader.onload = (e) => {
-      const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let width = img.width;
+      let height = img.height;
 
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxWidth || height > maxHeight) {
-          if (width / height > maxWidth / maxHeight) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          } else {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
+      if (width > maxWidth || height > maxHeight) {
+        if (width / height > maxWidth / maxHeight) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        } else {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
         }
+      }
 
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
 
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(sourceFile);
-          return;
-        }
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
 
-        ctx.drawImage(img, 0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
 
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob);
-            } else {
-              resolve(sourceFile);
-            }
-          },
-          'image/jpeg',
-          quality
-        );
-      };
-
-      img.onerror = () => {
-        resolve(sourceFile);
-      };
-
-      img.src = e.target?.result as string;
+      canvas.toBlob(
+        (blob) => {
+          resolve(blob || file);
+        },
+        'image/jpeg',
+        quality
+      );
     };
 
-    reader.onerror = () => {
-      resolve(sourceFile);
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
     };
 
-    reader.readAsDataURL(sourceFile);
+    img.src = objectUrl;
   });
 }

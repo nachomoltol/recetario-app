@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Camera, Image as ImageIcon, Star, Clock, Plus, Loader2, CheckCircle2, AlertCircle, X, Trash2 } from 'lucide-react';
 import { addCookEntryAction, deleteDiaryEntryAction } from '@/app/actions/diary';
 import { DiarioCocinados } from '@/types/recipe';
-import { ensureStandardImage } from '@/lib/utils/imageCompress';
 
 interface CookingDiarySectionProps {
   recetaId: string;
@@ -48,43 +47,16 @@ export function CookingDiarySection({
     const rawFile = e.target.files?.[0];
     if (!rawFile) {
       setSelectedImageFile(null);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
       return;
     }
 
     e.target.value = '';
-
-    setTimeout(() => {
-      (async () => {
-        try {
-          const standard = await ensureStandardImage(rawFile);
-          const reader = new FileReader();
-          reader.onload = () => {
-            const dataUrl = reader.result as string;
-            startTransition(() => {
-              setSelectedImageFile(standard);
-              setPreviewUrl(dataUrl);
-            });
-          };
-          reader.onerror = (err) => {
-            console.error('Error al precargar imagen en memoria base64 en diario:', err);
-            const fallbackUrl = URL.createObjectURL(standard);
-            startTransition(() => {
-              setSelectedImageFile(standard);
-              setPreviewUrl(fallbackUrl);
-            });
-          };
-          reader.readAsDataURL(standard);
-        } catch (err) {
-          console.error('Error riguroso en procesamiento de imagen para el diario:', err);
-          const fallbackUrl = URL.createObjectURL(rawFile);
-          startTransition(() => {
-            setSelectedImageFile(rawFile);
-            setPreviewUrl(fallbackUrl);
-          });
-        }
-      })();
-    }, 0);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    const url = URL.createObjectURL(rawFile);
+    setSelectedImageFile(rawFile);
+    setPreviewUrl(url);
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -257,7 +229,7 @@ export function CookingDiarySection({
                   ref={fileInputRef}
                   type="file"
                   name="foto"
-                  accept="image/*,.heic,.heif"
+                  accept="image/jpeg, image/png, image/webp"
                   capture="environment"
                   onChange={handleImageChange}
                   className="hidden"
