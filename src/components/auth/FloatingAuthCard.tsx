@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useActionState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChefHat, ArrowRight, Lock, Mail, User, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { loginAction, registerAction, AuthActionResult } from '@/app/actions/auth';
@@ -445,10 +446,18 @@ export function FloatingAuthCard({
     )}
   </div>
 
-      {/* Pie de página discreto */}
-      <div className="text-center">
+      {/* Pie de página discreto con enlace a Política de Privacidad */}
+      <div className="text-center space-y-2 pt-1">
+        <div>
+          <Link
+            href="/privacidad"
+            className="text-xs text-stone-500 hover:text-[#a86224] underline underline-offset-4 decoration-stone-300 hover:decoration-[#a86224] transition-colors"
+          >
+            Política de Privacidad
+          </Link>
+        </div>
         <p className="text-[11px] text-stone-400">
-          Recetario App &copy; 2026 · Minimalismo Luminoso Lino/Terracotta
+          Miga &copy; 2026 · Recetas y Estandarización Culinaria
         </p>
       </div>
     </div>

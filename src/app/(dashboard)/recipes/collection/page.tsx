@@ -116,8 +116,16 @@ export default async function RecipeCollectionPage() {
           />
         )}
 
-        <footer className="pt-8 pb-4 border-t border-[#e7dfd5] text-center text-xs text-stone-400 font-mono">
-          Recetario Colección · v.2.0
+        <footer className="pt-8 pb-4 border-t border-[#e7dfd5] text-center text-xs text-stone-400 space-y-1">
+          <div>
+            <Link
+              href="/privacidad"
+              className="hover:text-[#a86224] underline underline-offset-4 decoration-stone-300 hover:decoration-[#a86224] transition-colors"
+            >
+              Política de Privacidad
+            </Link>
+          </div>
+          <p className="font-mono text-[11px]">Miga Recetario Colección &copy; 2026</p>
         </footer>
       </main>
     </div>

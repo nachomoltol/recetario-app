@@ -40,3 +40,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# mobile & secrets
+*.keystore
+*.jks
+*.aab
+*.apk
+local.properties
+android/local.properties
+

@@ -65,6 +65,19 @@ export default async function SettingsPage() {
 
         {/* Acceso a Datos Personales y Recetario */}
         <SettingsProfileBanner />
+
+        {/* Pie de página con enlace legal */}
+        <footer className="pt-6 pb-4 text-center text-xs text-stone-400">
+          <Link
+            href="/privacidad"
+            className="hover:text-[#a86224] underline underline-offset-4 decoration-stone-300 hover:decoration-[#a86224] transition-colors"
+          >
+            Política de Privacidad
+          </Link>
+          <p className="mt-1 text-[11px] text-stone-400">
+            Miga &copy; 2026 · Todos los derechos reservados
+          </p>
+        </footer>
       </main>
     </div>
   );

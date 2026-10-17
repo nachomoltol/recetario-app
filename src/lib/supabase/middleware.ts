@@ -53,7 +53,8 @@ export async function updateSession(request: NextRequest) {
     path.startsWith('/manifest.json') ||
     path.startsWith('/site.webmanifest') ||
     path.startsWith('/sw.js') ||
-    path.startsWith('/icons');
+    path.startsWith('/icons') ||
+    path.startsWith('/privacidad');
 
   // Detectar si la petición contiene parámetros de recuperación de cuenta o autenticación
   const isRecoveryIntent =

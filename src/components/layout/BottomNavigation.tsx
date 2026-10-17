@@ -13,7 +13,8 @@ export function BottomNavigation() {
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/register') ||
-    pathname.startsWith('/auth')
+    pathname.startsWith('/auth') ||
+    pathname.startsWith('/privacidad')
   ) {
     return null;
   }
