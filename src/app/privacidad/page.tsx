@@ -91,10 +91,10 @@ export default function PrivacidadPage() {
           <p className="text-sm text-stone-600 leading-relaxed font-light">
             El responsable del tratamiento de los datos recabados mediante la aplicación Miga es el equipo de desarrollo de Miga App. Para cualquier duda, ejercicio de derechos o aclaración sobre esta política, puedes contactar directamente a través del correo electrónico:{' '}
             <a
-              href="mailto:soporte@migaapp.app"
+              href="mailto:info@migaapp.com"
               className="font-medium text-[#a86224] underline hover:text-[#8e511c]"
             >
-              soporte@migaapp.app
+              info@migaapp.com
             </a>.
           </p>
         </section>
@@ -241,8 +241,8 @@ export default function PrivacidadPage() {
             </ol>
             <p className="text-xs text-stone-500 pt-1">
               Alternativamente, puedes solicitar la eliminación manual de tus datos enviando un correo a{' '}
-              <a href="mailto:soporte@migaapp.app" className="underline font-medium text-stone-700">
-                soporte@migaapp.app
+              <a href="mailto:info@migaapp.com" className="underline font-medium text-stone-700">
+                info@migaapp.com
               </a>.
             </p>
           </div>
@@ -281,8 +281,8 @@ export default function PrivacidadPage() {
           </p>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-xs sm:text-sm font-semibold text-[#a86224]">
             <Mail className="w-4 h-4" />
-            <a href="mailto:soporte@migaapp.app" className="hover:underline">
-              soporte@migaapp.app
+            <a href="mailto:info@migaapp.com" className="hover:underline">
+              info@migaapp.com
             </a>
           </div>
         </section>
