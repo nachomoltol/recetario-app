@@ -19,24 +19,63 @@ import { FuenteTipoReceta } from '@/types/database';
 
 /**
  * Sanitiza y formatea URLs antes de pasarlas a las herramientas de extracción.
- * Si detecta una URL de YouTube Shorts (ej. youtube.com/shorts/VIDEO_ID),
- * extrae el ID del vídeo y reescribe la URL internamente al formato estándar de YouTube:
- * https://www.youtube.com/watch?v=VIDEO_ID
+ * Secciona y elimina todos los parámetros de consulta (query parameters como ?si=)
+ * usando el objeto nativo URL y .split('?')[0] antes de extraer el ID.
+ * Convierte formatos Shorts y youtu.be a la URL canónica https://www.youtube.com/watch?v=VIDEO_ID.
  */
 export function sanitizeRecipeUrl(url?: string): string | undefined {
   if (!url || typeof url !== 'string') return undefined;
   let cleanUrl = url.trim();
   if (!cleanUrl) return undefined;
 
-  // Verificar si la URL entrante contiene "youtube.com/shorts/" o variante en shorts
-  const lower = cleanUrl.toLowerCase();
-  if (lower.includes('youtube.com/shorts/') || lower.includes('youtu.be/shorts/')) {
-    const shortsRegex = /(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/shorts\/([a-zA-Z0-9_-]+)/i;
-    const match = cleanUrl.match(shortsRegex);
+  try {
+    const parsed = new URL(cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`);
+    const host = parsed.hostname.toLowerCase();
 
-    if (match && match[1]) {
-      const videoId = match[1];
-      cleanUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    // YouTube Shorts: ej. /shorts/VIDEO_ID o /shorts/VIDEO_ID?si=...
+    if (parsed.pathname.includes('/shorts/')) {
+      const parts = parsed.pathname.split('/shorts/')[1]?.split('/');
+      const videoId = parts ? parts[0] : '';
+      if (videoId) {
+        return `https://www.youtube.com/watch?v=${videoId}`;
+      }
+    }
+
+    // youtu.be/VIDEO_ID?si=...
+    if (host === 'youtu.be' || host.endsWith('.youtu.be')) {
+      const videoId = parsed.pathname.replace(/^\//, '').split('/')[0];
+      if (videoId) {
+        return `https://www.youtube.com/watch?v=${videoId}`;
+      }
+    }
+
+    // youtube.com/watch?v=VIDEO_ID&si=...
+    if (host.includes('youtube.com') && parsed.pathname === '/watch') {
+      const videoId = parsed.searchParams.get('v');
+      if (videoId) {
+        return `https://www.youtube.com/watch?v=${videoId}`;
+      }
+    }
+  } catch {}
+
+  // Fallback eliminando query params y fragments con .split('?')[0] y .split('#')[0]
+  const baseWithoutQuery = cleanUrl.split('?')[0].split('#')[0];
+  const shortsRegex = /(?:youtube\.com|youtu\.be)\/shorts\/([a-zA-Z0-9_-]+)/i;
+  const matchShorts = baseWithoutQuery.match(shortsRegex);
+  if (matchShorts && matchShorts[1]) {
+    return `https://www.youtube.com/watch?v=${matchShorts[1]}`;
+  }
+
+  const youtuBeRegex = /youtu\.be\/([a-zA-Z0-9_-]+)/i;
+  const matchYouTuBe = baseWithoutQuery.match(youtuBeRegex);
+  if (matchYouTuBe && matchYouTuBe[1]) {
+    return `https://www.youtube.com/watch?v=${matchYouTuBe[1]}`;
+  }
+
+  if (baseWithoutQuery.includes('youtube.com/watch')) {
+    const vMatch = cleanUrl.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+    if (vMatch && vMatch[1]) {
+      return `https://www.youtube.com/watch?v=${vMatch[1]}`;
     }
   }
 
@@ -516,14 +555,85 @@ function extractDeepDescriptionFromYouTubeJson(initialData: any): string {
 }
 
 /**
+ * Parsea bloques de datos de YouTube presentes en el HTML (ytInitialData o ytInitialPlayerResponse),
+ * soportando tanto la sintaxis de escritorio (objeto literal) como la de dispositivos móviles MWEB
+ * (string literal con escapes hexadecimales \x..).
+ */
+function parseYouTubeJsonFromHtml(html: string, varName: string): any {
+  if (!html || !varName) return null;
+
+  // 1. Literal de objeto (Desktop): varName = {...};
+  const objRegex = new RegExp(
+    `(?:var\\s+${varName}|window\\["${varName}"\\]|${varName})\\s*=\\s*({[\\s\\S]+?});(?:\\s*var|\\s*<\\/script>|\\s*$)`
+  );
+  const objMatch = html.match(objRegex);
+  if (objMatch && objMatch[1]) {
+    try {
+      return JSON.parse(objMatch[1]);
+    } catch {}
+  }
+
+  // 2. Literal de string en comillas simples (MWEB Android/iOS con escapes hex \x..):
+  const singleStrRegex = new RegExp(
+    `(?:var\\s+${varName}|window\\["${varName}"\\]|${varName})\\s*=\\s*'([\\s\\S]+?)';(?:\\s*var|\\s*<\\/script>|\\s*$)`
+  );
+  const singleStrMatch = html.match(singleStrRegex);
+  if (singleStrMatch && singleStrMatch[1]) {
+    try {
+      const unescaped = singleStrMatch[1]
+        .replace(/\\'/g, "'")
+        .replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) =>
+          String.fromCharCode(parseInt(hex, 16))
+        );
+      return JSON.parse(unescaped);
+    } catch {}
+  }
+
+  // 3. Literal de string en comillas dobles
+  const doubleStrRegex = new RegExp(
+    `(?:var\\s+${varName}|window\\["${varName}"\\]|${varName})\\s*=\\s*"([\\s\\S]+?)";(?:\\s*var|\\s*<\\/script>|\\s*$)`
+  );
+  const doubleStrMatch = html.match(doubleStrRegex);
+  if (doubleStrMatch && doubleStrMatch[1]) {
+    try {
+      const unescaped = doubleStrMatch[1]
+        .replace(/\\"/g, '"')
+        .replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) =>
+          String.fromCharCode(parseInt(hex, 16))
+        );
+      return JSON.parse(unescaped);
+    } catch {}
+  }
+
+  return null;
+}
+
+/**
  * Extrae de forma exhaustiva tanto la transcripción de audio (subtítulos generados o manuales)
  * como la meta-descripción profunda (vía ytInitialData) y título de un vídeo o Short de YouTube.
  */
 export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDetailsResult> {
   const cleanUrl = sanitizeRecipeUrl(rawUrl) || rawUrl;
-  const idRegex = /(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11}|[a-zA-Z0-9_-]+)/i;
-  const match = cleanUrl.match(idRegex);
-  const videoId = match ? match[1] : '';
+
+  // Extraer ID de forma precisa, limpiando query parameters (?si=, etc.)
+  let videoId = '';
+  try {
+    const parsed = new URL(cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`);
+    if (parsed.pathname.includes('/shorts/')) {
+      videoId = parsed.pathname.split('/shorts/')[1]?.split('/')[0] || '';
+    } else if (parsed.searchParams.has('v')) {
+      videoId = parsed.searchParams.get('v') || '';
+    } else if (parsed.hostname.includes('youtu.be')) {
+      videoId = parsed.pathname.replace(/^\//, '').split('/')[0] || '';
+    }
+  } catch {}
+
+  if (!videoId) {
+    const urlWithoutQuery = cleanUrl.split('?')[0].split('#')[0];
+    const idRegex = /(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11}|[a-zA-Z0-9_-]+)/i;
+    const match = urlWithoutQuery.match(idRegex) || cleanUrl.match(idRegex);
+    videoId = match ? match[1] : '';
+  }
 
   if (!videoId) {
     throw new NonCulinaryContentError(
@@ -533,7 +643,7 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
 
   const standardUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-  // 1. Extraer Transcripción (subtítulos generados o manuales)
+  // 1. Extraer Transcripción (subtítulos) - con captura tolerante a fallos si hay bloqueos de red
   let transcript = '';
   try {
     const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
@@ -545,7 +655,7 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
     }
   } catch (err) {
     console.warn(
-      `[YouTube] No se pudo obtener transcripción para ${videoId}:`,
+      `[YouTube] Subtítulos no disponibles o bloqueados por YouTube para ${videoId} (se usará Meta-Descripción Enriquecida):`,
       err instanceof Error ? err.message : err
     );
   }
@@ -558,7 +668,7 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
   // 2.1. Intentar oEmbed oficial (rápido para título/autor)
   try {
     const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(standardUrl)}&format=json`;
-    const oembedRes = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
+    const oembedRes = await fetch(oembedUrl, { signal: AbortSignal.timeout(4000) });
     if (oembedRes.ok) {
       const oembedData = await oembedRes.json();
       if (oembedData?.title) title = String(oembedData.title).trim();
@@ -568,56 +678,80 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
     console.warn('[YouTube] oEmbed opcional falló:', err instanceof Error ? err.message : err);
   }
 
-  // 2.2. Extracción profunda de descripción vía raw HTML y parsing de ytInitialData / ytInitialPlayerResponse
+  // 2.2. Extracción profunda de descripción vía raw HTML con evasión de bloqueos (Mobile User-Agents)
+  const mobileHeaders: Record<string, string> = {
+    'User-Agent':
+      'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.200 Mobile Safari/537.36',
+    'Accept':
+      'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'es-ES,es;q=0.9',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1',
+    Cookie: 'SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg;',
+  };
+
   try {
-    const pageRes = await fetch(standardUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
-        Cookie: 'SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg;',
-      },
+    let html = '';
+    let pageRes = await fetch(standardUrl, {
+      headers: mobileHeaders,
       signal: AbortSignal.timeout(9000),
     });
 
     if (pageRes.ok) {
-      const html = await pageRes.text();
+      html = await pageRes.text();
+    } else {
+      // Fallback con User-Agent de iOS Safari
+      const iosHeaders: Record<string, string> = {
+        'User-Agent':
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+        'Accept':
+          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'es-ES,es;q=0.9',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-User': '?1',
+        Cookie: 'SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg;',
+      };
+      const retryRes = await fetch(standardUrl, {
+        headers: iosHeaders,
+        signal: AbortSignal.timeout(9000),
+      });
+      if (retryRes.ok) {
+        html = await retryRes.text();
+      }
+    }
 
-      // 2.2.1. Localizar y parsear ytInitialData
-      const dataMatch = html.match(
-        /(?:var\s+ytInitialData|window\["ytInitialData"\]|ytInitialData)\s*=\s*({[\s\S]+?});(?:\s*var|\s*<\/script>|\s*$)/
-      );
-      if (dataMatch && dataMatch[1]) {
-        try {
-          const parsedData = JSON.parse(dataMatch[1]);
-          const deepDesc = extractDeepDescriptionFromYouTubeJson(parsedData);
-          if (deepDesc) {
-            metaDescription = deepDesc;
-          }
-        } catch (err) {
-          console.warn('[YouTube] Error parseando ytInitialData:', err instanceof Error ? err.message : err);
+    if (html) {
+      // 2.2.1. Localizar y parsear ytInitialData (desktop u objeto mobile MWEB)
+      const parsedData = parseYouTubeJsonFromHtml(html, 'ytInitialData');
+      if (parsedData) {
+        const deepDesc = extractDeepDescriptionFromYouTubeJson(parsedData);
+        if (deepDesc) {
+          metaDescription = deepDesc;
         }
       }
 
       // 2.2.2. Fallback a ytInitialPlayerResponse si ytInitialData no arrojó la descripción
       if (!metaDescription) {
-        const playerMatch = html.match(
-          /(?:var\s+ytInitialPlayerResponse|window\["ytInitialPlayerResponse"\]|ytInitialPlayerResponse)\s*=\s*({[\s\S]+?});(?:\s*var|\s*<\/script>|\s*$)/
-        );
-        if (playerMatch && playerMatch[1]) {
-          try {
-            const parsedPlayer = JSON.parse(playerMatch[1]);
-            const deepDesc = extractDeepDescriptionFromYouTubeJson(parsedPlayer);
-            if (deepDesc) {
-              metaDescription = deepDesc;
-            }
-          } catch (err) {
-            console.warn('[YouTube] Error parseando ytInitialPlayerResponse:', err instanceof Error ? err.message : err);
+        const parsedPlayer = parseYouTubeJsonFromHtml(html, 'ytInitialPlayerResponse');
+        if (parsedPlayer) {
+          const deepDesc = extractDeepDescriptionFromYouTubeJson(parsedPlayer);
+          if (deepDesc) {
+            metaDescription = deepDesc;
           }
         }
       }
 
-      // Título de respaldo si oEmbed no lo trajo
+      // Limpiar posibles saltos de línea escapados en strings JSON móviles
+      if (metaDescription.includes('\\n')) {
+        metaDescription = metaDescription.replace(/\\n/g, '\n').replace(/\\r/g, '');
+      }
+
+      // Título y autor de respaldo si oEmbed no lo trajo
       if (!title) {
         const $ = cheerio.load(html);
         title =
@@ -638,8 +772,9 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
     metaDescription = '';
   }
 
-  // 4. Verificación de Fallback:
-  // Si la herramienta no logra obtener ni subtítulos ni descripción (muy común en Shorts musicales):
+  // 4. Verificación de Fallback y Priorización:
+  // Si youtube-transcript falló pero tenemos la Meta-Descripción Enriquecida del árbol JSON,
+  // se aprueba y se envía en solitario a Gemini (contiene los ingredientes y medidas).
   const hasTranscript = transcript.trim().length > 0;
   const hasDescription = metaDescription.trim().length > 0;
 
@@ -649,7 +784,7 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
     );
   }
 
-  // 3. Concatenación de ambos textos antes de enviárselos a Gemini
+  // 3. Ensamblado del contenido para Gemini:
   let concatenatedText = '';
   if (title) {
     concatenatedText += `TÍTULO DEL VÍDEO DE YOUTUBE:\n${title}\n\n`;
@@ -658,7 +793,7 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
     concatenatedText += `CANAL / CREADOR:\n${author}\n\n`;
   }
   if (hasDescription) {
-    concatenatedText += `DESCRIPCIÓN DEL VÍDEO (META-DESCRIPCIÓN ENRIQUECIDA):\n${metaDescription}\n\n`;
+    concatenatedText += `DESCRIPCIÓN DEL VÍDEO (META-DESCRIPCIÓN ENRIQUECIDA - INGREDIENTES Y PASOS DEL CREADOR):\n${metaDescription}\n\n`;
   }
   if (hasTranscript) {
     concatenatedText += `TRANSCRIPCIÓN DEL AUDIO (SUBTÍTULOS / PASOS HABLADOS):\n${transcript}\n\n`;
