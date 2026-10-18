@@ -456,6 +456,8 @@ export interface YouTubeDetailsResult {
   metaDescription: string;
   transcript: string;
   concatenatedText: string;
+  isMultimodalFallback?: boolean;
+  videoUri?: string;
 }
 
 /**
@@ -937,19 +939,102 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
     metaDescription = '';
   }
 
-  // 4. Verificación de Fallback y Priorización:
-  // Si los subtítulos no están disponibles pero tenemos la Meta-Descripción Enriquecida del árbol JSON,
-  // se aprueba y se envía a Gemini (contiene los ingredientes y medidas).
+  // 4. Verificación de Vía Principal vs Fallback Multimodal:
   const hasTranscript = transcript.trim().length > 0;
-  const hasDescription = metaDescription.trim().length > 0;
+  const cleanDesc = metaDescription.trim();
+  // Se considera descripción sustancial si tiene contenido relevante y no es solo autopromoción
+  const hasSubstantiveDescription =
+    cleanDesc.length > 30 &&
+    !cleanDesc.toLowerCase().startsWith('suscríbete') &&
+    !cleanDesc.toLowerCase().startsWith('subscribe');
 
-  if (!hasTranscript && !hasDescription) {
-    throw new NonCulinaryContentError(
-      'Este vídeo no contiene transcripción ni detalles de receta legibles. Prueba con otro enlace.'
-    );
+  // Si tenemos subtítulos o una descripción con contenido culinario real, seguimos por la VÍA PRINCIPAL (texto):
+  if (hasTranscript || hasSubstantiveDescription) {
+    let concatenatedText = '';
+    if (title) {
+      concatenatedText += `TÍTULO DEL VÍDEO DE YOUTUBE:\n${title}\n\n`;
+    }
+    if (author) {
+      concatenatedText += `CANAL / CREADOR:\n${author}\n\n`;
+    }
+    if (cleanDesc) {
+      concatenatedText += `DESCRIPCIÓN DEL VÍDEO (META-DESCRIPCIÓN ENRIQUECIDA - INGREDIENTES Y PASOS DEL CREADOR):\n${cleanDesc}\n\n`;
+    }
+    if (hasTranscript) {
+      concatenatedText += `TRANSCRIPCIÓN DEL AUDIO (SUBTÍTULOS / PASOS HABLADOS):\n${transcript}\n\n`;
+    }
+
+    return {
+      videoId: cleanVideoId,
+      url: standardUrl,
+      title,
+      author,
+      metaDescription: cleanDesc,
+      transcript,
+      concatenatedText,
+      isMultimodalFallback: false,
+    };
   }
 
-  // 3. Ensamblado del contenido para Gemini:
+  // =========================================================================
+  // PLAN B / FALLBACK EXCLUSIVO PARA YOUTUBE
+  // Para vídeos (especialmente Shorts) sin descripción escrita ni subtítulos en código,
+  // activamos el análisis multimodal directo nativo de Gemini (audio + visión de rótulos).
+  // =========================================================================
+
+  // Paso 2A opcional: Si el entorno dispone de RAPIDAPI_KEY o YOUTUBE_API_KEY,
+  // intentar obtener subtítulos adicionales por proxy residencial antes de la visión directa:
+  const rapidApiKey = process.env.RAPIDAPI_KEY || process.env.YOUTUBE_API_KEY;
+  if (rapidApiKey) {
+    try {
+      const rapidRes = await fetch(
+        `https://youtube-transcriptor.p.rapidapi.com/transcript?video_id=${cleanVideoId}&lang=es`,
+        {
+          headers: {
+            'x-rapidapi-key': rapidApiKey,
+            'x-rapidapi-host': 'youtube-transcriptor.p.rapidapi.com',
+          },
+          signal: AbortSignal.timeout(4000),
+        }
+      );
+      if (rapidRes.ok) {
+        const rapidJson = await rapidRes.json();
+        const rapidLines: string[] = [];
+        if (Array.isArray(rapidJson)) {
+          for (const item of rapidJson) {
+            if (item?.text && typeof item.text === 'string') {
+              rapidLines.push(item.text.trim());
+            }
+          }
+        }
+        if (rapidLines.length > 0) {
+          const rapidTranscript = rapidLines.join(' ');
+          let concatenatedText = '';
+          if (title) concatenatedText += `TÍTULO DEL VÍDEO DE YOUTUBE:\n${title}\n\n`;
+          if (author) concatenatedText += `CANAL / CREADOR:\n${author}\n\n`;
+          concatenatedText += `TRANSCRIPCIÓN DEL AUDIO (VÍA RAPIDAPI):\n${rapidTranscript}\n\n`;
+
+          return {
+            videoId: cleanVideoId,
+            url: standardUrl,
+            title,
+            author,
+            metaDescription: cleanDesc,
+            transcript: rapidTranscript,
+            concatenatedText,
+            isMultimodalFallback: false,
+          };
+        }
+      }
+    } catch (rapidErr) {
+      console.warn('[YouTube] Fallback opcional RapidAPI falló:', rapidErr instanceof Error ? rapidErr.message : rapidErr);
+    }
+  }
+
+  // Paso 2B: Fallback Multimodal Nativo (Audio + Visión sobreimpreso)
+  // Google Gemini API procesa URLs directas de YouTube mediante fileData: { fileUri: standardUrl }
+  // sin descargar el archivo a Vercel ni sufrir bloqueos por IP de datacenter,
+  // analizando tanto el habla del chef como los ingredientes rotulados sobreimpresos en pantalla.
   let concatenatedText = '';
   if (title) {
     concatenatedText += `TÍTULO DEL VÍDEO DE YOUTUBE:\n${title}\n\n`;
@@ -957,21 +1042,21 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
   if (author) {
     concatenatedText += `CANAL / CREADOR:\n${author}\n\n`;
   }
-  if (hasDescription) {
-    concatenatedText += `DESCRIPCIÓN DEL VÍDEO (META-DESCRIPCIÓN ENRIQUECIDA - INGREDIENTES Y PASOS DEL CREADOR):\n${metaDescription}\n\n`;
+  if (cleanDesc) {
+    concatenatedText += `DESCRIPCIÓN DEL VÍDEO:\n${cleanDesc}\n\n`;
   }
-  if (hasTranscript) {
-    concatenatedText += `TRANSCRIPCIÓN DEL AUDIO (SUBTÍTULOS / PASOS HABLADOS):\n${transcript}\n\n`;
-  }
+  concatenatedText += `ANÁLISIS MULTIMODAL DE VÍDEO YOUTUBE DIRECTO:\nEste vídeo o Short carece de descripción escrita y subtítulos en código. Analiza exhaustivamente el archivo audiovisual (tanto el audio de voz hablado con las cantidades como los textos o ingredientes sobreimpresos en pantalla durante la preparación) para extraer la receta completa.\n\n`;
 
   return {
-    videoId,
+    videoId: cleanVideoId,
     url: standardUrl,
     title,
     author,
-    metaDescription,
-    transcript,
+    metaDescription: cleanDesc,
+    transcript: '',
     concatenatedText,
+    isMultimodalFallback: true,
+    videoUri: standardUrl,
   };
 }
 
@@ -1363,9 +1448,17 @@ export async function extractRecipeWithGemini({
       const tipo = detectFuenteTipo(url);
 
       if (tipo === 'youtube') {
-        // En YouTube (especialmente Shorts): Extraer siempre Transcript Y Meta-descripción y concatenar ambos
+        // En YouTube: Extraer Vía Principal (descripción profunda + CC). Si carece de descripción/CC, activar Plan B multimodal
         const ytData = await extractYouTubeDetails(url);
         contextPrompt += ytData.concatenatedText;
+
+        if (ytData.isMultimodalFallback && ytData.videoUri) {
+          uploadedFilePart = {
+            fileData: {
+              fileUri: ytData.videoUri,
+            },
+          };
+        }
       } else {
         combo = await downloadMediaCombo(url);
 
