@@ -25,8 +25,11 @@ import { FuenteTipoReceta } from '@/types/database';
  */
 export function sanitizeRecipeUrl(url?: string): string | undefined {
   if (!url || typeof url !== 'string') return undefined;
-  const raw = url.trim();
+  let raw = url.trim();
   if (!raw) return undefined;
+
+  // Limpiar caracteres envolventes comunes como <url>, (url), "url", 'url'
+  raw = raw.replace(/^[<("'[]+|[>)"'\]]+$/g, '').trim();
 
   try {
     const urlEntrante = raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
@@ -44,13 +47,18 @@ export function sanitizeRecipeUrl(url?: string): string | undefined {
     } else if (hostname.includes('youtube.com') && parsedUrl.pathname.includes('/watch')) {
       // Si parsedUrl.hostname incluye youtube.com y contiene /watch, el Video ID es parsedUrl.searchParams.get('v')
       videoId = parsedUrl.searchParams.get('v');
+    } else if (hostname.includes('youtube.com') && (parsedUrl.pathname.includes('/embed/') || parsedUrl.pathname.includes('/live/'))) {
+      videoId = parsedUrl.pathname.split('/')[2] || null;
     }
 
     // Valida que el Video ID extraído exista y no esté vacío
     if (videoId && videoId.trim()) {
-      const cleanVideoId = videoId.trim();
-      // Construye la URL canónica EXACTAMENTE como: https://www.youtube.com/watch?v=${videoId}
-      return `https://www.youtube.com/watch?v=${cleanVideoId}`;
+      const idMatch = videoId.match(/[a-zA-Z0-9_-]{11}/);
+      const cleanVideoId = idMatch ? idMatch[0] : videoId.trim();
+      if (cleanVideoId) {
+        // Construye la URL canónica EXACTAMENTE como: https://www.youtube.com/watch?v=${videoId}
+        return `https://www.youtube.com/watch?v=${cleanVideoId}`;
+      }
     }
   } catch {}
 
@@ -590,7 +598,7 @@ function parseYouTubeJsonFromHtml(html: string, varName: string): any {
 export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDetailsResult> {
   const cleanUrl = sanitizeRecipeUrl(rawUrl) || rawUrl;
 
-  // Extraer el Video ID con la misma lógica estricta
+  // Extraer el Video ID con lógica estricta y aislamiento de 11 caracteres
   let videoId = '';
   try {
     const urlEntrante = cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://') ? cleanUrl : `https://${cleanUrl}`;
@@ -604,13 +612,20 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
       videoId = parsedUrl.pathname.split('/')[2] || '';
     } else if (hostname.includes('youtube.com') && parsedUrl.pathname.includes('/watch')) {
       videoId = parsedUrl.searchParams.get('v') || '';
+    } else if (hostname.includes('youtube.com') && (parsedUrl.pathname.includes('/embed/') || parsedUrl.pathname.includes('/live/'))) {
+      videoId = parsedUrl.pathname.split('/')[2] || '';
     }
   } catch {}
+
+  if (videoId) {
+    const idMatch = videoId.match(/[a-zA-Z0-9_-]{11}/);
+    if (idMatch) videoId = idMatch[0];
+  }
 
   // 2. Valida que el Video ID extraído exista y no esté vacío
   if (!videoId || !videoId.trim()) {
     throw new NonCulinaryContentError(
-      'Este vídeo no contiene transcripción ni detalles de receta legibles. Prueba con otro enlace.'
+      'No se pudo reconocer un ID de vídeo de YouTube válido en el enlace proporcionado.'
     );
   }
 
@@ -618,7 +633,7 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
   // 3. Construye la URL canónica EXACTAMENTE como: https://www.youtube.com/watch?v=${videoId}
   const standardUrl = `https://www.youtube.com/watch?v=${cleanVideoId}`;
 
-  // 4. Pasa directamente el string del videoId (no la URL completa) a la librería youtube-transcript
+  // 1. Pasa directamente el string del videoId (no la URL completa) a la librería youtube-transcript
   let transcript = '';
   try {
     const transcriptItems = await YoutubeTranscript.fetchTranscript(cleanVideoId);
@@ -635,10 +650,11 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
     );
   }
 
-  // 2. Extraer Título y Meta-Descripción Enriquecida
+  // 2. Extraer Título, Autor y Meta-Descripción Enriquecida
   let title = '';
   let author = '';
   let metaDescription = '';
+  let playabilityReason = '';
 
   // 2.1. Intentar oEmbed oficial (rápido para título/autor)
   try {
@@ -648,12 +664,29 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
       const oembedData = await oembedRes.json();
       if (oembedData?.title) title = String(oembedData.title).trim();
       if (oembedData?.author_name) author = String(oembedData.author_name).trim();
+    } else if (oembedRes.status === 404) {
+      console.warn(`[YouTube] oEmbed 404 para ${cleanVideoId}: el vídeo no existe, es privado o está eliminado.`);
     }
   } catch (err) {
     console.warn('[YouTube] oEmbed opcional falló:', err instanceof Error ? err.message : err);
   }
 
-  // 2.2. Extracción profunda de descripción vía raw HTML con evasión de bloqueos (Mobile User-Agents)
+  // 2.2. Extracción profunda de descripción vía raw HTML
+  // Priorizar cabeceras completas de Escritorio (contiene tanto ytInitialData con engagementPanels como ytInitialPlayerResponse)
+  const desktopHeaders: Record<string, string> = {
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Accept':
+      'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1',
+    Cookie: 'SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg;',
+  };
+
   const mobileHeaders: Record<string, string> = {
     'User-Agent':
       'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.200 Mobile Safari/537.36',
@@ -671,28 +704,16 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
   try {
     let html = '';
     let pageRes = await fetch(standardUrl, {
-      headers: mobileHeaders,
+      headers: desktopHeaders,
       signal: AbortSignal.timeout(9000),
     });
 
     if (pageRes.ok) {
       html = await pageRes.text();
     } else {
-      // Fallback con User-Agent de iOS Safari
-      const iosHeaders: Record<string, string> = {
-        'User-Agent':
-          'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-        'Accept':
-          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'es-ES,es;q=0.9',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-User': '?1',
-        Cookie: 'SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg;',
-      };
+      // Fallback a Mobile Headers
       const retryRes = await fetch(standardUrl, {
-        headers: iosHeaders,
+        headers: mobileHeaders,
         signal: AbortSignal.timeout(9000),
       });
       if (retryRes.ok) {
@@ -701,7 +722,7 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
     }
 
     if (html) {
-      // 2.2.1. Localizar y parsear ytInitialData (desktop u objeto mobile MWEB)
+      // 2.2.1. Localizar y parsear ytInitialData (desktop con engagementPanels)
       const parsedData = parseYouTubeJsonFromHtml(html, 'ytInitialData');
       if (parsedData) {
         const deepDesc = extractDeepDescriptionFromYouTubeJson(parsedData);
@@ -710,23 +731,40 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
         }
       }
 
-      // 2.2.2. Fallback a ytInitialPlayerResponse si ytInitialData no arrojó la descripción
-      if (!metaDescription) {
-        const parsedPlayer = parseYouTubeJsonFromHtml(html, 'ytInitialPlayerResponse');
-        if (parsedPlayer) {
+      // 2.2.2. Localizar y parsear ytInitialPlayerResponse
+      const parsedPlayer = parseYouTubeJsonFromHtml(html, 'ytInitialPlayerResponse');
+      if (parsedPlayer) {
+        // Comprobar estado real de reproducción devuelto por YouTube
+        const playability = parsedPlayer.playabilityStatus;
+        if (playability && (playability.status === 'ERROR' || playability.status === 'UNPLAYABLE')) {
+          playabilityReason =
+            playability.reason ||
+            playability.errorScreen?.playerInterstitialRenderer?.content?.interstitialViewModel?.title?.content ||
+            'Este vídeo no está disponible en YouTube';
+          console.warn(`[YouTube] playabilityStatus ERROR para ${cleanVideoId}:`, playabilityReason);
+        }
+
+        if (!metaDescription) {
           const deepDesc = extractDeepDescriptionFromYouTubeJson(parsedPlayer);
           if (deepDesc) {
             metaDescription = deepDesc;
           }
         }
+
+        if (!title && parsedPlayer.videoDetails?.title) {
+          title = String(parsedPlayer.videoDetails.title).trim();
+        }
+        if (!author && parsedPlayer.videoDetails?.author) {
+          author = String(parsedPlayer.videoDetails.author).trim();
+        }
       }
 
-      // Limpiar posibles saltos de línea escapados en strings JSON móviles
+      // Limpiar posibles saltos de línea escapados en strings JSON
       if (metaDescription.includes('\\n')) {
         metaDescription = metaDescription.replace(/\\n/g, '\n').replace(/\\r/g, '');
       }
 
-      // Título y autor de respaldo si oEmbed no lo trajo
+      // Título y autor de respaldo si oEmbed ni playerResponse lo trajeron
       if (!title) {
         const $ = cheerio.load(html);
         title =
@@ -737,6 +775,13 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
     }
   } catch (err) {
     console.warn('[YouTube] Fallo en fetch raw HTML de YouTube:', err instanceof Error ? err.message : err);
+  }
+
+  // Si YouTube indica explícitamente que el vídeo no está disponible (privado, borrado, etc.), reportarlo con claridad
+  if (playabilityReason) {
+    throw new NonCulinaryContentError(
+      `El vídeo de YouTube no está disponible (${playabilityReason}). Comprueba que el enlace esté activo y sea público.`
+    );
   }
 
   // Descartar mensajes genéricos de boilerplate de YouTube si se hubieran capturado
