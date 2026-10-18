@@ -7,6 +7,7 @@ import youtubedl from 'yt-dlp-exec';
 import * as cheerio from 'cheerio';
 import { alldl } from 'rahad-all-downloader-v2';
 import { igdl, ttdl } from 'btch-downloader';
+import { YoutubeTranscript } from 'youtube-transcript';
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from './client';
 import {
   recipeExtractionSchema,
@@ -426,52 +427,182 @@ async function extractInstagramCombo(
   return null;
 }
 
+export interface YouTubeDetailsResult {
+  videoId: string;
+  url: string;
+  title: string;
+  author: string;
+  metaDescription: string;
+  transcript: string;
+  concatenatedText: string;
+}
+
+/**
+ * Extrae de forma exhaustiva tanto la transcripción de audio (subtítulos generados o manuales)
+ * como la meta-descripción y título de un vídeo o Short de YouTube.
+ */
+export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDetailsResult> {
+  const cleanUrl = sanitizeRecipeUrl(rawUrl) || rawUrl;
+  const idRegex = /(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11}|[a-zA-Z0-9_-]+)/i;
+  const match = cleanUrl.match(idRegex);
+  const videoId = match ? match[1] : '';
+
+  if (!videoId) {
+    throw new NonCulinaryContentError(
+      'Este vídeo no contiene transcripción ni detalles de receta legibles. Prueba con otro enlace.'
+    );
+  }
+
+  const standardUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+  // 1. Extraer Transcripción (subtítulos generados o manuales)
+  let transcript = '';
+  try {
+    const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
+    if (Array.isArray(transcriptItems) && transcriptItems.length > 0) {
+      transcript = transcriptItems
+        .map((t) => (t && typeof t.text === 'string' ? t.text.trim() : ''))
+        .filter(Boolean)
+        .join(' ');
+    }
+  } catch (err) {
+    console.warn(
+      `[YouTube] No se pudo obtener transcripción para ${videoId}:`,
+      err instanceof Error ? err.message : err
+    );
+  }
+
+  // 2. Extraer Título y Meta-Descripción
+  let title = '';
+  let author = '';
+  let metaDescription = '';
+
+  // 2.1. Intentar oEmbed oficial (rápido y con título/autor garantizado)
+  try {
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(standardUrl)}&format=json`;
+    const oembedRes = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
+    if (oembedRes.ok) {
+      const oembedData = await oembedRes.json();
+      if (oembedData?.title) title = String(oembedData.title).trim();
+      if (oembedData?.author_name) author = String(oembedData.author_name).trim();
+    }
+  } catch (err) {
+    console.warn('[YouTube] oEmbed opcional falló:', err instanceof Error ? err.message : err);
+  }
+
+  // 2.2. Scraping de la página con cookie de consentimiento para shortDescription completa
+  try {
+    const pageRes = await fetch(standardUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+        Cookie: 'SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg;',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (pageRes.ok) {
+      const html = await pageRes.text();
+      const $ = cheerio.load(html);
+
+      if (!title) {
+        title =
+          $('meta[name="title"]').attr('content')?.trim() ||
+          $('meta[property="og:title"]').attr('content')?.trim() ||
+          $('title').text().replace(/- YouTube$/i, '').trim();
+      }
+
+      // Buscar shortDescription completa en el JSON embebido de YouTube
+      const descMatch = html.match(/"shortDescription":"([^"]+)"/);
+      if (descMatch && descMatch[1]) {
+        try {
+          const parsed = JSON.parse(`"${descMatch[1]}"`);
+          if (typeof parsed === 'string' && parsed.trim()) {
+            metaDescription = parsed.trim();
+          }
+        } catch {}
+      }
+
+      // Si no encontramos shortDescription completa, fallback a los meta tags
+      if (!metaDescription) {
+        const ogDesc = $('meta[property="og:description"]').attr('content')?.trim() || '';
+        const nameDesc = $('meta[name="description"]').attr('content')?.trim() || '';
+        const candidate = ogDesc.length >= nameDesc.length ? ogDesc : nameDesc;
+        if (
+          candidate &&
+          !candidate.toLowerCase().includes('disfruta de los vídeos') &&
+          !candidate.toLowerCase().includes('enjoy the videos')
+        ) {
+          metaDescription = candidate;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[YouTube] Fallo al scrapear página de YouTube:', err instanceof Error ? err.message : err);
+  }
+
+  // Si la descripción contiene únicamente el mensaje genérico de YouTube, descartarla
+  if (
+    metaDescription.toLowerCase().includes('disfruta de los vídeos y la música') ||
+    metaDescription.toLowerCase().includes('enjoy the videos and music')
+  ) {
+    metaDescription = '';
+  }
+
+  // 4. Verificación de Fallback:
+  // Si la herramienta no logra obtener ni subtítulos ni descripción (muy común en Shorts musicales):
+  const hasTranscript = transcript.trim().length > 0;
+  const hasDescription = metaDescription.trim().length > 0;
+
+  if (!hasTranscript && !hasDescription) {
+    throw new NonCulinaryContentError(
+      'Este vídeo no contiene transcripción ni detalles de receta legibles. Prueba con otro enlace.'
+    );
+  }
+
+  // 3. Concatenación de ambos textos antes de enviárselos a Gemini
+  let concatenatedText = '';
+  if (title) {
+    concatenatedText += `TÍTULO DEL VÍDEO DE YOUTUBE:\n${title}\n\n`;
+  }
+  if (author) {
+    concatenatedText += `CANAL / CREADOR:\n${author}\n\n`;
+  }
+  if (hasDescription) {
+    concatenatedText += `DESCRIPCIÓN DEL VÍDEO (DETALLES Y MEDIDAS DEL CREADOR):\n${metaDescription}\n\n`;
+  }
+  if (hasTranscript) {
+    concatenatedText += `TRANSCRIPCIÓN DEL AUDIO (SUBTÍTULOS / PASOS HABLADOS):\n${transcript}\n\n`;
+  }
+
+  return {
+    videoId,
+    url: standardUrl,
+    title,
+    author,
+    metaDescription,
+    transcript,
+    concatenatedText,
+  };
+}
+
 /**
  * Extractor especializado para YouTube (Videos y Shorts)
- * Tier 1: yt-dlp-exec
- * Tier 2: rahad-all-downloader-v2
+ * Extrae Transcript + Meta-descripción y concatena ambos.
  */
 async function extractYouTubeCombo(
   url: string,
   filePrefix: string
 ): Promise<MediaComboResult | null> {
-  const ytdlRes = await executeYtDlpCombo(url, filePrefix);
-  if (ytdlRes) return ytdlRes;
+  const ytData = await extractYouTubeDetails(url);
 
-  const tempDir = os.tmpdir();
-  const targetFilePath = path.join(tempDir, `${filePrefix}.mp4`);
-  const createdFiles: string[] = [];
-
-  const cleanUp = async () => {
-    for (const f of createdFiles) {
-      if (fs.existsSync(f)) {
-        try {
-          fs.unlinkSync(f);
-        } catch {}
-      }
-    }
+  return {
+    mimeType: 'text/plain',
+    title: ytData.title,
+    caption: ytData.concatenatedText,
+    cleanUp: async () => {},
   };
-
-  try {
-    const res = await alldl(url);
-    if (res?.data?.videoUrl) {
-      const downloadRes = await streamMediaUrlToFile(res.data.videoUrl, targetFilePath);
-      if (downloadRes.success) {
-        createdFiles.push(targetFilePath);
-        return {
-          mediaPath: targetFilePath,
-          mimeType: downloadRes.mimeType,
-          title: res.data.title,
-          caption: res.data.title,
-          cleanUp,
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('alldl YouTube fallback fallo:', err instanceof Error ? err.message : err);
-  }
-
-  return null;
 }
 
 /**
@@ -841,58 +972,66 @@ export async function extractRecipeWithGemini({
 
     // 1. Procesar URL con Extracción del Combo Multi-Nivel
     if (url) {
-      combo = await downloadMediaCombo(url);
+      const tipo = detectFuenteTipo(url);
 
-      if (combo?.mediaPath && fs.existsSync(combo.mediaPath)) {
-        // Ingesta Multimodal: Carga mediante Gemini File API
-        const uploadedFile = await ai.files.upload({
-          file: combo.mediaPath,
-          config: { mimeType: combo.mimeType },
-        });
+      if (tipo === 'youtube') {
+        // En YouTube (especialmente Shorts): Extraer siempre Transcript Y Meta-descripción y concatenar ambos
+        const ytData = await extractYouTubeDetails(url);
+        contextPrompt += ytData.concatenatedText;
+      } else {
+        combo = await downloadMediaCombo(url);
 
-        if (uploadedFile.name) {
-          geminiUploadedFileName = uploadedFile.name;
+        if (combo?.mediaPath && fs.existsSync(combo.mediaPath)) {
+          // Ingesta Multimodal: Carga mediante Gemini File API
+          const uploadedFile = await ai.files.upload({
+            file: combo.mediaPath,
+            config: { mimeType: combo.mimeType },
+          });
 
-          // Esperar si el archivo multimedia está en estado PROCESSING
-          let fileRecord = await ai.files.get({ name: uploadedFile.name });
-          let attempts = 0;
-          while (fileRecord.state === 'PROCESSING' && attempts < 25) {
-            await new Promise((r) => setTimeout(r, 2000));
-            fileRecord = await ai.files.get({ name: uploadedFile.name });
-            attempts++;
+          if (uploadedFile.name) {
+            geminiUploadedFileName = uploadedFile.name;
+
+            // Esperar si el archivo multimedia está en estado PROCESSING
+            let fileRecord = await ai.files.get({ name: uploadedFile.name });
+            let attempts = 0;
+            while (fileRecord.state === 'PROCESSING' && attempts < 25) {
+              await new Promise((r) => setTimeout(r, 2000));
+              fileRecord = await ai.files.get({ name: uploadedFile.name });
+              attempts++;
+            }
+
+            if (fileRecord.state !== 'FAILED' && fileRecord.uri) {
+              uploadedFilePart = {
+                fileData: {
+                  fileUri: fileRecord.uri,
+                  mimeType: fileRecord.mimeType || combo.mimeType,
+                },
+              };
+            }
           }
+        }
 
-          if (fileRecord.state !== 'FAILED' && fileRecord.uri) {
-            uploadedFilePart = {
-              fileData: {
-                fileUri: fileRecord.uri,
-                mimeType: fileRecord.mimeType || combo.mimeType,
-              },
-            };
+        if (combo?.title) {
+          contextPrompt += `TÍTULO DEL POST / RECETA:\n${combo.title}\n\n`;
+        }
+        if (combo?.caption) {
+          contextPrompt += `DESCRIPCIÓN CRUDA DEL POST (CAPTION DEL CREADOR):\n${combo.caption}\n\n`;
+        }
+
+        // Si no hubo archivo ni caption por descargadores (ej. blogs de texto), acudir al scraper web
+        if (!combo || (!combo.mediaPath && !combo.caption)) {
+          const scraped = await scrapeUrlContent(url);
+          if (scraped.titulo) contextPrompt += `TÍTULO DETECTADO:\n${scraped.titulo}\n\n`;
+          if (scraped.descripcion) contextPrompt += `DESCRIPCIÓN:\n${scraped.descripcion}\n\n`;
+          if (scraped.ingredientesDetectados?.length) {
+            contextPrompt += `INGREDIENTES ENCONTRADOS:\n${scraped.ingredientesDetectados.join('\n')}\n\n`;
           }
-        }
-      }
-
-      if (combo?.title) {
-        contextPrompt += `TÍTULO DEL POST / RECETA:\n${combo.title}\n\n`;
-      }
-      if (combo?.caption) {
-        contextPrompt += `DESCRIPCIÓN CRUDA DEL POST (CAPTION DEL CREADOR):\n${combo.caption}\n\n`;
-      }
-
-      // Si no hubo archivo ni caption por descargadores (ej. blogs de texto), acudir al scraper web
-      if (!combo || (!combo.mediaPath && !combo.caption)) {
-        const scraped = await scrapeUrlContent(url);
-        if (scraped.titulo) contextPrompt += `TÍTULO DETECTADO:\n${scraped.titulo}\n\n`;
-        if (scraped.descripcion) contextPrompt += `DESCRIPCIÓN:\n${scraped.descripcion}\n\n`;
-        if (scraped.ingredientesDetectados?.length) {
-          contextPrompt += `INGREDIENTES ENCONTRADOS:\n${scraped.ingredientesDetectados.join('\n')}\n\n`;
-        }
-        if (scraped.instruccionesDetectadas?.length) {
-          contextPrompt += `PASOS ENCONTRADOS:\n${scraped.instruccionesDetectadas.join('\n')}\n\n`;
-        }
-        if (scraped.cuerpoTexto) {
-          contextPrompt += `TEXTO DE LA RECETA / PÁGINA:\n${scraped.cuerpoTexto}\n\n`;
+          if (scraped.instruccionesDetectadas?.length) {
+            contextPrompt += `PASOS ENCONTRADOS:\n${scraped.instruccionesDetectadas.join('\n')}\n\n`;
+          }
+          if (scraped.cuerpoTexto) {
+            contextPrompt += `TEXTO DE LA RECETA / PÁGINA:\n${scraped.cuerpoTexto}\n\n`;
+          }
         }
       }
     }
@@ -909,13 +1048,18 @@ DIRECTIVA ESTRICTA DE ESCALADO MATEMÁTICO: Si las raciones originales del metra
     // Validación previa para evitar alucinaciones: si no hay archivo multimodal, verificar que haya texto con sustancia culinaria real
     const cleanTextWithoutPlaceholders = contextPrompt
       .replace(
-        /TÍTULO DETECTADO:|DESCRIPCIÓN:|TEXTO DE LA RECETA \/ PÁGINA:|NOTAS O TEXTO ADICIONAL APORTADO POR EL USUARIO:|TÍTULO DEL POST \/ RECETA:|DESCRIPCIÓN CRUDA DEL POST \(CAPTION DEL CREADOR\):|DOCUMENTO DE TEXTO SUBIDO POR EL USUARIO \(.*?\):|ARCHIVO \/ DOCUMENTO ADJUNTO POR EL USUARIO \(.*?\):/g,
+        /TÍTULO DETECTADO:|DESCRIPCIÓN:|TEXTO DE LA RECETA \/ PÁGINA:|NOTAS O TEXTO ADICIONAL APORTADO POR EL USUARIO:|TÍTULO DEL POST \/ RECETA:|DESCRIPCIÓN CRUDA DEL POST \(CAPTION DEL CREADOR\):|DOCUMENTO DE TEXTO SUBIDO POR EL USUARIO \(.*?\):|ARCHIVO \/ DOCUMENTO ADJUNTO POR EL USUARIO \(.*?\):|TÍTULO DEL VÍDEO DE YOUTUBE:|CANAL \/ CREADOR:|DESCRIPCIÓN DEL VÍDEO \(DETALLES Y MEDIDAS DEL CREADOR\):|TRANSCRIPCIÓN DEL AUDIO \(SUBTÍTULOS \/ PASOS HABLADOS\):/g,
         ''
       )
       .replace(/TikTok - Make Your Day|Login • Instagram|Instagram|YouTube|Sign in|Iniciar sesión/gi, '')
       .trim();
 
     if (!uploadedFilePart && cleanTextWithoutPlaceholders.length < 35) {
+      if (url && detectFuenteTipo(url) === 'youtube') {
+        throw new NonCulinaryContentError(
+          'Este vídeo no contiene transcripción ni detalles de receta legibles. Prueba con otro enlace.'
+        );
+      }
       throw new Error(
         'No se pudo extraer información culinaria del enlace ni del archivo proporcionado. Por favor, sube un documento o imagen con la receta o pega directamente el texto de los ingredientes.'
       );
