@@ -19,67 +19,42 @@ import { FuenteTipoReceta } from '@/types/database';
 
 /**
  * Sanitiza y formatea URLs antes de pasarlas a las herramientas de extracción.
- * Secciona y elimina todos los parámetros de consulta (query parameters como ?si=)
- * usando el objeto nativo URL y .split('?')[0] antes de extraer el ID.
- * Convierte formatos Shorts y youtu.be a la URL canónica https://www.youtube.com/watch?v=VIDEO_ID.
+ * Aísla de forma estricta el Video ID de YouTube utilizando el objeto nativo URL
+ * para enlaces youtu.be, youtube.com/shorts/ y youtube.com/watch,
+ * construyendo la URL canónica exactamente como: https://www.youtube.com/watch?v=${videoId}
  */
 export function sanitizeRecipeUrl(url?: string): string | undefined {
   if (!url || typeof url !== 'string') return undefined;
-  let cleanUrl = url.trim();
-  if (!cleanUrl) return undefined;
+  const raw = url.trim();
+  if (!raw) return undefined;
 
   try {
-    const parsed = new URL(cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`);
-    const host = parsed.hostname.toLowerCase();
+    const urlEntrante = raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
+    const parsedUrl = new URL(urlEntrante);
+    const hostname = parsedUrl.hostname.toLowerCase();
+    let videoId: string | null = null;
 
-    // YouTube Shorts: ej. /shorts/VIDEO_ID o /shorts/VIDEO_ID?si=...
-    if (parsed.pathname.includes('/shorts/')) {
-      const parts = parsed.pathname.split('/shorts/')[1]?.split('/');
-      const videoId = parts ? parts[0] : '';
-      if (videoId) {
-        return `https://www.youtube.com/watch?v=${videoId}`;
-      }
+    if (hostname.includes('youtu.be')) {
+      // Si parsedUrl.hostname incluye youtu.be, el Video ID es parsedUrl.pathname.substring(1)
+      const rawId = parsedUrl.pathname.substring(1);
+      videoId = rawId.split('/')[0] || rawId;
+    } else if (hostname.includes('youtube.com') && parsedUrl.pathname.includes('/shorts/')) {
+      // Si parsedUrl.hostname incluye youtube.com y contiene /shorts/, el Video ID es parsedUrl.pathname.split('/')[2]
+      videoId = parsedUrl.pathname.split('/')[2] || null;
+    } else if (hostname.includes('youtube.com') && parsedUrl.pathname.includes('/watch')) {
+      // Si parsedUrl.hostname incluye youtube.com y contiene /watch, el Video ID es parsedUrl.searchParams.get('v')
+      videoId = parsedUrl.searchParams.get('v');
     }
 
-    // youtu.be/VIDEO_ID?si=...
-    if (host === 'youtu.be' || host.endsWith('.youtu.be')) {
-      const videoId = parsed.pathname.replace(/^\//, '').split('/')[0];
-      if (videoId) {
-        return `https://www.youtube.com/watch?v=${videoId}`;
-      }
-    }
-
-    // youtube.com/watch?v=VIDEO_ID&si=...
-    if (host.includes('youtube.com') && parsed.pathname === '/watch') {
-      const videoId = parsed.searchParams.get('v');
-      if (videoId) {
-        return `https://www.youtube.com/watch?v=${videoId}`;
-      }
+    // Valida que el Video ID extraído exista y no esté vacío
+    if (videoId && videoId.trim()) {
+      const cleanVideoId = videoId.trim();
+      // Construye la URL canónica EXACTAMENTE como: https://www.youtube.com/watch?v=${videoId}
+      return `https://www.youtube.com/watch?v=${cleanVideoId}`;
     }
   } catch {}
 
-  // Fallback eliminando query params y fragments con .split('?')[0] y .split('#')[0]
-  const baseWithoutQuery = cleanUrl.split('?')[0].split('#')[0];
-  const shortsRegex = /(?:youtube\.com|youtu\.be)\/shorts\/([a-zA-Z0-9_-]+)/i;
-  const matchShorts = baseWithoutQuery.match(shortsRegex);
-  if (matchShorts && matchShorts[1]) {
-    return `https://www.youtube.com/watch?v=${matchShorts[1]}`;
-  }
-
-  const youtuBeRegex = /youtu\.be\/([a-zA-Z0-9_-]+)/i;
-  const matchYouTuBe = baseWithoutQuery.match(youtuBeRegex);
-  if (matchYouTuBe && matchYouTuBe[1]) {
-    return `https://www.youtube.com/watch?v=${matchYouTuBe[1]}`;
-  }
-
-  if (baseWithoutQuery.includes('youtube.com/watch')) {
-    const vMatch = cleanUrl.match(/[?&]v=([a-zA-Z0-9_-]+)/);
-    if (vMatch && vMatch[1]) {
-      return `https://www.youtube.com/watch?v=${vMatch[1]}`;
-    }
-  }
-
-  return cleanUrl;
+  return raw;
 }
 
 export function detectFuenteTipo(url?: string): FuenteTipoReceta {
@@ -615,38 +590,38 @@ function parseYouTubeJsonFromHtml(html: string, varName: string): any {
 export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDetailsResult> {
   const cleanUrl = sanitizeRecipeUrl(rawUrl) || rawUrl;
 
-  // Extraer ID de forma precisa, limpiando query parameters (?si=, etc.)
+  // Extraer el Video ID con la misma lógica estricta
   let videoId = '';
   try {
-    const parsed = new URL(cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`);
-    if (parsed.pathname.includes('/shorts/')) {
-      videoId = parsed.pathname.split('/shorts/')[1]?.split('/')[0] || '';
-    } else if (parsed.searchParams.has('v')) {
-      videoId = parsed.searchParams.get('v') || '';
-    } else if (parsed.hostname.includes('youtu.be')) {
-      videoId = parsed.pathname.replace(/^\//, '').split('/')[0] || '';
+    const urlEntrante = cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://') ? cleanUrl : `https://${cleanUrl}`;
+    const parsedUrl = new URL(urlEntrante);
+    const hostname = parsedUrl.hostname.toLowerCase();
+
+    if (hostname.includes('youtu.be')) {
+      const rawId = parsedUrl.pathname.substring(1);
+      videoId = rawId.split('/')[0] || rawId;
+    } else if (hostname.includes('youtube.com') && parsedUrl.pathname.includes('/shorts/')) {
+      videoId = parsedUrl.pathname.split('/')[2] || '';
+    } else if (hostname.includes('youtube.com') && parsedUrl.pathname.includes('/watch')) {
+      videoId = parsedUrl.searchParams.get('v') || '';
     }
   } catch {}
 
-  if (!videoId) {
-    const urlWithoutQuery = cleanUrl.split('?')[0].split('#')[0];
-    const idRegex = /(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11}|[a-zA-Z0-9_-]+)/i;
-    const match = urlWithoutQuery.match(idRegex) || cleanUrl.match(idRegex);
-    videoId = match ? match[1] : '';
-  }
-
-  if (!videoId) {
+  // 2. Valida que el Video ID extraído exista y no esté vacío
+  if (!videoId || !videoId.trim()) {
     throw new NonCulinaryContentError(
       'Este vídeo no contiene transcripción ni detalles de receta legibles. Prueba con otro enlace.'
     );
   }
 
-  const standardUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const cleanVideoId = videoId.trim();
+  // 3. Construye la URL canónica EXACTAMENTE como: https://www.youtube.com/watch?v=${videoId}
+  const standardUrl = `https://www.youtube.com/watch?v=${cleanVideoId}`;
 
-  // 1. Extraer Transcripción (subtítulos) - con captura tolerante a fallos si hay bloqueos de red
+  // 4. Pasa directamente el string del videoId (no la URL completa) a la librería youtube-transcript
   let transcript = '';
   try {
-    const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
+    const transcriptItems = await YoutubeTranscript.fetchTranscript(cleanVideoId);
     if (Array.isArray(transcriptItems) && transcriptItems.length > 0) {
       transcript = transcriptItems
         .map((t) => (t && typeof t.text === 'string' ? t.text.trim() : ''))
@@ -655,7 +630,7 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
     }
   } catch (err) {
     console.warn(
-      `[YouTube] Subtítulos no disponibles o bloqueados por YouTube para ${videoId} (se usará Meta-Descripción Enriquecida):`,
+      `[YouTube] Subtítulos no disponibles o bloqueados por YouTube para ${cleanVideoId} (se usará Meta-Descripción Enriquecida):`,
       err instanceof Error ? err.message : err
     );
   }
