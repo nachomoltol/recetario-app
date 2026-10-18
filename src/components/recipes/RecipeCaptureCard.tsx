@@ -131,12 +131,27 @@ export function RecipeCaptureCard() {
   const router = useRouter();
 
   const initialUrl = searchParams.get('url') || searchParams.get('captureUrl') || '';
-  const initialText = searchParams.get('captureText') || '';
+  const initialText = searchParams.get('captureText') || searchParams.get('text') || '';
   const autoStart = searchParams.get('autoStart') === 'true' || searchParams.get('autoStart') === '1';
 
-  const [mode, setMode] = useState<'url' | 'texto'>(initialText && !initialUrl ? 'texto' : 'url');
-  const [url, setUrl] = useState(initialUrl);
-  const [texto, setTexto] = useState(initialText);
+  // Si el texto entrante (sharedText) incluye "youtube.com" o "youtu.be", aislar exclusivamente la URL
+  const initialSharedText = (initialUrl || initialText || '').trim();
+  const isInitialYouTube =
+    initialSharedText.includes('youtube.com') || initialSharedText.includes('youtu.be');
+  const initialYtMatch = isInitialYouTube
+    ? initialSharedText.match(/(https?:\/\/[^\s]+)/)
+    : null;
+  const resolvedDefaultUrl = isInitialYouTube && initialYtMatch ? initialYtMatch[0] : initialUrl;
+  const resolvedDefaultText = isInitialYouTube ? '' : initialText;
+  const resolvedDefaultMode: 'url' | 'texto' = isInitialYouTube
+    ? 'url'
+    : resolvedDefaultText && !resolvedDefaultUrl
+      ? 'texto'
+      : 'url';
+
+  const [mode, setMode] = useState<'url' | 'texto'>(resolvedDefaultMode);
+  const [url, setUrl] = useState(resolvedDefaultUrl);
+  const [texto, setTexto] = useState(resolvedDefaultText);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [createdRecetaId, setCreatedRecetaId] = useState<string | null>(null);
@@ -323,36 +338,72 @@ export function RecipeCaptureCard() {
     return () => clearTimeout(timer);
   }, [createdRecetaId]);
 
-  // Soporte nativo para Autopilot post-AdMob y Web Share Target
+  // Soporte nativo para Autopilot post-AdMob y Web Share Target / Intent del sistema operativo
   useEffect(() => {
-    if (initialUrl) {
-      setUrl(initialUrl);
-      const isHttp = initialUrl.startsWith('http://') || initialUrl.startsWith('https://');
-      setMode(isHttp ? 'url' : 'texto');
-      if (!isHttp) setTexto(initialUrl);
-    } else if (initialText) {
-      setTexto(initialText);
-      setMode('texto');
-    }
+    const rawIncoming = initialUrl || initialText || searchParams.get('text') || '';
+    const sharedText = rawIncoming.trim();
 
-    if (autoStart && initialUrl && !hasAutoStarted.current) {
-      hasAutoStarted.current = true;
+    if (sharedText) {
+      // 2. Validación condicional: Si el texto entrante (sharedText) incluye "youtube.com" o "youtu.be",
+      // aplica una expresión regular para aislar la URL: const urlMatch = sharedText.match(/(https?:\/\/[^\s]+)/);
+      // y asigna exclusivamente urlMatch[0] al input.
+      if (sharedText.includes('youtube.com') || sharedText.includes('youtu.be')) {
+        const urlMatch = sharedText.match(/(https?:\/\/[^\s]+)/);
+        const cleanUrl = urlMatch ? urlMatch[0] : sharedText;
+        setUrl(cleanUrl);
+        setMode('url');
+        setTexto('');
 
-      // IMPORTANTE: Limpiar inmediatamente los parámetros de la URL sin recargar la página
-      try {
-        if (typeof window !== 'undefined') {
-          window.history.replaceState({}, '', '/recipes');
+        if (autoStart && !hasAutoStarted.current) {
+          hasAutoStarted.current = true;
+
+          // Limpiar inmediatamente los parámetros de la URL sin recargar la página
+          try {
+            if (typeof window !== 'undefined') {
+              window.history.replaceState({}, '', '/recipes');
+            }
+            router.replace('/recipes');
+          } catch (err) {
+            console.error('Error al limpiar parámetros de la URL:', err);
+          }
+
+          // Ejecutar automáticamente con la URL limpia de YouTube
+          executeIngest('url', cleanUrl);
         }
-        router.replace('/recipes');
-      } catch (err) {
-        console.error('Error al limpiar parámetros de la URL:', err);
+        return;
       }
 
-      // Ejecutar automáticamente la función de generación
-      const isHttp = initialUrl.startsWith('http://') || initialUrl.startsWith('https://');
-      executeIngest(isHttp ? 'url' : 'texto', initialUrl);
+      // 3. Si el texto entrante NO es de YouTube, pásalo al input exactamente tal cual viene
+      // (preservando el comportamiento original e intacto para TikTok, Instagram y Facebook)
+      if (initialUrl) {
+        setUrl(initialUrl);
+        const isHttp = initialUrl.startsWith('http://') || initialUrl.startsWith('https://');
+        setMode(isHttp ? 'url' : 'texto');
+        if (!isHttp) setTexto(initialUrl);
+      } else if (initialText) {
+        setTexto(initialText);
+        setMode('texto');
+      }
+
+      if (autoStart && initialUrl && !hasAutoStarted.current) {
+        hasAutoStarted.current = true;
+
+        // IMPORTANTE: Limpiar inmediatamente los parámetros de la URL sin recargar la página
+        try {
+          if (typeof window !== 'undefined') {
+            window.history.replaceState({}, '', '/recipes');
+          }
+          router.replace('/recipes');
+        } catch (err) {
+          console.error('Error al limpiar parámetros de la URL:', err);
+        }
+
+        // Ejecutar automáticamente la función de generación
+        const isHttp = initialUrl.startsWith('http://') || initialUrl.startsWith('https://');
+        executeIngest(isHttp ? 'url' : 'texto', initialUrl);
+      }
     }
-  }, [initialUrl, initialText, autoStart, executeIngest, router]);
+  }, [initialUrl, initialText, autoStart, executeIngest, router, searchParams]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -540,7 +591,15 @@ export function RecipeCaptureCard() {
                   type="url"
                   autoFocus={false}
                   value={url}
-                  onChange={(e) => setUrl(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val.includes('youtube.com') || val.includes('youtu.be')) {
+                      const urlMatch = val.match(/(https?:\/\/[^\s]+)/);
+                      setUrl(urlMatch ? urlMatch[0] : val);
+                    } else {
+                      setUrl(val);
+                    }
+                  }}
                   placeholder={t('capture_placeholder_url_detailed')}
                   disabled={isPending}
                   className="w-full min-h-[52px] pl-4 pr-12 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition shadow-2xs disabled:opacity-60"
