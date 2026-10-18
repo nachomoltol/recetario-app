@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { extractRecipeWithGemini, detectFuenteTipo } from '@/lib/gemini/extractor';
+import { extractRecipeWithGemini, detectFuenteTipo, sanitizeRecipeUrl } from '@/lib/gemini/extractor';
 import { getClinicalExclusions } from '@/lib/clinicalDictionary';
 import { ExtractedIngredient } from '@/lib/gemini/schema';
 import { calcularGramos } from '@/lib/nutrition/converter';
@@ -17,7 +17,8 @@ export interface IngestRecipeResult {
 }
 
 export async function ingestRecipeAction(formData: FormData): Promise<IngestRecipeResult> {
-  const url = (formData.get('url') as string)?.trim() || undefined;
+  const rawUrl = (formData.get('url') as string)?.trim() || undefined;
+  const url = sanitizeRecipeUrl(rawUrl);
   const texto = (formData.get('texto') as string)?.trim() || undefined;
   const rawIdioma = (formData.get('idioma') as string)?.trim().toLowerCase();
   const idioma: 'es' | 'en' = rawIdioma === 'en' ? 'en' : 'es';

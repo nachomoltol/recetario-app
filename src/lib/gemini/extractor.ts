@@ -16,9 +16,36 @@ import {
 } from './schema';
 import { FuenteTipoReceta } from '@/types/database';
 
+/**
+ * Sanitiza y formatea URLs antes de pasarlas a las herramientas de extracción.
+ * Si detecta una URL de YouTube Shorts (ej. youtube.com/shorts/VIDEO_ID),
+ * extrae el ID del vídeo y reescribe la URL internamente al formato estándar de YouTube:
+ * https://www.youtube.com/watch?v=VIDEO_ID
+ */
+export function sanitizeRecipeUrl(url?: string): string | undefined {
+  if (!url || typeof url !== 'string') return undefined;
+  let cleanUrl = url.trim();
+  if (!cleanUrl) return undefined;
+
+  // Verificar si la URL entrante contiene "youtube.com/shorts/" o variante en shorts
+  const lower = cleanUrl.toLowerCase();
+  if (lower.includes('youtube.com/shorts/') || lower.includes('youtu.be/shorts/')) {
+    const shortsRegex = /(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/shorts\/([a-zA-Z0-9_-]+)/i;
+    const match = cleanUrl.match(shortsRegex);
+
+    if (match && match[1]) {
+      const videoId = match[1];
+      cleanUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    }
+  }
+
+  return cleanUrl;
+}
+
 export function detectFuenteTipo(url?: string): FuenteTipoReceta {
   if (!url) return 'manual';
-  const lower = url.toLowerCase();
+  const cleanUrl = sanitizeRecipeUrl(url) || url;
+  const lower = cleanUrl.toLowerCase();
   if (lower.includes('tiktok.com')) return 'tiktok';
   if (lower.includes('instagram.com')) return 'instagram';
   if (lower.includes('youtube.com') || lower.includes('youtu.be')) return 'youtube';
@@ -555,7 +582,8 @@ async function executeYtDlpCombo(
  * Orquestador principal multi-nivel para descarga de combo multimedia + descripción.
  * Rutea de forma inteligente según la plataforma para eludir activamente cualquier bloqueo anti-bot.
  */
-export async function downloadMediaCombo(url: string): Promise<MediaComboResult | null> {
+export async function downloadMediaCombo(rawUrl: string): Promise<MediaComboResult | null> {
+  const url = sanitizeRecipeUrl(rawUrl) || rawUrl;
   const filePrefix = `receta_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const tipo = detectFuenteTipo(url);
 
@@ -577,14 +605,35 @@ export async function downloadMediaCombo(url: string): Promise<MediaComboResult 
 /**
  * Scraping de respaldo para blogs o páginas de recetas tradicionales que no disponen de vídeo.
  */
-export async function scrapeUrlContent(url: string): Promise<{
+export async function scrapeUrlContent(rawUrl: string): Promise<{
   titulo?: string;
   descripcion?: string;
   cuerpoTexto?: string;
   ingredientesDetectados?: string[];
   instruccionesDetectadas?: string[];
 }> {
+  const url = sanitizeRecipeUrl(rawUrl) || rawUrl;
   try {
+    // Si es un enlace de YouTube, consultar endpoint oficial de oEmbed para extraer metadatos directos
+    if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
+      try {
+        const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+        const oembedRes = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
+        if (oembedRes.ok) {
+          const oembedData = await oembedRes.json();
+          if (oembedData?.title) {
+            return {
+              titulo: oembedData.title,
+              descripcion: `Vídeo de YouTube: ${oembedData.title} por ${oembedData.author_name || 'Chef'}.`,
+              cuerpoTexto: `Título del vídeo: ${oembedData.title}\nCanal/Autor: ${oembedData.author_name || ''}`,
+            };
+          }
+        }
+      } catch (oembedErr) {
+        console.warn('Fallo opcional en YouTube oEmbed:', oembedErr);
+      }
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
@@ -716,7 +765,7 @@ function getMimeType(fileName: string, providedType?: string): string {
  * usando la File API de Gemini y responseJsonSchema estricto.
  */
 export async function extractRecipeWithGemini({
-  url,
+  url: rawUrl,
   texto,
   file,
   porcionesUsuario,
@@ -730,6 +779,7 @@ export async function extractRecipeWithGemini({
   idioma?: 'es' | 'en';
   exclusionesClinicas?: string[];
 }): Promise<ExtractedRecipe> {
+  const url = sanitizeRecipeUrl(rawUrl);
   const ai = getGeminiClient();
 
   let combo: MediaComboResult | null = null;

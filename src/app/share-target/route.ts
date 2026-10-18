@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { sanitizeRecipeUrl } from '@/lib/gemini/extractor';
 
 function extractUrl(text: string | null, urlParam: string | null): string | null {
   if (urlParam && urlParam.startsWith('http')) {
@@ -24,7 +25,8 @@ export async function GET(request: NextRequest) {
   const text = searchParams.get('text') || '';
   const rawUrl = searchParams.get('url') || '';
 
-  const detectedUrl = extractUrl(text, rawUrl);
+  const rawDetectedUrl = extractUrl(text, rawUrl);
+  const detectedUrl = sanitizeRecipeUrl(rawDetectedUrl || undefined) || rawDetectedUrl;
   const redirectUrl = request.nextUrl.clone();
   redirectUrl.pathname = '/recipes';
 
@@ -53,7 +55,8 @@ export async function POST(request: NextRequest) {
     const text = (formData.get('text') as string) || '';
     const rawUrl = (formData.get('url') as string) || '';
 
-    const detectedUrl = extractUrl(text, rawUrl);
+    const rawDetectedUrl = extractUrl(text, rawUrl);
+    const detectedUrl = sanitizeRecipeUrl(rawDetectedUrl || undefined) || rawDetectedUrl;
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = '/recipes';
     redirectUrl.search = '';
