@@ -172,15 +172,15 @@ export async function updatePasswordAction(
   }
 }
 
-export async function signOutAction(): Promise<void> {
+export async function signOutAction(): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient();
     await supabase.auth.signOut();
-  } catch (e) {
-    console.error('Error al cerrar sesión:', e);
+    return { success: true };
+  } catch (e: any) {
+    console.error('Error al cerrar sesión en servidor:', e);
+    return { success: false, error: e?.message || 'Error al cerrar sesión' };
   }
-  revalidatePath('/', 'layout');
-  redirect('/login');
 }
 
 export async function deleteAccountAction(): Promise<AuthActionResult> {

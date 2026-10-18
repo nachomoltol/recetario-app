@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   User,
   BookOpen,
@@ -21,7 +22,8 @@ import {
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useLanguageStore } from '@/stores/useLanguageStore';
-import { signOutAction, deleteAccountAction } from '@/app/actions/auth';
+import { deleteAccountAction } from '@/app/actions/auth';
+import { createClient } from '@/lib/supabase/client';
 
 interface UserDropdownMenuProps {
   fallbackName: string;
@@ -29,7 +31,9 @@ interface UserDropdownMenuProps {
 }
 
 export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -40,6 +44,38 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
 
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    setIsOpen(false);
+
+    try {
+      // 1. Ejecutar auth.signOut() con el cliente Supabase
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error al cerrar sesión en Supabase:', error);
+    } finally {
+      // 2. Limpiar el estado del usuario en el cliente
+      try {
+        useAuthStore.getState().setUser(null);
+        useAuthStore.getState().setSession(null);
+      } catch (err) {
+        console.warn('Error limpiando auth store:', err);
+      }
+      try {
+        useProfileStore.getState().setProfile(null);
+      } catch (err) {
+        console.warn('Error limpiando profile store:', err);
+      }
+
+      // 3. Redirección en cliente + refresh para que Next.js actualice la ruta sin romper el caché
+      router.push('/login');
+      router.refresh();
+      setIsLoggingOut(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     setDeleteError(null);
     setIsDeleting(true);
@@ -49,7 +85,11 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
         setDeleteError(res.error);
         setIsDeleting(false);
       } else {
-        window.location.href = '/';
+        useAuthStore.getState().setUser(null);
+        useAuthStore.getState().setSession(null);
+        useProfileStore.getState().setProfile(null);
+        router.push('/login');
+        router.refresh();
       }
     } catch (err: any) {
       setDeleteError(err?.message || 'Error al eliminar la cuenta');
@@ -203,15 +243,19 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
 
           {/* Separador */}
           <div className="border-t border-[#e7dfd5] pt-1 space-y-0.5">
-            <form action={signOutAction}>
-              <button
-                type="submit"
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-red-600 hover:text-red-700 hover:bg-red-50 transition cursor-pointer font-medium"
-              >
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-red-600 hover:text-red-700 hover:bg-red-50 transition cursor-pointer font-medium disabled:opacity-50"
+            >
+              {isLoggingOut ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
                 <LogOut className="w-4 h-4" />
-                <span>{t('nav_logout')}</span>
-              </button>
-            </form>
+              )}
+              <span>{t('nav_logout')}</span>
+            </button>
 
             <button
               type="button"
