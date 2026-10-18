@@ -438,8 +438,86 @@ export interface YouTubeDetailsResult {
 }
 
 /**
+ * Navega por el árbol del JSON de YouTube (ytInitialData o ytInitialPlayerResponse)
+ * para extraer la descripción completa y sin recortes, especialmente en Shorts.
+ */
+function extractDeepDescriptionFromYouTubeJson(initialData: any): string {
+  if (!initialData || typeof initialData !== 'object') return '';
+
+  // 1. Ruta prioritaria en Shorts: panel desplegable de descripción estructurada
+  try {
+    for (const panel of initialData.engagementPanels || []) {
+      if (
+        panel?.engagementPanelSectionListRenderer?.panelIdentifier ===
+        'engagement-panel-structured-description'
+      ) {
+        const items =
+          panel.engagementPanelSectionListRenderer.content
+            ?.structuredDescriptionContentRenderer?.items || [];
+        for (const it of items) {
+          const content =
+            it?.expandableVideoDescriptionBodyRenderer?.attributedDescriptionBodyText
+              ?.content;
+          if (content && typeof content === 'string' && content.trim()) {
+            return content.trim();
+          }
+        }
+      }
+    }
+  } catch {}
+
+  // 2. Rutas directas en playerResponse o en la raíz
+  const pr = initialData.playerResponse || initialData;
+  const microDesc =
+    pr?.microformat?.playerMicroformatRenderer?.description?.simpleText;
+  if (microDesc && typeof microDesc === 'string' && microDesc.trim()) {
+    return microDesc.trim();
+  }
+
+  const shortDesc = pr?.videoDetails?.shortDescription;
+  if (shortDesc && typeof shortDesc === 'string' && shortDesc.trim()) {
+    return shortDesc.trim();
+  }
+
+  // 3. Búsqueda recursiva en profundidad buscando claves description, shortDescription o content
+  let bestCandidate = '';
+  function recursiveSearch(obj: any, depth = 0): void {
+    if (!obj || depth > 12 || typeof obj !== 'object') return;
+
+    if (typeof obj.shortDescription === 'string') {
+      const s = obj.shortDescription.trim();
+      if (s.length > bestCandidate.length) bestCandidate = s;
+    }
+
+    if (
+      obj.attributedDescriptionBodyText?.content &&
+      typeof obj.attributedDescriptionBodyText.content === 'string'
+    ) {
+      const s = obj.attributedDescriptionBodyText.content.trim();
+      if (s.length > bestCandidate.length) bestCandidate = s;
+    }
+
+    if (
+      obj.description?.simpleText &&
+      typeof obj.description.simpleText === 'string'
+    ) {
+      const s = obj.description.simpleText.trim();
+      if (s.length > bestCandidate.length) bestCandidate = s;
+    }
+
+    for (const key of Object.keys(obj)) {
+      if (key === 'frameworkUpdates') continue;
+      recursiveSearch(obj[key], depth + 1);
+    }
+  }
+
+  recursiveSearch(initialData);
+  return bestCandidate;
+}
+
+/**
  * Extrae de forma exhaustiva tanto la transcripción de audio (subtítulos generados o manuales)
- * como la meta-descripción y título de un vídeo o Short de YouTube.
+ * como la meta-descripción profunda (vía ytInitialData) y título de un vídeo o Short de YouTube.
  */
 export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDetailsResult> {
   const cleanUrl = sanitizeRecipeUrl(rawUrl) || rawUrl;
@@ -472,12 +550,12 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
     );
   }
 
-  // 2. Extraer Título y Meta-Descripción
+  // 2. Extraer Título y Meta-Descripción Enriquecida
   let title = '';
   let author = '';
   let metaDescription = '';
 
-  // 2.1. Intentar oEmbed oficial (rápido y con título/autor garantizado)
+  // 2.1. Intentar oEmbed oficial (rápido para título/autor)
   try {
     const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(standardUrl)}&format=json`;
     const oembedRes = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
@@ -490,7 +568,7 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
     console.warn('[YouTube] oEmbed opcional falló:', err instanceof Error ? err.message : err);
   }
 
-  // 2.2. Scraping de la página con cookie de consentimiento para shortDescription completa
+  // 2.2. Extracción profunda de descripción vía raw HTML y parsing de ytInitialData / ytInitialPlayerResponse
   try {
     const pageRes = await fetch(standardUrl, {
       headers: {
@@ -499,50 +577,60 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
         'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
         Cookie: 'SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg;',
       },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(9000),
     });
 
     if (pageRes.ok) {
       const html = await pageRes.text();
-      const $ = cheerio.load(html);
 
+      // 2.2.1. Localizar y parsear ytInitialData
+      const dataMatch = html.match(
+        /(?:var\s+ytInitialData|window\["ytInitialData"\]|ytInitialData)\s*=\s*({[\s\S]+?});(?:\s*var|\s*<\/script>|\s*$)/
+      );
+      if (dataMatch && dataMatch[1]) {
+        try {
+          const parsedData = JSON.parse(dataMatch[1]);
+          const deepDesc = extractDeepDescriptionFromYouTubeJson(parsedData);
+          if (deepDesc) {
+            metaDescription = deepDesc;
+          }
+        } catch (err) {
+          console.warn('[YouTube] Error parseando ytInitialData:', err instanceof Error ? err.message : err);
+        }
+      }
+
+      // 2.2.2. Fallback a ytInitialPlayerResponse si ytInitialData no arrojó la descripción
+      if (!metaDescription) {
+        const playerMatch = html.match(
+          /(?:var\s+ytInitialPlayerResponse|window\["ytInitialPlayerResponse"\]|ytInitialPlayerResponse)\s*=\s*({[\s\S]+?});(?:\s*var|\s*<\/script>|\s*$)/
+        );
+        if (playerMatch && playerMatch[1]) {
+          try {
+            const parsedPlayer = JSON.parse(playerMatch[1]);
+            const deepDesc = extractDeepDescriptionFromYouTubeJson(parsedPlayer);
+            if (deepDesc) {
+              metaDescription = deepDesc;
+            }
+          } catch (err) {
+            console.warn('[YouTube] Error parseando ytInitialPlayerResponse:', err instanceof Error ? err.message : err);
+          }
+        }
+      }
+
+      // Título de respaldo si oEmbed no lo trajo
       if (!title) {
+        const $ = cheerio.load(html);
         title =
           $('meta[name="title"]').attr('content')?.trim() ||
           $('meta[property="og:title"]').attr('content')?.trim() ||
           $('title').text().replace(/- YouTube$/i, '').trim();
       }
-
-      // Buscar shortDescription completa en el JSON embebido de YouTube
-      const descMatch = html.match(/"shortDescription":"([^"]+)"/);
-      if (descMatch && descMatch[1]) {
-        try {
-          const parsed = JSON.parse(`"${descMatch[1]}"`);
-          if (typeof parsed === 'string' && parsed.trim()) {
-            metaDescription = parsed.trim();
-          }
-        } catch {}
-      }
-
-      // Si no encontramos shortDescription completa, fallback a los meta tags
-      if (!metaDescription) {
-        const ogDesc = $('meta[property="og:description"]').attr('content')?.trim() || '';
-        const nameDesc = $('meta[name="description"]').attr('content')?.trim() || '';
-        const candidate = ogDesc.length >= nameDesc.length ? ogDesc : nameDesc;
-        if (
-          candidate &&
-          !candidate.toLowerCase().includes('disfruta de los vídeos') &&
-          !candidate.toLowerCase().includes('enjoy the videos')
-        ) {
-          metaDescription = candidate;
-        }
-      }
     }
   } catch (err) {
-    console.warn('[YouTube] Fallo al scrapear página de YouTube:', err instanceof Error ? err.message : err);
+    console.warn('[YouTube] Fallo en fetch raw HTML de YouTube:', err instanceof Error ? err.message : err);
   }
 
-  // Si la descripción contiene únicamente el mensaje genérico de YouTube, descartarla
+  // Descartar mensajes genéricos de boilerplate de YouTube si se hubieran capturado
   if (
     metaDescription.toLowerCase().includes('disfruta de los vídeos y la música') ||
     metaDescription.toLowerCase().includes('enjoy the videos and music')
@@ -570,7 +658,7 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
     concatenatedText += `CANAL / CREADOR:\n${author}\n\n`;
   }
   if (hasDescription) {
-    concatenatedText += `DESCRIPCIÓN DEL VÍDEO (DETALLES Y MEDIDAS DEL CREADOR):\n${metaDescription}\n\n`;
+    concatenatedText += `DESCRIPCIÓN DEL VÍDEO (META-DESCRIPCIÓN ENRIQUECIDA):\n${metaDescription}\n\n`;
   }
   if (hasTranscript) {
     concatenatedText += `TRANSCRIPCIÓN DEL AUDIO (SUBTÍTULOS / PASOS HABLADOS):\n${transcript}\n\n`;
