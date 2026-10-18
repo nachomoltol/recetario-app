@@ -7,7 +7,6 @@ import youtubedl from 'yt-dlp-exec';
 import * as cheerio from 'cheerio';
 import { alldl } from 'rahad-all-downloader-v2';
 import { igdl, ttdl } from 'btch-downloader';
-import { YoutubeTranscript } from 'youtube-transcript';
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from './client';
 import {
   recipeExtractionSchema,
@@ -592,6 +591,165 @@ function parseYouTubeJsonFromHtml(html: string, varName: string): any {
 }
 
 /**
+ * Limpia y decodifica el archivo XML de subtítulos de YouTube (timedtext),
+ * extrayendo exclusivamente el texto hablado y eliminando etiquetas XML o entidades HTML.
+ */
+function parseYouTubeTranscriptXml(xml: string): string {
+  if (!xml || typeof xml !== 'string') return '';
+
+  // Si YouTube devolvió una página HTML de captcha o error 429 ("Sorry..."), descartar
+  if (
+    xml.includes('<title>Sorry...</title>') ||
+    xml.includes('g-recaptcha') ||
+    xml.includes('our systems have detected unusual traffic')
+  ) {
+    return '';
+  }
+
+  // 1. Quitar bloque de cabecera <head>...</head> si existe
+  const withoutHead = xml.replace(/<head>[\s\S]*?<\/head>/gi, '');
+
+  // 2. Extraer cuerpo o contenido
+  const bodyMatch = withoutHead.match(/<body>([\s\S]*?)<\/body>/i);
+  const content = bodyMatch ? bodyMatch[1] : withoutHead;
+
+  // 3. Buscar etiquetas de texto habladas (<text>, <p>, <s>, <w>)
+  const textMatches = content.match(/<(?:text|p|s|w)[^>]*>([\s\S]*?)<\/(?:text|p|s|w)>/gi);
+  if (textMatches && textMatches.length > 0) {
+    const lines = textMatches
+      .map((m) =>
+        m
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&apos;/g, "'")
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+          .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+          .trim()
+      )
+      .filter(Boolean);
+
+    return lines.join(' ').replace(/\s+/g, ' ').trim();
+  }
+
+  // 4. Limpieza directa de cualquier etiqueta XML restante
+  return content
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Extrae los subtítulos de forma nativa directamente desde el JSON de YouTube
+ * (ytInitialPlayerResponse.captions.playerCaptionsTracklistRenderer.captionTracks),
+ * evitando dependencias externas como youtube-transcript que son bloqueadas en Vercel.
+ */
+async function extractNativeYouTubeTranscript(
+  videoId: string,
+  parsedPlayer?: any
+): Promise<string> {
+  // 1. Navegar por el árbol JSON del reproductor web: captions.playerCaptionsTracklistRenderer.captionTracks
+  const tracks: Array<{ baseUrl?: string; languageCode?: string }> | undefined =
+    parsedPlayer?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+
+  if (Array.isArray(tracks) && tracks.length > 0) {
+    // Prioriza el track que tenga languageCode 'es' o usa el primer elemento
+    const targetTrack =
+      tracks.find((t) => t.languageCode === 'es' || t.languageCode?.startsWith('es')) ||
+      tracks[0];
+
+    if (targetTrack?.baseUrl) {
+      try {
+        const res = await fetch(targetTrack.baseUrl, {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+          },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (res.ok) {
+          const xml = await res.text();
+          if (xml && xml.trim().length > 0) {
+            const parsed = parseYouTubeTranscriptXml(xml);
+            if (parsed.length > 0) return parsed;
+          }
+        }
+      } catch (err) {
+        console.warn('[YouTube] Fetch a baseUrl web falló:', err instanceof Error ? err.message : err);
+      }
+    }
+  }
+
+  // 2. Fallback de alta disponibilidad: Endpoint nativo InnerTube (Android client context),
+  // que entrega los captionTracks directamente sin requerir firmas o cookies web
+  try {
+    const innertubeRes = await fetch(
+      'https://www.youtube.com/youtubei/v1/player?prettyPrint=false',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)',
+        },
+        body: JSON.stringify({
+          context: {
+            client: {
+              clientName: 'ANDROID',
+              clientVersion: '20.10.38',
+            },
+          },
+          videoId,
+        }),
+        signal: AbortSignal.timeout(6000),
+      }
+    );
+
+    if (innertubeRes.ok) {
+      const data = await innertubeRes.json();
+      const innerTracks: Array<{ baseUrl?: string; languageCode?: string }> | undefined =
+        data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+
+      if (Array.isArray(innerTracks) && innerTracks.length > 0) {
+        const targetTrack =
+          innerTracks.find(
+            (t) => t.languageCode === 'es' || t.languageCode?.startsWith('es')
+          ) || innerTracks[0];
+
+        if (targetTrack?.baseUrl) {
+          const captionRes = await fetch(targetTrack.baseUrl, {
+            headers: {
+              'User-Agent': 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)',
+            },
+            signal: AbortSignal.timeout(5000),
+          });
+          if (captionRes.ok) {
+            const xml = await captionRes.text();
+            if (xml && xml.trim().length > 0) {
+              return parseYouTubeTranscriptXml(xml);
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[YouTube] Fetch de subtítulos vía InnerTube falló:', err instanceof Error ? err.message : err);
+  }
+
+  return '';
+}
+
+/**
  * Extrae de forma exhaustiva tanto la transcripción de audio (subtítulos generados o manuales)
  * como la meta-descripción profunda (vía ytInitialData) y título de un vídeo o Short de YouTube.
  */
@@ -633,27 +791,11 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
   // 3. Construye la URL canónica EXACTAMENTE como: https://www.youtube.com/watch?v=${videoId}
   const standardUrl = `https://www.youtube.com/watch?v=${cleanVideoId}`;
 
-  // 1. Pasa directamente el string del videoId (no la URL completa) a la librería youtube-transcript
-  let transcript = '';
-  try {
-    const transcriptItems = await YoutubeTranscript.fetchTranscript(cleanVideoId);
-    if (Array.isArray(transcriptItems) && transcriptItems.length > 0) {
-      transcript = transcriptItems
-        .map((t) => (t && typeof t.text === 'string' ? t.text.trim() : ''))
-        .filter(Boolean)
-        .join(' ');
-    }
-  } catch (err) {
-    console.warn(
-      `[YouTube] Subtítulos no disponibles o bloqueados por YouTube para ${cleanVideoId} (se usará Meta-Descripción Enriquecida):`,
-      err instanceof Error ? err.message : err
-    );
-  }
-
   // 2. Extraer Título, Autor y Meta-Descripción Enriquecida
   let title = '';
   let author = '';
   let metaDescription = '';
+  let transcript = '';
   let playabilityReason = '';
 
   // 2.1. Intentar oEmbed oficial (rápido para título/autor)
@@ -772,6 +914,9 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
           $('meta[property="og:title"]').attr('content')?.trim() ||
           $('title').text().replace(/- YouTube$/i, '').trim();
       }
+
+      // 3. Extracción nativa de subtítulos usando los captionTracks del JSON ya descargado
+      transcript = await extractNativeYouTubeTranscript(cleanVideoId, parsedPlayer);
     }
   } catch (err) {
     console.warn('[YouTube] Fallo en fetch raw HTML de YouTube:', err instanceof Error ? err.message : err);
@@ -793,8 +938,8 @@ export async function extractYouTubeDetails(rawUrl: string): Promise<YouTubeDeta
   }
 
   // 4. Verificación de Fallback y Priorización:
-  // Si youtube-transcript falló pero tenemos la Meta-Descripción Enriquecida del árbol JSON,
-  // se aprueba y se envía en solitario a Gemini (contiene los ingredientes y medidas).
+  // Si los subtítulos no están disponibles pero tenemos la Meta-Descripción Enriquecida del árbol JSON,
+  // se aprueba y se envía a Gemini (contiene los ingredientes y medidas).
   const hasTranscript = transcript.trim().length > 0;
   const hasDescription = metaDescription.trim().length > 0;
 
