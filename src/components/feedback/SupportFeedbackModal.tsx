@@ -99,20 +99,22 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget && !isSubmitting) {
           handleResetAndClose();
         }
       }}
     >
-      <div className="relative w-full max-w-lg rounded-3xl bg-white border border-[#e7dfd5] shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95 duration-200 overflow-hidden">
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-white border border-[#e7dfd5] shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95 duration-200">
         {/* Botón Cerrar (X) */}
         <button
           type="button"
           onClick={handleResetAndClose}
           disabled={isSubmitting}
-          className="absolute top-5 right-5 p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-[#faf7f2] transition cursor-pointer disabled:opacity-50"
+          className="absolute top-5 right-5 z-10 p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-[#faf7f2] transition cursor-pointer disabled:opacity-50"
           aria-label="Cerrar modal"
         >
           <X className="w-5 h-5" />
