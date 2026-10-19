@@ -5,9 +5,13 @@ import nodemailer from 'nodemailer';
 
 export const runtime = 'nodejs';
 
+// Configuración estricta de enrutamiento
+const SYSTEM_RECIPIENT = 'migarecetasredes@gmail.com';
+const SYSTEM_FROM_DEFAULT = 'Miga App <onboarding@resend.dev>';
+
 export async function POST(req: NextRequest) {
   try {
-    // 1. Proteger endpoint mediante la sesión de Supabase
+    // 1. Proteger endpoint mediante la sesión autenticada de Supabase
     const supabase = await createClient();
     const {
       data: { user },
@@ -68,30 +72,40 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const recipientEmail = 'migarecetasredes@gmail.com';
+    // 3. Variables de enrutamiento estrictas (sin cruce de variables)
+    // - to: Únicamente el correo del equipo de soporte
+    // - from: Sistema verificado (NUNCA el correo del usuario)
+    // - reply_to: El correo del usuario para respuesta directa desde Gmail
+    // - subject: [Soporte Miga] - {Categoría} - {Correo del Usuario}
     const userEmail = user.email;
     const userName =
       user.user_metadata?.nombre ||
       user.user_metadata?.full_name ||
       userEmail.split('@')[0];
 
-    const subject = `[Miga Soporte] ${category} - ${userEmail}`;
+    const subject = `[Soporte Miga] - ${category} - ${userEmail}`;
+
+    const systemSenderEmail =
+      process.env.RESEND_FROM?.trim() ||
+      process.env.EMAIL_FROM?.trim() ||
+      SYSTEM_FROM_DEFAULT;
 
     const textContent = `
-NUEVO MENSAJE DE SOPORTE Y FEEDBACK - MIGA APP
+[SOPORTE MIGA] NUEVO MENSAJE DE FEEDBACK
 ==================================================
 
-Categoría: ${category}
-Usuario: ${userName} (${userEmail})
-ID de Usuario: ${user.id}
-Fecha: ${new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}
+• Remitente (Usuario): ${userName} <${userEmail}>
+• Categoría: ${category}
+• ID de Usuario: ${user.id}
+• Fecha: ${new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}
 
-MENSAJE:
---------------------------------------------------
+==================================================
+MENSAJE DETALLADO:
+==================================================
 ${trimmedMessage}
---------------------------------------------------
+==================================================
 
-* Para responder al usuario, puedes contestar directamente a este correo (Reply-To configurado con ${userEmail}).
+* Para responder al usuario, pulsa "Responder" en tu cliente de correo (Reply-To configurado para ${userEmail}).
 `.trim();
 
     const htmlContent = `
@@ -103,31 +117,43 @@ ${trimmedMessage}
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #faf7f2; color: #1c1917; padding: 24px; margin: 0;">
   <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e7dfd5; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-    <div style="display: flex; align-items: center; margin-bottom: 24px; border-bottom: 1px solid #f4efe6; padding-bottom: 16px;">
+    <!-- Cabecera -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid #f4efe6; padding-bottom: 16px;">
       <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: #a86224;">Miga App · Soporte y Feedback</h2>
-    </div>
-
-    <div style="margin-bottom: 20px;">
       <span style="display: inline-block; padding: 4px 12px; font-size: 12px; font-weight: 600; border-radius: 9999px; background-color: #f4efe6; color: #a86224; border: 1px solid #e7dfd5;">
         ${category}
       </span>
     </div>
 
+    <!-- Datos del remitente / usuario -->
     <div style="background-color: #faf7f2; border: 1px solid #e7dfd5; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
-      <p style="margin: 0 0 6px 0; font-size: 13px; color: #78716c;"><strong>Remitente:</strong> ${userName} &lt;<a href="mailto:${userEmail}" style="color: #a86224; text-decoration: underline;">${userEmail}</a>&gt;</p>
-      <p style="margin: 0 0 6px 0; font-size: 12px; color: #a8a29e;"><strong>ID de Usuario:</strong> ${user.id}</p>
-      <p style="margin: 0; font-size: 12px; color: #a8a29e;"><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}</p>
+      <p style="margin: 0 0 8px 0; font-size: 14px; color: #1c1917;">
+        <strong>Usuario:</strong> ${userName} &lt;<a href="mailto:${userEmail}" style="color: #a86224; text-decoration: underline; font-weight: 600;">${userEmail}</a>&gt;
+      </p>
+      <p style="margin: 0 0 6px 0; font-size: 12px; color: #78716c;">
+        <strong>Categoría:</strong> ${category}
+      </p>
+      <p style="margin: 0 0 6px 0; font-size: 12px; color: #a8a29e;">
+        <strong>ID de Usuario Supabase:</strong> ${user.id}
+      </p>
+      <p style="margin: 0; font-size: 12px; color: #a8a29e;">
+        <strong>Fecha:</strong> ${new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}
+      </p>
     </div>
 
+    <!-- Mensaje detallado -->
     <div style="margin-bottom: 28px;">
-      <h3 style="font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: #78716c; margin-bottom: 8px;">Mensaje del Usuario:</h3>
-      <div style="background-color: #ffffff; border-left: 4px solid #a86224; padding: 12px 16px; font-size: 14px; line-height: 1.6; color: #1c1917; white-space: pre-wrap; border-radius: 4px; border-top: 1px solid #f4efe6; border-right: 1px solid #f4efe6; border-bottom: 1px solid #f4efe6;">
+      <h3 style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #78716c; margin-bottom: 10px;">
+        Mensaje detallado:
+      </h3>
+      <div style="background-color: #ffffff; border-left: 4px solid #a86224; padding: 16px; font-size: 14px; line-height: 1.6; color: #1c1917; white-space: pre-wrap; border-radius: 4px; border-top: 1px solid #f4efe6; border-right: 1px solid #f4efe6; border-bottom: 1px solid #f4efe6;">
         ${trimmedMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
       </div>
     </div>
 
-    <div style="border-top: 1px solid #f4efe6; padding-top: 16px; font-size: 12px; color: #a8a29e; text-align: center;">
-      Puedes responder directamente a este correo para escribir al usuario (<a href="mailto:${userEmail}" style="color: #a86224;">${userEmail}</a>).
+    <!-- Pie de contestación directa -->
+    <div style="border-top: 1px solid #f4efe6; padding-top: 16px; font-size: 12px; color: #78716c; text-align: center; background-color: #faf7f2; border-radius: 8px; padding: 12px;">
+      💡 Pulsa <strong>Responder</strong> en tu cliente de correo para responder directamente a <a href="mailto:${userEmail}" style="color: #a86224; font-weight: 600;">${userEmail}</a>.
     </div>
   </div>
 </body>
@@ -135,38 +161,40 @@ ${trimmedMessage}
 `.trim();
 
     let sent = false;
+    let lastError: string | null = null;
 
-    // 3. Intento A: Resend API (si existe RESEND_API_KEY)
+    // 4. Intento A: Resend API (si existe RESEND_API_KEY)
     const resendApiKey = process.env.RESEND_API_KEY;
     if (resendApiKey) {
       try {
         const resend = new Resend(resendApiKey);
-        const fromEmail =
-          process.env.RESEND_FROM ||
-          process.env.EMAIL_FROM ||
-          'Miga App <onboarding@resend.dev>';
 
         const resendResult = await resend.emails.send({
-          from: fromEmail,
-          to: [recipientEmail],
+          from: systemSenderEmail,
+          to: [SYSTEM_RECIPIENT],
           replyTo: userEmail,
           subject,
           text: textContent,
           html: htmlContent,
+          headers: {
+            'Reply-To': userEmail,
+          },
         });
 
         if (resendResult.data?.id) {
           sent = true;
           console.log('[Feedback] Correo enviado vía Resend con éxito:', resendResult.data.id);
         } else if (resendResult.error) {
-          console.warn('[Feedback] Error enviando con Resend:', resendResult.error);
+          lastError = resendResult.error.message || JSON.stringify(resendResult.error);
+          console.warn('[Feedback] Error devuelto por Resend API:', resendResult.error);
         }
-      } catch (resendErr) {
-        console.warn('[Feedback] Excepción en Resend:', resendErr);
+      } catch (resendErr: any) {
+        lastError = resendErr?.message || 'Error de conexión con Resend';
+        console.warn('[Feedback] Excepción en llamada a Resend:', resendErr);
       }
     }
 
-    // 4. Intento B: SMTP (si no se envió con Resend y existen variables de SMTP)
+    // 5. Intento B: SMTP (si no se envió con Resend y existen variables de SMTP)
     if (!sent && (process.env.SMTP_HOST || process.env.SMTP_USER)) {
       try {
         const transporter = nodemailer.createTransport({
@@ -181,35 +209,59 @@ ${trimmedMessage}
           },
         });
 
+        const smtpSenderEmail =
+          process.env.SMTP_FROM?.trim() ||
+          process.env.EMAIL_FROM?.trim() ||
+          process.env.SMTP_USER?.trim() ||
+          systemSenderEmail;
+
         await transporter.sendMail({
-          from:
-            process.env.SMTP_FROM ||
-            process.env.EMAIL_FROM ||
-            process.env.SMTP_USER,
-          to: recipientEmail,
+          from: smtpSenderEmail,
+          to: SYSTEM_RECIPIENT,
           replyTo: userEmail,
           subject,
           text: textContent,
           html: htmlContent,
+          headers: {
+            'Reply-To': userEmail,
+          },
         });
 
         sent = true;
-        console.log('[Feedback] Correo enviado vía SMTP con éxito a', recipientEmail);
-      } catch (smtpErr) {
-        console.warn('[Feedback] Excepción en SMTP:', smtpErr);
+        console.log('[Feedback] Correo enviado vía SMTP con éxito a', SYSTEM_RECIPIENT);
+      } catch (smtpErr: any) {
+        lastError = smtpErr?.message || 'Error de conexión SMTP';
+        console.warn('[Feedback] Excepción en llamada SMTP:', smtpErr);
       }
     }
 
-    // 5. Si no hay credenciales de correo configuradas en el entorno local/preview, registrar y responder éxito
+    // 6. Si no se pudo enviar el correo
     if (!sent) {
-      console.warn(
-        '[Feedback] Nota: El reporte se procesó pero no se envió correo porque no hay RESEND_API_KEY ni variables SMTP en el entorno. Datos del feedback:',
+      // Modo desarrollo local sin credenciales configuradas
+      if (!resendApiKey && !process.env.SMTP_HOST && !process.env.SMTP_USER && process.env.NODE_ENV !== 'production') {
+        console.warn(
+          '[Feedback] Modo desarrollo: Simulando envío satisfactorio (sin RESEND_API_KEY ni SMTP configurados):',
+          {
+            to: SYSTEM_RECIPIENT,
+            from: systemSenderEmail,
+            replyTo: userEmail,
+            subject,
+          }
+        );
+        return NextResponse.json({
+          success: true,
+          message: '¡Muchas gracias! Tu mensaje ha sido simulado en desarrollo.',
+        });
+      }
+
+      console.error('[Feedback] Falló el envío de correo de feedback:', lastError);
+      return NextResponse.json(
         {
-          to: recipientEmail,
-          from: userEmail,
-          category,
-          messageLength: trimmedMessage.length,
-        }
+          error:
+            lastError ||
+            `No se pudo enviar el correo de soporte. Por favor, escribe directamente a ${SYSTEM_RECIPIENT}.`,
+        },
+        { status: 502 }
       );
     }
 
