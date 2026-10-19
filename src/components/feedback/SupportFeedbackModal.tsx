@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Send,
@@ -35,6 +36,7 @@ const CATEGORIES: { label: FeedbackCategory; icon: typeof AlertCircle }[] = [
 ];
 
 export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalProps) {
+  const [mounted, setMounted] = useState(false);
   const user = useAuthStore((s) => s.user);
   const profile = useProfileStore((s) => s.profile);
 
@@ -44,7 +46,39 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleResetAndClose = () => {
+    setMessage('');
+    setCategory('Informar de un error');
+    setError(null);
+    setIsSuccess(false);
+    onClose();
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) {
+        handleResetAndClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, isSubmitting]);
+
+  if (!mounted || !isOpen || typeof document === 'undefined') return null;
 
   const displayName = profile?.nombre || user?.user_metadata?.nombre || user?.email?.split('@')[0] || 'Chef';
   const displayEmail = user?.email || 'usuario@migaapp.com';
@@ -89,15 +123,7 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
     }
   };
 
-  const handleResetAndClose = () => {
-    setMessage('');
-    setCategory('Informar de un error');
-    setError(null);
-    setIsSuccess(false);
-    onClose();
-  };
-
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -289,6 +315,8 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
+
