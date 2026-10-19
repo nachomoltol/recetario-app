@@ -17,12 +17,12 @@ export function getGeminiClient(): GoogleGenAI {
 }
 
 /**
- * Modelo configurable por variable de entorno GEMINI_MODEL,
- * con valor por defecto en código: gemini-3.1-flash-lite.
+ * Modelo fijado ESTRICTAMENTE a la versión más económica: Gemini 3.1 Flash Lite ('gemini-3.1-flash-lite').
+ * Bloquea cualquier configuración residual de entorno o fallback hacia modelos pesados o Pro.
  */
-export const PRIMARY_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
-export const FALLBACK_GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash'];
+export const PRIMARY_GEMINI_MODEL = 'gemini-3.1-flash-lite';
+export const FALLBACK_GEMINI_MODELS: string[] = [];
 
 export function getActiveGeminiModel(): string {
-  return process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
+  return PRIMARY_GEMINI_MODEL;
 }

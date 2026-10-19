@@ -73,7 +73,7 @@ const LOADING_STAGES_ES: LoadingStage[] = [
   },
   {
     seconds: 10,
-    title: 'Analizando con Gemini 3.1 Flash',
+    title: 'Analizando con Gemini 3.1 Flash Lite',
     description: 'Inferencia multimodal activa: decodificando técnicas culinarias y speech acelerado...',
     percent: 65,
   },
@@ -106,7 +106,7 @@ const LOADING_STAGES_EN: LoadingStage[] = [
   },
   {
     seconds: 10,
-    title: 'Analyzing with Gemini 3.1 Flash',
+    title: 'Analyzing with Gemini 3.1 Flash Lite',
     description: 'Active multimodal inference: decoding culinary techniques and fast speech...',
     percent: 65,
   },
