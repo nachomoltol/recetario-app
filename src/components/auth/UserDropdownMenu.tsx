@@ -18,12 +18,14 @@ import {
   Loader2,
   X,
   Shield,
+  LifeBuoy,
 } from 'lucide-react';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { deleteAccountAction } from '@/app/actions/auth';
 import { createClient } from '@/lib/supabase/client';
+import { SupportFeedbackModal } from '@/components/feedback/SupportFeedbackModal';
 
 interface UserDropdownMenuProps {
   fallbackName: string;
@@ -35,6 +37,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -239,6 +242,20 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
                 <span>Política de Privacidad</span>
               </div>
             </Link>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                setShowFeedbackModal(true);
+              }}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium text-left"
+            >
+              <LifeBuoy className="w-4 h-4 text-[#a86224]" />
+              <div className="flex-1">
+                <span>Soporte y Feedback</span>
+              </div>
+            </button>
           </div>
 
           {/* Separador */}
@@ -331,6 +348,12 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
           </div>
         </div>
       )}
+
+      {/* Modal de Soporte y Feedback */}
+      <SupportFeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+      />
     </div>
   );
 }
