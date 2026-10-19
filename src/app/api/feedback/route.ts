@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 
 // Configuración estricta de enrutamiento
 const SYSTEM_RECIPIENT = 'migarecetasredes@gmail.com';
-const SYSTEM_FROM_DEFAULT = 'Miga App <onboarding@resend.dev>';
+const SYSTEM_FROM_DEFAULT = 'Soporte Miga <soporte@migaapp.com>';
 
 export async function POST(req: NextRequest) {
   try {
@@ -170,7 +170,7 @@ ${trimmedMessage}
         const resend = new Resend(resendApiKey);
 
         const resendResult = await resend.emails.send({
-          from: systemSenderEmail,
+          from: 'Soporte Miga <soporte@migaapp.com>',
           to: [SYSTEM_RECIPIENT],
           replyTo: userEmail,
           subject,
