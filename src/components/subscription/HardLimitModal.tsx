@@ -1,7 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, Sparkles, ShieldAlert, ArrowRight, X, Calendar } from 'lucide-react';
+import {
+  AlertCircle,
+  Sparkles,
+  ShieldAlert,
+  ArrowRight,
+  X,
+  Calendar,
+  Loader2,
+} from 'lucide-react';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 
 export type HardLimitType = 'FREE_LIMIT_REACHED' | 'DEVICE_LIMIT_REACHED' | 'PRO_LIMIT_REACHED';
@@ -16,13 +25,33 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
   const router = useRouter();
   const language = useLanguageStore((s) => s.language);
   const isEn = language === 'en';
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 
   if (!isOpen || !type) return null;
 
   const isProLimit = type === 'PRO_LIMIT_REACHED';
   const isDeviceLimit = type === 'DEVICE_LIMIT_REACHED';
 
-  const handleUpgrade = () => {
+  const handleUpgrade = async () => {
+    setIsCheckoutLoading(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await res.json();
+
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+    } catch (err) {
+      console.error('Error al conectar con Stripe Checkout desde HardLimitModal:', err);
+    }
+
+    // Fallback en caso de que falle la creación directa de la sesión de Stripe
+    setIsCheckoutLoading(false);
     onClose();
     router.push('/billing');
   };
@@ -33,7 +62,7 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && !isCheckoutLoading) onClose();
       }}
     >
       <div className="relative w-full max-w-lg bg-[#faf7f2] border border-[#e7dfd5] rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-8 space-y-6 text-stone-900 animate-scale-in">
@@ -41,7 +70,8 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 w-9 h-9 rounded-2xl bg-white hover:bg-stone-200 border border-[#e7dfd5] flex items-center justify-center text-stone-500 hover:text-stone-800 transition"
+          disabled={isCheckoutLoading}
+          className="absolute top-4 right-4 w-9 h-9 rounded-2xl bg-white hover:bg-stone-200 border border-[#e7dfd5] flex items-center justify-center text-stone-500 hover:text-stone-800 transition disabled:opacity-50"
           title={isEn ? 'Close' : 'Cerrar'}
         >
           <X className="w-4 h-4" />
@@ -133,16 +163,29 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
               <button
                 type="button"
                 onClick={handleUpgrade}
-                className="flex-1 py-3 px-5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-[#a86224] to-[#c27835] hover:from-[#8e511c] hover:to-[#a86224] transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                disabled={isCheckoutLoading}
+                className="flex-1 py-3 px-5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-[#a86224] to-[#c27835] hover:from-[#8e511c] hover:to-[#a86224] transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
               >
-                <span>{isEn ? 'Upgrade to PRO' : 'Mejorar a PRO'}</span>
-                <ArrowRight className="w-4 h-4" />
+                {isCheckoutLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>
+                      {isEn ? 'Connecting to Stripe...' : 'Conectando con Stripe...'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span>{isEn ? 'Upgrade to PRO' : 'Mejorar a PRO'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
 
               <button
                 type="button"
                 onClick={onClose}
-                className="py-3 px-5 rounded-2xl font-semibold text-xs sm:text-sm text-stone-600 hover:text-stone-900 bg-white hover:bg-stone-100 border border-[#e7dfd5] transition-all cursor-pointer text-center"
+                disabled={isCheckoutLoading}
+                className="py-3 px-5 rounded-2xl font-semibold text-xs sm:text-sm text-stone-600 hover:text-stone-900 bg-white hover:bg-stone-100 border border-[#e7dfd5] transition-all cursor-pointer text-center disabled:opacity-50"
               >
                 {isEn ? 'Wait until 1st' : 'Esperar al día 1'}
               </button>
