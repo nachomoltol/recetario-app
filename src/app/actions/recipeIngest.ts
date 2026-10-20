@@ -24,6 +24,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
   const idioma: 'es' | 'en' = rawIdioma === 'en' ? 'en' : 'es';
   const fileEntry = formData.get('archivo') || formData.get('file');
   const file = fileEntry instanceof File && fileEntry.size > 0 ? fileEntry : undefined;
+  const rawDeviceId = ((formData.get('deviceId') as string) || '').trim() || 'web_unknown';
 
   if (!url && !texto && !file) {
     return { error: 'Por favor, introduce una URL (TikTok, Instagram, YouTube), el texto de la receta o sube una imagen/documento.' };
@@ -56,11 +57,11 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
 
   const db = adminClient || supabase;
 
-  // 2. Control de Cuotas Freemium (Paywall) ANTES de invocar a Gemini
+  // 2. Control de Cuotas Freemium / Premium y Anti-Fraude ANTES de invocar a Gemini
   const { data: perfilUsuario, error: perfilError } = await db
     .from('usuarios')
     .select(
-      'id, plan_suscripcion, capturas_mes_actual, fecha_ultimo_reinicio, raciones_defecto, preferencias_dieteticas, alergenos'
+      'id, plan_suscripcion, capturas_mes_actual, fecha_ultimo_reinicio, antiguedad_ciclos_mes, raciones_defecto, preferencias_dieteticas, alergenos'
     )
     .eq('id', user.id)
     .single();
@@ -70,51 +71,114 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
   }
 
   let capturasMesActual = Number(perfilUsuario?.capturas_mes_actual) || 0;
+  let antiguedadCiclos = Number(perfilUsuario?.antiguedad_ciclos_mes) || 0;
   const rawPlan = (perfilUsuario?.plan_suscripcion || '').trim().toLowerCase();
   const isPro = rawPlan === 'pro';
   const ahora = new Date();
 
-  // Verificación de Mes: Si fecha_ultimo_reinicio existe y es de un mes previo, reiniciar a 0
-  if (perfilUsuario?.fecha_ultimo_reinicio) {
-    const fechaReinicio = new Date(perfilUsuario.fecha_ultimo_reinicio);
-    if (!isNaN(fechaReinicio.getTime())) {
-      const esMismoMesYAno =
-        fechaReinicio.getUTCFullYear() === ahora.getUTCFullYear() &&
-        fechaReinicio.getUTCMonth() === ahora.getUTCMonth();
+  // Helper para detectar cambio de mes respecto a una fecha ISO
+  const esNuevoMes = (fechaIso?: string | null): boolean => {
+    if (!fechaIso) return true;
+    const f = new Date(fechaIso);
+    if (isNaN(f.getTime())) return true;
+    return (
+      f.getUTCFullYear() !== ahora.getUTCFullYear() ||
+      f.getUTCMonth() !== ahora.getUTCMonth()
+    );
+  };
 
-      if (!esMismoMesYAno) {
-        capturasMesActual = 0;
-        await db
-          .from('usuarios')
-          .update({
-            capturas_mes_actual: 0,
-            fecha_ultimo_reinicio: ahora.toISOString(),
-            updated_at: ahora.toISOString(),
-          })
-          .eq('id', user.id);
-        console.log(`[recipeIngest] Nuevo mes detectado: cuota mensual reseteada a 0 para ${user.id}`);
-      }
+  // Hybrid-Reset (Pilar B): Si el usuario no se reinició por pg_cron en el nuevo mes, reiniciar al vuelo
+  if (perfilUsuario?.fecha_ultimo_reinicio) {
+    if (esNuevoMes(perfilUsuario.fecha_ultimo_reinicio)) {
+      antiguedadCiclos += 1;
+      capturasMesActual = 0;
+      await db
+        .from('usuarios')
+        .update({
+          capturas_mes_actual: 0,
+          antiguedad_ciclos_mes: antiguedadCiclos,
+          fecha_ultimo_reinicio: ahora.toISOString(),
+          updated_at: ahora.toISOString(),
+        })
+        .eq('id', user.id);
+      console.log(`[recipeIngest] Hybrid-Reset usuario: Cuota mensual reseteada a 0 para ${user.id} (ciclo ${antiguedadCiclos}).`);
     }
   } else {
-    // Si no existía fecha_ultimo_reinicio, inicializarla para evitar falsos reseteos en el futuro
     await db
       .from('usuarios')
       .update({
         fecha_ultimo_reinicio: ahora.toISOString(),
+        antiguedad_ciclos_mes: 0,
         updated_at: ahora.toISOString(),
       })
       .eq('id', user.id);
   }
 
-  // Lógica de Permisos (Fase 6.1):
-  // Si el usuario no tiene plan 'pro' y lleva >= 5 recetas este mes: Bloquear ANTES de Gemini
-  if (!isPro && capturasMesActual >= 5) {
-    console.warn(
-      `[recipeIngest] BLOQUEO PAYWALL: Usuario ${user.id} (plan: '${rawPlan || 'gratis'}', capturas: ${capturasMesActual}) >= 5. Bloqueando antes de invocar IA.`
-    );
+  // Anti-Fraude: Comprobación de cuota y hybrid-reset por dispositivo físico
+  let capturasDispositivo = 0;
+  const isValidoDeviceId = rawDeviceId && rawDeviceId !== 'web_unknown' && rawDeviceId !== 'server_fallback';
+
+  if (isValidoDeviceId) {
+    const { data: dispData } = await db
+      .from('dispositivos_cuotas')
+      .select('*')
+      .eq('device_id', rawDeviceId)
+      .maybeSingle();
+
+    if (dispData) {
+      capturasDispositivo = Number(dispData.capturas_mes_actual) || 0;
+      if (esNuevoMes(dispData.fecha_ultimo_reinicio)) {
+        capturasDispositivo = 0;
+        const nuevaAntiguedadDisp = (Number(dispData.antiguedad_ciclos_mes) || 0) + 1;
+        await db
+          .from('dispositivos_cuotas')
+          .update({
+            capturas_mes_actual: 0,
+            antiguedad_ciclos_mes: nuevaAntiguedadDisp,
+            fecha_ultimo_reinicio: ahora.toISOString(),
+            updated_at: ahora.toISOString(),
+          })
+          .eq('device_id', rawDeviceId);
+      }
+    } else {
+      // Registrar primer contacto del dispositivo físico
+      await db.from('dispositivos_cuotas').insert({
+        device_id: rawDeviceId,
+        capturas_mes_actual: 0,
+        fecha_ultimo_reinicio: ahora.toISOString(),
+        antiguedad_ciclos_mes: 0,
+        primer_usuario_id: user.id,
+        created_at: ahora.toISOString(),
+        updated_at: ahora.toISOString(),
+      });
+    }
+  }
+
+  // Cortafuegos de Límites Duros de Producción:
+  // A) Usuario PRO: Límite estricto de 150 recetas por mes calendario
+  if (isPro && capturasMesActual >= 150) {
+    console.warn(`[recipeIngest] BLOQUEO DURO PRO: Usuario ${user.id} alcanzó el límite mensual de 150 generaciones.`);
     return {
       success: false,
-      error: 'PAYWALL_LIMIT_REACHED',
+      error: 'PRO_LIMIT_REACHED',
+    };
+  }
+
+  // B) Usuario GRATUITO: Límite estricto de 50 recetas por mes calendario
+  if (!isPro && capturasMesActual >= 50) {
+    console.warn(`[recipeIngest] BLOQUEO DURO GRATUITO: Usuario ${user.id} alcanzó el límite mensual de 50 generaciones.`);
+    return {
+      success: false,
+      error: 'FREE_LIMIT_REACHED',
+    };
+  }
+
+  // C) Anti-Fraude Dispositivo Físico: Límite de 50 recetas por mes en el mismo hardware
+  if (!isPro && isValidoDeviceId && capturasDispositivo >= 50) {
+    console.warn(`[recipeIngest] BLOQUEO ANTI-FRAUDE DISPOSITIVO: Dispositivo ${rawDeviceId} alcanzó el límite de 50.`);
+    return {
+      success: false,
+      error: 'DEVICE_LIMIT_REACHED',
     };
   }
 
@@ -368,35 +432,49 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       return { error: `Error guardando los pasos: ${errPasos.message}` };
     }
 
-    // 6. Si el usuario no tiene plan PRO, incrementar cuota mensual en +1 de forma atómica y verificada
-    if (!isPro) {
-      // Reconsultar cuota fresca directamente en la base de datos para evitar desincronización
-      const { data: usuarioFresco } = await db
-        .from('usuarios')
+    // 6. Incrementar cuota mensual de generación (+1) tanto para usuario como para dispositivo
+    const { data: usuarioFresco } = await db
+      .from('usuarios')
+      .select('capturas_mes_actual')
+      .eq('id', user.id)
+      .single();
+
+    const conteoBase = Number(usuarioFresco?.capturas_mes_actual) || capturasMesActual;
+    const nuevoConteo = conteoBase + 1;
+
+    const { data: updatedRows, error: errUpdateCuota } = await db
+      .from('usuarios')
+      .update({
+        capturas_mes_actual: nuevoConteo,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id)
+      .select('id, capturas_mes_actual');
+
+    if (errUpdateCuota) {
+      console.error('[recipeIngest] ERROR al incrementar capturas_mes_actual de usuario:', errUpdateCuota);
+    } else {
+      console.log(
+        `[recipeIngest] Cuota de usuario incrementada con éxito a ${nuevoConteo} para usuario ${user.id}.`
+      );
+    }
+
+    // Incrementar también el contador del dispositivo físico
+    if (isValidoDeviceId) {
+      const { data: dispFresco } = await db
+        .from('dispositivos_cuotas')
         .select('capturas_mes_actual')
-        .eq('id', user.id)
-        .single();
+        .eq('device_id', rawDeviceId)
+        .maybeSingle();
 
-      const conteoBase = Number(usuarioFresco?.capturas_mes_actual) || capturasMesActual;
-      const nuevoConteo = conteoBase + 1;
-
-      const { data: updatedRows, error: errUpdateCuota } = await db
-        .from('usuarios')
+      const conteoBaseDisp = Number(dispFresco?.capturas_mes_actual) || capturasDispositivo;
+      await db
+        .from('dispositivos_cuotas')
         .update({
-          capturas_mes_actual: nuevoConteo,
+          capturas_mes_actual: conteoBaseDisp + 1,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user.id)
-        .select('id, capturas_mes_actual');
-
-      if (errUpdateCuota) {
-        console.error('[recipeIngest] ERROR CRÍTICO al incrementar capturas_mes_actual:', errUpdateCuota);
-      } else {
-        console.log(
-          `[recipeIngest] Cuota incrementada con éxito a ${nuevoConteo} para usuario ${user.id}. Filas actualizadas:`,
-          updatedRows?.length ?? 0
-        );
-      }
+        .eq('device_id', rawDeviceId);
     }
 
     // 7. Revalidación exhaustiva de caché de Next.js

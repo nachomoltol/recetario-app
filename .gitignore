@@ -49,3 +49,5 @@ next-env.d.ts
 local.properties
 android/local.properties
 
+# supabase
+supabase/.temp/

@@ -34,6 +34,7 @@ export interface Database {
           plan_suscripcion: 'gratis' | 'pro';
           capturas_mes_actual: number;
           fecha_ultimo_reinicio: string;
+          antiguedad_ciclos_mes: number;
           created_at: string;
           updated_at: string;
         };
@@ -50,6 +51,7 @@ export interface Database {
           plan_suscripcion?: 'gratis' | 'pro';
           capturas_mes_actual?: number;
           fecha_ultimo_reinicio?: string;
+          antiguedad_ciclos_mes?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -66,6 +68,37 @@ export interface Database {
           plan_suscripcion?: 'gratis' | 'pro';
           capturas_mes_actual?: number;
           fecha_ultimo_reinicio?: string;
+          antiguedad_ciclos_mes?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      dispositivos_cuotas: {
+        Row: {
+          device_id: string;
+          capturas_mes_actual: number;
+          fecha_ultimo_reinicio: string;
+          antiguedad_ciclos_mes: number;
+          primer_usuario_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          device_id: string;
+          capturas_mes_actual?: number;
+          fecha_ultimo_reinicio?: string;
+          antiguedad_ciclos_mes?: number;
+          primer_usuario_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          device_id?: string;
+          capturas_mes_actual?: number;
+          fecha_ultimo_reinicio?: string;
+          antiguedad_ciclos_mes?: number;
+          primer_usuario_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
