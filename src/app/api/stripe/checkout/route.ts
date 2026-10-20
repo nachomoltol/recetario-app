@@ -40,6 +40,15 @@ async function handleCheckout(req: NextRequest) {
       req.headers.get('referer')?.split('/').slice(0, 3).join('/') ||
       'https://recetario-app.vercel.app';
 
+    // Consultar si el usuario ya tiene un customer_id de Stripe asociado
+    const { data: usuarioDb } = await supabase
+      .from('usuarios')
+      .select('stripe_customer_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const existingCustomerId = usuarioDb?.stripe_customer_id || undefined;
+
     // 3. Crear sesión de Checkout
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -53,7 +62,17 @@ async function handleCheckout(req: NextRequest) {
       success_url: `${origin}/billing?success=true`,
       cancel_url: `${origin}/billing?canceled=true`,
       client_reference_id: user.id,
-      customer_email: user.email || undefined,
+      ...(existingCustomerId
+        ? { customer: existingCustomerId }
+        : { customer_email: user.email || undefined }),
+      subscription_data: {
+        metadata: {
+          userId: user.id,
+        },
+      },
+      metadata: {
+        userId: user.id,
+      },
     });
 
     if (!session.url) {
