@@ -32,7 +32,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   const resolvedParams = await searchParams;
   const isLimitParam = resolvedParams?.limit === 'reached';
   const hasReachedLimit =
-    profile?.plan_suscripcion !== 'pro' && (profile?.capturas_mes_actual ?? 0) >= 5;
+    profile?.plan_suscripcion !== 'pro' && (profile?.capturas_mes_actual ?? 0) >= 50;
 
   const isLimitReached = Boolean(isLimitParam || hasReachedLimit);
 

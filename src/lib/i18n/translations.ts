@@ -252,9 +252,9 @@ export const TRANSLATIONS = {
 
     // Fase 6: Paywall Dual, Límite Mensual y AdMob
     billing_limit_reached_badge: 'Límite mensual alcanzado',
-    billing_limit_reached_alert: 'Has consumido tus 5 recetas gratuitas de este mes',
+    billing_limit_reached_alert: 'Has consumido tus 50 recetas gratuitas de este mes',
     billing_limit_reached_desc:
-      'Para continuar estandarizando recetas al instante, mejora a PRO sin límites o desbloquea una receta viendo un breve anuncio publicitario en tu móvil.',
+      'Para continuar estandarizando recetas al instante, mejora a PRO con hasta 150 recetas sin esperas ni anuncios.',
     billing_dual_or: 'O bien',
     billing_ad_card_badge: 'Opción Gratuita',
     billing_ad_card_heading: 'Desbloquea 1 receta viendo un anuncio',
@@ -699,9 +699,9 @@ export const TRANSLATIONS = {
 
     // Phase 6: Dual Paywall, Monthly Limit & AdMob
     billing_limit_reached_badge: 'Monthly limit reached',
-    billing_limit_reached_alert: 'You have used your 5 free recipes for this month',
+    billing_limit_reached_alert: 'You have used your 50 free recipes for this month',
     billing_limit_reached_desc:
-      'To continue standardizing recipes instantly, upgrade to unlimited PRO or unlock a recipe by watching a short ad on your mobile device.',
+      'To continue standardizing recipes instantly, upgrade to PRO with up to 150 recipes with zero ads or waiting.',
     billing_dual_or: 'Or',
     billing_ad_card_badge: 'Free Option',
     billing_ad_card_heading: 'Unlock 1 recipe by watching an ad',

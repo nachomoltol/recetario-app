@@ -73,7 +73,7 @@ export default async function RecipesDashboardPage() {
             </div>
           }
         >
-          <RecipeCaptureCard />
+          <RecipeCaptureCard initialProfile={profile} />
         </Suspense>
 
         {/* Foco 2: Toggle entre Última Receta Capturada y Última Receta Vista */}

@@ -19,7 +19,12 @@ import {
 } from 'lucide-react';
 import { ingestRecipeAction } from '@/app/actions/recipeIngest';
 import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
+import { AdInterstitialModal } from '@/components/subscription/AdInterstitialModal';
+import { HardLimitModal, HardLimitType } from '@/components/subscription/HardLimitModal';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { useProfileStore } from '@/stores/useProfileStore';
+import { getDeviceIdentifier } from '@/lib/device/deviceIdentifier';
+import { Usuario } from '@/types/recipe';
 
 interface LoadingStage {
   seconds: number;
@@ -124,11 +129,27 @@ const LOADING_STAGES_EN: LoadingStage[] = [
   },
 ];
 
-export function RecipeCaptureCard() {
+export interface RecipeCaptureCardProps {
+  initialProfile?: Usuario | null;
+}
+
+export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {}) {
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  const profileFromStore = useProfileStore((s) => s.profile);
+  const currentProfile = profileFromStore || initialProfile;
+
+  // Modales de control Freemium / Premium
+  const [showInterstitialModal, setShowInterstitialModal] = useState(false);
+  const [hardLimitModal, setHardLimitModal] = useState<HardLimitType | null>(null);
+  const [pendingIngestParams, setPendingIngestParams] = useState<{
+    mode: 'url' | 'texto';
+    value: string;
+  } | null>(null);
+  const skipInterstitialRef = useRef(false);
 
   const initialUrl = searchParams.get('url') || searchParams.get('captureUrl') || '';
   const initialText = searchParams.get('captureText') || searchParams.get('text') || '';
@@ -221,7 +242,7 @@ export function RecipeCaptureCard() {
     };
   }, [isPending]);
 
-  // Ejecutor centralizado de ingesta
+  // Ejecutor centralizado de ingesta con validación de fricción Freemium/Premium
   const executeIngest = useCallback(
     (targetMode: 'url' | 'texto', targetValue: string) => {
       setError(null);
@@ -235,25 +256,55 @@ export function RecipeCaptureCard() {
       urlInputRef.current?.blur();
       textInputRef.current?.blur();
 
-      const formData = new FormData();
-      formData.set('idioma', language);
-
       if (targetMode === 'url') {
         if (!targetValue.trim() && !selectedFile) {
           setError('Por favor, introduce un enlace o sube un archivo/imagen de la receta.');
           return;
-        }
-        if (targetValue.trim()) {
-          formData.set('url', targetValue.trim());
         }
       } else {
         if (!targetValue.trim() && !selectedFile) {
           setError('Por favor, introduce el texto con la receta o sube un archivo/imagen.');
           return;
         }
-        if (targetValue.trim()) {
-          formData.set('texto', targetValue.trim());
-        }
+      }
+
+      // Reglas de negocio Freemium / Premium:
+      const isPro = (currentProfile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
+      const capturas = Number(currentProfile?.capturas_mes_actual) || 0;
+      const antiguedad = Number(currentProfile?.antiguedad_ciclos_mes) || 0;
+      const esPrimerMes = antiguedad === 0;
+
+      // 1. Bloqueo duro inmediato en cliente si ya superó el límite mensual
+      if (!isPro && capturas >= 50) {
+        setHardLimitModal('FREE_LIMIT_REACHED');
+        return;
+      }
+      if (isPro && capturas >= 150) {
+        setHardLimitModal('PRO_LIMIT_REACHED');
+        return;
+      }
+
+      // 2. Fricción por Intersticial de 5s:
+      // - Usuario PRO: Cero fricción (nunca se muestra).
+      // - Usuario Gratis Mes 1: Generaciones 1 a 5 directas; 6 a 50 con anuncio.
+      // - Usuario Gratis Mes 2+: Generaciones 1 a 50 con anuncio desde la 1ª.
+      const requiresInterstitial = !isPro && (!esPrimerMes || capturas >= 5);
+
+      if (requiresInterstitial && !skipInterstitialRef.current) {
+        setPendingIngestParams({ mode: targetMode, value: targetValue });
+        setShowInterstitialModal(true);
+        return;
+      }
+      skipInterstitialRef.current = false;
+
+      // 3. Montar payload y proceder con la extracción en el servidor
+      const formData = new FormData();
+      formData.set('idioma', language);
+
+      if (targetMode === 'url' && targetValue.trim()) {
+        formData.set('url', targetValue.trim());
+      } else if (targetMode === 'texto' && targetValue.trim()) {
+        formData.set('texto', targetValue.trim());
       }
 
       startTransition(async () => {
@@ -261,24 +312,45 @@ export function RecipeCaptureCard() {
           if (selectedFile) {
             formData.set('archivo', selectedFile);
           }
+
+          // Resolver e inyectar el ID de hardware para protección anti-fraude
+          const deviceId = await getDeviceIdentifier();
+          formData.set('deviceId', deviceId);
+
           const res = await ingestRecipeAction(formData);
+
           if (res?.error) {
-            if (res.error === 'PAYWALL_LIMIT_REACHED') {
-              const pendingVal = targetValue.trim() || url.trim() || texto.trim();
-              const billingTarget = pendingVal
-                ? `/billing?limit=reached&pendingUrl=${encodeURIComponent(pendingVal)}`
-                : '/billing?limit=reached';
-              router.push(billingTarget);
+            // Manejo en línea de bloqueos duros sin expulsar a /billing
+            if (
+              res.error === 'FREE_LIMIT_REACHED' ||
+              res.error === 'PAYWALL_LIMIT_REACHED'
+            ) {
+              setHardLimitModal('FREE_LIMIT_REACHED');
+              setError(null);
+            } else if (res.error === 'DEVICE_LIMIT_REACHED') {
+              setHardLimitModal('DEVICE_LIMIT_REACHED');
+              setError(null);
+            } else if (res.error === 'PRO_LIMIT_REACHED') {
+              setHardLimitModal('PRO_LIMIT_REACHED');
               setError(null);
             } else {
               setError(res.error);
             }
           } else if (res?.success) {
+            // Actualizar cuota reactivamente en useProfileStore
+            if (currentProfile) {
+              useProfileStore.getState().setProfile({
+                ...currentProfile,
+                capturas_mes_actual: capturas + 1,
+              });
+            }
+
             setSuccess(t('capture_success'));
             setCreatedRecetaId(res.recetaId || null);
             setUrl('');
             setTexto('');
             setSelectedFile(null);
+            setPendingIngestParams(null);
             if (fileInputRef.current) fileInputRef.current.value = '';
 
             // Disparar evento para que la sección de inicio salte a 'Última receta capturada'
@@ -299,8 +371,23 @@ export function RecipeCaptureCard() {
         }
       });
     },
-    [selectedFile, router]
+    [selectedFile, router, currentProfile, language, t]
   );
+
+  // Manejador al finalizar la cuenta regresiva del anuncio intersticial de 5s
+  const handleInterstitialComplete = useCallback(() => {
+    setShowInterstitialModal(false);
+    skipInterstitialRef.current = true;
+    if (pendingIngestParams) {
+      executeIngest(pendingIngestParams.mode, pendingIngestParams.value);
+    }
+  }, [pendingIngestParams, executeIngest]);
+
+  const handleInterstitialCancel = useCallback(() => {
+    setShowInterstitialModal(false);
+    setPendingIngestParams(null);
+    skipInterstitialRef.current = false;
+  }, []);
 
   // Desplazamiento suave al panel de captura si el componente se monta con un parámetro URL (texto/enlace compartido)
   useEffect(() => {
@@ -786,6 +873,20 @@ export function RecipeCaptureCard() {
         onVipSuccess={() => {
           setShowProModal(false);
         }}
+      />
+
+      {/* Modal Intersticial de 5 Segundos (Generación Patrocinada en Línea) */}
+      <AdInterstitialModal
+        isOpen={showInterstitialModal}
+        onComplete={handleInterstitialComplete}
+        onCancel={handleInterstitialCancel}
+      />
+
+      {/* Modal de Bloqueo Duro por Límite Mensual Alcanzado */}
+      <HardLimitModal
+        isOpen={Boolean(hardLimitModal)}
+        type={hardLimitModal}
+        onClose={() => setHardLimitModal(null)}
       />
     </div>
   );
