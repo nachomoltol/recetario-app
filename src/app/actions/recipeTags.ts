@@ -16,20 +16,20 @@ export async function updateRecipeTagsAction({
   recetaId: string;
   etiquetas: string[];
 }): Promise<UpdateRecipeTagsResult> {
-  if (!recetaId) {
-    return { success: false, error: 'Identificador de receta requerido.' };
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: 'Debes iniciar sesión para editar etiquetas.' };
-  }
-
   try {
+    if (!recetaId) {
+      return { success: false, error: 'Identificador de receta requerido.' };
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'Debes iniciar sesión para editar etiquetas.' };
+    }
     // Normalizar y deduplicar etiquetas no vacías
     const cleanTags = Array.from(
       new Set(

@@ -2,8 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { createClient, getAdminClient } from '@/lib/supabase/server';
 
 export interface AuthActionResult {
   error?: string;
@@ -195,20 +194,11 @@ export async function deleteAccountAction(): Promise<AuthActionResult> {
       return { error: 'No se encontró una sesión activa.' };
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      console.error('Falta SUPABASE_SERVICE_ROLE_KEY para eliminar usuario.');
+    const adminClient = getAdminClient();
+    if (!adminClient) {
+      console.error('[auth] Falta SUPABASE_SERVICE_ROLE_KEY válida para eliminar usuario en auth.admin.');
       return { error: 'Error de configuración del servidor al eliminar la cuenta.' };
     }
-
-    const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
 
     // 1. Eliminar datos asociados del usuario en la base de datos
     try {

@@ -1,8 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createClient as createServerUserClient } from '@/lib/supabase/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { createClient as createServerUserClient, getAdminClient } from '@/lib/supabase/server';
 import { Database } from '@/types/database';
 
 export interface RedeemVipResult {
@@ -34,23 +33,11 @@ export async function redeemVipCodeAction(code: string): Promise<RedeemVipResult
     }
 
     // 2. Uso de Cliente de Administrador (Service Role) para saltarse RLS
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      console.error('Faltan variables de entorno para el cliente Administrador de Supabase.');
-      return { error: 'Error de configuración del servidor' };
+    const adminClient = getAdminClient();
+    if (!adminClient) {
+      console.error('[subscription] Falta SUPABASE_SERVICE_ROLE_KEY válida para canjear código.');
+      return { error: 'Error de configuración del servidor al procesar el código.' };
     }
-
-    const adminClient = createAdminClient<Database>(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-      global: {
-        fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }),
-      },
-    });
 
     let updatePayload: {
       plan_suscripcion: 'gratis' | 'pro';
@@ -124,21 +111,8 @@ export async function claimRewardCreditAction(): Promise<ClaimRewardCreditResult
       return { error: 'Debes iniciar sesión para obtener créditos de receta.' };
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    let targetClient = userClient;
-    if (supabaseUrl && serviceRoleKey) {
-      targetClient = createAdminClient<Database>(supabaseUrl, serviceRoleKey, {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-        global: {
-          fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }),
-        },
-      }) as any;
-    }
+    const adminClient = getAdminClient();
+    const targetClient = adminClient || userClient;
 
     const { data: usuario, error: fetchErr } = await targetClient
       .from('usuarios')

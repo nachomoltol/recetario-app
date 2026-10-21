@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@config "../../tailwind.config.ts";
+@source "../**/*.{js,ts,jsx,tsx,mdx}";
 
 @theme {
   --font-serif: var(--font-serif), ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;

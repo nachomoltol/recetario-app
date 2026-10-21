@@ -20,28 +20,37 @@ export function isNativePlatform(): boolean {
 
 /**
  * Obtiene el ID del bloque de anuncios de vídeo bonificado (Rewarded Video).
- * Utiliza los IDs de prueba oficiales de Google AdMob por defecto,
- * y permite inyectar IDs reales mediante variables de entorno.
+ * Si la variable de entorno indica que estamos en producción (process.env.NODE_ENV === 'production'),
+ * utiliza el Ad Unit ID oficial: ca-app-pub-8525131609099761/6495393562.
+ * En cualquier otro caso (desarrollo o testing), utiliza el ID oficial de pruebas de Google:
+ * ca-app-pub-3940256099942544/5224354917.
  */
 export function getRewardedAdUnitId(): string {
+  const isProduction = process.env.NODE_ENV === 'production';
   const platform = Capacitor.getPlatform();
 
-  if (platform === 'ios') {
+  if (isProduction) {
+    if (platform === 'ios') {
+      return (
+        process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID_IOS ||
+        process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID ||
+        'ca-app-pub-8525131609099761/6495393562'
+      );
+    }
+
     return (
-      process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID_IOS ||
+      process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID_ANDROID ||
       process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID ||
-      // ID de prueba oficial de AdMob para Rewarded Video en iOS
-      'ca-app-pub-3940256099942544/1712485313'
+      'ca-app-pub-8525131609099761/6495393562'
     );
   }
 
-  // Android y fallback general
-  return (
-    process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID_ANDROID ||
-    process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID ||
-    // ID de prueba oficial de AdMob para Rewarded Video en Android
-    'ca-app-pub-3940256099942544/5224354917'
-  );
+  // En cualquier otro caso (desarrollo o testing), utiliza el ID oficial de pruebas de Google
+  if (platform === 'ios') {
+    return 'ca-app-pub-3940256099942544/1712485313';
+  }
+
+  return 'ca-app-pub-3940256099942544/5224354917';
 }
 
 let isAdMobInitialized = false;
@@ -53,9 +62,7 @@ export async function initializeAdMob(): Promise<void> {
   if (!isNativePlatform() || isAdMobInitialized) return;
 
   try {
-    const isTesting =
-      process.env.NODE_ENV !== 'production' ||
-      !process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID;
+    const isTesting = process.env.NODE_ENV !== 'production';
 
     await AdMob.initialize({
       initializeForTesting: isTesting,

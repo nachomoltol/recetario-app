@@ -17,20 +17,20 @@ export interface DeleteRecipeResult {
  * - diario_cocinados
  */
 export async function deleteRecipeAction(recipeId: string): Promise<DeleteRecipeResult> {
-  if (!recipeId) {
-    return { error: 'Identificador de receta no válido.' };
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Debes iniciar sesión para eliminar recetas.' };
-  }
-
   try {
+    if (!recipeId) {
+      return { success: false, error: 'Identificador de receta no válido.' };
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'Debes iniciar sesión para eliminar recetas.' };
+    }
     // 1. Localizar fotografías del diario culinario vinculadas a la receta para borrarlas del bucket
     const { data: diarioEntries } = await supabase
       .from('diario_cocinados')

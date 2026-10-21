@@ -1,14 +1,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { createClient, getAdminClient } from '@/lib/supabase/server';
 import { extractRecipeWithGemini, detectFuenteTipo, sanitizeRecipeUrl } from '@/lib/gemini/extractor';
 import { getClinicalExclusions } from '@/lib/clinicalDictionary';
 import { ExtractedIngredient } from '@/lib/gemini/schema';
 import { calcularGramos } from '@/lib/nutrition/converter';
 import { IngredienteMaestro } from '@/types/recipe';
-import { FuenteTipoReceta, Database } from '@/types/database';
+import { FuenteTipoReceta } from '@/types/database';
 
 export interface IngestRecipeResult {
   success?: boolean;
@@ -17,45 +16,41 @@ export interface IngestRecipeResult {
 }
 
 export async function ingestRecipeAction(formData: FormData): Promise<IngestRecipeResult> {
-  const rawUrl = (formData.get('url') as string)?.trim() || undefined;
-  const url = sanitizeRecipeUrl(rawUrl);
-  const texto = (formData.get('texto') as string)?.trim() || undefined;
-  const rawIdioma = (formData.get('idioma') as string)?.trim().toLowerCase();
-  const idioma: 'es' | 'en' = rawIdioma === 'en' ? 'en' : 'es';
-  const fileEntry = formData.get('archivo') || formData.get('file');
-  const file = fileEntry instanceof File && fileEntry.size > 0 ? fileEntry : undefined;
-  const rawDeviceId = ((formData.get('deviceId') as string) || '').trim() || 'web_unknown';
+  try {
+    const rawUrl = (formData.get('url') as string)?.trim() || undefined;
+    const url = sanitizeRecipeUrl(rawUrl);
+    const texto = (formData.get('texto') as string)?.trim() || undefined;
+    const rawIdioma = (formData.get('idioma') as string)?.trim().toLowerCase();
+    const idioma: 'es' | 'en' = rawIdioma === 'en' ? 'en' : 'es';
+    const fileEntry = formData.get('archivo') || formData.get('file');
+    const file = fileEntry instanceof File && fileEntry.size > 0 ? fileEntry : undefined;
+    const rawDeviceId = ((formData.get('deviceId') as string) || '').trim() || 'web_unknown';
 
-  if (!url && !texto && !file) {
-    return { error: 'Por favor, introduce una URL (TikTok, Instagram, YouTube), el texto de la receta o sube una imagen/documento.' };
-  }
+    if (!url && !texto && !file) {
+      return {
+        success: false,
+        error: 'Por favor, introduce una URL (TikTok, Instagram, YouTube), el texto de la receta o sube una imagen/documento.',
+      };
+    }
 
-  // 1. Validar autenticación de usuario
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+    // 1. Validar autenticación de usuario
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (authError || !user) {
-    console.error('Error de autenticación en ingestRecipeAction:', authError);
-    return { error: 'Debes haber iniciado sesión para procesar y guardar recetas.' };
-  }
+    if (authError || !user) {
+      console.error('[recipeIngest] Error de autenticación en ingestRecipeAction:', authError);
+      return {
+        success: false,
+        error: 'Debes haber iniciado sesión para procesar y guardar recetas.',
+      };
+    }
 
-  // Cliente con permisos de administración para saltarse RLS al gestionar cuotas
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const adminClient =
-    supabaseUrl && serviceRoleKey
-      ? createAdminClient<Database>(supabaseUrl, serviceRoleKey, {
-          auth: { autoRefreshToken: false, persistSession: false },
-          global: {
-            fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }),
-          },
-        })
-      : null;
-
-  const db = adminClient || supabase;
+    // Cliente con permisos de administración para saltarse RLS al gestionar cuotas
+    const adminClient = getAdminClient();
+    const db = adminClient || supabase;
 
   // 2. Control de Cuotas Freemium / Premium y Anti-Fraude ANTES de invocar a Gemini
   const { data: perfilUsuario, error: perfilError } = await db
@@ -188,9 +183,8 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     alergenos: perfilUsuario?.alergenos || [],
   });
 
-  try {
-    // 3. Extracción multimodal autónoma con Gemini
-    const extracted = await extractRecipeWithGemini({
+  // 3. Extracción multimodal autónoma con Gemini
+  const extracted = await extractRecipeWithGemini({
       url,
       texto,
       file,
@@ -485,10 +479,14 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
 
     console.log(`Receta guardada exitosamente: ${nuevaReceta.titulo} (${nuevaReceta.id})`);
     return { success: true, recetaId: nuevaReceta.id };
-  } catch (error) {
-    console.error('Error general en ingestRecipeAction:', error);
+  } catch (error: any) {
+    console.error('[recipeIngest] Fallo en Server Action ingestRecipeAction:', error);
     return {
-      error: error instanceof Error ? error.message : 'Error inesperado procesando la receta.',
+      success: false,
+      error:
+        typeof error?.message === 'string' && error.message.trim().length > 0
+          ? error.message
+          : 'Error interno del servidor al procesar y guardar la receta.',
     };
   }
 }

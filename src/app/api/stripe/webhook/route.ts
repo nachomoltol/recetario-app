@@ -9,8 +9,8 @@ function getAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.error('Faltan variables de entorno de Supabase Service Role para el webhook.');
+  if (!supabaseUrl || !serviceRoleKey || serviceRoleKey.includes('tu-service-role-key')) {
+    console.error('Faltan variables de entorno de Supabase Service Role válidas para el webhook.');
     return null;
   }
 

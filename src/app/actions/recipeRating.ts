@@ -12,60 +12,80 @@ export async function toggleFavoriteAction(
   recetaId: string,
   esFavorita: boolean
 ): Promise<RatingActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { error: 'No autenticado' };
+    if (authError || !user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const { error } = await supabase
+      .from('recetas')
+      .update({ es_favorita: esFavorita })
+      .eq('id', recetaId)
+      .eq('usuario_id', user.id);
+
+    if (error) {
+      console.error('[recipeRating] Error toggling favorite:', error);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath(`/recipes/${recetaId}`, 'page');
+    revalidatePath('/recipes', 'page');
+    revalidatePath('/recipes/collection', 'page');
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('[recipeRating] Error no controlado en toggleFavoriteAction:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Error inesperado al marcar favorito.',
+    };
   }
-
-  const { error } = await supabase
-    .from('recetas')
-    .update({ es_favorita: esFavorita })
-    .eq('id', recetaId)
-    .eq('usuario_id', user.id);
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  revalidatePath(`/recipes/${recetaId}`, 'page');
-  revalidatePath('/recipes', 'page');
-  revalidatePath('/recipes/collection', 'page');
-
-  return { success: true };
 }
 
 export async function updateRatingAction(
   recetaId: string,
   puntuacion: number
 ): Promise<RatingActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { error: 'No autenticado' };
+    if (authError || !user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const cleanScore = Math.max(0, Math.min(5, Math.round(puntuacion)));
+
+    const { error } = await supabase
+      .from('recetas')
+      .update({ puntuacion: cleanScore })
+      .eq('id', recetaId)
+      .eq('usuario_id', user.id);
+
+    if (error) {
+      console.error('[recipeRating] Error updating rating:', error);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath(`/recipes/${recetaId}`, 'page');
+    revalidatePath('/recipes', 'page');
+    revalidatePath('/recipes/collection', 'page');
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('[recipeRating] Error no controlado en updateRatingAction:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Error inesperado al calificar la receta.',
+    };
   }
-
-  const cleanScore = Math.max(0, Math.min(5, Math.round(puntuacion)));
-
-  const { error } = await supabase
-    .from('recetas')
-    .update({ puntuacion: cleanScore })
-    .eq('id', recetaId)
-    .eq('usuario_id', user.id);
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  revalidatePath(`/recipes/${recetaId}`, 'page');
-  revalidatePath('/recipes', 'page');
-  revalidatePath('/recipes/collection', 'page');
-
-  return { success: true };
 }

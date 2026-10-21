@@ -10,33 +10,33 @@ export interface DiaryActionResult {
 }
 
 export async function addCookEntryAction(formData: FormData): Promise<DiaryActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Debes iniciar sesión para registrar una preparación en tu diario.' };
-  }
-
-  const recetaId = formData.get('recetaId') as string;
-  const fotoFile = formData.get('foto') as File | null;
-  const calificacion = formData.get('calificacion')
-    ? parseInt(formData.get('calificacion') as string, 10)
-    : null;
-  const notas = (formData.get('notas') as string)?.trim() || null;
-  const modificaciones = (formData.get('modificaciones') as string)?.trim() || null;
-  const tiempoEmpleado = formData.get('tiempoEmpleadoMin')
-    ? parseInt(formData.get('tiempoEmpleadoMin') as string, 10)
-    : null;
-
-  if (!recetaId) {
-    return { error: 'ID de receta inválido.' };
-  }
-
-  let fotoResultadoUrl: string | null = null;
-
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'Debes iniciar sesión para registrar una preparación en tu diario.' };
+    }
+
+    const recetaId = formData.get('recetaId') as string;
+    const fotoFile = formData.get('foto') as File | null;
+    const calificacion = formData.get('calificacion')
+      ? parseInt(formData.get('calificacion') as string, 10)
+      : null;
+    const notas = (formData.get('notas') as string)?.trim() || null;
+    const modificaciones = (formData.get('modificaciones') as string)?.trim() || null;
+    const tiempoEmpleado = formData.get('tiempoEmpleadoMin')
+      ? parseInt(formData.get('tiempoEmpleadoMin') as string, 10)
+      : null;
+
+    if (!recetaId) {
+      return { success: false, error: 'ID de receta inválido.' };
+    }
+
+    let fotoResultadoUrl: string | null = null;
     // 1. Si se adjunta fotografía, validar tamaño (máximo 10MB) y subir a Supabase Storage
     if (fotoFile && fotoFile.size > 0 && fotoFile.name) {
       if (fotoFile.size > 10 * 1024 * 1024) {
@@ -113,20 +113,20 @@ export async function deleteDiaryEntryAction(
   entryId: string,
   recetaId?: string
 ): Promise<{ success?: boolean; error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Debes iniciar sesión para realizar esta acción.' };
-  }
-
-  if (!entryId) {
-    return { error: 'ID de valoración no válido.' };
-  }
-
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'Debes iniciar sesión para realizar esta acción.' };
+    }
+
+    if (!entryId) {
+      return { success: false, error: 'ID de valoración no válido.' };
+    }
     // 1. Obtener la entrada para verificar pertenencia y obtener datos
     const { data: entry, error: fetchError } = await supabase
       .from('diario_cocinados')
