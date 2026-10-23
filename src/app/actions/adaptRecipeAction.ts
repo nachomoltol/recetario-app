@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '@/lib/gemini/client';
 import { getClinicalExclusions } from '@/lib/clinicalDictionary';
+import { cleanIngredientName } from '@/lib/nutrition/formatQuantity';
 import { Type } from '@google/genai';
 
 export interface AdaptedIngredient {
@@ -79,11 +80,11 @@ const adaptRecipeSchema = {
         properties: {
           nombre_limpio: {
             type: Type.STRING,
-            description: 'Nombre del ingrediente. Si fue sustituido o adaptado, envuélvelo en <mark> (ej: "<mark>Leche de avena</mark>").',
+            description: 'Nombre canónico del ingrediente LIMPIO (ej: "Tofu firme prensado", "Tomate cherry"). ESTRICTAMENTE PROHIBIDO incluir cantidades ("600 g", "300 g") ni unidades dentro de nombre_limpio, ya que las cantidades van exclusivamente en el campo "cantidad". Si fue sustituido o adaptado, envuélvelo en <mark> (ej: "<mark>Tofu firme prensado</mark>").',
           },
           cantidad: {
             type: Type.NUMBER,
-            description: 'Cantidad numérica ajustada.',
+            description: 'Cantidad numérica ajustada calculada para las porciones base de la receta.',
           },
           unidad: {
             type: Type.STRING,
@@ -154,9 +155,14 @@ DIRECTIVAS ESTRICTAS DE ADAPTACIÓN:
    - En ingredientes: si el ingrediente fue sustituido o cambiado, envuélvelo en <mark> (ejemplo: "<mark>Bebida de avena</mark>", "<mark>Harina de almendras</mark>").
    - Si un ingrediente o paso no requirió cambios porque ya es 100% apto y perfecto para su nivel, mantenlo tal cual sin <mark>.
 
-3. INYECCIÓN DE CANTIDADES EN PROSA CULINARIA NATURAL:
+3. INYECCIÓN DE CANTIDADES EN PROSA CULINARIA NATURAL EN LOS PASOS:
    - Inyecta siempre la cantidad exacta en los pasos con prosa natural y fluida (ej: "Añade <mark>los 200 ml de leche de avena</mark>", "Incorpora <mark>media cebolla picada</mark>"). Está estrictamente prohibido usar decimales de laboratorio fríos (NO escribir "0.5 unidades de cebolla").
+
+4. NOMBRE CANÓNICO LIMPIO EN INGREDIENTES (CRÍTICO):
+   - El campo 'nombre_limpio' DEBE contener EXCLUSIVAMENTE el nombre culinario limpio del ingrediente (ej: "Tofu firme prensado", "Tomate cherry", "<mark>Bebida de avena</mark>").
+   - Queda TERMINANTEMENTE PROHIBIDO incluir cantidades numéricas o unidades métricas dentro de 'nombre_limpio' (NUNCA escribir "600 g de tofu", ni "300 g de Tomate cherry", ni "40 g de cebollino", ni "10 ml de aceite"). Las cantidades se informan única y exclusivamente en el campo 'cantidad' y las unidades en 'unidad'.
 `.trim();
+
 
 /**
  * Server Action Culinario de Adaptación In-Line:
@@ -262,11 +268,11 @@ ${langDirective}
 
 RECETA ORIGINAL A ADAPTAR:
 - Título: "${receta.titulo}"
-- Rendimiento: ${receta.porciones} porciones
+- Rendimiento: ${receta.porciones} porciones base
 - Dificultad declarada: ${receta.dificultad}
 - Descripción: ${receta.descripcion || 'Sin descripción'}
 
-INGREDIENTES DE LA RECETA:
+INGREDIENTES DE LA RECETA (para el rendimiento base de ${receta.porciones} porciones):
 ${receta.ingredientes
   .map(
     (i) =>
@@ -288,7 +294,9 @@ ${receta.pasos
 
 INSTRUCCIONES CLAVE:
 Reescribe el JSON de esta receta. Adapta los ingredientes y los pasos de preparación basándote estrictamente en el nivel culinario y las intolerancias del usuario.
-IMPORTANTE: Cuando modifiques un ingrediente o cambies un paso para hacerlo más fácil o apto, envuelve esa palabra o frase modificada en una etiqueta <mark> (ejemplo: 'Añade <mark>la leche de avena</mark>').
+- PROHIBIDO PREFIJOS EN INGREDIENTES: El campo 'nombre_limpio' de cada ingrediente debe contener ÚNICAMENTE el nombre culinario limpio (ej: "<mark>Tofu firme prensado</mark>", "<mark>Parte verde de cebollino picado</mark>", "Tomate cherry"). NUNCA incluyas la cantidad ni la unidad métrica dentro de 'nombre_limpio' (NO "600 g de tofu", NO "300 g de tomate").
+- RENDIMIENTO BASE: Todas las cantidades numéricas adaptadas deben calcularse para las ${receta.porciones} porciones base de la receta.
+- ETIQUETADO <mark>: Cuando modifiques un ingrediente o cambies un paso para hacerlo más fácil o apto, envuelve esa palabra o frase modificada en una etiqueta <mark> (ejemplo: 'Añade <mark>la leche de avena</mark>').
 `.trim();
 
     // 3. Ejecutar inferencia en Gemini
@@ -333,8 +341,13 @@ IMPORTANTE: Cuando modifiques un ingrediente o cambies un paso para hacerlo más
             else if (uLower === 'gramo' || uLower === 'gramos') u = 'g';
             else if (uLower === 'mililitro' || uLower === 'mililitros') u = 'ml';
           }
+
+          // Saneado defensivo del nombre para erradicar cualquier cantidad métrica residual
+          const cleanNombre = cleanIngredientName(ing.nombre_limpio);
+
           return {
             ...ing,
+            nombre_limpio: cleanNombre,
             unidad: u,
           };
         });

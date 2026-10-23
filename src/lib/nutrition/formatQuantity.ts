@@ -270,3 +270,38 @@ export function formatCulinaryAmount(
   const unitFormatted = formatIngredientUnit(unit, amount, lang);
   return `${numStr} ${unitFormatted}`.trim();
 }
+
+/**
+ * Limpia y normaliza el nombre de un ingrediente eliminando cualquier prefijo residual
+ * de cantidades numéricas, unidades métricas o preposiciones (ej: "600 g de ...", "40 g de ...", "10 ml ...").
+ * Preserva las etiquetas <mark>...</mark> si existen en el texto.
+ */
+export function cleanIngredientName(raw: string): string {
+  if (!raw) return '';
+  let str = String(raw).trim();
+
+  // Preservar si todo el nombre está envuelto en <mark>...</mark>
+  const markMatch = str.match(/^<mark>([\s\S]*?)<\/mark>$/i);
+  let inner = markMatch ? markMatch[1].trim() : str;
+
+  // Regex defensivo para prefijos numéricos y unidades métricas o culinarias al inicio
+  const prefixRegex = /^(\d+(?:[.,]\d+)?|\d+\/\d+|\d+\s+\d+\/\d+)?\s*(g|gr|gramos|grams|kg|kilos|ml|l|litros|litres|tbsp|tsp|cda|cdas|cucharada|cucharadas|cucharadita|cucharaditas|unidades|unidad|unit|units|pieza|piezas|piece|pieces|diente|dientes|clove|cloves|taza|tazas|cup|cups|pizca|pizcas|pinch|pinches|lata|latas|paquete|paquetes)\s+(?:de\s+|of\s+)?/i;
+
+  let prev = '';
+  while (prev !== inner) {
+    prev = inner;
+    inner = inner.replace(prefixRegex, '').trim();
+    inner = inner.replace(/^(?:de\s+|of\s+)/i, '').trim();
+  }
+
+  // Quitar números sueltos al inicio seguidos de 'de' u 'of' (ej: "2 de cebollas") o números residuales iniciales
+  inner = inner.replace(/^\d+(?:[.,]\d+)?\s+(?:de\s+|of\s+)?/i, '').trim();
+
+  // Capitalizar la primera letra si quedó en minúscula
+  if (inner.length > 0) {
+    inner = inner.charAt(0).toUpperCase() + inner.slice(1);
+  }
+
+  return markMatch ? `<mark>${inner}</mark>` : inner;
+}
+

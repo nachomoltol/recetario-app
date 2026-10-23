@@ -31,6 +31,7 @@ interface RecipeInteractiveSectionsProps {
     adaptedBaseName?: string
   ) => void;
   isAdapted?: boolean;
+  userProfile?: any;
 }
 
 export function RecipeInteractiveSections({
@@ -43,6 +44,7 @@ export function RecipeInteractiveSections({
   defaultServings,
   onSubstitutePersist,
   isAdapted,
+  userProfile,
 }: RecipeInteractiveSectionsProps) {
   const t = useLanguageStore((s) => s.t);
   const [servings, setServings] = useState(defaultServings || basePorciones || 2);
@@ -188,6 +190,7 @@ export function RecipeInteractiveSections({
               tituloReceta={tituloReceta}
               ingredientes={scaledIngredientes}
               onSubstituteChange={handleSubstituteChange}
+              userProfile={userProfile}
             />
           </div>
         )}

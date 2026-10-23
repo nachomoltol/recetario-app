@@ -89,16 +89,17 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
     initialProfile.nivel_culinario || 'Principiante'
   );
 
-  // Inicialización de Objetivo Clínico y Patrón Alimentario desde las preferencias guardadas
+  // Inicialización multiselección de Objetivos Clínicos y Patrón Alimentario desde las preferencias guardadas
   const initialPrefs = initialProfile.preferencias_dieteticas || [];
-  const foundObjetivo = OBJETIVOS_CLINICOS.find((o) =>
+  const matchedObjetivos = OBJETIVOS_CLINICOS.filter((o) =>
     initialPrefs.some(
       (p) =>
         p.toLowerCase() === o.id.toLowerCase() ||
         p.toLowerCase() === o.label.toLowerCase() ||
         p.toLowerCase() === o.key.toLowerCase()
     )
-  );
+  ).map((o) => o.id);
+
   const foundPatron = PATRONES_ALIMENTARIOS.find((pa) =>
     initialPrefs.some(
       (p) =>
@@ -108,8 +109,8 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
     )
   );
 
-  const [objetivoClinico, setObjetivoClinico] = useState<string>(
-    foundObjetivo?.id || 'General'
+  const [objetivosClinicos, setObjetivosClinicos] = useState<string[]>(
+    matchedObjetivos.length > 0 ? matchedObjetivos : ['General']
   );
   const [patronAlimentario, setPatronAlimentario] = useState<string>(
     foundPatron?.id || 'Omnívora'
@@ -149,20 +150,34 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
     setShowProModal(true);
   };
 
+  const handleToggleObjetivo = (optId: string) => {
+    setObjetivosClinicos((prev) => {
+      if (optId === 'General') {
+        return ['General'];
+      }
+
+      // Al marcar una patología específica, quitar 'General'
+      const withoutGeneral = prev.filter((id) => id !== 'General');
+
+      if (withoutGeneral.includes(optId)) {
+        const next = withoutGeneral.filter((id) => id !== optId);
+        return next.length > 0 ? next : ['General'];
+      } else {
+        return [...withoutGeneral, optId];
+      }
+    });
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setStatusMessage(null);
 
-    const preferenciasActualizadas = isPro
-      ? [objetivoClinico, patronAlimentario].filter(Boolean)
-      : ['General', 'Omnívora'];
+    const preferenciasActualizadas = [...objetivosClinicos, patronAlimentario].filter(Boolean);
 
     startTransition(async () => {
       const res = await updateUserProfileAction({
         nombre: nombre.trim(),
-        nivel_culinario: isPro
-          ? nivelCulinario
-          : initialProfile.nivel_culinario || 'Principiante',
+        nivel_culinario: nivelCulinario,
         preferencias_dieteticas: preferenciasActualizadas,
       });
 
@@ -203,11 +218,12 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
       )
     : '2026';
 
-  const selectedObjectiveObj = OBJETIVOS_CLINICOS.find((o) => o.id === objetivoClinico);
+  const selectedObjectivesList = OBJETIVOS_CLINICOS.filter((o) => objetivosClinicos.includes(o.id));
   const selectedPatternObj = PATRONES_ALIMENTARIOS.find((p) => p.id === patronAlimentario);
 
   return (
-    <form onSubmit={handleSave} className="space-y-6">
+    <>
+      <form onSubmit={handleSave} className="space-y-6">
       {/* TARJETA 1: Información básica del Chef */}
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center gap-5 border-b border-[#e7dfd5] pb-6">
@@ -348,39 +364,22 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
           <div className="flex items-center gap-2.5">
             <ChefHat className="w-5 h-5 text-[#a86224]" />
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
-                  {t('level_title')}
-                </h3>
-                {!isPro && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-[#a86224] border border-[#a86224]/30 flex items-center gap-1 shadow-2xs">
-                    <Lock className="w-3 h-3 text-[#a86224]" /> {t('clinical_pro_badge')}
-                  </span>
-                )}
-              </div>
+              <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
+                {t('level_title')}
+              </h3>
               <p className="text-xs text-stone-500 mt-0.5">{t('level_desc')}</p>
             </div>
           </div>
         </div>
 
-        <div
-          className={`grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 transition-opacity ${
-            !isPro ? 'opacity-50 pointer-events-none select-none' : ''
-          }`}
-        >
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
           {NIVELES_CULINARIOS.map((nivel) => {
             const isSelected = nivelCulinario === nivel.id;
             return (
               <button
                 key={nivel.id}
                 type="button"
-                onClick={() => {
-                  if (isPro) {
-                    setNivelCulinario(nivel.id);
-                  } else {
-                    setShowProModal(true);
-                  }
-                }}
+                onClick={() => setNivelCulinario(nivel.id)}
                 className={`p-4 rounded-2xl text-left transition border flex flex-col justify-between gap-3 cursor-pointer ${
                   isSelected
                     ? 'bg-[#f4efe6] border-[#a86224] ring-1 ring-[#a86224]/40 shadow-2xs'
@@ -394,7 +393,6 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                       <Check className="w-3 h-3 stroke-[3]" />
                     </span>
                   )}
-                  {!isPro && <Lock className="w-3.5 h-3.5 text-stone-400" />}
                 </div>
                 <div>
                   <h4 className="text-sm font-bold font-serif-recipe text-stone-900">
@@ -422,11 +420,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                 <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
                   {t('clinical_showcase_title')}
                 </h3>
-                {!isPro ? (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-[#a86224] border border-[#a86224]/30 flex items-center gap-1 shadow-2xs">
-                    <Lock className="w-3 h-3 text-[#a86224]" /> {t('clinical_pro_badge')}
-                  </span>
-                ) : (
+                {isPro && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3 text-emerald-600" />{' '}
                     {language === 'en' ? 'Firewall Active' : 'Cortafuegos Activo'}
@@ -440,57 +434,79 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
           </div>
         </div>
 
-        {/* CONTENEDOR DE SELECTORES: VISIBLE E INTERACTIVO PARA TODOS (TEASER FREEMIUM) */}
+        {/* CONTENEDOR DE SELECTORES: VISIBLE E INTERACTIVO PARA TODOS (FLUJO FREEMIUM) */}
         <div className="space-y-6">
-          {/* SELECTOR 1: OBJETIVO CLÍNICO */}
-          <div className="space-y-2">
+          {/* SELECTOR 1: OBJETIVOS CLÍNICOS (CHIPS MULTISELECCIÓN) */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label
-                htmlFor="select-objetivo-clinico"
-                className="text-xs font-bold text-stone-800 flex items-center gap-1.5"
-              >
-                {!isPro && <Lock className="w-3.5 h-3.5 text-[#a86224]" />}
+              <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
                 <span>{t('clinical_objective_label')}</span>
               </label>
               <span className="text-[11px] text-stone-500 font-medium">
-                {t('profile_conditions_count')}
+                {objetivosClinicos.filter((id) => id !== 'General').length > 0
+                  ? `${objetivosClinicos.filter((id) => id !== 'General').length} seleccionados`
+                  : t('profile_conditions_count')}
               </span>
             </div>
 
-            <div className="relative">
-              <select
-                id="select-objetivo-clinico"
-                value={objetivoClinico}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (!isPro && val !== 'General') {
-                    // Revertir a General para usuario gratuito
-                    setObjetivoClinico('General');
-                    setStatusMessage({
-                      type: 'error',
-                      text: t('clinical_free_notice'),
-                    });
-                    setShowProModal(true);
-                    return;
-                  }
-                  setObjetivoClinico(val);
-                }}
-                className="w-full appearance-none min-h-[46px] px-4 py-2.5 pr-10 rounded-2xl border border-[#e7dfd5] text-stone-900 text-sm font-semibold transition bg-[#faf7f2] focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] cursor-pointer hover:border-stone-400"
-              >
-                {OBJETIVOS_CLINICOS.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {language === 'en' ? opt.labelEn : opt.label}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-stone-500">
-                <ChevronDown className="w-4 h-4" />
-              </div>
+            {/* Panel de chips multiselección interactivo */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {OBJETIVOS_CLINICOS.map((opt) => {
+                const isSelected = objetivosClinicos.includes(opt.id);
+                const badge =
+                  opt.id === 'sin_gluten' ? '🌾' :
+                  opt.id === 'sin_lactosa' ? '🥛' :
+                  opt.id === 'fodmap' ? '🧅' :
+                  opt.id === 'baja_histamina' ? '🧀' :
+                  opt.id === 'diabetes' ? '🩸' :
+                  opt.id === 'hipertension' ? '❤️' :
+                  opt.id === 'hipercolesterolemia' ? '🫀' :
+                  opt.id === 'enfermedad_renal' ? '🫘' :
+                  opt.id === 'acido_urico_gota' ? '🥩' :
+                  opt.id === 'reflujo_gastritis' ? '🍋' :
+                  opt.id === 'blanda_gastrointestinal' ? '🥣' :
+                  opt.id === 'antiinflamatoria' ? '🌿' : '✨';
+
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => handleToggleObjetivo(opt.id)}
+                    className={`min-h-[42px] px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer select-none active:scale-95 ${
+                      isSelected
+                        ? 'bg-emerald-50 border-2 border-emerald-500 text-emerald-900 shadow-2xs'
+                        : 'bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] text-stone-700 hover:border-stone-400 font-medium'
+                    }`}
+                  >
+                    <span className="text-base leading-none">{badge}</span>
+                    <span>{language === 'en' ? opt.labelEn : opt.label}</span>
+                    {isSelected && (
+                      <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                        <Check className="w-3 h-3 stroke-[3]" />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
-            {selectedObjectiveObj && (
-              <p className="text-xs text-stone-600 font-light px-1">
-                {language === 'en' ? selectedObjectiveObj.descEn : selectedObjectiveObj.desc}
+            {/* Descripciones contextuales de los objetivos marcados */}
+            {selectedObjectivesList.filter((o) => o.id !== 'General').length > 0 ? (
+              <div className="space-y-1.5 pt-1.5 border-t border-[#f4efe6]">
+                {selectedObjectivesList
+                  .filter((o) => o.id !== 'General')
+                  .map((obj) => (
+                    <p key={obj.id} className="text-xs text-stone-600 font-light px-1 flex items-start gap-1.5">
+                      <span className="font-semibold text-emerald-800 shrink-0">{obj.label}:</span>
+                      <span>{language === 'en' ? obj.descEn : obj.desc}</span>
+                    </p>
+                  ))}
+              </div>
+            ) : (
+              <p className="text-xs text-stone-500 font-light px-1">
+                {language === 'en'
+                  ? 'No clinical restrictions selected. Tap any condition to activate nutritional firewall.'
+                  : 'Sin restricciones clínicas activas. Pulsa sobre cualquier patología para activar su cortafuegos nutricional.'}
               </p>
             )}
           </div>
@@ -502,7 +518,6 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                 htmlFor="select-patron-alimentario"
                 className="text-xs font-bold text-stone-800 flex items-center gap-1.5"
               >
-                {!isPro && <Lock className="w-3.5 h-3.5 text-[#a86224]" />}
                 <span>{t('clinical_pattern_label')}</span>
               </label>
               <span className="text-[11px] text-stone-500 font-medium">
@@ -515,18 +530,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                 id="select-patron-alimentario"
                 value={patronAlimentario}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  if (!isPro && val !== 'Omnívora') {
-                    // Revertir a Omnívora para usuario gratuito
-                    setPatronAlimentario('Omnívora');
-                    setStatusMessage({
-                      type: 'error',
-                      text: t('clinical_free_pattern_notice'),
-                    });
-                    setShowProModal(true);
-                    return;
-                  }
-                  setPatronAlimentario(val);
+                  setPatronAlimentario(e.target.value);
                 }}
                 className="w-full appearance-none min-h-[46px] px-4 py-2.5 pr-10 rounded-2xl border border-[#e7dfd5] text-stone-900 text-sm font-semibold transition bg-[#faf7f2] focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] cursor-pointer hover:border-stone-400"
               >
@@ -646,16 +650,17 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
           )}
         </button>
       </div>
-
-      {/* Modal flotante de suscripción PRO */}
-      <ProSubscriptionModal
-        isOpen={showProModal}
-        onClose={() => setShowProModal(false)}
-        context="feature_locked"
-        onVipSuccess={() => {
-          setIsVipUpgraded(true);
-        }}
-      />
     </form>
+
+    {/* Modal flotante de suscripción PRO (Renderizado fuera del <form> principal para erradicar hydration errors de formularios anidados) */}
+    <ProSubscriptionModal
+      isOpen={showProModal}
+      onClose={() => setShowProModal(false)}
+      context="feature_locked"
+      onVipSuccess={() => {
+        setIsVipUpgraded(true);
+      }}
+    />
+  </>
   );
 }

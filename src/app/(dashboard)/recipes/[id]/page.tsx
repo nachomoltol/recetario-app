@@ -25,10 +25,10 @@ export default async function RecipeDetailPage({ params }: PageProps) {
     redirect(`/login?redirectTo=/recipes/${id}`);
   }
 
-  // Consultar perfil del usuario para preferencias (alergias, nivel y raciones)
+  // Consultar perfil del usuario para preferencias (alergias, nivel, raciones y plan)
   const { data: userProfile } = await supabase
     .from('usuarios')
-    .select('id, raciones_defecto, nivel_culinario, preferencias_dieteticas, alergenos')
+    .select('id, raciones_defecto, nivel_culinario, preferencias_dieteticas, alergenos, plan_suscripcion')
     .eq('id', user.id)
     .single();
 

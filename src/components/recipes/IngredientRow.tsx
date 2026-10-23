@@ -20,13 +20,19 @@ import { suggestSubstituteAction, SubstituteOption } from '@/app/actions/suggest
 import { RecetaIngrediente } from '@/types/recipe';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { useLanguageStore } from '@/stores/useLanguageStore';
-import { formatCulinaryAmount, pluralizeCulinaryNoun } from '@/lib/nutrition/formatQuantity';
+import { formatCulinaryAmount, pluralizeCulinaryNoun, cleanIngredientName } from '@/lib/nutrition/formatQuantity';
+import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
+import { useProfileStore } from '@/stores/useProfileStore';
 
 interface IngredientRowProps {
   ingrediente: RecetaIngrediente;
   tituloReceta: string;
   scaledCantidad?: number;
   scaledGramos?: number;
+  userProfile?: {
+    plan_suscripcion?: string | null;
+    [key: string]: any;
+  } | null;
   onSubstituteChange?: (
     currentTarget: string,
     newName: string | null,
@@ -39,17 +45,23 @@ export function IngredientRow({
   tituloReceta,
   scaledCantidad,
   scaledGramos,
+  userProfile,
   onSubstituteChange,
 }: IngredientRowProps) {
   const [options, setOptions] = useState<SubstituteOption[] | null>(null);
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
   const [appliedOption, setAppliedOption] = useState<SubstituteOption | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [showProModal, setShowProModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const technicalCardRef = useRef<HTMLDivElement>(null);
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
+
+  const profileFromStore = useProfileStore((s) => s.profile);
+  const activeProfile = userProfile || profileFromStore;
+  const isPro = (activeProfile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
 
   const getCategoryIcon = (categoria?: string) => {
     switch (categoria?.toLowerCase()) {
@@ -70,7 +82,7 @@ export function IngredientRow({
   };
 
   // El ingrediente activo canónico en el estado actual de la receta adaptada
-  const rawBaseName = ingrediente?.nombre_limpio || ingrediente?.nombre_crudo || 'Ingrediente';
+  const rawBaseName = cleanIngredientName(ingrediente?.nombre_limpio || ingrediente?.nombre_crudo || 'Ingrediente');
   const adaptedBaseName = String(rawBaseName)
     .replace(/<\/?[^>]+(>|$)/g, '')
     .trim() || 'Ingrediente';
@@ -96,6 +108,11 @@ export function IngredientRow({
   }, [selectedOptionIndex]);
 
   const handleOpenDrawer = () => {
+    if (!isPro) {
+      setShowProModal(true);
+      return;
+    }
+
     setIsOpen(true);
     setError(null);
 
@@ -151,9 +168,10 @@ export function IngredientRow({
 
   const baseCantidadNum = scaledCantidad !== undefined ? scaledCantidad : Number(ingrediente?.cantidad) || 1;
 
-  const nombreMostrado = appliedOption
+  const rawNombreMostrado = appliedOption
     ? appliedOption.nombre_sustituto
     : adaptedBaseName;
+  const nombreMostrado = cleanIngredientName(rawNombreMostrado);
 
   const cantidadMostrada = appliedOption
     ? appliedOption.cantidad_sugerida
@@ -223,8 +241,8 @@ export function IngredientRow({
           type="button"
           onClick={handleOpenDrawer}
           disabled={isPending}
-          aria-label="Ver alternativas de intercambio"
-          title="Ver 3 alternativas inteligentes con IA"
+          aria-label={isPro ? "Ver alternativas de intercambio" : "Desbloquear sustituciones con Miga PRO"}
+          title={isPro ? "Ver 3 alternativas inteligentes con IA" : "Disponible con Miga PRO"}
           className={`shrink-0 min-h-[38px] px-2.5 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 shadow-2xs ${
             appliedOption
               ? 'bg-amber-50 border-amber-300 text-[#a86224] font-semibold'
@@ -239,6 +257,11 @@ export function IngredientRow({
           <span className="text-xs font-semibold hidden xs:inline">
             {appliedOption ? t('drawer_btn_change') : t('drawer_btn_substitute')}
           </span>
+          {!isPro && (
+            <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-200/90 text-[#874b18] border border-amber-300/60 leading-none">
+              PRO
+            </span>
+          )}
         </button>
       </div>
 
@@ -307,8 +330,8 @@ export function IngredientRow({
                     {t('drawer_instructions')}
                   </p>
 
-                  {/* Las 3 opciones generadas por la IA con etiquetas dinámicas */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {/* Las 3 opciones generadas por la IA con formato mobile-first horizontal deslizable */}
+                  <div className="flex sm:grid sm:grid-cols-3 gap-2 overflow-x-auto sm:overflow-visible no-scrollbar scroll-smooth pb-1 sm:pb-0 snap-x">
                     {options.map((opt, idx) => {
                       const isSelected = selectedOptionIndex === idx;
                       const isOptApplied = appliedOption?.nombre_sustituto === opt.nombre_sustituto;
@@ -318,16 +341,16 @@ export function IngredientRow({
                           key={opt.nombre_sustituto}
                           type="button"
                           onClick={() => setSelectedOptionIndex(isSelected ? null : idx)}
-                          className={`min-h-[58px] p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 shadow-2xs ${
+                          className={`shrink-0 snap-start min-w-[130px] max-w-[170px] sm:min-w-0 sm:max-w-none sm:w-full min-h-[58px] p-2.5 sm:p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 shadow-2xs ${
                             isSelected
                               ? 'border-[#a86224] bg-white ring-2 ring-[#a86224]/20 shadow-xs'
                               : 'border-[#e7dfd5] bg-white hover:bg-[#faf7f2]'
                           }`}
                         >
                           <div className="flex items-center justify-between gap-1.5 w-full">
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#a86224] truncate">
+                            <span className="inline-flex items-center gap-1 text-[10px] tracking-wide uppercase font-semibold text-stone-500 line-clamp-1">
                               {getCategoryIcon(opt.categoria_icono || opt.tipo)}
-                              <span className="truncate">{opt.etiqueta_dinamica || opt.etiqueta_tipo || 'Alternativa'}</span>
+                              <span className="line-clamp-1">{opt.etiqueta_dinamica || opt.etiqueta_tipo || 'Alternativa'}</span>
                             </span>
                             {isOptApplied && (
                               <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-0.5 shrink-0">
@@ -335,7 +358,7 @@ export function IngredientRow({
                               </span>
                             )}
                           </div>
-                          <span className="font-bold text-stone-900 text-sm line-clamp-1">
+                          <span className="text-xs sm:text-sm font-medium text-stone-800 line-clamp-2 leading-tight break-words">
                             {opt.nombre_sustituto}
                           </span>
                         </button>
@@ -426,6 +449,16 @@ export function IngredientRow({
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>
+
+      {/* Modal de suscripción PRO al hacer clic en sustitución individual siendo Free */}
+      {showProModal && (
+        <ProSubscriptionModal
+          isOpen={showProModal}
+          onClose={() => setShowProModal(false)}
+          title="Sustituciones Inteligentes PRO"
+          description="Desbloquea Miga PRO para sustituir ingredientes con alternativas clínicas adaptadas a tu perfil de salud"
+        />
+      )}
     </div>
   );
 }

@@ -2,6 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { Database } from '@/types/database';
+
+type DiarioUpdate = Database['public']['Tables']['diario_cocinados']['Update'];
 
 export interface DiaryActionResult {
   success?: boolean;
@@ -176,6 +179,73 @@ export async function deleteDiaryEntryAction(
     console.error('Error en deleteDiaryEntryAction:', err);
     return {
       error: err instanceof Error ? err.message : 'Error inesperado al eliminar la valoración.',
+    };
+  }
+}
+
+/**
+ * Actualiza el texto de las notas y/o modificaciones de una entrada existente del diario
+ */
+export async function updateDiaryEntryAction(payload: {
+  entryId: string;
+  recetaId: string;
+  notas?: string | null;
+  modificaciones?: string | null;
+  calificacion?: number | null;
+  tiempoEmpleadoMin?: number | null;
+}): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'Debes iniciar sesión para editar una valoración.' };
+    }
+
+    if (!payload.entryId) {
+      return { success: false, error: 'ID de valoración no válido.' };
+    }
+
+    const updates: DiarioUpdate = {};
+    if (payload.notas !== undefined) updates.notas_cocinero = payload.notas?.trim() || null;
+    if (payload.modificaciones !== undefined) updates.modificaciones_realizadas = payload.modificaciones?.trim() || null;
+    if (payload.calificacion !== undefined) updates.calificacion = payload.calificacion;
+    if (payload.tiempoEmpleadoMin !== undefined) updates.tiempo_empleado_min = payload.tiempoEmpleadoMin;
+
+    const { error: updateError } = await supabase
+      .from('diario_cocinados')
+      .update(updates)
+      .eq('id', payload.entryId)
+      .eq('usuario_id', user.id);
+
+    if (updateError) {
+      console.error('Error actualizando valoración:', updateError);
+      return { error: `Error al actualizar la valoración: ${updateError.message}` };
+    }
+
+    // Si se actualizó la calificación, sincronizar en la receta
+    if (payload.calificacion && payload.recetaId) {
+      await supabase
+        .from('recetas')
+        .update({ puntuacion: payload.calificacion })
+        .eq('id', payload.recetaId)
+        .eq('usuario_id', user.id);
+    }
+
+    if (payload.recetaId) {
+      revalidatePath(`/recipes/${payload.recetaId}`);
+    }
+    revalidatePath('/recipes');
+    revalidatePath('/recipes/collection');
+
+    return { success: true };
+  } catch (err) {
+    console.error('Error en updateDiaryEntryAction:', err);
+    return {
+      error: err instanceof Error ? err.message : 'Error inesperado al actualizar la valoración.',
     };
   }
 }

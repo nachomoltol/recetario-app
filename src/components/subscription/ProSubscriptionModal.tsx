@@ -28,6 +28,8 @@ export interface ProSubscriptionModalProps {
   onSubscribe?: () => void;
   context?: 'limit_reached' | 'feature_locked';
   pendingUrl?: string;
+  title?: string;
+  description?: string;
 }
 
 export function ProSubscriptionModal({
@@ -37,6 +39,8 @@ export function ProSubscriptionModal({
   onSubscribe,
   context = 'feature_locked',
   pendingUrl = '',
+  title,
+  description,
 }: ProSubscriptionModalProps) {
   const router = useRouter();
   const language = useLanguageStore((s) => s.language);
@@ -225,6 +229,8 @@ export function ProSubscriptionModal({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div
       role="dialog"
@@ -275,11 +281,11 @@ export function ProSubscriptionModal({
               id="modal-pro-title"
               className="text-2xl sm:text-3xl font-bold font-serif-recipe text-stone-900 tracking-tight"
             >
-              {t('pro_modal_feature_title')}
+              {title || t('pro_modal_feature_title')}
             </h2>
 
             <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
-              {t('pro_modal_feature_desc')}
+              {description || t('pro_modal_feature_desc')}
             </p>
           </div>
         )}

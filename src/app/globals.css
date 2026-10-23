@@ -60,3 +60,13 @@ h1, h2, h3, .font-serif-recipe {
   box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.08);
   pointer-events: none;
 }
+
+/* Ocultar barras de desplazamiento nativas conservando swipe táctil fluido */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+

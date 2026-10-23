@@ -31,6 +31,7 @@ import { replaceIngredientInText } from '@/lib/culinary/textReplacer';
 import { createClient } from '@/lib/supabase/client';
 import { compressImageClient } from '@/lib/utils/imageCompress';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { cleanIngredientName } from '@/lib/nutrition/formatQuantity';
 
 interface EditableIngredient {
   id: string;
@@ -125,7 +126,8 @@ export function RecipeDetailView({
   const handleApplyAdaptation = async (data: AdaptacionCulinaria) => {
     const adaptedIngs: RecetaIngrediente[] = (data?.ingredientes || []).map((ai, index) => {
       const orig = (ingredientes || [])[index];
-      const cleanNombre = (ai?.nombre_limpio || '').replace(/<\/?mark>/gi, '').trim() || 'Ingrediente';
+      const sanitizedAiNombre = cleanIngredientName(ai?.nombre_limpio || '');
+      const cleanNombre = sanitizedAiNombre.replace(/<\/?mark>/gi, '').trim() || 'Ingrediente';
       return {
         id: orig?.id || `adapted-ing-${index}`,
         receta_id: receta?.id || '',
@@ -543,7 +545,7 @@ export function RecipeDetailView({
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/jpeg, image/png, image/webp"
+        accept="image/*"
         capture="environment"
         onChange={handlePhotoCapture}
         className="hidden"
@@ -552,7 +554,7 @@ export function RecipeDetailView({
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/jpeg, image/png, image/webp"
+        accept="image/*"
         onChange={handlePhotoCapture}
         className="hidden"
         id="recipe-photo-gallery-input"
@@ -686,6 +688,7 @@ export function RecipeDetailView({
           recipe={{
             ...recipeDataForAdapt,
             titulo: currentTitulo,
+            porciones: Number(receta?.porciones) || 2,
             ingredientes: (currentIngredientes || []).map((i) => ({
               nombre_limpio: i?.nombre_limpio || i?.nombre_crudo || '',
               cantidad: Number(i?.cantidad) || 1,
@@ -876,6 +879,7 @@ export function RecipeDetailView({
           defaultServings={userRacionesDefecto}
           onSubstitutePersist={handleSubstitutePersist}
           isAdapted={isAdapted}
+          userProfile={userProfile}
         />
       )}
 

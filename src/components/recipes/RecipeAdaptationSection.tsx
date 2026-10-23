@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import {
   Sparkles,
   AlertCircle,
+  AlertTriangle,
+  ShieldCheck,
+  ShieldAlert,
   X,
   RotateCcw,
   CheckCircle2,
+  Lock,
 } from 'lucide-react';
 import {
   adaptRecipeAction,
@@ -14,6 +18,8 @@ import {
   AdaptRecipeInput,
 } from '@/app/actions/adaptRecipeAction';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { checkRecipeClinicalCompatibility } from '@/lib/clinicalDictionary';
+import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
 
 interface RecipeAdaptationSectionProps {
   recipe: AdaptRecipeInput;
@@ -21,6 +27,7 @@ interface RecipeAdaptationSectionProps {
     nivel_culinario?: string | null;
     preferencias_dieteticas?: string[] | null;
     alergenos?: string[] | null;
+    plan_suscripcion?: 'gratis' | 'pro' | null;
   } | null;
   isAdapted: boolean;
   adaptationSummary?: string | null;
@@ -40,10 +47,11 @@ export function RecipeAdaptationSection({
   const t = useLanguageStore((s) => s.t);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [showProModal, setShowProModal] = useState(false);
 
-  // Condiciones de visibilidad:
-  // Solo visible si tiene configurada alguna preferencia dietética (alergias/intolerancias)
-  // O un nivel culinario específico ('Principiante' o 'Avanzado').
+  const isPro = (userProfile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
+
+  // Preferencias clínicas o alérgicas configuradas
   const tienePreferenciasDieteticas = Boolean(
     (userProfile?.preferencias_dieteticas && userProfile.preferencias_dieteticas.length > 0) ||
     (userProfile?.alergenos && userProfile.alergenos.length > 0)
@@ -51,117 +59,66 @@ export function RecipeAdaptationSection({
 
   const nivel = userProfile?.nivel_culinario;
   const tieneNivelEspecifico = nivel === 'Principiante' || nivel === 'Avanzado';
-  const canAdapt = tienePreferenciasDieteticas || tieneNivelEspecifico;
 
-  if (!canAdapt) {
+  // Reporte clínico cruzando ingredientes de la receta con perfil
+  const compatibilityReport = useMemo(() => {
+    if (!tienePreferenciasDieteticas) {
+      return {
+        isCompatible: true,
+        conflicts: [],
+        totalExclusiones: 0,
+        patologiasEvaluadas: [],
+      };
+    }
+
+    return checkRecipeClinicalCompatibility(
+      (recipe.ingredientes || []).map((i) => ({
+        nombre_limpio: i.nombre_limpio,
+        nombre_crudo: i.nombre_limpio,
+      })),
+      {
+        objetivoClinico: userProfile?.preferencias_dieteticas || undefined,
+        alergenos: userProfile?.alergenos || undefined,
+        idioma: language,
+      }
+    );
+  }, [recipe.ingredientes, userProfile, tienePreferenciasDieteticas, language]);
+
+  // Si no tiene ninguna restricción configurada y tampoco nivel específico, no interrumpe la UI
+  if (!tienePreferenciasDieteticas && !tieneNivelEspecifico && !isAdapted) {
     return null;
   }
 
-  const getNivelLabel = (n: string) => {
-    try {
-      const nl = String(n || '').toLowerCase();
-      if (nl === 'principiante' || nl === 'beginner') return language === 'en' ? 'Beginner' : 'Principiante';
-      if (nl === 'avanzado' || nl === 'advanced') return language === 'en' ? 'Advanced' : 'Avanzado';
-      return String(n || '');
-    } catch {
-      return String(n || '');
+  const handleAdaptClick = () => {
+    if (!isPro) {
+      setShowProModal(true);
+      return;
     }
-  };
 
-  const getDietaryLabel = (pref: string) => {
-    if (language !== 'en') return String(pref || '');
-    try {
-      const p = String(pref || '').toLowerCase();
-      if (p.includes('gluten')) return 'Gluten-Free';
-      if (p.includes('vegan') || p.includes('vegetal')) return 'Vegan';
-      if (p.includes('vegetariana')) return 'Vegetarian';
-      if (p.includes('lact')) return 'Lactose-Free';
-      if (p.includes('fodmap')) return 'Low-FODMAP';
-      if (p.includes('histamina')) return 'Low Histamine';
-      if (p.includes('keto')) return 'Keto';
-      if (p.includes('paleo')) return 'Paleo';
-      if (p.includes('blanda')) return 'Bland Diet';
-      if (p.includes('reflujo')) return 'Anti-Reflux';
-      if (p.includes('inflamatorio')) return 'Anti-Inflammatory';
-      return String(pref || '');
-    } catch {
-      return String(pref || '');
-    }
-  };
-
-  const handleAdapt = () => {
     setErrorMessage(null);
     startTransition(async () => {
       const result = await adaptRecipeAction({ ...recipe, idioma: language });
       if (result.success && result.data) {
         onApplyAdaptation(result.data);
       } else {
-        setErrorMessage(
-          result.error || t('recipe_adapt_error_fallback')
-        );
+        setErrorMessage(result.error || t('recipe_adapt_error_fallback'));
       }
     });
   };
 
+  const hasConflicts = compatibilityReport.conflicts.length > 0;
+  const isCritical = compatibilityReport.severidadMaxima === 'critica';
+
   return (
     <div className="space-y-3">
-      {/* Botón trigger: visible cuando aún no está adaptada */}
-      {!isAdapted && (
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={handleAdapt}
-            disabled={isPending}
-            className="min-h-[44px] px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#a86224] to-[#c47732] hover:from-[#8e511c] hover:to-[#a86224] text-white font-semibold text-xs sm:text-sm inline-flex items-center gap-2 shadow-xs hover:shadow-md transition-all cursor-pointer disabled:opacity-50 active:scale-95"
-            title={t('recipe_adapt_tooltip')}
-          >
-            {isPending ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                <span>{t('recipe_adapting_btn')}</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                <span>{t('recipe_adapt_btn')}</span>
-              </>
-            )}
-          </button>
-
-          {/* Badges sutiles de perfil que motivan la adaptación */}
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500">
-            <span>{t('recipe_adapt_will_adjust')}</span>
-            {nivel && (
-              <span className="px-2 py-0.5 rounded-full bg-[#f4efe6] text-[#a86224] font-medium border border-[#e7dfd5]">
-                {getNivelLabel(nivel)}
-              </span>
-            )}
-            {userProfile?.preferencias_dieteticas?.slice(0, 2).map((pref) => (
-              <span
-                key={pref}
-                className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-medium border border-emerald-200"
-              >
-                {getDietaryLabel(pref)}
-              </span>
-            ))}
-            {userProfile?.alergenos?.slice(0, 2).map((al) => (
-              <span
-                key={al}
-                className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-800 font-medium border border-rose-200"
-              >
-                {t('recipe_adapt_without')} {getDietaryLabel(al)}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Banner de receta adaptada in-line */}
-      {isAdapted && (
-        <div className="p-4 sm:p-5 rounded-3xl border border-amber-300 bg-gradient-to-r from-amber-50/90 via-[#fffbf6] to-amber-50/70 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+      {/* ============================================================== */}
+      {/* 1. RECETA YA ADAPTADA: Banner de éxito y reversión            */}
+      {/* ============================================================== */}
+      {isAdapted ? (
+        <div className="p-4 sm:p-5 rounded-3xl border border-emerald-300 bg-gradient-to-r from-emerald-50/90 via-[#f8fdf9] to-emerald-50/70 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
           <div className="flex items-start sm:items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-amber-100 text-[#a86224] border border-amber-200 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
-              <CheckCircle2 className="w-5 h-5 text-[#a86224]" />
+            <div className="w-9 h-9 rounded-2xl bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+              <CheckCircle2 className="w-5 h-5 text-emerald-700" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -188,6 +145,161 @@ export function RecipeAdaptationSection({
             <span>{t('recipe_view_original')}</span>
           </button>
         </div>
+      ) : (
+        /* ============================================================== */
+        /* 2. RECETA NO ADAPTADA: Tarjeta Semáforo de Diagnóstico Clínico  */
+        /* ============================================================== */
+        <div className="space-y-2">
+          {hasConflicts ? (
+            /* SEMÁFORO ADVERTENCIA: Hay ingredientes en conflicto */
+            <div
+              className={`p-4 sm:p-5 rounded-3xl border shadow-xs animate-fade-in transition-all ${
+                isCritical
+                  ? 'bg-gradient-to-r from-rose-50/95 via-[#fff8f8] to-rose-50/80 border-rose-300'
+                  : 'bg-gradient-to-r from-amber-50/95 via-[#fffbf6] to-amber-50/80 border-amber-300'
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 border ${
+                      isCritical
+                        ? 'bg-rose-100 text-rose-700 border-rose-200'
+                        : 'bg-amber-100 text-amber-800 border-amber-200'
+                    }`}
+                  >
+                    {isCritical ? (
+                      <ShieldAlert className="w-5 h-5 text-rose-700" />
+                    ) : (
+                      <AlertTriangle className="w-5 h-5 text-amber-700" />
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs sm:text-sm font-bold text-stone-900 font-serif-recipe">
+                        {isCritical
+                          ? language === 'en'
+                            ? 'Critical Allergen Conflict'
+                            : 'Alerta de Incompatibilidad Clínica'
+                          : language === 'en'
+                          ? 'Dietary Conflicts Detected'
+                          : 'Ingredientes no compatibles con tu perfil'}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          isCritical
+                            ? 'bg-rose-600 text-white'
+                            : 'bg-amber-600 text-white'
+                        }`}
+                      >
+                        {isCritical ? 'Crítico' : 'Moderado'}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-stone-600 leading-relaxed font-light">
+                      {isCritical
+                        ? language === 'en'
+                          ? 'This recipe contains ingredients that trigger strict exclusions for your health profile:'
+                          : 'Esta receta contiene ingredientes que suponen una exclusión crítica para tu salud:'
+                        : language === 'en'
+                        ? 'This recipe uses ingredients that do not match your active dietary profile:'
+                        : 'Esta receta incluye ingredientes que no se ajustan a tus patologías o preferencias activas:'}
+                    </p>
+
+                    {/* Chips de ingredientes en conflicto */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      {compatibilityReport.conflicts.map((c, idx) => (
+                        <span
+                          key={`${c.ingredienteOriginal}-${idx}`}
+                          className={`px-2.5 py-1 rounded-xl text-xs font-semibold border flex items-center gap-1 ${
+                            c.severidad === 'critica'
+                              ? 'bg-rose-100/80 text-rose-900 border-rose-200'
+                              : 'bg-amber-100/80 text-amber-900 border-amber-200'
+                          }`}
+                        >
+                          <span className="capitalize">{c.ingredienteOriginal}</span>
+                          <span className="text-[10px] opacity-75 font-normal">({c.patologia})</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Botón Prominente: Adaptar a mi perfil */}
+                <button
+                  type="button"
+                  onClick={handleAdaptClick}
+                  disabled={isPending}
+                  className={`min-h-[46px] px-5 py-2.5 rounded-2xl font-bold text-xs sm:text-sm text-white shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer self-start sm:self-auto shrink-0 active:scale-95 disabled:opacity-50 ${
+                    isCritical
+                      ? 'bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800'
+                      : 'bg-gradient-to-r from-[#a86224] to-[#c47732] hover:from-[#8e511c] hover:to-[#a86224]'
+                  }`}
+                >
+                  {isPending ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      <span>{t('recipe_adapting_btn')}</span>
+                    </>
+                  ) : (
+                    <>
+                      {!isPro ? (
+                        <>
+                          <Lock className="w-4 h-4 text-white/90" />
+                          <span>Adaptar a mi perfil (PRO)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          <span>Adaptar a mi perfil</span>
+                        </>
+                      )}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* SEMÁFORO COMPATIBLE: No hay conflictos */
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200/90 text-emerald-900 animate-fade-in shadow-2xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                </div>
+                <div className="text-xs sm:text-sm">
+                  <span className="font-bold">
+                    {language === 'en'
+                      ? '100% Compatible with your profile'
+                      : 'Receta compatible con tu perfil clínico'}
+                  </span>
+                  {compatibilityReport.patologiasEvaluadas.length > 0 && (
+                    <span className="text-emerald-700 text-xs ml-1.5 hidden sm:inline font-light">
+                      ({compatibilityReport.patologiasEvaluadas.slice(0, 3).join(', ')})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Si tiene nivel culinario particular, permite adaptar técnicas si desea */}
+              {tieneNivelEspecifico && (
+                <button
+                  type="button"
+                  onClick={handleAdaptClick}
+                  disabled={isPending}
+                  className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-white hover:bg-emerald-100/50 border border-emerald-300 text-xs font-semibold text-emerald-900 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#a86224]" />
+                  <span>
+                    {isPending
+                      ? t('recipe_adapting_btn')
+                      : `${t('recipe_adapt_btn')} (${nivel})`}
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Mensaje de error si falla la inferencia */}
@@ -206,6 +318,13 @@ export function RecipeAdaptationSection({
           </button>
         </div>
       )}
+
+      {/* Modal de suscripción PRO para usuarios gratuitos */}
+      <ProSubscriptionModal
+        isOpen={showProModal}
+        onClose={() => setShowProModal(false)}
+        context="feature_locked"
+      />
     </div>
   );
 }

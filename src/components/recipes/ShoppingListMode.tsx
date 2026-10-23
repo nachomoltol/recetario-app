@@ -32,6 +32,7 @@ interface ShoppingListModeProps {
     newName: string | null,
     adaptedBaseName?: string
   ) => void;
+  userProfile?: any;
 }
 
 export function ShoppingListMode({
@@ -39,6 +40,7 @@ export function ShoppingListMode({
   tituloReceta,
   ingredientes,
   onSubstituteChange,
+  userProfile,
 }: ShoppingListModeProps) {
   const t = useLanguageStore((s) => s.t);
   const language = useLanguageStore((s) => s.language);
@@ -214,6 +216,7 @@ export function ShoppingListMode({
               scaledCantidad={ing.cantidad_escalada}
               scaledGramos={ing.gramos_escalados}
               onSubstituteChange={onSubstituteChange}
+              userProfile={userProfile}
             />
           ))}
         </div>

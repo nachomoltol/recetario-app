@@ -362,22 +362,50 @@ export const ALERGENOS_UE: AlergenoUE[] = [
     severidad: 'critica',
     exclusiones: {
       es: [
+        'leche',
         'leche de vaca',
+        'leche evaporada',
+        'leche condensada',
+        'leche entera',
+        'leche desnatada',
+        'leche semidesnatada',
+        'leche de cabra',
+        'leche de oveja',
         'queso',
+        'quesos',
+        'queso fresco',
+        'queso crema',
+        'ricotta',
+        'mascarpone',
         'yogur',
+        'yogurt',
         'mantequilla',
         'nata',
+        'nata para cocinar',
         'crema de leche',
         'suero de leche',
         'lactosa',
         'caseína',
       ],
       en: [
+        'milk',
         'cow milk',
+        'evaporated milk',
+        'condensed milk',
+        'whole milk',
+        'skim milk',
+        'goat milk',
+        'sheep milk',
         'cheese',
+        'cheeses',
+        'fresh cheese',
+        'cream cheese',
+        'ricotta',
+        'mascarpone',
         'yogurt',
         'butter',
         'heavy cream',
+        'cream',
         'whey',
         'lactose',
         'casein',
@@ -719,47 +747,215 @@ export const PROTOCOLOS_CLINICOS: ClinicalProtocolDefinition[] = [
     prohibidos: {
       es: [
         'ajo',
-        'cebolla (bulbo blanco)',
+        'ajos',
+        'pasta de ajo',
+        'ajo en polvo',
+        'cebolla',
+        'cebollas',
+        'cebolla dulce',
+        'cebolla morada',
+        'cebolla blanca',
+        'cebolla roja',
+        'cebolleta',
         'chalota',
-        'trigo (gluten)',
+        'chalotas',
+        'puerro',
+        'puerros',
+        'garbanzo',
+        'garbanzos',
+        'garbanzos cocidos',
+        'lenteja',
+        'lentejas',
+        'alubia',
+        'alubias',
+        'alubias blancas',
+        'alubias rojas',
+        'judía',
+        'judías',
+        'judias',
+        'frijol',
+        'frijoles',
+        'frijoles negros',
+        'habas',
+        'habitas',
+        'soja',
+        'edamame',
+        'legumbres',
+        'leche',
+        'leche evaporada',
+        'leche condensada',
+        'leche entera',
+        'leche desnatada',
+        'leche semidesnatada',
+        'leche de vaca',
+        'leche de cabra',
+        'leche de oveja',
+        'nata',
+        'nata para cocinar',
+        'nata líquida',
+        'crema de leche',
+        'queso',
+        'quesos',
+        'queso fresco',
+        'queso crema',
+        'ricotta',
+        'mascarpone',
+        'requesón',
+        'mantequilla',
+        'yogur',
+        'yogurt',
+        'suero de leche',
+        'lactosa',
+        'trigo',
+        'harina de trigo',
+        'pan de trigo',
+        'pan blanco',
+        'pan',
+        'pasta de trigo',
+        'pasta',
+        'cuscús',
+        'sémola',
+        'semola',
         'centeno',
-        'legumbres secas enteras',
-        'lácteos con lactosa',
+        'cebada',
+        'espelta',
+        'kamut',
         'miel',
+        'sirope de agave',
+        'jarabe de maíz',
         'jarabe de maíz alto en fructosa',
         'manzana',
+        'manzanas',
         'pera',
+        'peras',
         'mango',
+        'mangos',
         'sandía',
+        'sandia',
+        'cereza',
+        'cerezas',
+        'melocotón',
+        'melocoton',
+        'ciruela',
+        'ciruelas',
+        'higo',
+        'higos',
+        'moras',
         'xilitol',
         'sorbitol',
         'manitol',
+        'maltitol',
+        'isomalt',
         'setas',
+        'champiñón',
         'champiñones',
+        'champinon',
+        'champinones',
+        'boletus',
+        'portobello',
+        'shiitake',
         'coliflor',
         'alcachofa',
+        'alcachofas',
+        'espárrago',
         'espárragos',
+        'esparrago',
+        'esparragos',
       ],
       en: [
         'garlic',
-        'onion (white bulb)',
+        'garlic cloves',
+        'garlic paste',
+        'garlic powder',
+        'onion',
+        'onions',
+        'sweet onion',
+        'red onion',
+        'white onion',
         'shallot',
-        'wheat (gluten)',
+        'shallots',
+        'leek',
+        'leeks',
+        'scallion',
+        'chickpea',
+        'chickpeas',
+        'canned chickpeas',
+        'lentil',
+        'lentils',
+        'bean',
+        'beans',
+        'black beans',
+        'kidney beans',
+        'cannellini',
+        'navy beans',
+        'pinto beans',
+        'fava beans',
+        'broad beans',
+        'soy',
+        'soybeans',
+        'edamame',
+        'legumes',
+        'milk',
+        'evaporated milk',
+        'condensed milk',
+        'cow milk',
+        'whole milk',
+        'skim milk',
+        'cream',
+        'heavy cream',
+        'sour cream',
+        'cheese',
+        'fresh cheese',
+        'cream cheese',
+        'butter',
+        'yogurt',
+        'whey',
+        'ricotta',
+        'mascarpone',
+        'cottage cheese',
+        'lactose',
+        'wheat',
+        'wheat flour',
+        'wheat bread',
+        'white bread',
+        'bread',
+        'wheat pasta',
+        'pasta',
+        'couscous',
+        'semolina',
         'rye',
-        'whole dried legumes',
-        'dairy with lactose',
+        'barley',
+        'spelt',
+        'kamut',
         'honey',
+        'agave syrup',
         'high-fructose corn syrup',
         'apple',
+        'apples',
         'pear',
+        'pears',
         'mango',
+        'mangoes',
         'watermelon',
+        'cherry',
+        'cherries',
+        'peach',
+        'peaches',
+        'plum',
+        'plums',
+        'fig',
+        'figs',
+        'blackberries',
         'xylitol',
         'sorbitol',
         'mannitol',
+        'maltitol',
+        'isomalt',
         'mushrooms',
+        'mushroom',
         'cauliflower',
         'artichoke',
+        'artichokes',
         'asparagus',
       ],
     },
@@ -779,22 +975,82 @@ export const PROTOCOLOS_CLINICOS: ClinicalProtocolDefinition[] = [
     prohibidos: {
       es: [
         'ajo',
-        'cebolla (bulbo blanco)',
+        'ajos',
+        'pasta de ajo',
+        'cebolla',
+        'cebollas',
+        'cebolla dulce',
+        'cebolla morada',
+        'cebolla blanca',
+        'cebolla roja',
+        'cebolleta',
         'chalota',
-        'trigo (gluten)',
+        'chalotas',
+        'puerro',
+        'puerros',
+        'garbanzo',
+        'garbanzos',
+        'garbanzos cocidos',
+        'lenteja',
+        'lentejas',
+        'alubia',
+        'alubias',
+        'alubias blancas',
+        'judía',
+        'judías',
+        'judias',
+        'frijol',
+        'frijoles',
+        'habas',
+        'soja',
+        'edamame',
+        'legumbres',
+        'leche',
+        'leche evaporada',
+        'leche condensada',
+        'leche entera',
+        'leche desnatada',
+        'leche semidesnatada',
+        'nata',
+        'nata para cocinar',
+        'crema de leche',
+        'queso',
+        'quesos',
+        'queso fresco',
+        'queso crema',
+        'ricotta',
+        'mascarpone',
+        'mantequilla',
+        'yogur',
+        'yogurt',
+        'lactosa',
+        'trigo',
+        'harina de trigo',
+        'pan de trigo',
+        'pan blanco',
+        'pasta de trigo',
+        'pasta',
+        'cuscús',
+        'sémola',
         'centeno',
-        'legumbres secas enteras',
-        'lácteos con lactosa',
+        'cebada',
         'miel',
-        'jarabe de maíz alto en fructosa',
+        'sirope de agave',
+        'jarabe de maíz',
         'manzana',
+        'manzanas',
         'pera',
+        'peras',
         'mango',
         'sandía',
+        'cereza',
+        'melocotón',
+        'ciruela',
         'xilitol',
         'sorbitol',
         'manitol',
         'setas',
+        'champiñón',
         'champiñones',
         'coliflor',
         'alcachofa',
@@ -802,21 +1058,44 @@ export const PROTOCOLOS_CLINICOS: ClinicalProtocolDefinition[] = [
       ],
       en: [
         'garlic',
-        'onion (white bulb)',
+        'garlic cloves',
+        'onion',
+        'onions',
+        'sweet onion',
         'shallot',
-        'wheat (gluten)',
+        'leek',
+        'chickpea',
+        'chickpeas',
+        'lentil',
+        'lentils',
+        'bean',
+        'beans',
+        'soy',
+        'soybeans',
+        'milk',
+        'evaporated milk',
+        'condensed milk',
+        'cream',
+        'heavy cream',
+        'cheese',
+        'fresh cheese',
+        'butter',
+        'yogurt',
+        'lactose',
+        'wheat',
+        'wheat flour',
+        'bread',
+        'pasta',
         'rye',
-        'whole dried legumes',
-        'dairy with lactose',
+        'barley',
         'honey',
-        'high-fructose corn syrup',
         'apple',
         'pear',
         'mango',
         'watermelon',
-        'xylitol',
-        'sorbitol',
-        'mannitol',
+        'cherry',
+        'peach',
+        'plum',
         'mushrooms',
         'cauliflower',
         'artichoke',
@@ -826,6 +1105,72 @@ export const PROTOCOLOS_CLINICOS: ClinicalProtocolDefinition[] = [
     reglasCulinarias: {
       es: 'Compensar aroma de ajo/cebolla usando aceites infusionados o la parte verde de la cebolleta/puerro; frutas como plátano o kiwi deben especificarse "verdes" o "firmes"; permitir lentejas solo si son de bote bien enjuagadas en pequeñas cantidades (<40g).',
       en: 'Compensate garlic/onion aroma using garlic-infused oils or green stems of scallions/leeks; bananas or kiwis must be specified as "firm" or "unripe"; allow lentils only canned and thoroughly rinsed in small amounts (<40g).',
+    },
+  },
+  {
+    id: 'Sin Lactosa',
+    key: 'sin_lactosa',
+    label: 'Sin Lactosa (Intolerancia)',
+    labelEn: 'Lactose-Free (Intolerance)',
+    desc: 'Excluye lácteos convencionales con disacáridos de lactosa para prevenir malabsorción y dolor abdominal.',
+    descEn: 'Excludes conventional dairy with lactose disaccharides to prevent malabsorption and abdominal distress.',
+    severidad: 'moderada',
+    prohibidos: {
+      es: [
+        'leche',
+        'leche de vaca',
+        'leche entera',
+        'leche desnatada',
+        'leche semidesnatada',
+        'leche evaporada',
+        'leche condensada',
+        'leche de cabra',
+        'leche de oveja',
+        'nata',
+        'nata para cocinar',
+        'nata líquida',
+        'crema de leche',
+        'queso fresco',
+        'queso tierno',
+        'queso crema',
+        'ricotta',
+        'mascarpone',
+        'requesón',
+        'mantequilla tradicional',
+        'yogur convencional',
+        'yogurt',
+        'suero de leche',
+        'helado de leche',
+        'lactosa',
+      ],
+      en: [
+        'milk',
+        'cow milk',
+        'whole milk',
+        'skim milk',
+        'evaporated milk',
+        'condensed milk',
+        'goat milk',
+        'sheep milk',
+        'cream',
+        'heavy cream',
+        'sour cream',
+        'fresh cheese',
+        'cream cheese',
+        'ricotta',
+        'mascarpone',
+        'cottage cheese',
+        'traditional butter',
+        'conventional yogurt',
+        'yogurt',
+        'whey',
+        'ice cream',
+        'lactose',
+      ],
+    },
+    reglasCulinarias: {
+      es: 'Sustituir lácteos por bebidas vegetales (avena, almendra, soja) o versiones certificadas sin lactosa; en quesos, permitir curados de muy larga maduración (>12 meses) que no contienen lactosa residual.',
+      en: 'Substitute dairy with plant-based milks (oat, almond, soy) or certified lactose-free versions; for cheeses, allow hard aged cheeses (>12 months) naturally lactose-free.',
     },
   },
   {
@@ -1781,7 +2126,7 @@ export function normalizeClinicalKey(rawKey: string): string {
  * - Extrae directivas culinarias y dosis-dependientes avanzadas.
  */
 export function getDetailedClinicalProfile(params: {
-  objetivoClinico?: string;
+  objetivoClinico?: string | string[];
   patronAlimentario?: string;
   alergenos?: string[];
   preferencias?: string[];
@@ -1880,8 +2225,18 @@ export function getDetailedClinicalProfile(params: {
         normalizeClinicalKey(p.label) === norm ||
         (norm.includes('histamina') && p.key === 'bajo_histamina') ||
         (norm.includes('gluten') && p.key === 'sin_gluten') ||
+        (norm.includes('lactosa') && p.key === 'sin_lactosa') ||
+        (norm.includes('fodmap') && p.key === 'fodmap') ||
+        (norm.includes('sii') && p.key === 'sii') ||
         (norm.includes('gota') && p.key === 'gota') ||
-        (norm.includes('urico') && p.key === 'gota')
+        (norm.includes('urico') && p.key === 'gota') ||
+        (norm.includes('reflujo') && p.key === 'antirreflujo') ||
+        (norm.includes('gastritis') && p.key === 'antirreflujo') ||
+        (norm.includes('blanda') && p.key === 'dieta_blanda') ||
+        (norm.includes('diabetes') && p.key === 'diabetes_tipo_2') ||
+        (norm.includes('hipertension') && p.key === 'dash') ||
+        (norm.includes('colesterol') && p.key === 'hipercolesterolemia') ||
+        (norm.includes('antiinflamat') && p.key === 'antiinflamatorio')
     );
 
     if (matchingProtocol && !processedKeys.has(`protocol_${matchingProtocol.key}`)) {
@@ -1940,7 +2295,15 @@ export function getDetailedClinicalProfile(params: {
     }
   };
 
-  if (params.objetivoClinico) processEntityKey(params.objetivoClinico);
+  if (params.objetivoClinico) {
+    if (Array.isArray(params.objetivoClinico)) {
+      params.objetivoClinico.forEach((obj) => {
+        if (obj) processEntityKey(obj);
+      });
+    } else {
+      processEntityKey(params.objetivoClinico);
+    }
+  }
   if (params.patronAlimentario) processEntityKey(params.patronAlimentario);
 
   if (params.preferencias && Array.isArray(params.preferencias)) {
@@ -1965,7 +2328,7 @@ export function getDetailedClinicalProfile(params: {
  * (Función retrocompatible: mantiene firma original devolviendo string[])
  */
 export function getClinicalExclusions(params: {
-  objetivoClinico?: string;
+  objetivoClinico?: string | string[];
   patronAlimentario?: string;
   preferencias?: string[];
   alergenos?: string[];
@@ -1973,6 +2336,171 @@ export function getClinicalExclusions(params: {
 }): string[] {
   const profile = getDetailedClinicalProfile(params);
   return profile.exclusionesTotales;
+}
+
+export interface ClinicalConflict {
+  ingredienteOriginal: string;
+  prohibidoDetectado: string;
+  severidad: SeveridadClinica;
+  patologia: string;
+}
+
+export interface ClinicalCompatibilityReport {
+  isCompatible: boolean;
+  conflicts: ClinicalConflict[];
+  severidadMaxima?: SeveridadClinica;
+  totalExclusiones: number;
+  patologiasEvaluadas: string[];
+}
+
+/**
+ * Normaliza una cadena culinaria eliminando tildes y diacríticos para búsqueda robusta
+ */
+export function normalizeClinicalTerm(str: string): string {
+  return (str || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+/**
+ * Obtiene la raíz o lema singular de un término culinario (ES y EN)
+ */
+export function getSingularStem(term: string): string {
+  const w = (term || '').trim();
+  if (w.endsWith('ces') && w.length > 4) return w.slice(0, -3) + 'z'; // nueces -> nuez
+  if (w.endsWith('es') && w.length > 4) return w.slice(0, -2); // champinones -> champinon, frijoles -> frijol
+  if (w.endsWith('s') && w.length > 3 && !w.endsWith('ss')) return w.slice(0, -1); // garbanzos -> garbanzo
+  return w;
+}
+
+/**
+ * Evalúa si un nombre de ingrediente coincide con un término prohibido clínico.
+ * Maneja búsqueda de frases compuestas, lematización singular/plural y excepciones culinarias seguras.
+ */
+export function isIngredientMatchingProhibited(
+  rawIngName: string,
+  prohibido: string,
+  patologiaClave?: string
+): boolean {
+  const normIng = normalizeClinicalTerm(rawIngName);
+  // Limpiar anotaciones aclaratorias entre paréntesis (ej: "cebolla (bulbo blanco)" -> "cebolla")
+  const cleanProhibido = prohibido.replace(/\s*\([^)]*\)/g, '').trim();
+  const normP = normalizeClinicalTerm(cleanProhibido);
+
+  if (!normP || normP.length < 2) return false;
+
+  // EXCEPCIONES CULINARIAS SEGURAS (Prevención de falsos positivos):
+  // 1. Trigo sarraceno (alforfón): pseudocereal 100% libre de gluten.
+  if ((normP === 'trigo' || normP === 'gluten') && normIng.includes('trigo sarraceno')) {
+    const withoutSarraceno = normIng.replace(/trigo\s+sarraceno/gi, '').trim();
+    if (!/\btrigo\b/i.test(withoutSarraceno)) {
+      return false;
+    }
+  }
+
+  // 2. Aceite infusionado de ajo/cebolla en protocolo FODMAP / SII:
+  // Los fructanos son hidrosolubles y no liposolubles, por lo que el aceite infusionado es apto.
+  if (
+    (patologiaClave === 'fodmap' || patologiaClave === 'sii') &&
+    (normP === 'ajo' || normP === 'cebolla') &&
+    (normIng.includes('aceite infusionado') || normIng.includes('garlic infused oil') || normIng.includes('infused oil'))
+  ) {
+    return false;
+  }
+
+  // A) Término prohibido de múltiples palabras (ej: "leche evaporada", "harina de trigo", "cebolla dulce")
+  if (normP.includes(' ')) {
+    const escaped = normP.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const multiRegex = new RegExp(`(^|[\\s,;./()])${escaped}($|[\\s,;./()])`, 'i');
+    return multiRegex.test(normIng);
+  }
+
+  // B) Término prohibido de palabra simple (ej: "garbanzo", "cebolla", "leche", "ajo")
+  const stem = getSingularStem(normP);
+  const escapedStem = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const singleRegex = new RegExp(
+    `(^|[\\s,;./()])${escapedStem}(s|es|itas?|itos?|tas?|tos?)?($|[\\s,;./()])`,
+    'i'
+  );
+
+  return singleRegex.test(normIng);
+}
+
+/**
+ * Evalúa los ingredientes de una receta frente al perfil clínico y alérgenos del usuario,
+ * identificando con precisión quirúrgica los ingredientes en conflicto y la severidad asociada.
+ */
+export function checkRecipeClinicalCompatibility(
+  ingredientes: Array<{ nombre_limpio?: string | null; nombre_crudo?: string | null }>,
+  profileParams: {
+    objetivoClinico?: string | string[];
+    patronAlimentario?: string;
+    preferencias?: string[];
+    alergenos?: string[];
+    idioma?: 'es' | 'en';
+  }
+): ClinicalCompatibilityReport {
+  const profile = getDetailedClinicalProfile(profileParams);
+
+  if (profile.exclusionesTotales.length === 0 || !Array.isArray(ingredientes) || ingredientes.length === 0) {
+    return {
+      isCompatible: true,
+      conflicts: [],
+      totalExclusiones: 0,
+      patologiasEvaluadas: [],
+    };
+  }
+
+  const patologiasEvaluadas = profile.detallesPorPatologia.map((d) => d.nombre);
+  const conflicts: ClinicalConflict[] = [];
+
+  for (const ing of ingredientes) {
+    const rawName = (ing.nombre_limpio || ing.nombre_crudo || '').trim();
+    if (!rawName) continue;
+
+    for (const det of profile.detallesPorPatologia) {
+      // Ordenar prohibidos por longitud descendente para emparejar términos específicos primero (ej: "leche evaporada" antes de "leche")
+      const sortedProhibidos = [...det.prohibidos].sort((a, b) => b.length - a.length);
+
+      for (const prohibido of sortedProhibidos) {
+        if (isIngredientMatchingProhibited(rawName, prohibido, det.clave)) {
+          const alreadyMatchedInThisPathology = conflicts.some(
+            (c) =>
+              c.ingredienteOriginal.toLowerCase() === rawName.toLowerCase() &&
+              c.patologia === det.nombre
+          );
+
+          if (!alreadyMatchedInThisPathology) {
+            conflicts.push({
+              ingredienteOriginal: rawName,
+              prohibidoDetectado: prohibido,
+              severidad: det.severidad,
+              patologia: det.nombre,
+            });
+            // Una vez emparejado el término más específico para esta patología en este ingrediente, pasar a la siguiente patología
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  const hasCritical = conflicts.some((c) => c.severidad === 'critica');
+  const severidadMaxima: SeveridadClinica = hasCritical
+    ? 'critica'
+    : conflicts.length > 0
+    ? 'moderada'
+    : profile.severidadMaxima;
+
+  return {
+    isCompatible: conflicts.length === 0,
+    conflicts,
+    severidadMaxima,
+    totalExclusiones: profile.exclusionesTotales.length,
+    patologiasEvaluadas,
+  };
 }
 
 /**
