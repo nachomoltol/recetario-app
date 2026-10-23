@@ -95,32 +95,24 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5]">
-          <div className="space-y-1 text-center sm:text-left">
-            <span className="text-xs font-semibold text-stone-700 uppercase tracking-wider block">
-              {t('settings_diners_label')}
-            </span>
-            <p className="text-xs text-stone-500">
-              {t('settings_diners_desc')}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
+        {/* Selector unificado de raciones en una sola fila compacta sin dobles cajas */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 p-3 sm:p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5]">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={() => handleServingsChange(servings - 1)}
               disabled={servings <= 1 || isPending}
-              className="w-11 h-11 rounded-2xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:bg-[#f4efe6] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center text-stone-700 transition cursor-pointer shadow-2xs"
+              className="w-9 h-9 rounded-xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:bg-[#f4efe6] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center text-stone-700 transition cursor-pointer shadow-2xs shrink-0"
               aria-label="Disminuir raciones"
             >
-              <Minus className="w-4 h-4" />
+              <Minus className="w-3.5 h-3.5" />
             </button>
 
-            <div className="min-w-[70px] text-center">
-              <span className="text-2xl font-bold font-serif-recipe text-stone-900 block leading-none">
+            <div className="min-w-[54px] text-center">
+              <span className="text-xl font-bold font-serif-recipe text-stone-900 block leading-tight">
                 {servings}
               </span>
-              <span className="text-[11px] text-stone-500 font-medium">
+              <span className="text-[10px] text-stone-500 font-medium block -mt-0.5">
                 {servings === 1 ? t('settings_serving_singular') : t('settings_serving_plural')}
               </span>
             </div>
@@ -129,31 +121,30 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
               type="button"
               onClick={() => handleServingsChange(servings + 1)}
               disabled={servings >= 12 || isPending}
-              className="w-11 h-11 rounded-2xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:bg-[#f4efe6] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center text-stone-700 transition cursor-pointer shadow-2xs"
+              className="w-9 h-9 rounded-xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:bg-[#f4efe6] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center text-stone-700 transition cursor-pointer shadow-2xs shrink-0"
               aria-label="Aumentar raciones"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
             </button>
           </div>
-        </div>
 
-        {/* Accesos rápidos de raciones */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-xs text-stone-500 mr-1">{t('settings_frequent_servings')}</span>
-          {[1, 2, 4, 6].map((num) => (
-            <button
-              key={num}
-              type="button"
-              onClick={() => handleServingsChange(num)}
-              className={`min-h-[34px] px-3.5 py-1 rounded-xl text-xs font-semibold transition cursor-pointer border ${
-                servings === num
-                  ? 'bg-[#a86224] text-white border-[#a86224] shadow-2xs'
-                  : 'bg-[#faf7f2] hover:bg-[#ebdcc9] text-stone-700 border-[#e7dfd5]'
-              }`}
-            >
-              {num} {num === 1 ? t('settings_person_singular') : t('settings_person_plural')}
-            </button>
-          ))}
+          {/* Accesos rápidos integrados en la misma fila */}
+          <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+            {[1, 2, 4, 6].map((num) => (
+              <button
+                key={num}
+                type="button"
+                onClick={() => handleServingsChange(num)}
+                className={`min-h-[32px] px-2.5 sm:px-3 py-1 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                  servings === num
+                    ? 'bg-[#a86224] text-white border-[#a86224] shadow-2xs'
+                    : 'bg-white text-stone-700 border-[#e7dfd5] hover:border-[#a86224] hover:bg-[#f4efe6]'
+                }`}
+              >
+                {num} {num === 1 ? t('settings_person_singular') : t('settings_person_plural')}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

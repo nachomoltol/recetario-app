@@ -28,7 +28,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
   // Consultar perfil del usuario para preferencias (alergias, nivel, raciones y plan)
   const { data: userProfile } = await supabase
     .from('usuarios')
-    .select('id, raciones_defecto, nivel_culinario, preferencias_dieteticas, alergenos, plan_suscripcion')
+    .select('id, nombre, raciones_defecto, nivel_culinario, preferencias_dieteticas, alergenos, plan_suscripcion')
     .eq('id', user.id)
     .single();
 
@@ -100,6 +100,8 @@ export default async function RecipeDetailPage({ params }: PageProps) {
         fuenteUrl={receta?.fuente_url}
         fuenteTipo={receta?.fuente_tipo}
         dificultad={receta?.dificultad}
+        userName={userProfile?.nombre || user.email?.split('@')[0] || 'Chef'}
+        userEmail={user.email || ''}
       />
 
       {/* Contenido Editorial con Modo Cocina */}

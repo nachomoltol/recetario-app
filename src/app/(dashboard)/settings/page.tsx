@@ -8,7 +8,6 @@ import { CookingSettingsForm } from '@/components/settings/CookingSettingsForm';
 import {
   SettingsHeaderTitle,
   SettingsHeroCard,
-  SettingsProfileBanner,
 } from '@/components/settings/SettingsHeaderCard';
 
 export const dynamic = 'force-dynamic';
@@ -63,8 +62,6 @@ export default async function SettingsPage() {
         {/* Formulario de Preferencias: Raciones por defecto + Modo Manos en la Masa */}
         <CookingSettingsForm initialServings={profile?.raciones_defecto || 2} />
 
-        {/* Acceso a Datos Personales y Recetario */}
-        <SettingsProfileBanner />
 
         {/* Pie de página con enlace legal */}
         <footer className="pt-6 pb-4 text-center text-xs text-stone-400">

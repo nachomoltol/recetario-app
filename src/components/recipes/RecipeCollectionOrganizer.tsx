@@ -508,24 +508,24 @@ export function RecipeCollectionOrganizer({
       };
     }).filter((g) => g.recetas.length > 0);
   }, [filteredRecipes]);
-  // Tarjeta de receta modular
+  // Tarjeta de receta modular compacta para cuadrícula móvil 2-columnas
   const renderRecipeCard = (r: RecetaConIngredientes) => (
     <div
       key={r.id}
-      className="group rounded-3xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:shadow-xs transition-all p-5 space-y-3.5 flex flex-col justify-between"
+      className="group rounded-2xl sm:rounded-3xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:shadow-xs transition-all p-2.5 sm:p-4 space-y-2 sm:space-y-3.5 flex flex-col justify-between"
     >
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between text-xs font-semibold gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="px-2 py-0.5 rounded-lg bg-[#f4efe6] text-[#a86224] font-bold uppercase tracking-wider text-[10px]">
+      <div className="space-y-1.5 sm:space-y-2.5">
+        <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold gap-1 sm:gap-2">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 min-w-0">
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-[#f4efe6] text-[#a86224] font-bold uppercase tracking-wider text-[9px] sm:text-[10px] truncate">
               {r.fuente_tipo}
             </span>
-            <span className="px-2 py-0.5 rounded-lg bg-stone-100 text-stone-600 capitalize text-[11px]">
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-stone-100 text-stone-600 capitalize text-[9px] sm:text-[11px] truncate">
               {r.dificultad}
             </span>
             {tieneAdaptacionClinica && (
               <span
-                className="px-2 py-0.5 rounded-lg bg-amber-50 text-[#a86224] border border-amber-200/80 text-[10px] font-semibold flex items-center gap-1 shadow-2xs"
+                className="px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-amber-50 text-[#a86224] border border-amber-200/80 text-[9px] sm:text-[10px] font-semibold flex items-center gap-0.5 sm:gap-1 shadow-2xs"
                 title={
                   language === 'en'
                     ? 'This recipe features custom adaptation according to your health profile'
@@ -542,24 +542,24 @@ export function RecipeCollectionOrganizer({
             recipeId={r.id}
             recipeTitle={r.titulo}
             variant="icon"
-            className="w-7 h-7 rounded-lg shrink-0"
+            className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg shrink-0"
           />
         </div>
         <Link
           href={`/recipes/${r.id}`}
           className="block group-hover:text-[#a86224] transition-colors"
         >
-          <h3 className="font-bold text-stone-900 font-serif-recipe text-lg leading-snug line-clamp-2">
+          <h3 className="font-semibold sm:font-bold text-stone-900 font-serif-recipe text-xs sm:text-base leading-snug line-clamp-2">
             {r.titulo}
           </h3>
         </Link>
         {r.descripcion && (
-          <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed font-light">
+          <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed font-light hidden sm:block">
             {r.descripcion}
           </p>
         )}
         {r.etiquetas && r.etiquetas.length > 0 && (
-          <div className="flex flex-wrap gap-1 pt-1">
+          <div className="hidden sm:flex flex-wrap gap-1 pt-1">
             {r.etiquetas.slice(0, 3).map((tag, tIdx) => (
               <span
                 key={tIdx}
@@ -571,16 +571,16 @@ export function RecipeCollectionOrganizer({
           </div>
         )}
       </div>
-      <div className="pt-3 border-t border-[#f4efe6] flex items-center justify-between text-xs text-stone-500">
+      <div className="pt-2 sm:pt-3 border-t border-[#f4efe6] flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
         <span className="flex items-center gap-1 font-medium">
-          <Clock className="w-3.5 h-3.5 text-[#a86224]" /> {r.tiempo_total_min || 15} min
+          <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#a86224]" /> {r.tiempo_total_min || 15} min
         </span>
         <Link
           href={`/recipes/${r.id}`}
-          className="text-[#a86224] hover:text-[#8e511c] font-semibold inline-flex items-center gap-1 transition-colors"
+          className="text-[#a86224] hover:text-[#8e511c] font-semibold inline-flex items-center gap-0.5 sm:gap-1 transition-colors text-[10px] sm:text-xs"
         >
-          <span>{t('collection_open_recipe')}</span>
-          <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+          <span className="hidden xs:inline">{t('collection_open_recipe')}</span>
+          <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 group-hover:translate-x-0.5 transition-transform" />
         </Link>
       </div>
     </div>
@@ -706,7 +706,7 @@ export function RecipeCollectionOrganizer({
       {filteredRecipes.length > 0 && (
         filtroActivo === 'Todas' ? (
           /* REGLA 1: Renderizar UN SOLO <div className="grid"> mapeando allSortedRecipes sin ningún encabezado de sección */
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 animate-fade-in">
             {allSortedRecipes.map((r) => renderRecipeCard(r))}
           </div>
         ) : (
@@ -755,7 +755,7 @@ export function RecipeCollectionOrganizer({
                     {activeGroup.recetas.length === 1 ? t('collection_recipe_singular') : t('collection_recipe_plural')}
                   </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
                   {activeGroup.recetas.map((r) => renderRecipeCard(r))}
                 </div>
               </section>
