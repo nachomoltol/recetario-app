@@ -213,124 +213,35 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
   };
 
   return (
-    <div className="space-y-6">
-      {/* 1º. BLOQUE DE AVISO: LÍMITE MENSUAL ALCANZADO (O CABECERA SI NO SE ALCANZÓ) */}
-      {isLimitReached ? (
-        <div className="p-5 sm:p-6 rounded-3xl bg-amber-50 border-2 border-[#a86224]/30 shadow-xs flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left animate-fade-in">
-          <div className="w-12 h-12 rounded-2xl bg-[#a86224] text-white flex items-center justify-center shrink-0 shadow-sm">
-            <AlertCircle className="w-6 h-6" />
+    <div className="space-y-4">
+      {/* AVISO CONDICIONAL: LÍMITE MENSUAL ALCANZADO (Solo si el usuario agotó su cuota) */}
+      {isLimitReached && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 border-2 border-[#a86224]/30 shadow-xs flex items-center gap-3.5 text-left animate-fade-in">
+          <div className="w-10 h-10 rounded-xl bg-[#a86224] text-white flex items-center justify-center shrink-0 shadow-sm">
+            <AlertCircle className="w-5 h-5" />
           </div>
-          <div className="space-y-1.5 flex-1">
-            <div className="inline-block px-2.5 py-0.5 rounded-full bg-[#a86224]/15 text-[#a86224] text-[10px] font-bold tracking-wider uppercase">
+          <div className="space-y-0.5 flex-1 min-w-0">
+            <div className="inline-block px-2 py-0.5 rounded-full bg-[#a86224]/15 text-[#a86224] text-[9px] font-bold tracking-wider uppercase">
               {t('billing_limit_reached_badge')}
             </div>
-            <h2 className="text-lg sm:text-xl font-bold font-serif-recipe text-stone-900 tracking-tight leading-snug">
+            <h2 className="text-sm sm:text-base font-bold font-serif-recipe text-stone-900 tracking-tight leading-snug">
               {t('billing_limit_reached_alert')}
             </h2>
-            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+            <p className="text-xs text-stone-600 leading-relaxed">
               {t('billing_limit_reached_desc')}
             </p>
           </div>
         </div>
-      ) : (
-        <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] shadow-2xs">
-            <Sparkles className="w-6 h-6 animate-pulse" />
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-bold font-serif-recipe text-stone-900 tracking-tight">
-            {t('billing_title')}
-          </h1>
-
-          <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
-            {t('billing_hero_desc')}
-          </p>
-        </div>
       )}
 
-      {/* 2º. BLOQUE OPCIÓN GRATUITA (ADMOB): PEGADA JUSTO DEBAJO DEL AVISO */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border-2 border-[#a86224]/30 shadow-xs text-center space-y-4 transition hover:border-[#a86224]">
+      {/* 1º LUGAR (Arriba del todo): TARJETA PLAN PRO MENSUAL (3,50€ / mes) */}
+      <div className="p-5 sm:p-7 rounded-3xl bg-white border-2 border-[#a86224] shadow-md text-center space-y-4 animate-fade-in relative overflow-hidden">
+        {/* Glow sutil de fondo */}
+        <div className="absolute -top-12 -right-12 w-28 h-28 bg-[#a86224]/10 rounded-full blur-2xl pointer-events-none" />
+
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f4efe6] text-[#a86224] text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
-          <Gift className="w-3.5 h-3.5" />
-          <span>{t('billing_ad_card_badge')}</span>
-        </div>
-
-        <div className="space-y-1.5">
-          <h3 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 tracking-tight">
-            {t('billing_ad_card_heading')}
-          </h3>
-          <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
-            {t('billing_ad_card_desc')}
-          </p>
-        </div>
-
-        {/* Beneficios de la opción gratuita */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-1">
-          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]/80 text-xs text-stone-700">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{t('billing_ad_benefit_1')}</span>
-          </div>
-          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]/80 text-xs text-stone-700">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{t('billing_ad_benefit_2')}</span>
-          </div>
-        </div>
-
-        {/* Botón activo para TODO el mundo (nativo ejecuta AdMob, Web/PWA simula 3s) */}
-        <div className="space-y-3 pt-2">
-          {adSuccess ? (
-            <div className="w-full py-4 px-6 rounded-2xl font-bold text-sm bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center justify-center gap-2 animate-fade-in">
-              <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
-              <span>{t('billing_ad_success')}</span>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={handleWatchAd}
-              disabled={isAdLoading}
-              className="w-full min-h-[52px] py-4 px-6 rounded-2xl font-bold text-sm sm:text-base text-stone-900 bg-[#f4efe6] hover:bg-[#ebdcc8] active:scale-[0.99] border-2 border-[#a86224]/30 shadow-xs hover:border-[#a86224] transition-all cursor-pointer flex items-center justify-center gap-2.5 disabled:opacity-75 disabled:cursor-not-allowed"
-            >
-              {isAdLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin text-[#a86224] shrink-0" />
-                  <span>
-                    {adLoadingStep === 'rewarding'
-                      ? t('billing_ad_rewarding')
-                      : adLoadingStep === 'simulating'
-                      ? t('billing_ad_simulating')
-                      : t('billing_ad_loading')}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <PlayCircle className="w-5 h-5 text-[#a86224]" />
-                  <span>{t('billing_ad_watch_btn')}</span>
-                </>
-              )}
-            </button>
-          )}
-
-          {adError && (
-            <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 font-medium pt-1">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              <span>{adError}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* SEPARADOR VISUAL DUAL */}
-      <div className="relative flex items-center justify-center py-1">
-        <div className="w-full border-t border-[#e7dfd5]" />
-        <span className="absolute px-4 bg-[#faf7f2] text-xs font-bold uppercase tracking-wider text-stone-500">
-          {t('billing_dual_or')}
-        </span>
-      </div>
-
-      {/* 3º. BLOQUE SUSCRIPCIÓN PRO (3,50€/mes) - MANTENIDO INTACTO */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs text-center space-y-4">
-        <div className="inline-block px-3 py-1 rounded-full bg-[#f4efe6] text-[#a86224] text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
-          {t('billing_plan_name')}
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>{t('billing_plan_name')}</span>
         </div>
 
         <div className="flex items-baseline justify-center gap-1.5">
@@ -352,7 +263,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
             type="button"
             onClick={handleSubscribe}
             disabled={isCheckoutLoading}
-            className="w-full min-h-[52px] py-4 px-6 rounded-2xl font-bold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] shadow-sm hover:shadow transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
+            className="w-full min-h-[52px] py-4 px-6 rounded-2xl font-bold text-sm sm:text-base text-white bg-gradient-to-r from-[#a86224] to-[#c27835] hover:from-[#8e511c] hover:to-[#a86224] active:scale-[0.99] shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2.5 disabled:opacity-75 disabled:cursor-not-allowed"
           >
             {isCheckoutLoading ? (
               <>
@@ -361,7 +272,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
               </>
             ) : (
               <>
-                <CreditCard className="w-4 h-4" />
+                <CreditCard className="w-5 h-5" />
                 <span>{t('billing_subscribe_btn')}</span>
               </>
             )}
@@ -375,24 +286,103 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-1.5 text-xs text-stone-500 pt-1">
+        <div className="flex items-center justify-center gap-1.5 text-xs text-stone-500 pt-0.5">
           <Lock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
           <span>{t('billing_cancel_anytime')}</span>
         </div>
       </div>
 
-      {/* 4º. BLOQUE CÓDIGO PROMOCIONAL */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-[#f4efe6] border border-[#e7dfd5]/80 space-y-3">
+      {/* SEPARADOR VISUAL DUAL */}
+      <div className="relative flex items-center justify-center py-0.5">
+        <div className="w-full border-t border-[#e7dfd5]" />
+        <span className="absolute px-3 bg-[#faf7f2] text-[10px] sm:text-xs font-bold uppercase tracking-wider text-stone-400">
+          {t('billing_dual_or')}
+        </span>
+      </div>
+
+      {/* 2º LUGAR: TARJETA DE LA OPCIÓN GRATUITA (AdMob Rewarded Video) */}
+      <div className="p-5 sm:p-7 rounded-3xl bg-white border border-[#e7dfd5] hover:border-[#a86224]/50 shadow-xs text-center space-y-3.5 transition">
+        <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#f4efe6] text-[#a86224] text-[10px] sm:text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
+          <Gift className="w-3.5 h-3.5" />
+          <span>{t('billing_ad_card_badge')}</span>
+        </div>
+
+        <div className="space-y-1">
+          <h3 className="text-lg sm:text-xl font-bold font-serif-recipe text-stone-900 tracking-tight leading-snug">
+            {t('billing_ad_card_heading')}
+          </h3>
+          <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
+            {t('billing_ad_card_desc')}
+          </p>
+        </div>
+
+        {/* Beneficios de la opción gratuita */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-0.5">
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]/80 text-xs text-stone-700">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{t('billing_ad_benefit_1')}</span>
+          </div>
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]/80 text-xs text-stone-700">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{t('billing_ad_benefit_2')}</span>
+          </div>
+        </div>
+
+        {/* Botón activo Ver Anuncio */}
+        <div className="space-y-2 pt-1">
+          {adSuccess ? (
+            <div className="w-full py-3.5 px-5 rounded-2xl font-bold text-xs sm:text-sm bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center justify-center gap-2 animate-fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+              <span>{t('billing_ad_success')}</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleWatchAd}
+              disabled={isAdLoading}
+              className="w-full min-h-[48px] py-3 px-5 rounded-2xl font-bold text-xs sm:text-sm text-stone-900 bg-[#f4efe6] hover:bg-[#ebdcc8] active:scale-[0.99] border border-[#e7dfd5] hover:border-[#a86224] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed shadow-2xs"
+            >
+              {isAdLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-[#a86224] shrink-0" />
+                  <span>
+                    {adLoadingStep === 'rewarding'
+                      ? t('billing_ad_rewarding')
+                      : adLoadingStep === 'simulating'
+                      ? t('billing_ad_simulating')
+                      : t('billing_ad_loading')}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <PlayCircle className="w-4 h-4 text-[#a86224]" />
+                  <span>{t('billing_ad_watch_btn')}</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {adError && (
+            <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 font-medium pt-0.5">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>{adError}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 3º LUGAR: MÓDULO CÓDIGO PROMOCIONAL */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-[#f4efe6] border border-[#e7dfd5]/80 space-y-2.5">
         <div className="flex items-center gap-2">
           <Ticket className="w-4 h-4 text-[#a86224]" />
-          <h3 className="text-sm font-bold text-stone-900">
+          <h3 className="text-xs sm:text-sm font-bold text-stone-900">
             {t('billing_vip_question')}
           </h3>
         </div>
 
         {vipSuccess ? (
-          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-semibold flex items-center gap-2.5 animate-fade-in">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-semibold flex items-center gap-2 animate-fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{t('billing_vip_success')}</span>
           </div>
         ) : (
@@ -406,13 +396,13 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
                   if (vipError) setVipError(null);
                 }}
                 placeholder={t('billing_vip_placeholder')}
-                className="flex-1 min-h-[44px] px-4 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#a86224]/30 focus:border-[#a86224] uppercase tracking-wider font-mono font-medium transition"
+                className="flex-1 min-h-[42px] px-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#a86224]/30 focus:border-[#a86224] uppercase tracking-wider font-mono font-medium transition"
                 disabled={isVipValidating}
               />
               <button
                 type="submit"
                 disabled={isVipValidating || !vipCode.trim()}
-                className="min-h-[44px] px-5 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white text-xs font-semibold transition cursor-pointer flex items-center justify-center shrink-0"
+                className="min-h-[42px] px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white text-xs font-semibold transition cursor-pointer flex items-center justify-center shrink-0"
               >
                 {isVipValidating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -432,53 +422,56 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
         )}
       </div>
 
-      {/* 5. LISTA DE BENEFICIOS (LO QUE INCLUYE EL PLAN PRO) */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
-          {t('billing_advantages_title')}
-        </h4>
+      {/* 4º LUGAR (Al final): BLOQUE INFORMATIVO DE VENTAJAS DE LA MEMBRESÍA */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-3.5">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-[#a86224]" />
+          <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+            {t('billing_advantages_title')}
+          </h4>
+        </div>
 
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-2.5">
           {/* Beneficio 1 */}
-          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-[#a86224]/40">
-            <div className="w-10 h-10 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
-              <InfinityIcon className="w-5 h-5" />
+          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-[#a86224]/40">
+            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
+              <InfinityIcon className="w-4 h-4" />
             </div>
-            <div className="space-y-0.5">
-              <h5 className="text-sm font-bold text-stone-900">
+            <div className="space-y-0.5 min-w-0 flex-1">
+              <h5 className="text-xs sm:text-sm font-bold text-stone-900">
                 {t('billing_adv_1_title')}
               </h5>
-              <p className="text-xs text-stone-600 leading-relaxed">
+              <p className="text-xs text-stone-600 leading-relaxed font-light">
                 {t('billing_adv_1_desc')}
               </p>
             </div>
           </div>
 
           {/* Beneficio 2 */}
-          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-[#a86224]/40">
-            <div className="w-10 h-10 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
-              <HeartPulse className="w-5 h-5" />
+          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-[#a86224]/40">
+            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
+              <HeartPulse className="w-4 h-4" />
             </div>
-            <div className="space-y-0.5">
-              <h5 className="text-sm font-bold text-stone-900">
+            <div className="space-y-0.5 min-w-0 flex-1">
+              <h5 className="text-xs sm:text-sm font-bold text-stone-900">
                 {t('billing_adv_2_title')}
               </h5>
-              <p className="text-xs text-stone-600 leading-relaxed">
+              <p className="text-xs text-stone-600 leading-relaxed font-light">
                 {t('billing_adv_2_desc')}
               </p>
             </div>
           </div>
 
           {/* Beneficio 3 */}
-          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-[#a86224]/40">
-            <div className="w-10 h-10 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
-              <ShieldCheck className="w-5 h-5" />
+          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-[#a86224]/40">
+            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
+              <ShieldCheck className="w-4 h-4" />
             </div>
-            <div className="space-y-0.5">
-              <h5 className="text-sm font-bold text-stone-900">
+            <div className="space-y-0.5 min-w-0 flex-1">
+              <h5 className="text-xs sm:text-sm font-bold text-stone-900">
                 {t('billing_adv_3_title')}
               </h5>
-              <p className="text-xs text-stone-600 leading-relaxed">
+              <p className="text-xs text-stone-600 leading-relaxed font-light">
                 {t('billing_adv_3_desc')}
               </p>
             </div>

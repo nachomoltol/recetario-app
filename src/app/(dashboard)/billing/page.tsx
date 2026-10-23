@@ -61,7 +61,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         </div>
       </header>
 
-      <main className="flex-1 max-w-2xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <main className="flex-1 max-w-xl w-full mx-auto px-3.5 sm:px-6 py-4 sm:py-8">
         <Suspense
           fallback={
             <div className="flex items-center justify-center py-20 text-stone-500">
