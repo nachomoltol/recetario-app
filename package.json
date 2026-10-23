@@ -1,6 +1,6 @@
 {
   "name": "recetario-app",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -35,6 +35,7 @@
   },
   "devDependencies": {
     "@capacitor/android": "^8.5.3",
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.5.3",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",

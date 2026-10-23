@@ -11,6 +11,7 @@ import {
 import { RecetaIngrediente, Paso } from '@/types/recipe';
 import { scaleIngredientsWithCulinaryHeuristics, scaleCookingTime } from '@/lib/culinary/scaler';
 import { replaceIngredientInText } from '@/lib/culinary/textReplacer';
+import { scaleStepQuantities } from '@/lib/culinary/stepQuantityScaler';
 import { ServingsScaler } from './ServingsScaler';
 import { ShoppingListMode } from './ShoppingListMode';
 import { FormattedText } from '@/components/ui/FormattedText';
@@ -80,15 +81,39 @@ export function RecipeInteractiveSections({
   const safePasos = Array.isArray(pasos) ? pasos : [];
   const safeIngredientes = Array.isArray(ingredientes) ? ingredientes : [];
 
-  // Reactividad dinámica: sustitución instantánea en el texto de preparación
+  const language = useLanguageStore((s) => s.language);
+  const ratio = servings / (basePorciones || 2);
+
+  // Escalado inteligente con conciencia culinaria
+  const scaledIngredientes = useMemo(() => {
+    return scaleIngredientsWithCulinaryHeuristics(
+      safeIngredientes,
+      basePorciones || 2,
+      servings
+    );
+  }, [safeIngredientes, basePorciones, servings]);
+
+  const scaledTiempoCoccion = tiempoCoccionMin
+    ? scaleCookingTime(tiempoCoccionMin, ratio)
+    : null;
+
+  // Reactividad dinámica: escalado métrico culinario y sustitución de ingredientes en el relato
   const reactivePasos = useMemo(() => {
     const activeSubs = Object.entries(substitutions).filter(([_, newName]) => Boolean(newName));
-    if (activeSubs.length === 0) return safePasos;
 
     return safePasos.map((paso) => {
       let instruccion = String(paso?.instruccion || '');
       let consejo = paso?.consejo_pro ? String(paso.consejo_pro) : undefined;
 
+      // 1. Escalar cantidades numéricas integradas en el texto si ratio !== 1
+      if (ratio !== 1 && scaledIngredientes.length > 0) {
+        instruccion = scaleStepQuantities(instruccion, scaledIngredientes, ratio, language);
+        if (consejo) {
+          consejo = scaleStepQuantities(consejo, scaledIngredientes, ratio, language);
+        }
+      }
+
+      // 2. Aplicar sustitución de ingredientes si existen
       for (const [adaptedBase, newName] of activeSubs) {
         instruccion = replaceIngredientInText(instruccion, adaptedBase, newName);
         if (consejo) {
@@ -102,19 +127,7 @@ export function RecipeInteractiveSections({
         consejo_pro: consejo,
       };
     });
-  }, [safePasos, substitutions]);
-
-  // Escalado inteligente con conciencia culinaria
-  const scaledIngredientes = scaleIngredientsWithCulinaryHeuristics(
-    safeIngredientes,
-    basePorciones || 2,
-    servings
-  );
-
-  const ratio = servings / (basePorciones || 2);
-  const scaledTiempoCoccion = tiempoCoccionMin
-    ? scaleCookingTime(tiempoCoccionMin, ratio)
-    : null;
+  }, [safePasos, substitutions, ratio, scaledIngredientes, language]);
 
   return (
     <div className="space-y-8 pt-2">

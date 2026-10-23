@@ -3,16 +3,19 @@
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '@/lib/gemini/client';
 import { Type } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
-import { getClinicalExclusions } from '@/lib/clinicalDictionary';
+import { getDetailedClinicalProfile, buildClinicalFirewallPrompt } from '@/lib/clinicalDictionary';
 
 export interface SubstituteOption {
-  tipo: 'magra_tradicional' | 'vegetal_umami' | 'accesible_economica';
-  etiqueta_tipo: string;
   nombre_sustituto: string;
+  etiqueta_dinamica: string;
+  categoria_icono: 'vegetal' | 'proteina' | 'lacteo' | 'cereal' | 'despensa' | 'general';
   cantidad_sugerida: string;
   razon_culinaria: string;
   beneficio_nutricional: string;
   modo_uso: string;
+  // Campos de compatibilidad hacia atrás
+  tipo?: string;
+  etiqueta_tipo?: string;
 }
 
 export interface SuggestSubstituteResult {
@@ -23,38 +26,39 @@ export interface SuggestSubstituteResult {
 
 const substituteSchema = {
   type: Type.OBJECT,
-  description: 'Conjunto de tres alternativas culinarias y nutricionales diferenciadas.',
+  description: 'Conjunto de tres alternativas culinarias y nutricionales diferenciadas y contextualmente relevantes.',
   properties: {
     alternativas: {
       type: Type.ARRAY,
-      description: 'Exactamente 3 propuestas de sustitución con 3 perfiles distintos.',
+      description: 'Exactamente 3 propuestas de sustitución inteligentes adaptadas al ingrediente específico.',
       items: {
         type: Type.OBJECT,
         properties: {
-          tipo: {
-            type: Type.STRING,
-            enum: ['magra_tradicional', 'vegetal_umami', 'accesible_economica'],
-            description: 'Tipo de enfoque de la alternativa.',
-          },
-          etiqueta_tipo: {
-            type: Type.STRING,
-            description: 'Etiqueta descriptiva corta (ej: "Magra Tradicional", "Vegetal rica en Umami", "Accesible y Cotidiana").',
-          },
           nombre_sustituto: {
             type: Type.STRING,
-            description: 'Nombre del ingrediente alternativo propuesto.',
+            description: 'Nombre canónico y limpio del ingrediente alternativo propuesto (ej: "Batata o Boniato", "Tofu firme", "Bebida de almendras sin azúcar").',
+          },
+          etiqueta_dinamica: {
+            type: Type.STRING,
+            description:
+              'Etiqueta descriptiva contextual al alimento real (ej: "Tubérculo de bajo IG", "Equivalente en textura", "Opción vegetal rica en fibra", "Grasa cardiosaludable", "Proteína marina magra").',
+          },
+          categoria_icono: {
+            type: Type.STRING,
+            enum: ['vegetal', 'proteina', 'lacteo', 'cereal', 'despensa', 'general'],
+            description: 'Categoría culinaria básica para iconografía visual.',
           },
           cantidad_sugerida: {
             type: Type.STRING,
-            description: 'Equivalencia y ratio sugerido (ej: "Misma cantidad (1:1)", "200g por cada 150g").',
+            description: 'Equivalencia y ratio sugerido (ej: "Misma cantidad (1:1)", "200g por cada 150g", "1 cucharada sopera rasa").',
           },
           razon_culinaria: {
             type: Type.STRING,
-            description: 'Comportamiento en cocina: resistencia al calor, humedad, emulsión, textura y armonía de sabor en la receta.',
+            description: 'Comportamiento en cocina: resistencia térmica, evaporación, humedad, textura y armonía de sabor en la receta.',
           },
           beneficio_nutricional: {
             type: Type.STRING,
-            description: 'Ventajas nutricionales contrastadas (menos grasa saturada, mayor proteína limpia, fibra prebiótica, micronutrientes).',
+            description: 'Ventajas nutricionales contrastadas (menor carga glucémica, fibra prebiótica, perfil lipídico o aporte proteico).',
           },
           modo_uso: {
             type: Type.STRING,
@@ -62,9 +66,9 @@ const substituteSchema = {
           },
         },
         required: [
-          'tipo',
-          'etiqueta_tipo',
           'nombre_sustituto',
+          'etiqueta_dinamica',
+          'categoria_icono',
           'cantidad_sugerida',
           'razon_culinaria',
           'beneficio_nutricional',
@@ -77,22 +81,23 @@ const substituteSchema = {
 };
 
 const SYSTEM_INSTRUCTION_SUBSTITUTE = `
-Eres un Chef Consultor de Alta Cocina y Nutricionista Clínico especializado en sustituciones inteligentes bajo demanda.
-Tu objetivo es sugerir EXACTAMENTE TRES alternativas diferentes, viables y organolépticamente sobresalientes para un ingrediente en el contexto de una receta dada:
+Eres un Chef Consultor de Alta Cocina y Nutricionista Clínico especializado en sustituciones culinarias inteligentes bajo demanda.
+Tu objetivo es sugerir EXACTAMENTE TRES alternativas viables, culinariamente coherentes y organolépticamente sobresalientes para un ingrediente específico en el contexto de una receta dada.
 
-1. Opción Magra Tradicional ("magra_tradicional"):
-   - Enfoque: Reducción de grasa saturada o calorías, incremento de proteína de alto valor biológico o densidad de nutrientes de origen natural.
-2. Opción Vegetal rica en Umami ("vegetal_umami"):
-   - Enfoque: Alternativa plant-based basada en alimentos enteros que aporte profundidad gustativa, riqueza umami y textura satisfactoria sin recurrir a ultraprocesados.
-3. Opción Accesible y Cotidiana ("accesible_economica"):
-   - Enfoque: Alimento básico de despensa común, económico y disponible en cualquier supermercado local, fácil de preparar y con ratio directo de sustitución.
+DIRECTRICES FUNDAMENTALES DE GENERACIÓN DINÁMICA:
+1. ADAPTACIÓN A LA NATURALEZA REAL DEL ALIMENTO:
+   - Las 3 alternativas deben corresponder a la naturaleza culinaria real del ingrediente recibido (ej: si se sustituye una patata, sugiere opciones afines como batata, calabaza o coliflor; si se sustituye mantequilla, sugiere AOVE, puré de manzana o mantequilla de frutos secos; si se sustituye una carne o pescado, sugiere alternativas proteicas coherentes).
+   - Proporciona 3 enfoques complementarios y diferenciados sin repetirse entre sí (ej: una opción de reemplazo directo de textura, una opción de optimización metabólica/nutricional, y una opción vegetal o ligera).
+   - Genera para cada opción una 'etiqueta_dinamica' descriptiva, concisa y atractiva que resalte el valor diferencial de esa alternativa en el plato (ej: "Tubérculo de bajo IG", "Equivalente en textura", "Opción vegetal rica en fibra", "Grasa monoinsaturada").
+   - Clasifica cada una en 'categoria_icono': 'vegetal', 'proteina', 'lacteo', 'cereal', 'despensa' o 'general'.
 
-DIRECTRICES TÉCNICAS Y CLÍNICAS:
-- Equivalencia Nutricional: Proporciona EXACTAMENTE 3 alternativas nutricionalmente equivalentes (proteína por proteína, grasa por grasa) y culinariamente lógicas.
-- Comportamiento Culinario: Explica con precisión técnica cómo reacciona al fuego/horno/emulsión y cómo afecta a la textura del plato.
-- Beneficio Nutricional: Cita el impacto en macronutrientes, digestión o salud metabólica.
-- Proporción Exacta: Especifica la ratio de intercambio para garantizar el éxito del plato.
-- SEGURIDAD CLÍNICA ESTRICTA: Si se especifican alérgenos o exclusiones clínicas del usuario, queda TERMINANTEMENTE PROHIBIDO incluir cualquiera de ellos en las alternativas.
+2. RIGOR CULINARIO Y TÉCNICO:
+   - Proporción Exacta: Especifica la ratio de intercambio precisa (1:1, reducción de líquido, ajuste de tiempos de cocción).
+   - Comportamiento Culinario: Explica con rigor técnico cómo reacciona al fuego/horno/emulsión y cómo afecta al resultado final.
+   - Beneficio Nutricional: Cita el impacto real en macronutrientes, digestibilidad o densidad nutricional.
+
+3. BLINDAJE CLÍNICO ESTRICTO:
+   - Si se proporcionan directivas de cortafuegos clínico o exclusiones médicas del usuario, está TERMINANTEMENTE PROHIBIDO incluir o sugerir cualquier ingrediente vetado o derivado. Todas las alternativas DEBEN ser 100% aptas para el perfil del usuario.
 `.trim();
 
 export async function suggestSubstituteAction({
@@ -133,34 +138,34 @@ export async function suggestSubstituteAction({
         const alergenosStr =
           perfil.alergenos && perfil.alergenos.length > 0
             ? perfil.alergenos.join(', ')
-            : 'Ninguno declarado';
-        const preferenciasStr =
-          perfil.preferencias_dieteticas && perfil.preferencias_dieteticas.length > 0
-            ? perfil.preferencias_dieteticas.join(', ')
-            : 'Ninguna declarada';
+            : '';
+        const preferencias = perfil.preferencias_dieteticas || [];
+        const alergenos = perfil.alergenos || [];
         const nivelStr = perfil.nivel_culinario || 'medio';
 
-        const exclusionesClinicas = getClinicalExclusions({
-          preferencias: perfil.preferencias_dieteticas || [],
-          alergenos: perfil.alergenos || [],
+        const clinicalProfile = getDetailedClinicalProfile({
+          preferencias,
+          alergenos,
+          idioma,
         });
 
-        const exclusionesStr =
-          exclusionesClinicas.length > 0
-            ? `\nCORTAFUEGOS CLÍNICO ACTIVO:
-ESTRICTAMENTE PROHIBIDO sugerir los siguientes ingredientes: [${exclusionesClinicas.join(
-                ', '
-              )}].`
-            : '';
+        const firewallPrompt = buildClinicalFirewallPrompt(
+          clinicalProfile.exclusionesTotales,
+          idioma,
+          {
+            severidadMaxima: clinicalProfile.severidadMaxima,
+            reglasAvanzadasTexto: clinicalProfile.reglasAvanzadasTexto,
+          }
+        );
 
         clinicalContext = `
 PERFIL CLÍNICO E INTOLERANCIAS DEL USUARIO:
-- Alérgenos e intolerancias médicas estrictas: ${alergenosStr}
-- Preferencias dietéticas / estilo de vida: ${preferenciasStr}
+- Alérgenos e intolerancias médicas estrictas: ${alergenosStr || (idioma === 'en' ? 'None declared' : 'Ninguno declarado')}
+- Preferencias dietéticas / estilo de vida: ${preferencias.length > 0 ? preferencias.join(', ') : (idioma === 'en' ? 'None declared' : 'Ninguna declarada')}
 - Nivel culinario del usuario: ${nivelStr}
-${exclusionesStr}
+${firewallPrompt ? `\n${firewallPrompt}` : ''}
 
-PROHIBICIÓN ESTRICTA: La IA tiene TERMINANTEMENTE PROHIBIDO sugerir cualquier ingrediente o alternativa que contenga, derive o active las intolerancias, alergias o restricciones del usuario (${alergenosStr}, ${preferenciasStr}). Todas las alternativas sugeridas deben ser 100% aptas y seguras para este perfil clínico.`;
+PROHIBICIÓN ESTRICTA: La IA tiene TERMINANTEMENTE PROHIBIDO sugerir cualquier ingrediente o alternativa que contenga, derive o active las intolerancias, alergias o restricciones del usuario (${clinicalProfile.exclusionesTotales.join(', ')}). Todas las alternativas sugeridas deben ser 100% aptas y seguras para este perfil clínico.`;
       }
     }
 
@@ -176,11 +181,11 @@ RECETA: "${tituloReceta}"
 INGREDIENTE A SUSTITUIR: ${cantidad ? `${cantidad} ` : ''}${unidad ? `${unidad} de ` : ''}${nombreIngrediente}
 ${clinicalContext}
 
-DIRECTIVA NUTRICIONAL OBLIGATORIA:
-Proporciona EXACTAMENTE 3 alternativas nutricionalmente equivalentes (proteína por proteína, grasa por grasa) y culinariamente lógicas.
+DIRECTIVA DE REEMPLAZO DINÁMICO:
+Proporciona EXACTAMENTE 3 alternativas nutricionalmente coherentes con la naturaleza del ingrediente y organolépticamente viables.
 
 GESTIÓN DINÁMICA DE IDIOMA:
-Redacta todas las alternativas, razones culinarias, beneficios y modos de uso estrictamente en ${langName}. NUNCA mezcles idiomas.${antiSpanglishDirective}
+Redacta todas las alternativas, etiquetas dinámicas, razones culinarias, beneficios y modos de uso estrictamente en ${langName}. NUNCA mezcles idiomas.${antiSpanglishDirective}
 `.trim();
 
     const candidateModels = [PRIMARY_GEMINI_MODEL, ...FALLBACK_GEMINI_MODELS];
@@ -204,11 +209,27 @@ Redacta todas las alternativas, razones culinarias, beneficios y modos de uso es
         }
 
         const data = JSON.parse(response.text);
-        const alternativas: SubstituteOption[] = data.alternativas || [];
+        const rawAlternativas = data.alternativas || [];
 
-        if (!Array.isArray(alternativas) || alternativas.length === 0) {
+        if (!Array.isArray(rawAlternativas) || rawAlternativas.length === 0) {
           throw new Error('El formato de alternativas no contiene opciones válidas.');
         }
+
+        // Mapeo defensivo asegurando soporte de etiquetas dinámicas y compatibilidad
+        const alternativas: SubstituteOption[] = rawAlternativas.map((alt: any) => ({
+          nombre_sustituto: String(alt.nombre_sustituto || '').trim(),
+          etiqueta_dinamica: String(alt.etiqueta_dinamica || alt.etiqueta_tipo || 'Alternativa').trim(),
+          categoria_icono: ['vegetal', 'proteina', 'lacteo', 'cereal', 'despensa', 'general'].includes(alt.categoria_icono)
+            ? alt.categoria_icono
+            : 'general',
+          cantidad_sugerida: String(alt.cantidad_sugerida || '1:1').trim(),
+          razon_culinaria: String(alt.razon_culinaria || '').trim(),
+          beneficio_nutricional: String(alt.beneficio_nutricional || '').trim(),
+          modo_uso: String(alt.modo_uso || '').trim(),
+          // Compatibilidad hacia atrás
+          tipo: alt.categoria_icono || alt.tipo || 'general',
+          etiqueta_tipo: String(alt.etiqueta_dinamica || alt.etiqueta_tipo || 'Alternativa').trim(),
+        }));
 
         return { success: true, data: alternativas };
       } catch (err) {

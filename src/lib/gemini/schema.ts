@@ -62,7 +62,7 @@ export const recipeExtractionSchema = {
           unidad: {
             type: Type.STRING,
             description:
-              'Unidad métrica estricta. EXCLUSIVAMENTE "g" para sólidos/pastas o "ml" para líquidos/emulsiones (o "unit" / "units" si idioma es inglés; "unidad" / "unidades" si idioma es español). REGLA LÓGICA DE PLURALIZACIÓN: si la cantidad es > 1 y la unidad es de piezas enteras, el texto de salida en unidad debe ser estrictamente plural ("units" en inglés, "unidades" en español); si es 1, singular ("unit" en inglés, "unidad" en español). Está TAJANTEMENTE PROHIBIDO usar "taza", "cucharada", "cucharadita", "pizca", "chorro", "vaso" u otras medidas volumétricas ambiguas.',
+              'Unidad métrica estricta. EXCLUSIVAMENTE "g" para sólidos/pastas o "ml" para líquidos/emulsiones (o "unit" / "units" si idioma es inglés; "unidad" / "unidades" si idioma es español). REGLA LÓGICA DE PLURALIZACIÓN: si la cantidad es > 1 y la unidad es de piezas enteras, el texto de salida en unidad debe ser estrictamente plural ("units" en inglés, "unidades" en español); si es 1, singular ("unit" en inglés, "unidad" en español). EXCEPCIÓN CULINARIA PARA EL AJO: Para ajo desgranado, la unidad obligatoria DEBE ser "diente" o "dientes" ("clove" o "cloves" en inglés); está PROHIBIDO usar "unidad", "unidades" o "cabeza" a menos que la receta use la cabeza entera asada. Está TAJANTEMENTE PROHIBIDO usar "taza", "cucharada", "cucharadita", "pizca", "chorro", "vaso" u otras medidas volumétricas ambiguas.',
           },
           gramos_estimados: {
             type: Type.NUMBER,
@@ -125,7 +125,7 @@ export const recipeExtractionSchema = {
           instruccion: {
             type: Type.STRING,
             description:
-              'Instrucción técnica clara, detallada y comprensible. OBLIGATORIO: inyecta siempre las cantidades exactas de los ingredientes en el texto del paso (ej: "Añade los 400g de tomate triturado"). Las cantidades inyectadas en el relato de los pasos DEBEN coincidir matemáticamente con las porciones objetivo que se están generando para la lista de ingredientes, NO con las cantidades originales del vídeo si difieren.',
+              'Instrucción técnica clara, detallada y en prosa culinaria natural profesional. OBLIGATORIO: integra las cantidades exactas en prosa culinaria fluida (ej: "Añade media cebolla picada finamente", "Vierte una cucharada de aceite (15 ml)", "Incorpora los 200 g de pechuga de pollo cortada en dados"). Está TERMINANTEMENTE PROHIBIDO redactar números con decimales de laboratorio fríos o antinaturales (NO escribir "añade 0.5 unidades de cebolla" ni "vierte 15ml de aceite"). Las cantidades inyectadas deben coincidir con las porciones escaladas de la receta.',
           },
           tiempo_estimado_min: {
             type: Type.INTEGER,
@@ -192,6 +192,12 @@ export const recipeExtractionSchema = {
       description:
         'OBLIGATORIO: Asigna obligatoriamente entre 3 y 5 etiquetas semánticas consolidadas por receta. Debes identificar siempre: 1) La naturaleza o formato del plato (ej: "Sopa", "Ensalada", "Aliño y Salsa", "Guiso", "Pasta", "Arroz", "Postre", "Entrante"), 2) El ingrediente principal o proteína base (ej: "Pollo", "Carne", "Pescado", "Marisco", "Legumbres", "Verduras"), y 3) El momento de consumo o función (ej: "Almuerzo", "Cena", "Desayuno", "Rápido (<20m)").',
     },
+    alertas_compatibilidad: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description:
+        'Alertas informativas breves sobre ingredientes originales de la receta que puedan entrar en conflicto con el perfil clínico o alérgenos del usuario (ej: "Contiene ajo (FODMAP)", "Contiene gluten"). La receta base DEBE conservar todos los ingredientes y pasos originales sin alterar; estas alertas son 100% informativas. Si no hay conflictos, devuelve un array vacío [].',
+    },
   },
   required: [
     'es_receta_valida',
@@ -207,28 +213,38 @@ export const recipeExtractionSchema = {
     'categorias_gastronomicas',
     'momentos_consumo',
     'etiquetas',
+    'alertas_compatibilidad',
   ],
 };
 
 /**
  * Construye la directiva de sistema para Gemini incorporando la gestión dinámica de idioma
- * y el cortafuegos clínico personalizado del usuario.
+ * y alertas informativas de compatibilidad clínica manteniendo fidelidad 100% a la fuente.
  */
 export function buildRecipeSystemInstruction(options?: {
   idioma?: 'es' | 'en';
+  alertasClinicas?: string[];
   exclusionesClinicas?: string[];
 }): string {
   const idioma = options?.idioma || 'es';
+  const alertas = options?.alertasClinicas || [];
   const exclusiones = options?.exclusionesClinicas || [];
   const langName = idioma === 'en' ? 'English' : 'Spanish';
 
   let firewallSection = '';
-  if (exclusiones.length > 0) {
+  if (alertas.length > 0) {
     firewallSection = `
-9. CORTAFUEGOS CLÍNICO Y SEGURIDAD MÉDICA OBLIGATORIA:
+9. ALERTAS INFORMATIVAS DE COMPATIBILIDAD CLÍNICA (FIDELIDAD 100% AL VÍDEO Y FUENTE ORIGINAL):
+   - La receta extraída DEBE conservar con fidelidad absoluta todos los ingredientes y pasos originales empleados por el creador en el contenido audiovisual o texto.
+   - Queda TERMINANTEMENTE PROHIBIDO sustituir, eliminar o alterar ingredientes en 'ingredientes' o 'pasos' durante la ingesta (ej: si el creador usa ajo o cebolla, DEBES incluir ajo o cebolla en los ingredientes y pasos sin omitirlos).
+   - Analiza si los ingredientes originales entran en conflicto con las siguientes restricciones o alérgenos del usuario: [${alertas.join(', ')}].
+   - Si detectas incompatibilidades, señálalas ÚNICAMENTE de forma informativa en el array 'alertas_compatibilidad' (ej: "Contiene ajo y cebolla (FODMAP)", "Contiene gluten"). Si no hay conflictos, devuelve un array vacío [].
+`.trim();
+  } else if (exclusiones.length > 0) {
+    firewallSection = `
+9. CORTAFUEGOS CLÍNICO Y SEGURIDAD MÉDICA:
    - ESTRICTAMENTE PROHIBIDO sugerir los siguientes ingredientes: [${exclusiones.join(', ')}].
-   - Tolerancia Cero: Si el vídeo o texto original contiene alguno de estos ingredientes prohibidos o sus derivados, DEBES sustituirlos OBLIGATORIAMENTE en la lista de ingredientes y en los pasos por alternativas nutricionalmente equivalentes y culinariamente afines que sean 100% seguras.
-   - Jamás incluyas los ingredientes prohibidos en los campos del JSON.
+   - Sustitúyelos por alternativas nutricionalmente equivalentes y seguras.
 `.trim();
   }
 
@@ -251,8 +267,9 @@ export function buildRecipeSystemInstruction(options?: {
    - STRICT LOGICAL RULE FOR INDIVISIBLE PIECES ('unit' vs 'units'):
      * If the detected quantity is 1 (or <= 1), the unit MUST strictly be "unit" in singular (e.g. quantity: 1, unit: "unit").
      * If the detected quantity is > 1 (e.g. 2, 3, 4, etc.), the output unit MUST STRICTLY BE "units" in plural (e.g. quantity: 2, unit: "units").
+     * MANDATORY CULINARY EXCEPTION FOR GARLIC: For peeled or separated garlic cloves, the mandatory unit MUST be "clove" (singular) or "cloves" (plural). It is STRICTLY FORBIDDEN to use "unit", "units", or "head" unless roasting the entire whole head. (e.g., 3 garlic cloves -> quantity: 3, unit: "cloves"; 1 garlic clove -> quantity: 1, unit: "clove").
      * NEVER use 'unidad' or 'unidades' in English mode.
-     * Always complete 'gramos_estimados' according to the standard piece weight (e.g. 2 units of egg = 120 g).`
+     * Always complete 'gramos_estimados' according to the standard piece weight (e.g. 2 units of egg = 120 g, 1 clove of garlic = 5 g).`
       : `4. CONVERSIÓN MÉTRICA ESTRICTA Y REGLA DE PLURALIZACIÓN DE UNIDADES:
    - Está TAJANTEMENTE PROHIBIDO el uso de medidas volumétricas o coloquiales ambiguas como 'taza', 'cucharada', 'cucharadita', 'pizca', 'chorro', 'vaso' o 'puñado'.
    - La IA DEBE estimar la densidad física del alimento y convertir la cantidad EXCLUSIVAMENTE a medidas estandarizadas: gramos ('g') para ingredientes sólidos/pastosos o mililitros ('ml') para líquidos/aceites/emulsiones.
@@ -260,7 +277,30 @@ export function buildRecipeSystemInstruction(options?: {
    - REGLA LÓGICA ESTRICTA PARA PIEZAS INDIVISIBLES ('unidad' vs 'unidades'):
      * Si la cantidad detectada es 1 (o <= 1), la unidad debe ser estrictamente "unidad" en singular (ej: cantidad: 1, unidad: "unidad").
      * Si la cantidad detectada es > 1 (ej: 2, 3, 4, etc.), la unidad de salida DEBE SER ESTRICTAMENTE "unidades" en plural (ej: cantidad: 2, unidad: "unidades").
-     * Siempre completa los gramos_estimados equivalentes según el peso estándar de la pieza (ej. 2 unidades de huevo = 120 g).`;
+     * EXCEPCIÓN CULINARIA OBLIGATORIA PARA EL AJO: Para ajo desgranado, la unidad obligatoria DEBE ser "diente" (singular) o "dientes" (plural). Está TERMINANTEMENTE PROHIBIDO usar "unidad" o "cabeza" para los dientes de ajo, a menos que la receta utilice una cabeza entera asada. (Ej: 3 dientes de ajo -> cantidad: 3, unidad: "dientes"; 1 diente de ajo -> cantidad: 1, unidad: "diente").
+     * Siempre completa los gramos_estimados equivalentes según el peso estándar de la pieza (ej. 2 unidades de huevo = 120 g, 1 diente de ajo = 5 g).`;
+  const rule8Quantities =
+    idioma === 'en'
+      ? `8. NATURAL CULINARY PROSE AND PRECISE METRIC INTEGRATION:
+   - In the 'pasos' / preparation array, integrate exact ingredient quantities using fluent, professional, and natural culinary prose.
+   - STRICT FORBIDDANCE OF LABORATORY DECIMALS: You are STRICTLY FORBIDDEN from writing cold, unnatural, or laboratory-like phrasing such as "add 0.5 units of onion", "pour 0.25 tablespoons", or "add 15ml of oil".
+   - MANDATORY CULINARY PHRASING DIRECTIVE: Integrate precise quantities into natural culinary English:
+     * Instead of "Add 0.5 units of onion", write: "Add half an onion, finely chopped".
+     * Instead of "Pour 15ml of oil", write: "Pour one tablespoon of extra virgin olive oil (15 ml)".
+     * Instead of "Add 200 of chicken", write: "Incorporate the 200 g of diced chicken breast".
+     * Instead of "Add 2 units of egg", write: "Add the 2 beaten eggs".
+   - If original video servings differ from target user servings, apply the mathematical conversion factor to all ingredients and reflect those scaled quantities naturally in the steps narrative.
+   - Set the 'porciones' field exactly to the final scaled number of servings.`
+      : `8. REDACCIÓN EN PROSA CULINARIA NATURAL E INTEGRACIÓN MÉTRICA EXACTA:
+   - En el array de 'pasos' o 'preparación', integra siempre las cantidades exactas de los ingredientes de forma fluida, profesional y natural.
+   - PROHIBICIÓN ESTRICTA DE DECIMALES DE LABORATORIO: Queda TERMINANTEMENTE PROHIBIDO redactar expresiones frías, artificiales o de laboratorio como "añade 0.5 unidades de cebolla", "vierte 0.25 cucharadas" o "agrega 15ml de aceite".
+   - DIRECTIVA OBLIGATORIA DE REDACCIÓN NATURAL: Utiliza lenguaje gastronómico natural incorporando la precisión métrica idónea:
+     * En lugar de "Añade 0.5 unidades de cebolla", escribe: "Añade media cebolla picada finamente".
+     * En lugar de "Vierte 15ml de aceite", escribe: "Vierte una cucharada de aceite de oliva virgen extra (15 ml)".
+     * En lugar de "Añade 200 de pollo", escribe: "Incorpora los 200 g de pechuga de pollo cortada en dados".
+     * En lugar de "Agrega 2 unidades de huevo", escribe: "Agrega los 2 huevos batidos".
+   - Si las raciones del metraje original difieren de las raciones objetivo del usuario, aplica el factor de conversión matemático a todos los ingredientes e inyecta esas cantidades ya calculadas (escaladas) en la redacción natural de los pasos.
+   - Establece el campo 'porciones' exactamente con el número final de raciones ya escaladas.`;
 
   return `
 Eres un Chef Ejecutivo y Nutricionista Clínico de élite especializado en estandarización culinaria, análisis audiovisual y salud sostenible.
@@ -317,12 +357,7 @@ ${rule4Units}
      * Para 'Sopa de pescado y marisco': asigna ["Sopas y Cremas", "Pescados y Mariscos", "Cena Ligera"].
      * Para 'Ensalada de garbanzos con atún': asigna ["Ensaladas y Entrantes", "Legumbres", "Pescados y Mariscos", "Atún", "Almuerzo Saludable"].
 
-8. INYECCIÓN OBLIGATORIA DE CANTIDADES EXACTAS Y FACTOR DE CONVERSIÓN MATEMÁTICO:
-   - En el array de 'pasos' o 'preparación', NUNCA menciones los ingredientes de forma genérica. Debes inyectar la cantidad exacta en el texto del paso a paso.
-   - Ejemplo obligatorio: En lugar de 'Añade el tomate', debes escribir 'Añade los 400g de tomate triturado'. En lugar de 'Vierte el aceite', escribe 'Vierte los 30ml de aceite de oliva'. En lugar de 'Agrega los huevos', escribe 'Agrega las 2 unidades de huevo'.
-   - Haz esto con todos los ingredientes posibles para facilitar la cocina.
-   - Si las raciones originales del metraje difieren de las raciones objetivo del usuario, DEBES aplicar obligatoriamente un factor de conversión matemático a TODOS los ingredientes. Ejemplo: si la receta original es para 8 raciones y el objetivo del usuario es 4, debes dividir absolutamente todos los pesos, volúmenes y unidades entre 2. Plasma estas cantidades ya calculadas (escaladas) tanto en el array de 'ingredientes' como inyectadas en el relato de 'preparación'.
-   - Establece el campo 'porciones' exactamente con el número final de raciones ya escaladas.
+${rule8Quantities}
 
 ${firewallSection}
 
@@ -380,4 +415,5 @@ export interface ExtractedRecipe {
   categorias_gastronomicas?: string[];
   momentos_consumo?: string[];
   etiquetas: string[];
+  alertas_compatibilidad?: string[];
 }

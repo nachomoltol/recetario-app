@@ -1374,15 +1374,18 @@ export async function extractRecipeWithGemini({
   file,
   porcionesUsuario,
   idioma = 'es',
-  exclusionesClinicas = [],
+  alertasClinicas,
+  exclusionesClinicas,
 }: {
   url?: string;
   texto?: string;
   file?: File;
   porcionesUsuario?: number;
   idioma?: 'es' | 'en';
+  alertasClinicas?: string[];
   exclusionesClinicas?: string[];
 }): Promise<ExtractedRecipe> {
+  const clinicalAlerts = alertasClinicas || exclusionesClinicas || [];
   const url = sanitizeRecipeUrl(rawUrl);
   const ai = getGeminiClient();
 
@@ -1523,7 +1526,7 @@ export async function extractRecipeWithGemini({
 
     if (porcionesUsuario && porcionesUsuario > 0) {
       contextPrompt += `PORCIONES / RACIONES OBJETIVO DEL USUARIO: ${porcionesUsuario} raciones.
-DIRECTIVA ESTRICTA DE ESCALADO MATEMÁTICO: Si las raciones originales del metraje difieren de las raciones objetivo del usuario (${porcionesUsuario} raciones), DEBES aplicar obligatoriamente un factor de conversión matemático a TODOS los ingredientes. Ejemplo: si la receta original es para 8 raciones y el objetivo del usuario es 4, debes dividir absolutamente todos los pesos, volúmenes y unidades entre 2. Plasma estas cantidades ya calculadas (escaladas) tanto en el array de 'ingredientes' como inyectadas en el relato de 'preparación', y establece 'porciones': ${porcionesUsuario}.\n\n`;
+DIRECTIVA ESTRICTA DE ESCALADO MATEMÁTICO Y PROSA CULINARIA NATURAL: Si las raciones originales del metraje difieren de las raciones objetivo del usuario (${porcionesUsuario} raciones), DEBES aplicar obligatoriamente un factor de conversión matemático a TODOS los ingredientes. Plasma estas cantidades ya calculadas (escaladas) tanto en el array de 'ingredientes' como integradas en la redacción fluida y natural de 'preparación' (ej: "Añade media cebolla picada", "Vierte una cucharada de aceite (15 ml)", "Incorpora los 200 g de pollo"), prohibiéndose tajantemente decimales de laboratorio como "0.5 unidades de cebolla", y establece 'porciones': ${porcionesUsuario}.\n\n`;
     }
 
     // Validación previa para evitar alucinaciones: si no hay archivo multimodal, verificar que haya texto con sustancia culinaria real
@@ -1548,11 +1551,12 @@ DIRECTIVA ESTRICTA DE ESCALADO MATEMÁTICO: Si las raciones originales del metra
 
     // 2. Prompt de Fusión Contextual (Multimodal)
     const langName = idioma === 'en' ? 'English' : 'Spanish';
-    const firewallDirective =
-      exclusionesClinicas.length > 0
-        ? `\n4. CORTAFUEGOS CLÍNICO ACTIVO: ESTRICTAMENTE PROHIBIDO sugerir los siguientes ingredientes: [${exclusionesClinicas.join(
-            ', '
-          )}]. Sustitúyelos obligatoriamente por alternativas seguras y aptas.`
+    const compatibilidadDirective =
+      clinicalAlerts.length > 0
+        ? `\n4. ALERTAS INFORMATIVAS DE COMPATIBILIDAD (FIDELIDAD 100% AL VÍDEO / FUENTE ORIGINAL):
+- La receta extraída DEBE conservar al 100% todos los ingredientes y pasos originales empleados por el creador. Queda TERMINANTEMENTE PROHIBIDO sustituir o eliminar ingredientes (como ajo o cebolla) durante la ingesta.
+- Comprueba si los ingredientes originales entran en conflicto con las restricciones clínicas o alérgenos del usuario: [${clinicalAlerts.join(', ')}].
+- Si detectas incompatibilidades, señálalas ÚNICAMENTE de forma informativa en el array "alertas_compatibilidad" (ej: "Contiene ajo (FODMAP)", "Contiene gluten"). Si no hay conflictos, devuelve un array vacío [].`
         : '';
 
     const langDirective =
@@ -1560,6 +1564,11 @@ DIRECTIVA ESTRICTA DE ESCALADO MATEMÁTICO: Si las raciones originales del metra
         ? `5. ADVERTENCIA CRÍTICA DE IDIOMA (EL FIN DEL SPANGLISH):
 ADVERTENCIA CRÍTICA DE IDIOMA: Si el idioma solicitado es Inglés ('en'), estás ESTRICTAMENTE PROHIBIDO de usar la palabra 'unidades', 'cucharadas', 'gramos' en español. Debes usar sus equivalentes en inglés ('units/pieces', 'tbsp/tsp', 'grams'). Las etiquetas de dificultad ('Fácil', 'Principiante') DEBEN traducirse al inglés ('Easy', 'Beginner'). TODO EL JSON DEBE SER INGLÉS NATIVO. NUNCA mezcles idiomas.`
         : `5. GESTIÓN DINÁMICA DE IDIOMA (VITAL): Traduce el audio/texto del vídeo original y redacta el JSON de la receta estrictamente en Spanish. NUNCA mezcles idiomas.`;
+
+    const garlicDirective =
+      idioma === 'en'
+        ? `6. MANDATORY CULINARY EXCEPTION FOR GARLIC: For peeled or separated garlic cloves, the mandatory unit in 'ingredientes' MUST be "clove" (singular) or "cloves" (plural). NEVER use "unit", "units", or "head" unless cooking the entire whole head roasted.`
+        : `6. EXCEPCIÓN CULINARIA OBLIGATORIA PARA EL AJO: Para ajo desgranado, la unidad obligatoria en 'ingredientes' DEBE ser "diente" o "dientes". Queda TERMINANTEMENTE PROHIBIDO usar "unidad", "unidades" o "cabeza" a menos que la receta use la cabeza entera asada.`;
 
     const promptFinal = `
 Eres un Chef Ejecutivo y Nutricionista especializado en extracción culinaria multimodal y perfilado nutricional.
@@ -1570,9 +1579,10 @@ DIRECTIVAS CRÍTICAS DE PRECISIÓN Y TOLERANCIA CERO A LA ALUCINACIÓN:
    - Establece obligatoriamente: "es_receta_valida": false
    - Especifica en "motivo_invalido" el motivo exacto (ej: "Vídeo no culinario", "Contenido sin ingredientes ni pasos de cocina").
    - NO inventes ingredientes ni pasos.
-3. Si el contenido SÍ es una receta real, establece "es_receta_valida": true y cruza exhaustivamente el vídeo/audio con el texto del post para extraer cantidades, ingredientes canónicos, pasos y tiempos.
-${firewallDirective}
+3. Si el contenido SÍ es una receta real, establece "es_receta_valida": true y cruza exhaustivamente el vídeo/audio con el texto del post para extraer cantidades, ingredientes canónicos, pasos en prosa culinaria natural y tiempos.
+${compatibilidadDirective}
 ${langDirective}
+${garlicDirective}
 
 Estandariza la receta al esquema JSON estricto requerido:
 
@@ -1597,7 +1607,7 @@ ${contextPrompt.trim()}
 
     const dynamicSystemInstruction = buildRecipeSystemInstruction({
       idioma,
-      exclusionesClinicas,
+      alertasClinicas: clinicalAlerts,
     });
 
     let lastError: unknown = null;

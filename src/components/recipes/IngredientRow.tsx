@@ -5,9 +5,11 @@ import {
   Loader2,
   X,
   Check,
-  Beef,
   Leaf,
-  ShoppingBag,
+  Drumstick,
+  Milk,
+  Wheat,
+  Package,
   ChefHat,
   HeartPulse,
   ArrowRightLeft,
@@ -18,7 +20,7 @@ import { suggestSubstituteAction, SubstituteOption } from '@/app/actions/suggest
 import { RecetaIngrediente } from '@/types/recipe';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { useLanguageStore } from '@/stores/useLanguageStore';
-import { formatIngredientUnit } from '@/lib/culinary/aisles';
+import { formatCulinaryAmount, pluralizeCulinaryNoun } from '@/lib/nutrition/formatQuantity';
 
 interface IngredientRowProps {
   ingrediente: RecetaIngrediente;
@@ -49,34 +51,22 @@ export function IngredientRow({
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
 
-  const getOptionChipLabel = (tipo: string, fallback: string) => {
-    const tLower = (tipo || '').toLowerCase();
-    const fLower = (fallback || '').toLowerCase();
-    if (
-      tLower === 'magra_tradicional' ||
-      fLower.includes('magra') ||
-      fLower.includes('lean')
-    ) {
-      return t('drawer_chip_lean');
+  const getCategoryIcon = (categoria?: string) => {
+    switch (categoria?.toLowerCase()) {
+      case 'vegetal':
+        return <Leaf className="w-3.5 h-3.5 shrink-0" />;
+      case 'proteina':
+        return <Drumstick className="w-3.5 h-3.5 shrink-0" />;
+      case 'lacteo':
+        return <Milk className="w-3.5 h-3.5 shrink-0" />;
+      case 'cereal':
+        return <Wheat className="w-3.5 h-3.5 shrink-0" />;
+      case 'despensa':
+        return <Package className="w-3.5 h-3.5 shrink-0" />;
+      case 'general':
+      default:
+        return <Sparkles className="w-3.5 h-3.5 shrink-0" />;
     }
-    if (
-      tLower === 'vegetal_umami' ||
-      fLower.includes('vegetal') ||
-      fLower.includes('plant') ||
-      fLower.includes('umami')
-    ) {
-      return t('drawer_chip_umami');
-    }
-    if (
-      tLower === 'accesible_economica' ||
-      fLower.includes('accesible') ||
-      fLower.includes('econ') ||
-      fLower.includes('everyday') ||
-      fLower.includes('accessible')
-    ) {
-      return t('drawer_chip_accessible');
-    }
-    return fallback;
   };
 
   // El ingrediente activo canónico en el estado actual de la receta adaptada
@@ -160,7 +150,6 @@ export function IngredientRow({
   };
 
   const baseCantidadNum = scaledCantidad !== undefined ? scaledCantidad : Number(ingrediente?.cantidad) || 1;
-  const unidadAjustada = formatIngredientUnit(ingrediente?.unidad, baseCantidadNum, language);
 
   const nombreMostrado = appliedOption
     ? appliedOption.nombre_sustituto
@@ -168,14 +157,37 @@ export function IngredientRow({
 
   const cantidadMostrada = appliedOption
     ? appliedOption.cantidad_sugerida
-    : `${baseCantidadNum} ${unidadAjustada}`.trim();
+    : formatCulinaryAmount(baseCantidadNum, ingrediente?.unidad, language, nombreMostrado);
 
-  const getOptionIcon = (tipo: string) => {
-    if (tipo === 'magra_tradicional') return <Beef className="w-3.5 h-3.5 shrink-0" />;
-    if (tipo === 'vegetal_umami') return <Leaf className="w-3.5 h-3.5 shrink-0" />;
-    if (tipo === 'accesible_economica') return <ShoppingBag className="w-3.5 h-3.5 shrink-0" />;
-    return <Sparkles className="w-3.5 h-3.5 shrink-0" />;
-  };
+  // Naturalización armónica y pluralización culinaria del nombre:
+  // - "3 dientes" + "Ajo" -> "3 dientes de ajo" (o "3 cloves of garlic")
+  // - "Media" + "Cebolla" -> "Media cebolla"
+  // - "2" + "Cebolla" -> "2 cebollas" (en lugar de "2 Cebolla")
+  // - "3" + "Limón" -> "3 limones" (en lugar de "3 Limón")
+  let cleanNombreDisplay = nombreMostrado;
+  const isGarlicRow =
+    /dientes?|cloves?/i.test(cantidadMostrada) &&
+    /^\s*ajos?\s*$/i.test(nombreMostrado);
+
+  const uLower = (ingrediente?.unidad || '').toLowerCase().trim();
+  const isCountableUnit =
+    uLower === 'unidad' ||
+    uLower === 'unidades' ||
+    uLower === 'unit' ||
+    uLower === 'units' ||
+    uLower === 'pieza' ||
+    uLower === 'piezas' ||
+    uLower === 'piece' ||
+    uLower === 'pieces';
+
+  if (isGarlicRow) {
+    cleanNombreDisplay = language === 'en' ? 'of garlic' : 'de ajo';
+  } else if (/^(media|medio|half)$/i.test(cantidadMostrada)) {
+    cleanNombreDisplay =
+      cleanNombreDisplay.charAt(0).toLowerCase() + cleanNombreDisplay.slice(1);
+  } else if (isCountableUnit && baseCantidadNum > 1 && !appliedOption) {
+    cleanNombreDisplay = pluralizeCulinaryNoun(cleanNombreDisplay, language);
+  }
 
   return (
     <div className="py-3 border-b border-[#e7dfd5] last:border-b-0 transition-colors">
@@ -191,7 +203,7 @@ export function IngredientRow({
               appliedOption ? 'text-[#a86224] font-semibold' : ''
             }`}
           >
-            <FormattedText text={nombreMostrado} />
+            <FormattedText text={cleanNombreDisplay} />
           </span>
           {ingrediente.notas && !appliedOption && (
             <span className="text-xs sm:text-sm text-stone-500 italic hidden sm:inline truncate">
@@ -200,7 +212,8 @@ export function IngredientRow({
           )}
           {appliedOption && (
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#f4efe6] text-[#a86224] font-semibold border border-[#e7dfd5] shrink-0">
-              {t('drawer_substituted_by')} {getOptionChipLabel(appliedOption.tipo, appliedOption.etiqueta_tipo)}
+              {t('drawer_substituted_by')}{' '}
+              {appliedOption.etiqueta_dinamica || appliedOption.etiqueta_tipo || 'Alternativa'}
             </span>
           )}
         </div>
@@ -294,7 +307,7 @@ export function IngredientRow({
                     {t('drawer_instructions')}
                   </p>
 
-                  {/* Las 3 opciones generadas por la IA */}
+                  {/* Las 3 opciones generadas por la IA con etiquetas dinámicas */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     {options.map((opt, idx) => {
                       const isSelected = selectedOptionIndex === idx;
@@ -312,12 +325,12 @@ export function IngredientRow({
                           }`}
                         >
                           <div className="flex items-center justify-between gap-1.5 w-full">
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#a86224]">
-                              {getOptionIcon(opt.tipo)}
-                              <span>{getOptionChipLabel(opt.tipo, opt.etiqueta_tipo)}</span>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#a86224] truncate">
+                              {getCategoryIcon(opt.categoria_icono || opt.tipo)}
+                              <span className="truncate">{opt.etiqueta_dinamica || opt.etiqueta_tipo || 'Alternativa'}</span>
                             </span>
                             {isOptApplied && (
-                              <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-0.5">
+                              <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-0.5 shrink-0">
                                 <Check className="w-2.5 h-2.5" /> {t('drawer_active_badge')}
                               </span>
                             )}
@@ -338,7 +351,7 @@ export function IngredientRow({
                     >
                       <div className="border-b border-[#f4efe6] pb-2">
                         <span className="text-[10px] uppercase font-bold tracking-wider text-[#a86224]">
-                          {t('drawer_spec_title')}
+                          {t('drawer_spec_title')} · {activeOption.etiqueta_dinamica || activeOption.etiqueta_tipo || 'Alternativa'}
                         </span>
                         <h4 className="font-bold text-stone-900 font-serif-recipe text-lg">
                           {activeOption.nombre_sustituto}

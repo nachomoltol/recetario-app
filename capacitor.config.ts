@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     androidScheme: 'https',
-    url: 'https://recetario-app.vercel.app',
+    url: 'https://www.migaapp.com',
   },
 };
 

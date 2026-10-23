@@ -335,8 +335,10 @@ export function formatIngredientUnit(
     } else {
       if (u === 'unit' || u === 'units') return qty > 1 ? 'unidades' : 'unidad';
       if (u === 'piece' || u === 'pieces') return qty > 1 ? 'piezas' : 'pieza';
-      if (u === 'tbsp') return qty > 1 ? 'cucharadas' : 'cucharada';
-      if (u === 'tsp') return qty > 1 ? 'cucharaditas' : 'cucharadita';
+      if (u === 'tbsp' || u === 'cucharada' || u === 'cucharadas') return qty > 1 ? 'cucharadas' : 'cucharada';
+      if (u === 'tsp' || u === 'cucharadita' || u === 'cucharaditas') return qty > 1 ? 'cucharaditas' : 'cucharadita';
+      if (u === 'taza' || u === 'tazas' || u === 'cup' || u === 'cups') return qty > 1 ? 'tazas' : 'taza';
+      if (u === 'vaso' || u === 'vasos') return qty > 1 ? 'vasos' : 'vaso';
     }
 
     return raw;

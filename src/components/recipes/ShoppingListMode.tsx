@@ -14,6 +14,7 @@ import { RecetaIngrediente } from '@/types/recipe';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { IngredientRow } from './IngredientRow';
 import { groupItemsByAisle, classifyIngredientAisle, getAisleTranslationKey, formatIngredientUnit } from '@/lib/culinary/aisles';
+import { formatCulinaryAmount, pluralizeCulinaryNoun } from '@/lib/nutrition/formatQuantity';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 
 export type ExtendedIngredient = RecetaIngrediente & {
@@ -104,10 +105,28 @@ export function ShoppingListMode({
         const isChecked = checkedIds.includes(ing.id);
         const prefix = isChecked ? '✓' : '☐';
         const qtyNum = ing.cantidad_escalada !== undefined ? ing.cantidad_escalada : ing.cantidad;
-        const unidadFormat = formatIngredientUnit(ing.unidad, qtyNum, language);
-        const qty = `${qtyNum ?? ''} ${unidadFormat}`.trim();
         const name = ing.nombre_limpio || ing.nombre_crudo || '';
-        textLines.push(`${prefix} ${qty} ${name}${ing.notas ? ` (${ing.notas})` : ''}`);
+        const qty = formatCulinaryAmount(qtyNum, ing.unidad, language, name);
+        let displayName = name;
+        const uLower = (ing.unidad || '').toLowerCase().trim();
+        const isCountable =
+          uLower === 'unidad' ||
+          uLower === 'unidades' ||
+          uLower === 'unit' ||
+          uLower === 'units' ||
+          uLower === 'pieza' ||
+          uLower === 'piezas' ||
+          uLower === 'piece' ||
+          uLower === 'pieces';
+
+        if (/dientes?|cloves?/i.test(qty) && /^\s*ajos?\s*$/i.test(name.trim())) {
+          displayName = language === 'en' ? 'of garlic' : 'de ajo';
+        } else if (/^(media|medio|half)$/i.test(qty)) {
+          displayName = displayName.charAt(0).toLowerCase() + displayName.slice(1);
+        } else if (isCountable && (qtyNum || 1) > 1) {
+          displayName = pluralizeCulinaryNoun(displayName, language);
+        }
+        textLines.push(`${prefix} ${qty} ${displayName}${ing.notas ? ` (${ing.notas})` : ''}`.replace(/\s+/g, ' '));
       }
     }
 
@@ -293,7 +312,13 @@ export function ShoppingListMode({
                                     : 'text-stone-900'
                                 }`}
                               >
-                                <FormattedText text={ing.nombre_limpio || ing.nombre_crudo} />
+                                <FormattedText
+                                  text={
+                                    /^(unidad|unidades|unit|units|pieza|piezas|piece|pieces)$/i.test(ing.unidad || '') && (qtyNum || 1) > 1
+                                      ? pluralizeCulinaryNoun(ing.nombre_limpio || ing.nombre_crudo || '', language)
+                                      : (ing.nombre_limpio || ing.nombre_crudo)
+                                  }
+                                />
                               </span>
                               {ing.explicacion_culinaria && !isChecked && (
                                 <span className="text-[10px] text-[#a86224] block truncate font-medium">
@@ -311,18 +336,13 @@ export function ShoppingListMode({
                               )}
                             </div>
 
-                            {(() => {
-                              const unidadFormat = formatIngredientUnit(ing.unidad, qtyNum, language);
-                              return (
-                                <span
-                                  className={`text-sm sm:text-base font-bold shrink-0 tabular-nums ${
-                                    isChecked ? 'line-through text-stone-400' : 'text-[#a86224]'
-                                  }`}
-                                >
-                                  {qtyNum} {unidadFormat}
-                                </span>
-                              );
-                            })()}
+                            <span
+                              className={`text-sm sm:text-base font-bold shrink-0 tabular-nums ${
+                                isChecked ? 'line-through text-stone-400' : 'text-[#a86224]'
+                              }`}
+                            >
+                              {formatCulinaryAmount(qtyNum, ing.unidad, language, ing.nombre_limpio || ing.nombre_crudo)}
+                            </span>
                           </div>
                         </div>
                       );

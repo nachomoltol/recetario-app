@@ -108,22 +108,37 @@ export function classifyIngredient(nombre?: string | null, unidad?: string | nul
  */
 function roundCulinaryAmount(amount: number, unidad?: string | null): number {
   try {
-    const u = String(unidad || '').toLowerCase();
-    if (u === 'g' || u === 'gr' || u === 'gramo' || u === 'gramos' || u === 'ml') {
-      if (amount > 100) return Math.round(amount / 5) * 5; // Redondear a múltiplos de 5g
-      if (amount > 20) return Math.round(amount);
+    const u = String(unidad || '').toLowerCase().replace(/[.,;:]/g, '').trim();
+
+    // 1. Gramos y mililitros: <= 20 entero limpio (mínimo 1), > 20 múltiplos de 5
+    if (/^(g|gr|grs|gramo|gramos|gram|grams|ml|mls|mililitro|mililitros)$/i.test(u)) {
+      if (amount <= 0) return 0;
+      if (amount > 20) return Math.round(amount / 5) * 5;
+      return Math.max(1, Math.round(amount));
+    }
+
+    // 2. Kilogramos y litros: decimales limpios, 1 decimal máximo
+    if (/^(kg|kgs|kilo|kilos|kilogramo|kilogramos|kilogram|kilograms|l|lt|lts|litro|litros|liter|liters)$/i.test(u)) {
+      if (amount <= 0) return 0;
+      if (Number.isInteger(amount)) return amount;
       return Math.round(amount * 10) / 10;
     }
 
+    // 3. Unidades contables (permitir mitades si < 2)
     if (u.includes('unidad') || u.includes('huevo') || u.includes('diente') || u.includes('unit') || u.includes('piece')) {
       if (amount >= 2) return Math.round(amount);
       return Math.round(amount * 2) / 2; // Permitir mitades (0.5, 1, 1.5...)
     }
 
+    // 4. Medidas de cuchara / taza (múltiplos de 0.25)
+    if (/cuchara|tbsp|tsp|taza|cup/i.test(u)) {
+      return Math.round(amount * 4) / 4;
+    }
+
     if (amount < 1) {
       return Math.round(amount * 10) / 10;
     }
-    return Math.round(amount * 4) / 4; // Múltiplos de 0.25 (1/4 cucharada, etc.)
+    return Math.round(amount * 10) / 10;
   } catch {
     return Math.round(amount * 10) / 10;
   }
@@ -172,7 +187,7 @@ export function scaleIngredientsWithCulinaryHeuristics(
             break;
 
           case 'REDUCTION_LIQUID':
-            factor = Math.pow(ratio, 0.85);
+            factor = Math.pow(ratio, 0.80);
             explicacion = 'Líquido calibrado según tiempo de evaporación.';
             break;
 

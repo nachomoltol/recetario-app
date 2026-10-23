@@ -177,21 +177,21 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     };
   }
 
-  // Calcular cortafuegos clínico del usuario basado en su modelo clínico y alérgenos
-  const exclusionesClinicas = getClinicalExclusions({
+  // Calcular restricciones clínicas del usuario únicamente para generar alertas informativas de compatibilidad
+  const alertasClinicas = getClinicalExclusions({
     preferencias: perfilUsuario?.preferencias_dieteticas || [],
     alergenos: perfilUsuario?.alergenos || [],
   });
 
-  // 3. Extracción multimodal autónoma con Gemini
+  // 3. Extracción multimodal autónoma con Gemini (fidelidad 100% al contenido original del vídeo/fuente)
   const extracted = await extractRecipeWithGemini({
-      url,
-      texto,
-      file,
-      porcionesUsuario: perfilUsuario?.raciones_defecto || undefined,
-      idioma,
-      exclusionesClinicas,
-    });
+    url,
+    texto,
+    file,
+    porcionesUsuario: perfilUsuario?.raciones_defecto || undefined,
+    idioma,
+    alertasClinicas,
+  });
 
     // 4. Consultar ingredientes maestros para cruce relacional y cálculo volumétrico
     const { data: maestros } = await supabase

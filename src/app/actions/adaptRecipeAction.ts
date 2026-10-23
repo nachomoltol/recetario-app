@@ -154,8 +154,8 @@ DIRECTIVAS ESTRICTAS DE ADAPTACIÓN:
    - En ingredientes: si el ingrediente fue sustituido o cambiado, envuélvelo en <mark> (ejemplo: "<mark>Bebida de avena</mark>", "<mark>Harina de almendras</mark>").
    - Si un ingrediente o paso no requirió cambios porque ya es 100% apto y perfecto para su nivel, mantenlo tal cual sin <mark>.
 
-3. INYECCIÓN DE CANTIDADES:
-   - Inyecta siempre la cantidad exacta en los pasos (ej: "Añade <mark>los 200ml de leche de avena</mark>").
+3. INYECCIÓN DE CANTIDADES EN PROSA CULINARIA NATURAL:
+   - Inyecta siempre la cantidad exacta en los pasos con prosa natural y fluida (ej: "Añade <mark>los 200 ml de leche de avena</mark>", "Incorpora <mark>media cebolla picada</mark>"). Está estrictamente prohibido usar decimales de laboratorio fríos (NO escribir "0.5 unidades de cebolla").
 `.trim();
 
 /**
