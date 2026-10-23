@@ -45,13 +45,13 @@ export default async function RecipesDashboardPage() {
       {/* Barra de navegación superior luminosa */}
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          {/* Zona izquierda limpia sin logo */}
-          <div className="flex items-center" aria-hidden="true" />
-
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Zona izquierda: Selector de idioma con banderas */}
+          <div className="flex items-center">
             <LanguageToggle />
+          </div>
 
-            {/* Menú de Usuario Desplegable */}
+          {/* Zona derecha: Menú de Usuario Desplegable */}
+          <div className="flex items-center gap-2 sm:gap-3">
             <UserDropdownMenu
               fallbackName={userName}
               email={user.email || ''}

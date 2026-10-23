@@ -95,24 +95,24 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
           )}
         </div>
 
-        {/* Selector unificado de raciones en una sola fila compacta sin dobles cajas */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 p-3 sm:p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5]">
-          <div className="flex items-center gap-2.5">
+        {/* Contador incremental centralizado y compacto sin botoneras predefinidas */}
+        <div className="flex items-center justify-center p-3.5 sm:p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5]">
+          <div className="inline-flex items-center gap-3 sm:gap-4">
             <button
               type="button"
               onClick={() => handleServingsChange(servings - 1)}
               disabled={servings <= 1 || isPending}
-              className="w-9 h-9 rounded-xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:bg-[#f4efe6] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center text-stone-700 transition cursor-pointer shadow-2xs shrink-0"
+              className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:bg-[#f4efe6] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center text-stone-700 transition cursor-pointer shadow-2xs shrink-0"
               aria-label="Disminuir raciones"
             >
-              <Minus className="w-3.5 h-3.5" />
+              <Minus className="w-4 h-4" />
             </button>
 
-            <div className="min-w-[54px] text-center">
-              <span className="text-xl font-bold font-serif-recipe text-stone-900 block leading-tight">
+            <div className="min-w-[90px] text-center">
+              <span className="text-2xl font-bold font-serif-recipe text-stone-900 block leading-tight">
                 {servings}
               </span>
-              <span className="text-[10px] text-stone-500 font-medium block -mt-0.5">
+              <span className="text-xs text-stone-500 font-medium block">
                 {servings === 1 ? t('settings_serving_singular') : t('settings_serving_plural')}
               </span>
             </div>
@@ -121,29 +121,11 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
               type="button"
               onClick={() => handleServingsChange(servings + 1)}
               disabled={servings >= 12 || isPending}
-              className="w-9 h-9 rounded-xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:bg-[#f4efe6] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center text-stone-700 transition cursor-pointer shadow-2xs shrink-0"
+              className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:bg-[#f4efe6] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center text-stone-700 transition cursor-pointer shadow-2xs shrink-0"
               aria-label="Aumentar raciones"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-4 h-4" />
             </button>
-          </div>
-
-          {/* Accesos rápidos integrados en la misma fila */}
-          <div className="flex items-center gap-1.5 ml-auto flex-wrap">
-            {[1, 2, 4, 6].map((num) => (
-              <button
-                key={num}
-                type="button"
-                onClick={() => handleServingsChange(num)}
-                className={`min-h-[32px] px-2.5 sm:px-3 py-1 rounded-xl text-xs font-semibold transition cursor-pointer border ${
-                  servings === num
-                    ? 'bg-[#a86224] text-white border-[#a86224] shadow-2xs'
-                    : 'bg-white text-stone-700 border-[#e7dfd5] hover:border-[#a86224] hover:bg-[#f4efe6]'
-                }`}
-              >
-                {num} {num === 1 ? t('settings_person_singular') : t('settings_person_plural')}
-              </button>
-            ))}
           </div>
         </div>
       </div>

@@ -3,14 +3,13 @@
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useLanguageStore } from '@/stores/useLanguageStore';
-import { Globe } from 'lucide-react';
 
 interface LanguageToggleProps {
   className?: string;
   showIcon?: boolean;
 }
 
-export function LanguageToggle({ className = '', showIcon = true }: LanguageToggleProps) {
+export function LanguageToggle({ className = '' }: LanguageToggleProps) {
   const pathname = usePathname();
   const language = useLanguageStore((s) => s.language);
   const setLanguage = useLanguageStore((s) => s.setLanguage);
@@ -21,7 +20,7 @@ export function LanguageToggle({ className = '', showIcon = true }: LanguageTogg
   }, [initLanguage]);
 
   // Solo mostrar el selector de idioma en la portada / home principal ('/' o '/recipes')
-  // En páginas como perfil (/profile), facturación (/billing), planificador o vista de receta individual, debe desaparecer.
+  // En páginas secundarias debe permanecer limpio.
   const isHome = pathname === '/' || pathname === '/recipes';
   if (!isHome) {
     return null;
@@ -29,36 +28,38 @@ export function LanguageToggle({ className = '', showIcon = true }: LanguageTogg
 
   return (
     <div
-      className={`inline-flex items-center p-1 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] shadow-2xs ${className}`}
+      className={`inline-flex items-center p-0.5 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] shadow-2xs ${className}`}
       role="group"
       aria-label="Selector de idioma / Language selector"
     >
-      {showIcon && (
-        <Globe className="w-3.5 h-3.5 text-stone-500 ml-1.5 mr-1 shrink-0 hidden xs:inline" />
-      )}
       <button
         type="button"
         onClick={() => setLanguage('es')}
         aria-pressed={language === 'es'}
-        className={`px-2.5 py-1 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+        className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer select-none ${
           language === 'es'
-            ? 'bg-white text-[#a86224] shadow-xs ring-1 ring-[#e7dfd5]'
+            ? 'bg-white text-[#a86224] font-bold shadow-2xs ring-1 ring-[#e7dfd5]'
             : 'text-stone-500 hover:text-stone-800'
         }`}
+        title="Español"
       >
-        ES
+        <span className="text-xs leading-none">🇪🇸</span>
+        <span className="text-[11px] font-bold tracking-tight">ES</span>
       </button>
+
       <button
         type="button"
         onClick={() => setLanguage('en')}
         aria-pressed={language === 'en'}
-        className={`px-2.5 py-1 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+        className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer select-none ${
           language === 'en'
-            ? 'bg-white text-[#a86224] shadow-xs ring-1 ring-[#e7dfd5]'
+            ? 'bg-white text-[#a86224] font-bold shadow-2xs ring-1 ring-[#e7dfd5]'
             : 'text-stone-500 hover:text-stone-800'
         }`}
+        title="English"
       >
-        EN
+        <span className="text-xs leading-none">🇬🇧</span>
+        <span className="text-[11px] font-bold tracking-tight">EN</span>
       </button>
     </div>
   );

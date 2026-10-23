@@ -159,6 +159,29 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
   const stateRef = useRef({ nombre, nivelCulinario, objetivosClinicos, patronAlimentario });
   stateRef.current = { nombre, nivelCulinario, objetivosClinicos, patronAlimentario };
 
+  // Sincronización proactiva con el store de Zustand si aún no está inicializado
+  useEffect(() => {
+    if (!currentStoreProfile && initialProfile) {
+      setStoreProfile({
+        id: initialProfile.id,
+        email: initialProfile.email,
+        nombre: initialProfile.nombre || null,
+        avatar_url: null,
+        preferencias_dieteticas: initialProfile.preferencias_dieteticas || [],
+        alergenos: initialProfile.alergenos || [],
+        objetivo_calorico_diario: null,
+        raciones_defecto: 2,
+        nivel_culinario: initialProfile.nivel_culinario || 'Principiante',
+        plan_suscripcion: (initialProfile.plan_suscripcion as any) || 'gratis',
+        capturas_mes_actual: 0,
+        fecha_ultimo_reinicio: new Date().toISOString(),
+        antiguedad_ciclos_mes: 0,
+        created_at: initialProfile.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+  }, [currentStoreProfile, initialProfile, setStoreProfile]);
+
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (dirtyRef.current) {
@@ -176,7 +199,13 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
           nombre: nombre.trim(),
           nivel_culinario: nivelCulinario,
           preferencias_dieteticas: preferenciasActualizadas,
-        }).catch((err) => console.error('Error auto-saving profile on leave:', err));
+        })
+          .then((res) => {
+            if (res.success && res.data) {
+              useProfileStore.getState().setProfile(res.data);
+            }
+          })
+          .catch((err) => console.error('Error auto-saving profile on leave:', err));
       }
     };
   }, []);
@@ -245,7 +274,10 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
           patronAlimentario,
           objetivosClinicos: [...objetivosClinicos],
         });
-        if (currentStoreProfile) {
+        // Actualizar Zustand reactivamente con los datos confirmados por la base de datos
+        if (res.data) {
+          setStoreProfile(res.data);
+        } else if (currentStoreProfile) {
           setStoreProfile({
             ...currentStoreProfile,
             nombre: nombre.trim(),

@@ -7,7 +7,6 @@ import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { ProfileForm } from '@/components/profile/ProfileForm';
 import {
   ProfileHeaderTitle,
-  ProfileSettingsBanner,
 } from '@/components/profile/ProfileHeaderComponents';
 
 export const dynamic = 'force-dynamic';
@@ -103,9 +102,6 @@ export default async function ProfilePage() {
           }}
           stats={stats}
         />
-
-        {/* Acceso a Configuración y Recetas */}
-        <ProfileSettingsBanner />
       </main>
     </div>
   );
