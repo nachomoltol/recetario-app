@@ -31,6 +31,8 @@ const substituteSchema = {
     alternativas: {
       type: Type.ARRAY,
       description: 'Exactamente 3 propuestas de sustitución inteligentes adaptadas al ingrediente específico.',
+      minItems: 3,
+      maxItems: 3,
       items: {
         type: Type.OBJECT,
         properties: {
@@ -82,7 +84,8 @@ const substituteSchema = {
 
 const SYSTEM_INSTRUCTION_SUBSTITUTE = `
 Eres un Chef Consultor de Alta Cocina y Nutricionista Clínico especializado en sustituciones culinarias inteligentes bajo demanda.
-Tu objetivo es sugerir EXACTAMENTE TRES alternativas viables, culinariamente coherentes y organolépticamente sobresalientes para un ingrediente específico en el contexto de una receta dada.
+Tu objetivo es sugerir OBLIGATORIAMENTE Y DE FORMA ESTRICTA EXACTAMENTE TRES alternativas viables, culinariamente coherentes y organolépticamente sobresalientes para un ingrediente específico en el contexto de una receta dada.
+BAJO NINGÚN CONCEPTO devuelvas menos de 3 alternativas ni más de 3 alternativas (ni 1 ni 2). El array 'alternativas' debe contener exactamente 3 elementos.
 
 DIRECTRICES FUNDAMENTALES DE GENERACIÓN DINÁMICA:
 1. ADAPTACIÓN A LA NATURALEZA REAL DEL ALIMENTO:
@@ -228,10 +231,26 @@ Redacta todas las alternativas, etiquetas dinámicas, razones culinarias, benefi
           modo_uso: String(alt.modo_uso || '').trim(),
           // Compatibilidad hacia atrás
           tipo: alt.categoria_icono || alt.tipo || 'general',
-          etiqueta_tipo: String(alt.etiqueta_dinamica || alt.etiqueta_tipo || 'Alternativa').trim(),
         }));
 
-        return { success: true, data: alternativas };
+        // Blindaje defensivo: asegurar exactamente 3 alternativas
+        const finalAlternativas: SubstituteOption[] = alternativas.slice(0, 3);
+        while (finalAlternativas.length < 3) {
+          const indexNum = finalAlternativas.length + 1;
+          finalAlternativas.push({
+            nombre_sustituto: `${nombreIngrediente} (${idioma === 'en' ? 'Option' : 'Opción'} ${indexNum})`,
+            etiqueta_dinamica: idioma === 'en' ? 'Alternative' : 'Alternativa',
+            categoria_icono: 'general',
+            cantidad_sugerida: '1:1',
+            razon_culinaria: idioma === 'en' ? 'Functional culinary replacement' : 'Sustitución culinaria funcional',
+            beneficio_nutricional: idioma === 'en' ? 'Adapted nutritional profile' : 'Perfil nutricional adaptado',
+            modo_uso: idioma === 'en' ? 'Use identically' : 'Incorporar de manera idéntica',
+            tipo: 'general',
+            etiqueta_tipo: idioma === 'en' ? 'Alternative' : 'Alternativa',
+          });
+        }
+
+        return { success: true, data: finalAlternativas };
       } catch (err) {
         lastError = err;
         console.warn(`Intento de sustitución con '${model}' falló:`, err);

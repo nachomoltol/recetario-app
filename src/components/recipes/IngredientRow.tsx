@@ -348,9 +348,9 @@ export function IngredientRow({
                           }`}
                         >
                           <div className="flex items-center justify-between gap-1.5 w-full">
-                            <span className="inline-flex items-center gap-1 text-[10px] tracking-wide uppercase font-semibold text-stone-500 line-clamp-1">
+                            <span className="inline-flex items-center gap-1 text-[10px] tracking-wide uppercase font-semibold text-stone-500 truncate min-w-0">
                               {getCategoryIcon(opt.categoria_icono || opt.tipo)}
-                              <span className="line-clamp-1">{opt.etiqueta_dinamica || opt.etiqueta_tipo || 'Alternativa'}</span>
+                              <span className="truncate">{opt.etiqueta_dinamica || opt.etiqueta_tipo || 'Alternativa'}</span>
                             </span>
                             {isOptApplied && (
                               <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-0.5 shrink-0">
@@ -358,7 +358,10 @@ export function IngredientRow({
                               </span>
                             )}
                           </div>
-                          <span className="text-xs sm:text-sm font-medium text-stone-800 line-clamp-2 leading-tight break-words">
+                          <span
+                            className="text-xs sm:text-sm font-medium text-stone-800 truncate block w-full leading-tight"
+                            title={opt.nombre_sustituto}
+                          >
                             {opt.nombre_sustituto}
                           </span>
                         </button>

@@ -150,32 +150,32 @@ export function ShoppingListMode({
 
   return (
     <div className="space-y-4">
-      {/* Switcher Táctil Mobile-First entre Modo Cocina y Modo Compra */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-1.5 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5]">
-        <div className="grid grid-cols-2 gap-1.5 w-full sm:w-auto">
+      {/* Switcher Táctil Mobile-First entre Modo Cocina y Modo Compra: Segmented Control tipo píldora */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="p-1 rounded-2xl bg-[#ebe3d5]/90 border border-[#dfd4c5] inline-flex w-full sm:w-auto relative shadow-inner">
           <button
             type="button"
             onClick={() => setIsShoppingMode(false)}
-            className={`min-h-[46px] px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            className={`flex-1 sm:flex-none min-h-[40px] px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
               !isShoppingMode
-                ? 'bg-white text-stone-900 shadow-2xs font-bold border border-[#e7dfd5]'
-                : 'text-stone-600 hover:text-stone-900'
+                ? 'bg-white text-stone-900 shadow-sm font-bold border border-[#e7dfd5]'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-white/40'
             }`}
           >
-            <ChefHat className="w-4 h-4 text-[#a86224]" />
+            <ChefHat className={`w-4 h-4 ${!isShoppingMode ? 'text-[#a86224]' : 'text-stone-500'}`} />
             <span>{t('recipe_control_cook_mode')}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsShoppingMode(true)}
-            className={`min-h-[46px] px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            className={`flex-1 sm:flex-none min-h-[40px] px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
               isShoppingMode
-                ? 'bg-white text-stone-900 shadow-2xs font-bold border border-[#e7dfd5]'
-                : 'text-stone-600 hover:text-stone-900'
+                ? 'bg-white text-stone-900 shadow-sm font-bold border border-[#e7dfd5]'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-white/40'
             }`}
           >
-            <ShoppingCart className="w-4 h-4 text-[#a86224]" />
+            <ShoppingCart className={`w-4 h-4 ${isShoppingMode ? 'text-[#a86224]' : 'text-stone-500'}`} />
             <span>{t('recipe_control_shopping_list')}</span>
           </button>
         </div>

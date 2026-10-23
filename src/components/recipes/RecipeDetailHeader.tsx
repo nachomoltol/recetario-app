@@ -1,8 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
-import { LanguageToggle } from '@/components/layout/LanguageToggle';
+import { ArrowLeft, Play, ExternalLink } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 
@@ -36,72 +35,66 @@ export function RecipeDetailHeader({
     }
   };
 
-  const getDificultadLabel = (dif?: any) => {
-    if (!dif) return '';
-    try {
-      const raw = typeof dif === 'string' ? dif : String(dif);
-      const d = raw.toLowerCase().trim();
-      if (d === 'fácil' || d === 'facil' || d === 'easy' || d === 'beginner') return t('recipe_difficulty_easy');
-      if (d === 'media' || d === 'medium' || d === 'intermediate') return t('recipe_difficulty_medium');
-      if (
-        d === 'difícil' ||
-        d === 'dificil' ||
-        d === 'alta' ||
-        d === 'hard' ||
-        d === 'advanced' ||
-        d === 'experto' ||
-        d === 'expert'
-      ) {
-        return t('recipe_difficulty_hard');
-      }
-      return raw;
-    } catch {
-      return String(dif || '');
-    }
-  };
+  const isVideoSource = fuenteTipo !== 'web' && fuenteTipo !== 'manual';
 
   return (
     <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="min-h-[44px] px-3 -ml-3 rounded-xl inline-flex items-center gap-1.5 text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors cursor-pointer"
-          title={language === 'en' ? 'Back to cookbook' : 'Volver al recetario'}
-        >
-          <ArrowLeft className="w-5 h-5 text-[#a86224]" />
-          <span>{language === 'en' ? 'Cookbook' : 'Recetario'}</span>
-        </button>
+      <div className="max-w-4xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between relative">
+        {/* Izquierda: Botón de retorno compacto */}
+        <div className="flex items-center">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="h-9 px-2.5 sm:px-3 rounded-xl inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-stone-600 hover:text-stone-900 hover:bg-[#faf7f2] border border-transparent hover:border-[#e7dfd5] transition-all cursor-pointer"
+            title={language === 'en' ? 'Back to cookbook' : 'Volver al recetario'}
+          >
+            <ArrowLeft className="w-4 h-4 text-[#a86224] shrink-0" />
+            <span className="truncate">{language === 'en' ? 'Cookbook' : 'Recetario'}</span>
+          </button>
+        </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          {fuenteUrl && (
+        {/* Centro: Enlace al vídeo original en píldora compacta */}
+        {fuenteUrl && (
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center pointer-events-none">
             <a
               href={fuenteUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="min-h-[40px] px-3 py-1.5 rounded-2xl bg-white border border-[#e7dfd5] inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-stone-700 hover:text-[#a86224] hover:border-[#a86224] transition-all shadow-2xs"
+              className="pointer-events-auto h-8 px-3 rounded-full bg-[#f4efe6] hover:bg-[#ebe3d5] border border-[#e7dfd5] inline-flex items-center gap-1.5 text-xs font-bold text-stone-800 hover:text-[#a86224] transition-all shadow-2xs active:scale-95"
+              title={isVideoSource ? t('recipe_nav_original_video') : t('recipe_nav_original_source')}
             >
-              <span className="hidden xs:inline">
-                {fuenteTipo === 'web' || fuenteTipo === 'manual'
-                  ? t('recipe_nav_original_source')
-                  : t('recipe_nav_original_video')}
+              {isVideoSource ? (
+                <Play className="w-3 h-3 text-[#a86224] fill-[#a86224] shrink-0" />
+              ) : (
+                <ExternalLink className="w-3 h-3 text-[#a86224] shrink-0" />
+              )}
+              <span className="whitespace-nowrap">
+                {isVideoSource
+                  ? language === 'en'
+                    ? 'Watch video'
+                    : 'Ver vídeo'
+                  : language === 'en'
+                  ? 'Source'
+                  : 'Ver fuente'}
               </span>
-              <ExternalLink className="w-3.5 h-3.5 text-[#a86224]" />
             </a>
-          )}
+          </div>
+        )}
 
+        {/* Derecha: Avatar de usuario y badge opcional de dificultad */}
+        <div className="flex items-center gap-2">
           {dificultad && (
-            <span className="hidden sm:inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] capitalize">
-              {getDificultadLabel(dificultad)}
+            <span className="hidden md:inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] capitalize">
+              {dificultad}
             </span>
           )}
 
-          <LanguageToggle />
-
-          <UserDropdownMenu
-            fallbackName={userName || 'Chef'}
-            email={userEmail || ''}
-          />
+          <div className="scale-90 sm:scale-100 origin-right">
+            <UserDropdownMenu
+              fallbackName={userName || 'Chef'}
+              email={userEmail || ''}
+            />
+          </div>
         </div>
       </div>
     </header>

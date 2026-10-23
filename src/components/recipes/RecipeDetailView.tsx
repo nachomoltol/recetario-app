@@ -64,10 +64,12 @@ export function RecipeDetailView({
 }: RecipeDetailViewProps) {
   const router = useRouter();
   const t = useLanguageStore((s) => s.t);
+  const language = useLanguageStore((s) => s.language);
 
   // Estados de visualización y edición
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   // Estados de datos
   const [currentTitulo, setCurrentTitulo] = useState(receta?.titulo || 'Receta');
@@ -672,15 +674,32 @@ export function RecipeDetailView({
             />
           </div>
         ) : (
-          <h1 className="text-3xl sm:text-5xl font-bold font-serif-recipe tracking-tight text-stone-900 leading-tight">
+          <h1 className="text-xl sm:text-2xl font-bold font-serif-recipe tracking-tight text-stone-900 leading-tight">
             {currentTitulo}
           </h1>
         )}
 
         {receta?.descripcion && (
-          <p className="text-base sm:text-lg text-stone-700 font-light leading-relaxed max-w-2xl">
-            {receta.descripcion}
-          </p>
+          <div className="text-xs sm:text-sm text-stone-600 font-light leading-relaxed max-w-2xl">
+            <p className={!isDescriptionExpanded ? 'line-clamp-2' : ''}>
+              {receta.descripcion}
+            </p>
+            {receta.descripcion.length > 90 && (
+              <button
+                type="button"
+                onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                className="mt-1 text-xs font-semibold text-[#a86224] hover:underline cursor-pointer inline-flex items-center gap-0.5"
+              >
+                {isDescriptionExpanded
+                  ? language === 'en'
+                    ? 'Show less'
+                    : 'Ver menos'
+                  : language === 'en'
+                  ? 'Show more'
+                  : 'Ver más'}
+              </button>
+            )}
+          </div>
         )}
 
         {/* Motor de Adaptación Culinaria In-Line (Capa Clínica y de Nivel) */}

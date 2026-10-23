@@ -11,6 +11,7 @@ import {
   RotateCcw,
   CheckCircle2,
   Lock,
+  ChevronDown,
 } from 'lucide-react';
 import {
   adaptRecipeAction,
@@ -48,6 +49,7 @@ export function RecipeAdaptationSection({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [showProModal, setShowProModal] = useState(false);
+  const [isAlertExpanded, setIsAlertExpanded] = useState(false);
 
   const isPro = (userProfile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
 
@@ -151,114 +153,133 @@ export function RecipeAdaptationSection({
         /* ============================================================== */
         <div className="space-y-2">
           {hasConflicts ? (
-            /* SEMÁFORO ADVERTENCIA: Hay ingredientes en conflicto */
+            /* SEMÁFORO ADVERTENCIA: Hay ingredientes en conflicto - Barra delgada y colapsable */
             <div
-              className={`p-4 sm:p-5 rounded-3xl border shadow-xs animate-fade-in transition-all ${
+              className={`rounded-2xl sm:rounded-3xl border shadow-xs transition-all overflow-hidden ${
                 isCritical
-                  ? 'bg-gradient-to-r from-rose-50/95 via-[#fff8f8] to-rose-50/80 border-rose-300'
-                  : 'bg-gradient-to-r from-amber-50/95 via-[#fffbf6] to-amber-50/80 border-amber-300'
+                  ? 'bg-gradient-to-r from-rose-50/90 via-[#fff8f8] to-rose-50/70 border-rose-300'
+                  : 'bg-gradient-to-r from-amber-50/90 via-[#fffbf6] to-amber-50/70 border-amber-300'
               }`}
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-start gap-3.5">
+              {/* Barra delgada colapsable interactiva (estado por defecto compacto) */}
+              <button
+                type="button"
+                onClick={() => setIsAlertExpanded(!isAlertExpanded)}
+                className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-3 text-left cursor-pointer hover:bg-black/5 transition-colors"
+                aria-expanded={isAlertExpanded}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 border ${
+                    className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border ${
                       isCritical
                         ? 'bg-rose-100 text-rose-700 border-rose-200'
                         : 'bg-amber-100 text-amber-800 border-amber-200'
                     }`}
                   >
                     {isCritical ? (
-                      <ShieldAlert className="w-5 h-5 text-rose-700" />
+                      <ShieldAlert className="w-4 h-4 text-rose-700 animate-pulse" />
                     ) : (
-                      <AlertTriangle className="w-5 h-5 text-amber-700" />
+                      <AlertTriangle className="w-4 h-4 text-amber-700 animate-pulse" />
                     )}
                   </div>
 
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs sm:text-sm font-bold text-stone-900 font-serif-recipe">
-                        {isCritical
-                          ? language === 'en'
-                            ? 'Critical Allergen Conflict'
-                            : 'Alerta de Incompatibilidad Clínica'
-                          : language === 'en'
-                          ? 'Dietary Conflicts Detected'
-                          : 'Ingredientes no compatibles con tu perfil'}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          isCritical
-                            ? 'bg-rose-600 text-white'
-                            : 'bg-amber-600 text-white'
-                        }`}
-                      >
-                        {isCritical ? 'Crítico' : 'Moderado'}
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-stone-600 leading-relaxed font-light">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    <span className="text-xs sm:text-sm font-bold text-stone-900 font-serif-recipe truncate">
                       {isCritical
                         ? language === 'en'
-                          ? 'This recipe contains ingredients that trigger strict exclusions for your health profile:'
-                          : 'Esta receta contiene ingredientes que suponen una exclusión crítica para tu salud:'
+                          ? 'Critical Allergen Conflict'
+                          : 'Alerta de Incompatibilidad Clínica'
                         : language === 'en'
-                        ? 'This recipe uses ingredients that do not match your active dietary profile:'
-                        : 'Esta receta incluye ingredientes que no se ajustan a tus patologías o preferencias activas:'}
-                    </p>
-
-                    {/* Chips de ingredientes en conflicto */}
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      {compatibilityReport.conflicts.map((c, idx) => (
-                        <span
-                          key={`${c.ingredienteOriginal}-${idx}`}
-                          className={`px-2.5 py-1 rounded-xl text-xs font-semibold border flex items-center gap-1 ${
-                            c.severidad === 'critica'
-                              ? 'bg-rose-100/80 text-rose-900 border-rose-200'
-                              : 'bg-amber-100/80 text-amber-900 border-amber-200'
-                          }`}
-                        >
-                          <span className="capitalize">{c.ingredienteOriginal}</span>
-                          <span className="text-[10px] opacity-75 font-normal">({c.patologia})</span>
-                        </span>
-                      ))}
-                    </div>
+                        ? 'Ingredients not compatible with your profile'
+                        : 'Ingredientes no compatibles con tu perfil'}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
+                        isCritical
+                          ? 'bg-rose-600 text-white'
+                          : 'bg-amber-600 text-white'
+                      }`}
+                    >
+                      {isCritical ? 'Crítico' : 'Moderado'}
+                    </span>
                   </div>
                 </div>
 
-                {/* Botón Prominente: Adaptar a mi perfil */}
-                <button
-                  type="button"
-                  onClick={handleAdaptClick}
-                  disabled={isPending}
-                  className={`min-h-[46px] px-5 py-2.5 rounded-2xl font-bold text-xs sm:text-sm text-white shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer self-start sm:self-auto shrink-0 active:scale-95 disabled:opacity-50 ${
-                    isCritical
-                      ? 'bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800'
-                      : 'bg-gradient-to-r from-[#a86224] to-[#c47732] hover:from-[#8e511c] hover:to-[#a86224]'
-                  }`}
-                >
-                  {isPending ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                      <span>{t('recipe_adapting_btn')}</span>
-                    </>
-                  ) : (
-                    <>
-                      {!isPro ? (
+                <div className="flex items-center gap-1 shrink-0 text-stone-500">
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform duration-200 ${
+                      isAlertExpanded ? 'rotate-180' : ''
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {/* Contenido detallado desplegado */}
+              {isAlertExpanded && (
+                <div className="px-3.5 sm:px-5 pb-4 pt-1 sm:pt-2 border-t border-black/5 space-y-3 animate-fade-in">
+                  <p className="text-xs text-stone-600 leading-relaxed font-light">
+                    {isCritical
+                      ? language === 'en'
+                        ? 'This recipe contains ingredients that trigger strict exclusions for your health profile:'
+                        : 'Esta receta contiene ingredientes que suponen una exclusión crítica para tu salud:'
+                      : language === 'en'
+                      ? 'This recipe uses ingredients that do not match your active dietary profile:'
+                      : 'Esta receta incluye ingredientes que no se ajustan a tus patologías o preferencias activas:'}
+                  </p>
+
+                  {/* Chips de ingredientes en conflicto */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {compatibilityReport.conflicts.map((c, idx) => (
+                      <span
+                        key={`${c.ingredienteOriginal}-${idx}`}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-semibold border flex items-center gap-1 ${
+                          c.severidad === 'critica'
+                            ? 'bg-rose-100/80 text-rose-900 border-rose-200'
+                            : 'bg-amber-100/80 text-amber-900 border-amber-200'
+                        }`}
+                      >
+                        <span className="capitalize">{c.ingredienteOriginal}</span>
+                        <span className="text-[10px] opacity-75 font-normal">({c.patologia})</span>
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Botón Adaptar a mi perfil */}
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleAdaptClick}
+                      disabled={isPending}
+                      className={`w-full sm:w-auto min-h-[42px] px-5 py-2.5 rounded-2xl font-bold text-xs sm:text-sm text-white shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 ${
+                        isCritical
+                          ? 'bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800'
+                          : 'bg-gradient-to-r from-[#a86224] to-[#c47732] hover:from-[#8e511c] hover:to-[#a86224]'
+                      }`}
+                    >
+                      {isPending ? (
                         <>
-                          <Lock className="w-4 h-4 text-white/90" />
-                          <span>Adaptar a mi perfil (PRO)</span>
+                          <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                          <span>{t('recipe_adapting_btn')}</span>
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-4 h-4" />
-                          <span>Adaptar a mi perfil</span>
+                          {!isPro ? (
+                            <>
+                              <Lock className="w-4 h-4 text-white/90" />
+                              <span>Adaptar a mi perfil (PRO)</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4" />
+                              <span>Adaptar a mi perfil</span>
+                            </>
+                          )}
                         </>
                       )}
-                    </>
-                  )}
-                </button>
-              </div>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             /* SEMÁFORO COMPATIBLE: No hay conflictos */
