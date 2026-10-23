@@ -331,7 +331,7 @@ export function IngredientRow({
                   </p>
 
                   {/* Las 3 opciones generadas por la IA con formato mobile-first horizontal deslizable */}
-                  <div className="flex sm:grid sm:grid-cols-3 gap-2 overflow-x-auto sm:overflow-visible no-scrollbar scroll-smooth pb-1 sm:pb-0 snap-x">
+                  <div className="flex gap-2 overflow-x-auto snap-x no-scrollbar pb-1 w-full max-w-full sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0">
                     {options.map((opt, idx) => {
                       const isSelected = selectedOptionIndex === idx;
                       const isOptApplied = appliedOption?.nombre_sustituto === opt.nombre_sustituto;
@@ -341,14 +341,14 @@ export function IngredientRow({
                           key={opt.nombre_sustituto}
                           type="button"
                           onClick={() => setSelectedOptionIndex(isSelected ? null : idx)}
-                          className={`shrink-0 snap-start min-w-[130px] max-w-[170px] sm:min-w-0 sm:max-w-none sm:w-full min-h-[58px] p-2.5 sm:p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 shadow-2xs ${
+                          className={`w-[130px] sm:w-auto sm:flex-1 shrink-0 snap-start min-h-[58px] p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 shadow-2xs ${
                             isSelected
                               ? 'border-[#a86224] bg-white ring-2 ring-[#a86224]/20 shadow-xs'
                               : 'border-[#e7dfd5] bg-white hover:bg-[#faf7f2]'
                           }`}
                         >
-                          <div className="flex items-center justify-between gap-1.5 w-full">
-                            <span className="inline-flex items-center gap-1 text-[10px] tracking-wide uppercase font-semibold text-stone-500 truncate min-w-0">
+                          <div className="flex items-center justify-between gap-1 w-full min-w-0">
+                            <span className="inline-flex items-center gap-1 text-[10px] tracking-wide uppercase font-semibold text-stone-500 min-w-0 flex-1 truncate">
                               {getCategoryIcon(opt.categoria_icono || opt.tipo)}
                               <span className="truncate">{opt.etiqueta_dinamica || opt.etiqueta_tipo || 'Alternativa'}</span>
                             </span>
@@ -359,7 +359,7 @@ export function IngredientRow({
                             )}
                           </div>
                           <span
-                            className="text-xs sm:text-sm font-medium text-stone-800 truncate block w-full leading-tight"
+                            className="text-xs sm:text-sm font-medium text-stone-800 w-full block truncate leading-tight"
                             title={opt.nombre_sustituto}
                           >
                             {opt.nombre_sustituto}

@@ -55,11 +55,60 @@ const LEAVENER_KEYWORDS = [
 
 const LIQUID_KEYWORDS = [
   'caldo',
+  'fondo',
+  'fumet',
   'agua',
   'vino',
   'cerveza',
   'leche',
   'nata',
+  'sidra',
+];
+
+const ABSORPTION_GRAIN_KEYWORDS = [
+  'arroz',
+  'rice',
+  'risotto',
+  'paella',
+  'bomba',
+  'carnaroli',
+  'arborio',
+  'lenteja',
+  'lentejas',
+  'garbanzo',
+  'garbanzos',
+  'alubia',
+  'alubias',
+  'judia',
+  'judias',
+  'frijol',
+  'frijoles',
+  'faba',
+  'fabas',
+  'pasta',
+  'fideo',
+  'fideos',
+  'macarron',
+  'macarrones',
+  'espagueti',
+  'espaguetis',
+  'spaghetti',
+  'tallarin',
+  'tallarines',
+  'noodle',
+  'noodles',
+  'quinoa',
+  'quinua',
+  'cuscus',
+  'couscous',
+  'semola',
+  'avena',
+  'polenta',
+  'bulgur',
+  'trigo',
+  'cebada',
+  'mijo',
+  'soja texturizada',
 ];
 
 /**
@@ -158,6 +207,15 @@ export function scaleIngredientsWithCulinaryHeuristics(
   const tServings = Number(targetServings) > 0 ? Number(targetServings) : 1;
   const ratio = tServings / bServings;
 
+  // Detección de presencia de granos, cereales o legumbres que absorben líquido proporcionalmente
+  const hasAbsorptionGrains = (ingredientes || []).some((i) => {
+    const raw = String(i?.nombre_limpio || i?.nombre_crudo || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    return ABSORPTION_GRAIN_KEYWORDS.some((kw) => raw.includes(kw));
+  });
+
   return ingredientes.map((ing) => {
     try {
       const name = ing?.nombre_limpio || ing?.nombre_crudo || 'Ingrediente';
@@ -186,10 +244,32 @@ export function scaleIngredientsWithCulinaryHeuristics(
             explicacion = 'Fuerza gasificante equilibrada sin sobre-expansión.';
             break;
 
-          case 'REDUCTION_LIQUID':
-            factor = Math.pow(ratio, 0.80);
-            explicacion = 'Líquido calibrado según tiempo de evaporación.';
+          case 'REDUCTION_LIQUID': {
+            const normName = String(ing?.nombre_limpio || ing?.nombre_crudo || '')
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '');
+
+            const isDirectBrothOrWater =
+              normName.includes('caldo') ||
+              normName.includes('agua') ||
+              normName.includes('fondo') ||
+              normName.includes('fumet');
+
+            // En caldos, fondos, agua y vinos de cocción que acompañen a cereales/legumbres/arroz
+            // (o cuando el líquido sea el medio de absorción), el escalado del líquido debe ser estrictamente lineal (factor = ratio)
+            if (hasAbsorptionGrains || isDirectBrothOrWater) {
+              factor = ratio;
+              explicacion = hasAbsorptionGrains
+                ? 'Líquido de absorción escalado linealmente para hidratación exacta del grano.'
+                : 'Líquido base de cocción escalado linealmente.';
+            } else {
+              // Amortiguador muy suave para reducciones puras sin medio de absorción (mínimo ratio 0.95)
+              factor = Math.pow(ratio, 0.95);
+              explicacion = 'Líquido de reducción calibrado con amortiguación suave.';
+            }
             break;
+          }
 
           case 'BULK':
           default:
