@@ -14,6 +14,7 @@ import {
   HeartPulse,
   ArrowRightLeft,
   Sparkles,
+  ChevronDown,
 } from 'lucide-react';
 import { Drawer } from 'vaul';
 import { suggestSubstituteAction, SubstituteOption } from '@/app/actions/suggestSubstitute';
@@ -325,130 +326,127 @@ export function IngredientRow({
               )}
 
               {!isPending && options && options.length > 0 && (
-                <div className="space-y-3.5">
+                <div className="space-y-3.5 w-full">
                   <p className="text-xs text-stone-500 font-medium">
                     {t('drawer_instructions')}
                   </p>
 
-                  {/* Las 3 opciones generadas por la IA con formato mobile-first horizontal deslizable */}
-                  <div className="flex gap-2 overflow-x-auto snap-x no-scrollbar pb-1 w-full max-w-full sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0">
+                  {/* Lista vertical apilada y ergonómica (100% ancho) */}
+                  <div className="flex flex-col gap-2.5 w-full">
                     {options.map((opt, idx) => {
                       const isSelected = selectedOptionIndex === idx;
                       const isOptApplied = appliedOption?.nombre_sustituto === opt.nombre_sustituto;
 
                       return (
-                        <button
+                        <div
                           key={opt.nombre_sustituto}
-                          type="button"
-                          onClick={() => setSelectedOptionIndex(isSelected ? null : idx)}
-                          className={`w-[130px] sm:w-auto sm:flex-1 shrink-0 snap-start min-h-[58px] p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 shadow-2xs ${
+                          ref={isSelected ? technicalCardRef : undefined}
+                          className={`w-full rounded-2xl border transition-all duration-200 overflow-hidden ${
                             isSelected
-                              ? 'border-[#a86224] bg-white ring-2 ring-[#a86224]/20 shadow-xs'
-                              : 'border-[#e7dfd5] bg-white hover:bg-[#faf7f2]'
+                              ? 'border-[#a86224] bg-white ring-2 ring-[#a86224]/20 shadow-sm'
+                              : 'border-[#e7dfd5] bg-white hover:bg-[#faf7f2]/80 shadow-2xs'
                           }`}
                         >
-                          <div className="flex items-center justify-between gap-1 w-full min-w-0">
-                            <span className="inline-flex items-center gap-1 text-[10px] tracking-wide uppercase font-semibold text-stone-500 min-w-0 flex-1 truncate">
-                              {getCategoryIcon(opt.categoria_icono || opt.tipo)}
-                              <span className="truncate">{opt.etiqueta_dinamica || opt.etiqueta_tipo || 'Alternativa'}</span>
-                            </span>
-                            {isOptApplied && (
-                              <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-0.5 shrink-0">
-                                <Check className="w-2.5 h-2.5" /> {t('drawer_active_badge')}
-                              </span>
-                            )}
-                          </div>
-                          <span
-                            className="text-xs sm:text-sm font-medium text-stone-800 w-full block truncate leading-tight"
-                            title={opt.nombre_sustituto}
+                          {/* Cabecera interactiva / Botón de acordeón */}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOptionIndex(isSelected ? null : idx)}
+                            className="w-full p-3.5 sm:p-4 text-left cursor-pointer flex items-center justify-between gap-3 transition-colors"
                           >
-                            {opt.nombre_sustituto}
-                          </span>
-                        </button>
+                            <div className="space-y-1 flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="inline-flex items-center gap-1 text-[10px] uppercase font-semibold text-stone-500">
+                                  {getCategoryIcon(opt.categoria_icono || opt.tipo)}
+                                  <span>{opt.etiqueta_dinamica || opt.etiqueta_tipo || 'Alternativa'}</span>
+                                </span>
+                                {isOptApplied && (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold inline-flex items-center gap-0.5">
+                                    <Check className="w-2.5 h-2.5" /> {t('drawer_active_badge')}
+                                  </span>
+                                )}
+                              </div>
+
+                              <h4 className="text-sm sm:text-base font-semibold text-stone-900 leading-snug break-words">
+                                {opt.nombre_sustituto}
+                              </h4>
+
+                              <p className="text-xs text-stone-600 font-medium">
+                                <span className="text-stone-500">{t('drawer_ratio_recommended')}:</span>{' '}
+                                <span className="font-bold text-stone-900">{opt.cantidad_sugerida}</span>
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0 text-stone-400">
+                              <ChevronDown
+                                className={`w-4 h-4 transition-transform duration-200 ${
+                                  isSelected ? 'rotate-180 text-[#a86224]' : ''
+                                }`}
+                              />
+                            </div>
+                          </button>
+
+                          {/* Ficha técnica y acción inline desplegable */}
+                          {isSelected && (
+                            <div className="px-3.5 sm:px-4 pb-4 pt-1 border-t border-[#f4efe6] space-y-3 bg-[#faf7f2]/40 animate-fade-in">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
+                                <div className="p-3 rounded-xl bg-white border border-[#e7dfd5] space-y-1">
+                                  <span className="font-semibold text-stone-800 flex items-center gap-1.5 text-[#a86224]">
+                                    <ChefHat className="w-3.5 h-3.5" /> {t('drawer_spec_behavior')}
+                                  </span>
+                                  <p className="text-stone-600 leading-relaxed font-light">
+                                    {opt.razon_culinaria}
+                                  </p>
+                                </div>
+
+                                <div className="p-3 rounded-xl bg-white border border-[#e7dfd5] space-y-1">
+                                  <span className="font-semibold text-stone-800 flex items-center gap-1.5 text-[#a86224]">
+                                    <HeartPulse className="w-3.5 h-3.5" /> {t('drawer_spec_benefit')}
+                                  </span>
+                                  <p className="text-stone-600 leading-relaxed font-light">
+                                    {opt.beneficio_nutricional}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {opt.modo_uso && (
+                                <div className="p-3 rounded-xl bg-[#f4efe6] text-stone-700 text-xs leading-relaxed">
+                                  <strong className="text-[#a86224]">{t('drawer_spec_technique')}:</strong> {opt.modo_uso}
+                                </div>
+                              )}
+
+                              {/* Botón de acción Aplicar / Restablecer inline */}
+                              <div className="pt-1 flex items-center justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => handleApply(opt)}
+                                  className={`w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95 ${
+                                    isOptApplied
+                                      ? 'bg-stone-200 text-stone-800 hover:bg-stone-300'
+                                      : 'bg-[#a86224] text-white hover:bg-[#8e511c]'
+                                  }`}
+                                >
+                                  {isOptApplied ? (
+                                    <>
+                                      <Check className="w-4 h-4 text-emerald-600 stroke-3" />
+                                      <span>{t('drawer_restore_btn')}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ArrowRightLeft className="w-4 h-4" />
+                                      <span>{t('drawer_apply_btn')}</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
-
-                  {/* Ficha técnica expandida al tocar una opción */}
-                  {activeOption && (
-                    <div
-                      ref={technicalCardRef}
-                      className="p-4 sm:p-5 rounded-2xl bg-white border border-[#e7dfd5] space-y-3.5 shadow-2xs animate-fade-in"
-                    >
-                      <div className="border-b border-[#f4efe6] pb-2">
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-[#a86224]">
-                          {t('drawer_spec_title')} · {activeOption.etiqueta_dinamica || activeOption.etiqueta_tipo || 'Alternativa'}
-                        </span>
-                        <h4 className="font-bold text-stone-900 font-serif-recipe text-lg">
-                          {activeOption.nombre_sustituto}
-                        </h4>
-                        <p className="text-xs text-stone-600 font-medium mt-0.5">
-                          {t('drawer_ratio_recommended')} <span className="font-bold text-stone-900">{activeOption.cantidad_sugerida}</span>
-                        </p>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                        <div className="p-3 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] space-y-1">
-                          <span className="font-semibold text-stone-800 flex items-center gap-1.5 text-[#a86224]">
-                            <ChefHat className="w-3.5 h-3.5" /> {t('drawer_spec_behavior')}
-                          </span>
-                          <p className="text-stone-600 leading-relaxed font-light">
-                            {activeOption.razon_culinaria}
-                          </p>
-                        </div>
-
-                        <div className="p-3 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] space-y-1">
-                          <span className="font-semibold text-stone-800 flex items-center gap-1.5 text-[#a86224]">
-                            <HeartPulse className="w-3.5 h-3.5" /> {t('drawer_spec_benefit')}
-                          </span>
-                          <p className="text-stone-600 leading-relaxed font-light">
-                            {activeOption.beneficio_nutricional}
-                          </p>
-                        </div>
-                      </div>
-
-                      {activeOption.modo_uso && (
-                        <div className="p-3 rounded-xl bg-[#f4efe6] text-stone-700 text-xs leading-relaxed">
-                          <strong className="text-[#a86224]">{t('drawer_spec_technique')}</strong> {activeOption.modo_uso}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
-
-            {/* Footer con el botón de acción "Aplicar a la receta" siempre accesible */}
-            {activeOption && (
-              <div className="p-4 border-t border-[#e7dfd5] bg-white flex items-center justify-between gap-3 shrink-0">
-                <div className="text-xs text-stone-600 truncate flex-1 min-w-0">
-                  <span>{t('drawer_selection')} </span>
-                  <strong className="text-stone-900 block truncate">{activeOption.nombre_sustituto}</strong>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleApply(activeOption)}
-                  className={`min-h-[44px] px-5 py-2.5 rounded-2xl font-bold text-xs sm:text-sm transition cursor-pointer flex items-center gap-2 shadow-xs active:scale-95 shrink-0 ${
-                    isCurrentOptionApplied
-                      ? 'bg-stone-200 text-stone-800 hover:bg-stone-300'
-                      : 'bg-[#a86224] text-white hover:bg-[#8e511c]'
-                  }`}
-                >
-                  {isCurrentOptionApplied ? (
-                    <>
-                      <Check className="w-4 h-4 text-emerald-600 stroke-3" />
-                      <span>{t('drawer_restore_btn')}</span>
-                    </>
-                  ) : (
-                    <>
-                      <ArrowRightLeft className="w-4 h-4" />
-                      <span>{t('drawer_apply_btn')}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>

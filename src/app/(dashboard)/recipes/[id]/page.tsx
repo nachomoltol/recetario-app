@@ -94,7 +94,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
+    <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col w-full max-w-full overflow-x-hidden">
       {/* Barra de navegación superior luminosa */}
       <RecipeDetailHeader
         fuenteUrl={receta?.fuente_url}
@@ -105,7 +105,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
       />
 
       {/* Contenido Editorial con Modo Cocina */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10">
+      <main className="flex-1 max-w-4xl w-full max-w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10 overflow-x-hidden">
         <ErrorBoundary fallbackTitle="Error en la vista de la receta">
           <RecipeDetailView
             receta={receta}

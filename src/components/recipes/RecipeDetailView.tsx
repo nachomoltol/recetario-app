@@ -722,45 +722,43 @@ export function RecipeDetailView({
           onRevertAdaptation={handleRevertAdaptation}
         />
 
-        {/* Tiempos y Rendimiento en Modo Cocina: Siempre en una sola línea horizontal */}
-        <div className="pt-5 flex flex-row items-center justify-start gap-8 sm:gap-12 text-xs sm:text-sm text-stone-600 border-t border-[#e7dfd5]">
-          <div className="flex items-center gap-2.5 shrink-0">
-            <Clock className="w-5 h-5 text-[#a86224] shrink-0" />
-            <div>
-              <span className="text-[10px] uppercase text-stone-500 font-medium block leading-none">
+        {/* Franja de metadatos fluida y 100% contenida (Tiempo, Porciones, Nivel) */}
+        <div className="grid grid-cols-3 w-full gap-1 py-3 px-2 border-t border-[#e7dfd5] text-stone-600 text-center">
+          <div className="flex flex-col items-center justify-center min-w-0">
+            <div className="flex items-center justify-center gap-1.5 text-stone-500 mb-0.5 w-full">
+              <Clock className="w-4 h-4 text-[#a86224] shrink-0" />
+              <span className="text-[10px] uppercase font-medium truncate">
                 {t('recipe_total_time')}
               </span>
-              <span className="text-base font-bold text-stone-900 mt-0.5 block whitespace-nowrap">
-                {receta?.tiempo_total_min || 15} {t('planner_min')}
-              </span>
             </div>
+            <span className="text-xs sm:text-sm font-bold text-stone-900 truncate w-full">
+              {receta?.tiempo_total_min || 15} {t('planner_min')}
+            </span>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
-            <Users className="w-5 h-5 text-[#a86224] shrink-0" />
-            <div>
-              <span className="text-[10px] uppercase text-stone-500 font-medium block leading-none">
+          <div className="flex flex-col items-center justify-center min-w-0 border-x border-[#e7dfd5]/60 px-1">
+            <div className="flex items-center justify-center gap-1.5 text-stone-500 mb-0.5 w-full">
+              <Users className="w-4 h-4 text-[#a86224] shrink-0" />
+              <span className="text-[10px] uppercase font-medium truncate">
                 {t('recipe_base_servings')}
               </span>
-              <span className="text-base font-bold text-stone-900 mt-0.5 block whitespace-nowrap">
-                {receta?.porciones || 2} {t('planner_servings')}
-              </span>
             </div>
+            <span className="text-xs sm:text-sm font-bold text-stone-900 truncate w-full">
+              {receta?.porciones || 2} {t('planner_servings')}
+            </span>
           </div>
 
-          {receta?.dificultad && (
-            <div className="flex items-center gap-2.5 shrink-0">
-              <ChefHat className="w-5 h-5 text-[#a86224] shrink-0" />
-              <div>
-                <span className="text-[10px] uppercase text-stone-500 font-medium block leading-none">
-                  {t('level_title')}
-                </span>
-                <span className="text-base font-bold text-stone-900 mt-0.5 block whitespace-nowrap capitalize">
-                  {typeof receta?.dificultad === 'string' ? receta.dificultad : String(receta?.dificultad || '')}
-                </span>
-              </div>
+          <div className="flex flex-col items-center justify-center min-w-0">
+            <div className="flex items-center justify-center gap-1.5 text-stone-500 mb-0.5 w-full">
+              <ChefHat className="w-4 h-4 text-[#a86224] shrink-0" />
+              <span className="text-[10px] uppercase font-medium truncate">
+                {language === 'en' ? 'Level' : 'Nivel'}
+              </span>
             </div>
-          )}
+            <span className="text-xs sm:text-sm font-bold text-stone-900 capitalize truncate w-full">
+              {receta?.dificultad ? (typeof receta.dificultad === 'string' ? receta.dificultad : String(receta.dificultad)) : (language === 'en' ? 'Medium' : 'Medio')}
+            </span>
+          </div>
         </div>
       </section>
 
