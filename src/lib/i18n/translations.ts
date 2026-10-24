@@ -453,6 +453,8 @@ export const TRANSLATIONS = {
     meal_moment_lunch: 'Almuerzo',
     meal_moment_dinner: 'Cena',
     meal_moment_snack: 'Snack / Merienda',
+    meal_moment_dessert: 'Postre',
+    meal_moment_postre: 'Postre',
     moment_breakfast: 'Desayuno',
     moment_lunch: 'Almuerzo',
     moment_dinner: 'Cena',
@@ -471,8 +473,8 @@ export const TRANSLATIONS = {
     favorite_for_menus: 'Favorito para menús',
 
     // Drawer de Categorización y Momentos
-    categorize_drawer_title: 'Planificación y Momento Culinario',
-    categorize_drawer_subtitle: 'Asigna los momentos del día y el tipo de plato para tus menús semanales',
+    categorize_drawer_title: '¿Cuándo comer esta receta?',
+    categorize_drawer_subtitle: 'Elige los momentos del día para incluirla en tus menús',
     categorize_moments_title: 'Momentos del día recomendados',
     categorize_moments_desc: 'Selecciona cuándo te gustaría comer esta receta (puedes elegir varios)',
     categorize_role_title: 'Rol culinario en la mesa',
@@ -938,6 +940,8 @@ export const TRANSLATIONS = {
     meal_moment_lunch: 'Lunch',
     meal_moment_dinner: 'Dinner',
     meal_moment_snack: 'Snack',
+    meal_moment_dessert: 'Dessert',
+    meal_moment_postre: 'Dessert',
     moment_breakfast: 'Breakfast',
     moment_lunch: 'Lunch',
     moment_dinner: 'Dinner',
@@ -956,8 +960,8 @@ export const TRANSLATIONS = {
     favorite_for_menus: 'Menu favorite',
 
     // Drawer de Categorización y Momentos
-    categorize_drawer_title: 'Meal Planning & Course Role',
-    categorize_drawer_subtitle: 'Assign meal times and dish type for your weekly menu planning',
+    categorize_drawer_title: 'When to enjoy this recipe?',
+    categorize_drawer_subtitle: 'Choose meal times to include it in your menus',
     categorize_moments_title: 'Recommended meal times',
     categorize_moments_desc: 'Select when you would enjoy this recipe (you can pick multiple)',
     categorize_role_title: 'Course role in meals',

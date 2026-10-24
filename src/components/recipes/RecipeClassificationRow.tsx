@@ -5,6 +5,7 @@ import {
   UtensilsCrossed,
   Moon,
   Cookie,
+  CakeSlice,
   SlidersHorizontal,
   Star,
   Sparkles,
@@ -21,7 +22,6 @@ export interface RecipeClassificationRowProps {
 
 export function RecipeClassificationRow({
   momentos_dia,
-  rol_plato = 'completo',
   es_favorito_menu = false,
   onOpenDrawer,
 }: RecipeClassificationRowProps) {
@@ -62,21 +62,18 @@ export function RecipeClassificationRow({
       text: 'text-emerald-800',
       border: 'border-emerald-200',
     },
+    postre: {
+      label: t('meal_moment_dessert'),
+      icon: CakeSlice,
+      bg: 'bg-pink-50',
+      text: 'text-pink-800',
+      border: 'border-pink-200',
+    },
   };
-
-  const roleEmojiMap: Record<RolPlato, { emoji: string; label: string }> = {
-    completo: { emoji: '🍲', label: t('dish_role_completo') },
-    primero: { emoji: '🥗', label: t('dish_role_primero') },
-    segundo: { emoji: '🥩', label: t('dish_role_segundo') },
-    desayuno_snack: { emoji: '🥞', label: t('dish_role_desayuno_snack') },
-    postre: { emoji: '🍰', label: t('dish_role_postre') },
-  };
-
-  const currentRole = roleEmojiMap[rol_plato || 'completo'] || roleEmojiMap.completo;
 
   return (
     <div className="w-full max-w-full overflow-x-hidden pt-2.5 pb-1 border-t border-[#e7dfd5]/80 flex flex-wrap items-center justify-between gap-2.5">
-      {/* Grupo de Chips Activos */}
+      {/* Grupo de Chips de Momentos y Favorito */}
       <div className="flex flex-wrap items-center gap-1.5 min-w-0">
         {hasMomentos ? (
           <>
@@ -94,12 +91,6 @@ export function RecipeClassificationRow({
                 </span>
               );
             })}
-
-            {/* Chip de rol de plato */}
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-white text-stone-700 border border-[#e7dfd5] shadow-2xs shrink-0">
-              <span className="text-xs">{currentRole.emoji}</span>
-              <span>{currentRole.label}</span>
-            </span>
 
             {/* Badge de favorito para menús */}
             {es_favorito_menu && (
@@ -125,7 +116,13 @@ export function RecipeClassificationRow({
         aria-label={t('categorize_edit_btn')}
       >
         <SlidersHorizontal className="w-3.5 h-3.5 text-[#a86224]" />
-        <span>{hasMomentos ? (language === 'en' ? 'Edit times' : 'Editar momentos') : t('categorize_edit_btn')}</span>
+        <span>
+          {hasMomentos
+            ? language === 'en'
+              ? 'Edit times'
+              : 'Editar momentos'
+            : t('categorize_edit_btn')}
+        </span>
       </button>
     </div>
   );

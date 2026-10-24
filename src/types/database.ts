@@ -17,7 +17,7 @@ export type FuenteTipoReceta =
   | 'pdf'
   | 'web';
 export type RolPlato = 'completo' | 'primero' | 'segundo' | 'desayuno_snack' | 'postre';
-export type MomentoDia = 'desayuno' | 'almuerzo' | 'cena' | 'snack';
+export type MomentoDia = 'desayuno' | 'almuerzo' | 'cena' | 'snack' | 'postre';
 
 export interface Database {
   public: {

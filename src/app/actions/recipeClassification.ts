@@ -19,7 +19,7 @@ export interface UpdateRecipeClassificationResult {
   error?: string;
 }
 
-const VALID_MOMENTOS: MomentoDia[] = ['desayuno', 'almuerzo', 'cena', 'snack'];
+const VALID_MOMENTOS: MomentoDia[] = ['desayuno', 'almuerzo', 'cena', 'snack', 'postre'];
 const VALID_ROLES: RolPlato[] = ['completo', 'primero', 'segundo', 'desayuno_snack', 'postre'];
 
 export async function updateRecipeClassificationAction({

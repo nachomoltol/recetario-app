@@ -180,7 +180,7 @@ export function inferRecipeCategory(receta: {
 
   if (isDessertTitle || isDessertCorpus) {
     return {
-      momentos_dia: ['almuerzo', 'cena', 'snack'],
+      momentos_dia: ['postre'],
       rol_plato: 'postre',
       confianza: 'alta',
     };
