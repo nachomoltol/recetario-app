@@ -38,7 +38,7 @@ export function RecipeDetailHeader({
   const isVideoSource = fuenteTipo !== 'web' && fuenteTipo !== 'manual';
 
   return (
-    <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40 w-full max-w-full overflow-hidden">
+    <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-50 w-full max-w-full">
       <div className="max-w-4xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between relative w-full">
         {/* Izquierda: Botón de retorno compacto */}
         <div className="flex items-center">
@@ -89,7 +89,7 @@ export function RecipeDetailHeader({
             </span>
           )}
 
-          <div className="scale-90 sm:scale-100 origin-right">
+          <div className="relative z-[100]">
             <UserDropdownMenu
               fallbackName={userName || 'Chef'}
               email={userEmail || ''}

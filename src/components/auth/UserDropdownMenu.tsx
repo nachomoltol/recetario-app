@@ -120,7 +120,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
   }, [isOpen]);
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative z-[100]" ref={menuRef}>
       {/* Botón trigger del Dropdown (Compactado 15-20%) */}
       <button
         type="button"
@@ -151,7 +151,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
 
       {/* Menú Desplegable Flotante */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 sm:w-80 rounded-3xl bg-white border border-[#e7dfd5] shadow-xl p-3 z-50 animate-fade-in space-y-2">
+        <div className="absolute right-0 mt-2 w-72 sm:w-80 rounded-3xl bg-white border border-[#e7dfd5] shadow-2xl p-3 z-[100] animate-fade-in space-y-2">
           {/* Cabecera con datos del usuario */}
           <div className="p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5]/70 flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white border border-[#e7dfd5] text-[#a86224] flex items-center justify-center font-bold text-sm shadow-2xs shrink-0">
@@ -291,7 +291,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
 
       {/* Modal de Confirmación para Eliminar Cuenta */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fade-in">
           <div className="max-w-md w-full bg-white rounded-3xl border border-[#e7dfd5] p-6 sm:p-7 shadow-2xl space-y-5">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
