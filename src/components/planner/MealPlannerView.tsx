@@ -23,6 +23,7 @@ import {
   Filter,
   SlidersHorizontal,
   Tag,
+  AlertCircle,
 } from 'lucide-react';
 import { Receta } from '@/types/recipe';
 import {
@@ -36,14 +37,14 @@ import {
 import { groupItemsByAisle, SupermarketAisle } from '@/lib/culinary/aisles';
 import { isDessertExcludedFromSlot } from '@/lib/recipeCategorizer';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { useProfileStore } from '@/stores/useProfileStore';
+import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
+import { GenerateMealPlanModal } from '@/components/meal-planner/GenerateMealPlanModal';
 import { TranslationKey } from '@/lib/i18n/translations';
 
 interface MealPlannerViewProps {
   initialPlans: PlannedSlotItem[];
-  userRecipes: Pick<
-    Receta,
-    'id' | 'titulo' | 'tiempo_total_min' | 'porciones' | 'dificultad' | 'rol_plato' | 'momentos_dia'
-  >[];
+  userRecipes: Receta[];
 }
 
 const SLOTS_CONFIG: { slot: MealSlot; labelKey: TranslationKey; icon: typeof Sun }[] = [
@@ -99,6 +100,46 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
   const [checkedShoppingItems, setCheckedShoppingItems] = useState<string[]>([]);
   const [isCopied, setIsCopied] = useState(false);
   const [isShoppingPending, startShoppingTransition] = useTransition();
+
+  const profile = useProfileStore((s) => s.profile);
+  const isPro = profile?.plan_suscripcion === 'pro';
+
+  const [isProModalOpen, setIsProModalOpen] = useState(false);
+  const [isGenerateWizardOpen, setIsGenerateWizardOpen] = useState(false);
+  const [generationToast, setGenerationToast] = useState<{
+    message: string;
+    type: 'success' | 'warning';
+  } | null>(null);
+
+  const handleTriggerGeneratePlan = () => {
+    if (!isPro) {
+      setIsProModalOpen(true);
+      return;
+    }
+    setIsGenerateWizardOpen(true);
+  };
+
+  const handlePlanGenerated = (newItems: PlannedSlotItem[], warnings: string[]) => {
+    setPlans((prev) => {
+      const newKeys = new Set(newItems.map((it) => `${it.fecha}-${it.slot}`));
+      const preserved = prev.filter((it) => !newKeys.has(`${it.fecha}-${it.slot}`));
+      return [...preserved, ...newItems];
+    });
+
+    if (warnings.length > 0) {
+      setGenerationToast({
+        message: `${t('planner_wizard_success_toast')} (${warnings[0]})`,
+        type: 'warning',
+      });
+    } else {
+      setGenerationToast({
+        message: t('planner_wizard_success_toast'),
+        type: 'success',
+      });
+    }
+
+    setTimeout(() => setGenerationToast(null), 5000);
+  };
 
   // Estados de filtros interactivos para exportación de compra
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
@@ -298,7 +339,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
       {/* Barra de Navegación de la Semana y Acciones Principales */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs">
         <div className="flex items-center gap-2">
@@ -340,8 +381,20 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
           </div>
         </div>
 
-        {/* Acciones de Lista de Compra y Filtros */}
-        <div className="flex items-center gap-2">
+        {/* Acciones: Generar Menú con IA (PRO), Filtros y Lista de Compra */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleTriggerGeneratePlan}
+            className="min-h-[46px] px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#a86224] via-[#bd722e] to-[#8e511c] hover:opacity-95 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition active:scale-95 cursor-pointer touch-manipulation"
+          >
+            <Sparkles className="w-4 h-4 text-amber-200" />
+            <span>{t('planner_generate_ai_btn')}</span>
+            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-400 text-stone-900 shadow-2xs">
+              PRO
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
@@ -372,6 +425,33 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
           </button>
         </div>
       </div>
+
+      {/* Banner / Toast de generación automática con IA */}
+      {generationToast && (
+        <div
+          className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs sm:text-sm animate-fade-in ${
+            generationToast.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-amber-50 border-amber-200 text-amber-800'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {generationToast.type === 'success' ? (
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            )}
+            <span className="font-medium">{generationToast.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setGenerationToast(null)}
+            className="text-stone-400 hover:text-stone-600 font-bold px-2 py-1 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* PANEL DE FILTROS INTERACTIVOS DE EXPORTACIÓN */}
       {isFilterPanelOpen && (
@@ -836,6 +916,25 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
           </div>
         </div>
       )}
+
+      {/* MODAL CORTAFUEGOS PRO */}
+      <ProSubscriptionModal
+        isOpen={isProModalOpen}
+        onClose={() => setIsProModalOpen(false)}
+        context="feature_locked"
+        title={t('planner_pro_required_title')}
+        description={t('planner_pro_required_desc')}
+      />
+
+      {/* ASISTENTE WIZARD GENERACIÓN DE MENÚ */}
+      <GenerateMealPlanModal
+        isOpen={isGenerateWizardOpen}
+        onOpenChange={setIsGenerateWizardOpen}
+        startDate={startDateStr}
+        userRecipes={userRecipes}
+        existingPlans={plans}
+        onPlanGenerated={handlePlanGenerated}
+      />
     </div>
   );
 }

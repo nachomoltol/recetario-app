@@ -454,3 +454,6 @@ export function generateMealPlan(
     },
   };
 }
+
+export const generateSmartMealPlan = generateMealPlan;
+

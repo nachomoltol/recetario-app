@@ -130,6 +130,53 @@ export async function assignMealSlotAction({
   }
 }
 
+export async function batchAssignMealSlotsAction(
+  items: { fecha: string; slot: MealSlot; recetaId: string }[]
+): Promise<{ success: boolean; error?: string; count?: number }> {
+  try {
+    if (!items || items.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const rows = items.map((it) => ({
+      usuario_id: user.id,
+      fecha: it.fecha,
+      slot: it.slot,
+      receta_id: it.recetaId,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase.from('plan_comidas').upsert(
+      rows,
+      { onConflict: 'usuario_id,fecha,slot' }
+    );
+
+    if (error) {
+      console.error('[mealPlanner] Error guardando lote en el planificador:', error);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/meal-planner');
+    return { success: true, count: rows.length };
+  } catch (err: any) {
+    console.error('[mealPlanner] Error no controlado en batchAssignMealSlotsAction:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Error inesperado al guardar el plan de comidas.',
+    };
+  }
+}
+
 export async function removeMealSlotAction({
   fecha,
   slot,
