@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Search,
@@ -21,8 +21,11 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { Receta } from '@/types/recipe';
+import { MomentoDia, RolPlato } from '@/types/database';
 import { DeleteRecipeButton } from './DeleteRecipeButton';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { QuickCategorizeBanner } from './QuickCategorizeBanner';
+import { QuickCategorizeModal } from './QuickCategorizeModal';
 export interface RecetaConIngredientes extends Receta {
   ingredientesNombres?: string[];
 }
@@ -465,6 +468,41 @@ export function RecipeCollectionOrganizer({
 }: RecipeCollectionOrganizerProps) {
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
+  const [localRecetas, setLocalRecetas] = useState<RecetaConIngredientes[]>(recetas);
+  const [isQuickCategorizeOpen, setIsQuickCategorizeOpen] = useState(false);
+
+  useEffect(() => {
+    setLocalRecetas(recetas);
+  }, [recetas]);
+
+  const unclassifiedRecipes = useMemo(() => {
+    return localRecetas.filter(
+      (r) => !r.momentos_dia || r.momentos_dia.length === 0
+    );
+  }, [localRecetas]);
+
+  const handleRecipeClassified = (
+    recetaId: string,
+    data: {
+      momentos_dia: MomentoDia[];
+      rol_plato: RolPlato;
+      es_favorito_menu: boolean;
+    }
+  ) => {
+    setLocalRecetas((prev) =>
+      prev.map((r) =>
+        r.id === recetaId
+          ? {
+              ...r,
+              momentos_dia: data.momentos_dia,
+              rol_plato: data.rol_plato,
+              es_favorito_menu: data.es_favorito_menu,
+            }
+          : r
+      )
+    );
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroActivo, setFiltroActivo] = useState<string>('Todas');
   const tieneAdaptacionClinica = Boolean(
@@ -477,8 +515,8 @@ export function RecipeCollectionOrganizer({
   // Independencia del buscador: Busca en título, descripción, etiquetas e ingredientes
   const filteredRecipes = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return recetas;
-    return recetas.filter((r) => {
+    if (!q) return localRecetas;
+    return localRecetas.filter((r) => {
       const matchTitle = (r.titulo || '').toLowerCase().includes(q);
       const matchDesc = (r.descripcion || '').toLowerCase().includes(q);
       const matchTags = (r.etiquetas || []).some((t) =>
@@ -489,7 +527,7 @@ export function RecipeCollectionOrganizer({
       );
       return matchTitle || matchDesc || matchTags || matchIngs;
     });
-  }, [recetas, searchQuery]);
+  }, [localRecetas, searchQuery]);
   // Lista ordenada alfabéticamente (A-Z) para la vista 'Todas'
   const allSortedRecipes = useMemo(() => {
     return [...filteredRecipes].sort((a, b) =>
@@ -587,6 +625,20 @@ export function RecipeCollectionOrganizer({
   );
   return (
     <div className="space-y-6 sm:space-y-8">
+      {/* Banner de Categorización Rápida si hay recetas sin clasificar */}
+      <QuickCategorizeBanner
+        unclassifiedCount={unclassifiedRecipes.length}
+        onStartCategorize={() => setIsQuickCategorizeOpen(true)}
+      />
+
+      {/* Drawer de Categorización Rápida en lote */}
+      <QuickCategorizeModal
+        isOpen={isQuickCategorizeOpen}
+        onOpenChange={setIsQuickCategorizeOpen}
+        unclassifiedRecipes={unclassifiedRecipes}
+        onRecipeClassified={handleRecipeClassified}
+      />
+
       {/* 1. BUSCADOR UNIVERSAL */}
       <div className="space-y-2">
         <div className="relative flex items-center">

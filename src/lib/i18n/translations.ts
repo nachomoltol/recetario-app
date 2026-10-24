@@ -487,6 +487,21 @@ export const TRANSLATIONS = {
     categorize_saved_toast: 'Clasificación de menú actualizada con éxito',
     categorize_edit_btn: 'Clasificar plato',
     categorize_unclassified: 'Sin clasificar para menús',
+
+    // Categorización Rápida
+    quick_categorize_banner_title: 'Tienes {count} recetas sin clasificar para tus menús semanales',
+    quick_categorize_banner_title_single: 'Tienes 1 receta sin clasificar para tus menús semanales',
+    quick_categorize_banner_desc: 'Asígnales momentos del día para que el planificador pueda incluirlas automáticamente en tus comidas',
+    quick_categorize_banner_btn: 'Clasificar ahora',
+    quick_categorize_modal_title: 'Categorización Rápida',
+    quick_categorize_modal_subtitle: 'Prepara tu recetario para la planificación automática',
+    quick_categorize_progress: 'Receta {current} de {total}',
+    quick_categorize_btn_save_next: 'Aceptar y siguiente',
+    quick_categorize_btn_saving: 'Guardando...',
+    quick_categorize_btn_skip: 'Saltar',
+    quick_categorize_success_title: '¡Todo listo! Recetario preparado para tus menús',
+    quick_categorize_success_desc: 'Has clasificado todas tus recetas pendientes. Ya puedes disfrutar de menús semanales automáticos.',
+    quick_categorize_success_btn: 'Volver al recetario',
   },
   en: {
     // Header & Global Nav
@@ -974,6 +989,21 @@ export const TRANSLATIONS = {
     categorize_saved_toast: 'Menu classification updated successfully',
     categorize_edit_btn: 'Classify dish',
     categorize_unclassified: 'Unclassified for meal plans',
+
+    // Quick Categorization
+    quick_categorize_banner_title: 'You have {count} unclassified recipes for your meal plans',
+    quick_categorize_banner_title_single: 'You have 1 unclassified recipe for your meal plans',
+    quick_categorize_banner_desc: 'Assign meal times so the planner can automatically include them in your meals',
+    quick_categorize_banner_btn: 'Categorize now',
+    quick_categorize_modal_title: 'Quick Categorization',
+    quick_categorize_modal_subtitle: 'Prepare your collection for automatic meal planning',
+    quick_categorize_progress: 'Recipe {current} of {total}',
+    quick_categorize_btn_save_next: 'Save & next',
+    quick_categorize_btn_saving: 'Saving...',
+    quick_categorize_btn_skip: 'Skip',
+    quick_categorize_success_title: 'All set! Your recipes are ready for meal planning',
+    quick_categorize_success_desc: "You've categorized all your pending recipes. You can now generate automatic weekly menus.",
+    quick_categorize_success_btn: 'Back to collection',
   },
 } as const;
 

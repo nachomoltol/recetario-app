@@ -68,6 +68,8 @@ export async function updateRecipeClassificationAction({
     }
 
     revalidatePath('/recipes');
+    revalidatePath('/recipes/collection');
+    revalidatePath('/collection');
     revalidatePath(`/recipes/${recetaId}`);
     revalidatePath('/meal-planner');
 
