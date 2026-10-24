@@ -121,29 +121,29 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
 
   return (
     <div className="relative z-[100]" ref={menuRef}>
-      {/* Botón trigger del Dropdown (Compactado 15-20%) */}
+      {/* Botón trigger del Dropdown (Compactado 10-15% para evitar colisiones en móvil) */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-haspopup="true"
-        className="flex items-center gap-2 py-1 px-2.5 rounded-2xl bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] transition-all cursor-pointer shadow-2xs group shrink-0"
+        className="flex items-center gap-1.5 sm:gap-2 py-1 px-1.5 sm:px-2.5 rounded-2xl bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] transition-all cursor-pointer shadow-2xs group shrink-0"
       >
-        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#f4efe6] group-hover:bg-white border border-[#e7dfd5] text-[#a86224] font-bold text-xs flex items-center justify-center transition-colors shrink-0">
+        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-[#f4efe6] group-hover:bg-white border border-[#e7dfd5] text-[#a86224] font-bold text-[10px] sm:text-xs flex items-center justify-center transition-colors shrink-0">
           {initials}
         </div>
 
         <div className="text-left pr-0.5 min-w-0">
-          <p className="text-xs font-medium text-stone-900 leading-tight truncate max-w-[100px] xs:max-w-[130px] sm:max-w-[120px]">
+          <p className="text-[11px] sm:text-xs font-medium text-stone-900 leading-tight truncate max-w-[65px] xs:max-w-[90px] sm:max-w-[120px]">
             {displayName}
           </p>
-          <p className="text-[9px] text-stone-500 font-medium uppercase tracking-wider">
+          <p className="text-[8px] sm:text-[9px] text-stone-500 font-medium uppercase tracking-wider">
             {t('header_my_account')}
           </p>
         </div>
 
         <ChevronDown
-          className={`w-3.5 h-3.5 text-stone-400 group-hover:text-stone-700 transition-transform duration-200 shrink-0 ${
+          className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-stone-400 group-hover:text-stone-700 transition-transform duration-200 shrink-0 ${
             isOpen ? 'rotate-180 text-[#a86224]' : ''
           }`}
         />

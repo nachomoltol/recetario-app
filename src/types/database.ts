@@ -16,6 +16,8 @@ export type FuenteTipoReceta =
   | 'foto_manuscrita'
   | 'pdf'
   | 'web';
+export type RolPlato = 'completo' | 'primero' | 'segundo' | 'desayuno_snack';
+export type MomentoDia = 'desayuno' | 'almuerzo' | 'cena' | 'snack';
 
 export interface Database {
   public: {
@@ -194,6 +196,9 @@ export interface Database {
           puntuacion: number;
           es_publica: boolean;
           etiquetas: string[];
+          momentos_dia: string[];
+          rol_plato: RolPlato;
+          es_favorito_menu: boolean;
           receta_original?: Record<string, any> | null;
           created_at: string;
           updated_at: string;
@@ -220,6 +225,9 @@ export interface Database {
           puntuacion?: number;
           es_publica?: boolean;
           etiquetas?: string[];
+          momentos_dia?: string[];
+          rol_plato?: RolPlato;
+          es_favorito_menu?: boolean;
           receta_original?: Record<string, any> | null;
           created_at?: string;
           updated_at?: string;
@@ -246,6 +254,9 @@ export interface Database {
           puntuacion?: number;
           es_publica?: boolean;
           etiquetas?: string[];
+          momentos_dia?: string[];
+          rol_plato?: RolPlato;
+          es_favorito_menu?: boolean;
           receta_original?: Record<string, any> | null;
           created_at?: string;
           updated_at?: string;

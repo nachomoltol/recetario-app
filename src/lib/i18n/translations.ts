@@ -447,6 +447,25 @@ export const TRANSLATIONS = {
     user_delete_confirm_btn: 'Sí, eliminar mi cuenta',
     user_delete_cancel_btn: 'Cancelar',
     user_deleting: 'Eliminando cuenta...',
+
+    // Momentos del día y roles de plato (Planificación de Menús)
+    meal_moment_breakfast: 'Desayuno',
+    meal_moment_lunch: 'Almuerzo',
+    meal_moment_dinner: 'Cena',
+    moment_breakfast: 'Desayuno',
+    moment_lunch: 'Almuerzo',
+    moment_dinner: 'Cena',
+    dish_role_complete: 'Plato único',
+    dish_role_single: 'Plato único',
+    dish_role_completo: 'Plato único',
+    dish_role_first: 'Primer plato',
+    dish_role_primero: 'Primer plato',
+    dish_role_second: 'Segundo plato',
+    dish_role_segundo: 'Segundo plato',
+    dish_role_snack: 'Desayuno o snack',
+    dish_role_desayuno_snack: 'Desayuno o snack',
+    menu_favorite: 'Favorito para menús',
+    favorite_for_menus: 'Favorito para menús',
   },
   en: {
     // Header & Global Nav
@@ -894,6 +913,25 @@ export const TRANSLATIONS = {
     user_delete_confirm_btn: 'Yes, delete my account',
     user_delete_cancel_btn: 'Cancel',
     user_deleting: 'Deleting account...',
+
+    // Meal moments and dish roles (Meal Planning)
+    meal_moment_breakfast: 'Breakfast',
+    meal_moment_lunch: 'Lunch',
+    meal_moment_dinner: 'Dinner',
+    moment_breakfast: 'Breakfast',
+    moment_lunch: 'Lunch',
+    moment_dinner: 'Dinner',
+    dish_role_complete: 'Single course',
+    dish_role_single: 'Single course',
+    dish_role_completo: 'Single course',
+    dish_role_first: 'First course',
+    dish_role_primero: 'First course',
+    dish_role_second: 'Main course',
+    dish_role_segundo: 'Main course',
+    dish_role_snack: 'Breakfast or snack',
+    dish_role_desayuno_snack: 'Breakfast or snack',
+    menu_favorite: 'Menu favorite',
+    favorite_for_menus: 'Menu favorite',
   },
 } as const;
 
