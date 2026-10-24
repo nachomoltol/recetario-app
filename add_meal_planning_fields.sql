@@ -18,7 +18,7 @@ BEGIN
     ) THEN
         ALTER TABLE public.recetas
         ADD CONSTRAINT recetas_rol_plato_check
-        CHECK (rol_plato IN ('completo', 'primero', 'segundo', 'desayuno_snack'));
+        CHECK (rol_plato IN ('completo', 'primero', 'segundo', 'desayuno_snack', 'postre'));
     END IF;
 END $$;
 

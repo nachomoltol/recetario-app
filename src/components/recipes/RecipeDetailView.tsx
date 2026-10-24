@@ -17,8 +17,12 @@ import {
   Camera,
 } from 'lucide-react';
 import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe';
+import { MomentoDia, RolPlato } from '@/types/database';
 import { RecipeWakeLock } from './RecipeWakeLock';
 import { RecipeRatingHeader } from './RecipeRatingHeader';
+import { RecipeCategorizeDrawer } from './RecipeCategorizeDrawer';
+import { RecipeClassificationRow } from './RecipeClassificationRow';
+import { updateRecipeClassificationAction } from '@/app/actions/recipeClassification';
 import { RecipeAdaptationSection } from './RecipeAdaptationSection';
 import { AdaptacionCulinaria } from '@/app/actions/adaptRecipeAction';
 import { FormattedText } from '@/components/ui/FormattedText';
@@ -96,6 +100,18 @@ export function RecipeDetailView({
   // Notificación toast
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Estados de categorización de menú y momentos del día
+  const [currentMomentosDia, setCurrentMomentosDia] = useState<MomentoDia[]>(
+    () => ((receta?.momentos_dia as MomentoDia[]) || [])
+  );
+  const [currentRolPlato, setCurrentRolPlato] = useState<RolPlato>(
+    () => ((receta?.rol_plato as RolPlato) || 'completo')
+  );
+  const [currentEsFavoritoMenu, setCurrentEsFavoritoMenu] = useState<boolean>(
+    () => Boolean(receta?.es_favorito_menu)
+  );
+  const [isCategorizeDrawerOpen, setIsCategorizeDrawerOpen] = useState(false);
+
   // Temporizador para ocultar el toast
   useEffect(() => {
     if (!toast) return;
@@ -123,7 +139,59 @@ export function RecipeDetailView({
     if (receta?.receta_original) {
       setAdaptationSummary('Receta adaptada y sincronizada con tu perfil');
     }
-  }, [receta?.id, receta?.updated_at, receta?.receta_original]);
+    setCurrentMomentosDia((receta?.momentos_dia as MomentoDia[]) || []);
+    setCurrentRolPlato((receta?.rol_plato as RolPlato) || 'completo');
+    setCurrentEsFavoritoMenu(Boolean(receta?.es_favorito_menu));
+  }, [
+    receta?.id,
+    receta?.updated_at,
+    receta?.receta_original,
+    receta?.momentos_dia,
+    receta?.rol_plato,
+    receta?.es_favorito_menu,
+  ]);
+
+  const handleSaveClassification = async (data: {
+    momentos_dia: MomentoDia[];
+    rol_plato: RolPlato;
+    es_favorito_menu: boolean;
+  }) => {
+    const prevMomentos = currentMomentosDia;
+    const prevRol = currentRolPlato;
+    const prevFav = currentEsFavoritoMenu;
+
+    // Actualización optimista inmediata
+    setCurrentMomentosDia(data.momentos_dia);
+    setCurrentRolPlato(data.rol_plato);
+    setCurrentEsFavoritoMenu(data.es_favorito_menu);
+
+    try {
+      if (!receta?.id) return;
+      const res = await updateRecipeClassificationAction({
+        recetaId: receta.id,
+        momentos_dia: data.momentos_dia,
+        rol_plato: data.rol_plato,
+        es_favorito_menu: data.es_favorito_menu,
+      });
+
+      if (res.success) {
+        setToast({ message: t('categorize_saved_toast'), type: 'success' });
+        router.refresh();
+      } else {
+        // Revertir ante error
+        setCurrentMomentosDia(prevMomentos);
+        setCurrentRolPlato(prevRol);
+        setCurrentEsFavoritoMenu(prevFav);
+        setToast({ message: res.error || 'Error al guardar la clasificación', type: 'error' });
+      }
+    } catch (e) {
+      console.error('Error al guardar clasificación:', e);
+      setCurrentMomentosDia(prevMomentos);
+      setCurrentRolPlato(prevRol);
+      setCurrentEsFavoritoMenu(prevFav);
+      setToast({ message: 'Error de conexión al guardar clasificación', type: 'error' });
+    }
+  };
 
   const handleApplyAdaptation = async (data: AdaptacionCulinaria) => {
     const adaptedIngs: RecetaIngrediente[] = (data?.ingredientes || []).map((ai, index) => {
@@ -760,6 +828,14 @@ export function RecipeDetailView({
             </span>
           </div>
         </div>
+
+        {/* Fila permanente de edición de momentos del día y rol en el menú */}
+        <RecipeClassificationRow
+          momentos_dia={currentMomentosDia}
+          rol_plato={currentRolPlato}
+          es_favorito_menu={currentEsFavoritoMenu}
+          onOpenDrawer={() => setIsCategorizeDrawerOpen(true)}
+        />
       </section>
 
       {/* Pestaña / Acordeón Plegable Compacto de Valores Nutricionales */}
@@ -907,6 +983,24 @@ export function RecipeDetailView({
         onTriggerCamera={() => cameraInputRef.current?.click()}
         onTriggerGallery={() => galleryInputRef.current?.click()}
         isUploadingPhoto={isUploadingPhoto}
+      />
+
+      {/* Drawer de Categorización de Menú y Momentos (Vaul) */}
+      <RecipeCategorizeDrawer
+        isOpen={isCategorizeDrawerOpen}
+        onOpenChange={setIsCategorizeDrawerOpen}
+        receta={{
+          id: receta?.id || '',
+          titulo: currentTitulo,
+          calorias_por_porcion: receta?.calorias_por_porcion,
+          etiquetas: receta?.etiquetas,
+          descripcion: receta?.descripcion,
+          momentos_dia: currentMomentosDia,
+          rol_plato: currentRolPlato,
+          es_favorito_menu: currentEsFavoritoMenu,
+        }}
+        ingredientes={currentIngredientes}
+        onSave={handleSaveClassification}
       />
     </>
   );

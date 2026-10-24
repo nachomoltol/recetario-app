@@ -35,7 +35,8 @@ export const recipeExtractionSchema = {
     },
     porciones: {
       type: Type.INTEGER,
-      description: 'Número de raciones resultantes de la receta.',
+      description:
+        'Número entero de raciones base resultantes de la receta (servings >= 1). REGLAS JERÁRQUICAS ESTRICTAS: 1) Mención explícita: Si el texto o vídeo indica explícitamente las porciones ("para 4 personas", "rinde 2 raciones"), usa ese número exacto. 2) Inferencia nutricional por gramaje si no se indica: Carne, pescado, ave o tofu: Divide el peso total en crudo entre 180-200 g por persona (ej: 400 g pechuga = 2 raciones; 800 g = 4 raciones). Arroz, pasta o legumbre seca: Divide el peso seco entre 75-80 g por persona (ej: 160 g arroz = 2 raciones). Piezas contables principales (filetes, muslos, huevos, hamburguesas): Asigna 1 a 2 unidades por persona según el contexto. 3) Fallback seguro: Si es un postre, salsa o preparación sin proteína/cereal evidente y no indica raciones, asigna por defecto 2 raciones. RESTRICCIÓN: El valor porciones debe ser siempre un entero >= 1.',
     },
     dificultad: {
       type: Type.STRING,
@@ -279,9 +280,32 @@ export function buildRecipeSystemInstruction(options?: {
      * Si la cantidad detectada es > 1 (ej: 2, 3, 4, etc.), la unidad de salida DEBE SER ESTRICTAMENTE "unidades" en plural (ej: cantidad: 2, unidad: "unidades").
      * EXCEPCIÓN CULINARIA OBLIGATORIA PARA EL AJO: Para ajo desgranado, la unidad obligatoria DEBE ser "diente" (singular) o "dientes" (plural). Está TERMINANTEMENTE PROHIBIDO usar "unidad" o "cabeza" para los dientes de ajo, a menos que la receta utilice una cabeza entera asada. (Ej: 3 dientes de ajo -> cantidad: 3, unidad: "dientes"; 1 diente de ajo -> cantidad: 1, unidad: "diente").
      * Siempre completa los gramos_estimados equivalentes según el peso estándar de la pieza (ej. 2 unidades de huevo = 120 g, 1 diente de ajo = 5 g).`;
-  const rule8Quantities =
+  const ruleServingsHeuristic =
     idioma === 'en'
-      ? `8. NATURAL CULINARY PROSE AND PRECISE METRIC INTEGRATION:
+      ? `8. STRICT HIERARCHICAL RULES FOR BASE SERVINGS INFERENCE ('porciones' / servings):
+   - The 'porciones' field MUST always be an integer greater than or equal to 1 (>= 1).
+   - Apply this strict hierarchical decision order:
+     * Rule 1 (Explicit mention in source): If the text, audio, caption, or video explicitly indicates the portions ("serves 4", "makes 2 portions", "recipe for 6 people"), use that exact integer.
+     * Rule 2 (Nutritional heuristic by weight if unspecified):
+       - If the recipe contains meat, poultry, fish, seafood, or tofu: Divide total raw weight by 180-200 g per person (example: 400 g chicken breast = 2 servings; 800 g steak = 4 servings).
+       - If it is a rice, pasta, or dry legumes dish: Divide total dry weight by 75-80 g per person (example: 160 g dry rice = 2 servings; 320 g dry pasta = 4 servings).
+       - If there are countable primary pieces (cutlets, drumsticks, eggs, burger patties): Assign 1 to 2 units per person based on context.
+     * Rule 3 (Safe fallback): For desserts, bakery, sauces, dips, or preparations without prominent protein/cereal and no stated servings, assign strictly 2 servings by default.
+   - RESTRICTION: The 'porciones' value MUST always be an integer >= 1.`
+      : `8. DIRECTIVA DE INFERENCIA NUTRICIONAL DE RACIONES BASE ('porciones' / servings):
+   - El campo 'porciones' DEBE ser siempre un número entero mayor o igual a 1 (>= 1).
+   - Aplica rigurosamente este orden jerárquico estricto:
+     * Regla 1 (Mención explícita): Si el texto o vídeo indica explícitamente las porciones ("para 4 personas", "rinde 2 raciones", "para 6 comensales"), usa ese número exacto.
+     * Regla 2 (Inferencia nutricional por gramaje si no se indica):
+       - Si la receta contiene carne, pescado o tofu: Divide el peso total en crudo entre 180-200 g por persona (ejemplo: 400 g pechuga = 2 raciones; 800 g = 4 raciones).
+       - Si es un plato de arroz, pasta o legumbre seca: Divide el peso seco entre 75-80 g por persona (ejemplo: 160 g arroz = 2 raciones).
+       - Si hay piezas contables principales (filetes, muslos, huevos, hamburguesas): Asigna 1 a 2 unidades por persona según el contexto.
+     * Regla 3 (Fallback seguro): Si es un postre, salsa o preparación sin proteína/cereal evidente y no indica raciones, asigna por defecto 2 raciones.
+   - RESTRICCIÓN: El valor 'porciones' debe ser siempre un entero >= 1.`;
+
+  const rule9Quantities =
+    idioma === 'en'
+      ? `9. NATURAL CULINARY PROSE AND PRECISE METRIC INTEGRATION:
    - In the 'pasos' / preparation array, integrate exact ingredient quantities using fluent, professional, and natural culinary prose.
    - STRICT FORBIDDANCE OF LABORATORY DECIMALS: You are STRICTLY FORBIDDEN from writing cold, unnatural, or laboratory-like phrasing such as "add 0.5 units of onion", "pour 0.25 tablespoons", or "add 15ml of oil".
    - MANDATORY CULINARY PHRASING DIRECTIVE: Integrate precise quantities into natural culinary English:
@@ -291,7 +315,7 @@ export function buildRecipeSystemInstruction(options?: {
      * Instead of "Add 2 units of egg", write: "Add the 2 beaten eggs".
    - If original video servings differ from target user servings, apply the mathematical conversion factor to all ingredients and reflect those scaled quantities naturally in the steps narrative.
    - Set the 'porciones' field exactly to the final scaled number of servings.`
-      : `8. REDACCIÓN EN PROSA CULINARIA NATURAL E INTEGRACIÓN MÉTRICA EXACTA:
+      : `9. REDACCIÓN EN PROSA CULINARIA NATURAL E INTEGRACIÓN MÉTRICA EXACTA:
    - En el array de 'pasos' o 'preparación', integra siempre las cantidades exactas de los ingredientes de forma fluida, profesional y natural.
    - PROHIBICIÓN ESTRICTA DE DECIMALES DE LABORATORIO: Queda TERMINANTEMENTE PROHIBIDO redactar expresiones frías, artificiales o de laboratorio como "añade 0.5 unidades de cebolla", "vierte 0.25 cucharadas" o "agrega 15ml de aceite".
    - DIRECTIVA OBLIGATORIA DE REDACCIÓN NATURAL: Utiliza lenguaje gastronómico natural incorporando la precisión métrica idónea:
@@ -357,7 +381,9 @@ ${rule4Units}
      * Para 'Sopa de pescado y marisco': asigna ["Sopas y Cremas", "Pescados y Mariscos", "Cena Ligera"].
      * Para 'Ensalada de garbanzos con atún': asigna ["Ensaladas y Entrantes", "Legumbres", "Pescados y Mariscos", "Atún", "Almuerzo Saludable"].
 
-${rule8Quantities}
+${ruleServingsHeuristic}
+
+${rule9Quantities}
 
 ${firewallSection}
 

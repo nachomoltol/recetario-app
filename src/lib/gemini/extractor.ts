@@ -1570,6 +1570,25 @@ ADVERTENCIA CRÍTICA DE IDIOMA: Si el idioma solicitado es Inglés ('en'), está
         ? `6. MANDATORY CULINARY EXCEPTION FOR GARLIC: For peeled or separated garlic cloves, the mandatory unit in 'ingredientes' MUST be "clove" (singular) or "cloves" (plural). NEVER use "unit", "units", or "head" unless cooking the entire whole head roasted.`
         : `6. EXCEPCIÓN CULINARIA OBLIGATORIA PARA EL AJO: Para ajo desgranado, la unidad obligatoria en 'ingredientes' DEBE ser "diente" o "dientes". Queda TERMINANTEMENTE PROHIBIDO usar "unidad", "unidades" o "cabeza" a menos que la receta use la cabeza entera asada.`;
 
+    const servingsDirective =
+      idioma === 'en'
+        ? `7. STRICT HIERARCHICAL RULES FOR BASE SERVINGS INFERENCE ('porciones' / servings >= 1):
+- Rule 1 (Explicit mention): If text or video explicitly states portions ("serves 4", "makes 2 portions"), use that exact integer.
+- Rule 2 (Nutritional heuristic by weight if unspecified):
+  * Meat, poultry, fish, seafood, or tofu: Divide total raw weight by 180-200 g per person (e.g. 400 g chicken = 2 servings; 800 g = 4 servings).
+  * Rice, pasta, or dry legumes: Divide total dry weight by 75-80 g per person (e.g. 160 g rice = 2 servings).
+  * Countable primary pieces (cutlets, drumsticks, eggs, burger patties): Assign 1 to 2 units per person based on context.
+- Rule 3 (Safe fallback): For desserts, bakery, sauces, dips, or preparations without prominent protein/cereal and no stated servings, assign strictly 2 servings by default.
+- RESTRICTION: The 'porciones' value MUST always be an integer >= 1.`
+        : `7. DIRECTIVA DE INFERENCIA NUTRICIONAL DE RACIONES BASE ('porciones' / servings >= 1):
+- Regla 1 (Mención explícita): Si el texto o vídeo indica explícitamente las porciones ("para 4 personas", "rinde 2 raciones"), usa ese número exacto.
+- Regla 2 (Inferencia nutricional por gramaje si no se indica):
+  * Carne, pescado, ave o tofu: Divide el peso total en crudo entre 180-200 g por persona (ejemplo: 400 g pechuga = 2 raciones; 800 g = 4 raciones).
+  * Arroz, pasta o legumbre seca: Divide el peso seco entre 75-80 g por persona (ejemplo: 160 g arroz = 2 raciones).
+  * Piezas contables principales (filetes, muslos, huevos, hamburguesas): Asigna 1 a 2 unidades por persona según el contexto.
+- Regla 3 (Fallback seguro): Si es un postre, salsa o preparación sin proteína/cereal evidente y no indica raciones, asigna por defecto 2 raciones.
+- RESTRICCIÓN: El valor 'porciones' debe ser siempre un entero >= 1.`;
+
     const promptFinal = `
 Eres un Chef Ejecutivo y Nutricionista especializado en extracción culinaria multimodal y perfilado nutricional.
 
@@ -1583,6 +1602,7 @@ DIRECTIVAS CRÍTICAS DE PRECISIÓN Y TOLERANCIA CERO A LA ALUCINACIÓN:
 ${compatibilidadDirective}
 ${langDirective}
 ${garlicDirective}
+${servingsDirective}
 
 Estandariza la receta al esquema JSON estricto requerido:
 

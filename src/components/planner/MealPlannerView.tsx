@@ -34,12 +34,16 @@ import {
   generateUnifiedShoppingListAction,
 } from '@/app/actions/mealPlanner';
 import { groupItemsByAisle, SupermarketAisle } from '@/lib/culinary/aisles';
+import { isDessertExcludedFromSlot } from '@/lib/recipeCategorizer';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { TranslationKey } from '@/lib/i18n/translations';
 
 interface MealPlannerViewProps {
   initialPlans: PlannedSlotItem[];
-  userRecipes: Pick<Receta, 'id' | 'titulo' | 'tiempo_total_min' | 'porciones' | 'dificultad'>[];
+  userRecipes: Pick<
+    Receta,
+    'id' | 'titulo' | 'tiempo_total_min' | 'porciones' | 'dificultad' | 'rol_plato' | 'momentos_dia'
+  >[];
 }
 
 const SLOTS_CONFIG: { slot: MealSlot; labelKey: TranslationKey; icon: typeof Sun }[] = [
@@ -126,6 +130,20 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
 
   const startDateStr = weekDays[0].dateStr;
   const endDateStr = weekDays[6].dateStr;
+
+  // Filtrar recetas para el selector según el slot (los postres se excluyen de platos principales y primeros)
+  const filteredPickerRecipes = useMemo(() => {
+    if (!pickerModal) return userRecipes;
+    return userRecipes
+      .filter((r) => !isDessertExcludedFromSlot(r.rol_plato, pickerModal.slot))
+      .sort((a, b) => {
+        if (pickerModal.slot === 'snack_postre') {
+          if (a.rol_plato === 'postre' && b.rol_plato !== 'postre') return -1;
+          if (b.rol_plato === 'postre' && a.rol_plato !== 'postre') return 1;
+        }
+        return a.titulo.localeCompare(b.titulo, 'es');
+      });
+  }, [userRecipes, pickerModal]);
 
   // Sincronizar fechas seleccionadas por defecto con toda la semana activa
   useEffect(() => {
@@ -621,11 +639,15 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
               </button>
             </div>
 
-            {userRecipes.length === 0 ? (
+            {filteredPickerRecipes.length === 0 ? (
               <div className="p-8 text-center space-y-3">
                 <BookOpen className="w-10 h-10 text-stone-300 mx-auto" />
                 <p className="text-xs text-stone-500">
-                  {t('planner_no_recipes_title')}
+                  {userRecipes.length === 0
+                    ? t('planner_no_recipes_title')
+                    : language === 'en'
+                    ? 'No matching recipes available for this meal course (e.g. desserts are excluded from main courses).'
+                    : 'No hay recetas compatibles con este rol (los postres están excluidos de primeros y segundos platos).'}
                 </p>
                 <Link
                   href="/recipes"
@@ -636,7 +658,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
               </div>
             ) : (
               <div className="overflow-y-auto space-y-2 pr-1 flex-1">
-                {userRecipes.map((r) => (
+                {filteredPickerRecipes.map((r) => (
                   <button
                     key={r.id}
                     type="button"
