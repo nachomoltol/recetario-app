@@ -33,17 +33,20 @@ import {
   removeMealSlotAction,
   clearWeeklyPlanAction,
   generateUnifiedShoppingListAction,
+  getWeeklyPlanAction,
 } from '@/app/actions/mealPlanner';
 import { groupItemsByAisle } from '@/lib/culinary/aisles';
 import { isDessertExcludedFromSlot } from '@/lib/recipeCategorizer';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { TranslationKey } from '@/lib/i18n/translations';
+import { formatLocalDate, parseLocalDate, getMondayOfDate } from '@/lib/dateUtils';
 
 interface MealPlannerViewProps {
   initialPlans: PlannedSlotItem[];
   userRecipes: Receta[];
   userProfile?: Usuario | null;
+  initialTargetDate?: string;
 }
 
 const SLOTS_CONFIG: { slot: MealSlot; labelKey: TranslationKey; icon: typeof Sun }[] = [
@@ -74,19 +77,6 @@ const DAY_SHORT_KEYS: TranslationKey[] = [
   'day_sun_short',
 ];
 
-function getMonday(d: Date): Date {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  date.setDate(diff);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function formatDateISO(d: Date): string {
-  return d.toISOString().split('T')[0];
-}
-
 interface DaySlotItem {
   slot: MealSlot;
   label: string;
@@ -95,10 +85,16 @@ interface DaySlotItem {
   canAddSecondCourse?: boolean;
 }
 
-export function MealPlannerView({ initialPlans, userRecipes, userProfile }: MealPlannerViewProps) {
+export function MealPlannerView({
+  initialPlans,
+  userRecipes,
+  userProfile,
+  initialTargetDate,
+}: MealPlannerViewProps) {
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
   const profileStore = useProfileStore((s) => s.profile);
+  const searchParams = useSearchParams();
 
   // 2. Consulta de forma prioritaria la configuración de raciones del perfil del usuario
   const defaultDiners = useMemo(() => {
@@ -111,8 +107,22 @@ export function MealPlannerView({ initialPlans, userRecipes, userProfile }: Meal
     );
   }, [userProfile, profileStore]);
 
-  const [currentMonday, setCurrentMonday] = useState<Date>(() => getMonday(new Date()));
+  const dateParam = searchParams.get('date') || initialTargetDate;
+
+  const [currentMonday, setCurrentMonday] = useState<Date>(() => {
+    if (dateParam) {
+      try {
+        const target = parseLocalDate(dateParam);
+        return getMondayOfDate(target);
+      } catch (e) {
+        return getMondayOfDate(new Date());
+      }
+    }
+    return getMondayOfDate(new Date());
+  });
+
   const [plans, setPlans] = useState<PlannedSlotItem[]>(initialPlans);
+  const [isLoadingWeek, setIsLoadingWeek] = useState(false);
   const [activeDayIndex, setActiveDayIndex] = useState(0); // Para vista móvil por día
   const [pickerModal, setPickerModal] = useState<{ fecha: string; slot: MealSlot } | null>(null);
   const [shoppingModal, setShoppingModal] = useState<UnifiedShoppingItem[] | null>(null);
@@ -120,8 +130,29 @@ export function MealPlannerView({ initialPlans, userRecipes, userProfile }: Meal
   const [isCopied, setIsCopied] = useState(false);
   const [isShoppingPending, startShoppingTransition] = useTransition();
 
-  const searchParams = useSearchParams();
   const [showGeneratedBanner, setShowGeneratedBanner] = useState(false);
+
+  // Sincronizar con props del servidor cuando se revalide o cambie
+  useEffect(() => {
+    setPlans(initialPlans);
+  }, [initialPlans]);
+
+  // Si cambia el parámetro de fecha en la URL, actualizar currentMonday y cargar datos si es necesario
+  useEffect(() => {
+    if (dateParam) {
+      try {
+        const targetMonday = getMondayOfDate(parseLocalDate(dateParam));
+        const targetStr = formatLocalDate(targetMonday);
+        const currentStr = formatLocalDate(currentMonday);
+        if (targetStr !== currentStr) {
+          setCurrentMonday(targetMonday);
+          loadPlansForMonday(targetMonday);
+        }
+      } catch (err) {
+        console.error('Error sincronizando fecha desde URL:', err);
+      }
+    }
+  }, [dateParam]);
 
   useEffect(() => {
     if (searchParams.get('generated') === 'true') {
@@ -150,7 +181,7 @@ export function MealPlannerView({ initialPlans, userRecipes, userProfile }: Meal
       const locale = language === 'en' ? 'en-US' : 'es-ES';
       return {
         date: day,
-        dateStr: formatDateISO(day),
+        dateStr: formatLocalDate(day),
         name: t(DAY_KEYS[i]),
         shortName: t(DAY_SHORT_KEYS[i]),
         dayNum: day.getDate(),
@@ -166,6 +197,36 @@ export function MealPlannerView({ initialPlans, userRecipes, userProfile }: Meal
 
   const startDateStr = weekDays[0].dateStr;
   const endDateStr = weekDays[6].dateStr;
+
+  // Carga asíncrona de planes al cambiar de semana
+  const loadPlansForMonday = async (mondayDate: Date) => {
+    const startStr = formatLocalDate(mondayDate);
+    const sundayDate = new Date(mondayDate);
+    sundayDate.setDate(mondayDate.getDate() + 6);
+    const endStr = formatLocalDate(sundayDate);
+
+    // Actualizar URL sin recarga completa para mantener coherencia de navegación
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('date', startStr);
+      window.history.replaceState({}, '', url.toString());
+    }
+
+    setIsLoadingWeek(true);
+    try {
+      const res = await getWeeklyPlanAction(startStr, endStr);
+      if (res.success && res.data) {
+        setPlans((prev) => {
+          const otherWeeks = prev.filter((p) => p.fecha < startStr || p.fecha > endStr);
+          return [...otherWeeks, ...res.data!];
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching weekly plans for week:', startStr, err);
+    } finally {
+      setIsLoadingWeek(false);
+    }
+  };
 
   // Filtrar recetas para el selector según el slot (los postres se excluyen de platos principales y primeros)
   const filteredPickerRecipes = useMemo(() => {
@@ -190,16 +251,20 @@ export function MealPlannerView({ initialPlans, userRecipes, userProfile }: Meal
     const prev = new Date(currentMonday);
     prev.setDate(currentMonday.getDate() - 7);
     setCurrentMonday(prev);
+    loadPlansForMonday(prev);
   };
 
   const handleNextWeek = () => {
     const next = new Date(currentMonday);
     next.setDate(currentMonday.getDate() + 7);
     setCurrentMonday(next);
+    loadPlansForMonday(next);
   };
 
   const handleCurrentWeek = () => {
-    setCurrentMonday(getMonday(new Date()));
+    const thisMonday = getMondayOfDate(new Date());
+    setCurrentMonday(thisMonday);
+    loadPlansForMonday(thisMonday);
   };
 
   // Presets de selección de días
@@ -671,11 +736,14 @@ export function MealPlannerView({ initialPlans, userRecipes, userProfile }: Meal
           <button
             type="button"
             onClick={handleCurrentWeek}
-            className="px-2.5 py-1 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[11px] font-bold font-serif-recipe text-stone-800 transition cursor-pointer leading-tight"
+            className="px-2.5 py-1 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[11px] font-bold font-serif-recipe text-stone-800 transition cursor-pointer leading-tight flex items-center gap-1.5"
           >
-            {language === 'en'
-              ? `${weekDays[0].monthName} ${weekDays[0].dayNum}–${weekDays[6].dayNum}`
-              : `${weekDays[0].dayNum}–${weekDays[6].dayNum} ${weekDays[0].monthName}`}
+            {isLoadingWeek && <Loader2 className="w-3 h-3 animate-spin text-[#a86224]" />}
+            <span>
+              {language === 'en'
+                ? `${weekDays[0].monthName} ${weekDays[0].dayNum}–${weekDays[6].dayNum}`
+                : `${weekDays[0].dayNum}–${weekDays[6].dayNum} ${weekDays[0].monthName}`}
+            </span>
           </button>
           <button
             type="button"
@@ -760,15 +828,18 @@ export function MealPlannerView({ initialPlans, userRecipes, userProfile }: Meal
             <ChevronRight className="w-4 h-4" />
           </button>
 
-          <div className="pl-2">
-            <span className="text-xs sm:text-sm font-bold font-serif-recipe text-stone-900 block leading-tight">
-              {language === 'en'
-                ? `${weekDays[0].monthName} ${weekDays[0].dayNum} – ${weekDays[6].monthName} ${weekDays[6].dayNum}`
-                : `${weekDays[0].dayNum} ${weekDays[0].monthName} – ${weekDays[6].dayNum} ${weekDays[6].monthName}`}
-            </span>
-            <span className="text-[10px] text-stone-500 uppercase tracking-wider font-medium">
-              {t('planner_weekly_planning')}
-            </span>
+          <div className="pl-2 flex items-center gap-2">
+            <div>
+              <span className="text-xs sm:text-sm font-bold font-serif-recipe text-stone-900 block leading-tight">
+                {language === 'en'
+                  ? `${weekDays[0].monthName} ${weekDays[0].dayNum} – ${weekDays[6].monthName} ${weekDays[6].dayNum}`
+                  : `${weekDays[0].dayNum} ${weekDays[0].monthName} – ${weekDays[6].dayNum} ${weekDays[6].monthName}`}
+              </span>
+              <span className="text-[10px] text-stone-500 uppercase tracking-wider font-medium">
+                {t('planner_weekly_planning')}
+              </span>
+            </div>
+            {isLoadingWeek && <Loader2 className="w-4 h-4 animate-spin text-[#a86224]" />}
           </div>
         </div>
 

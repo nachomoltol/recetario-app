@@ -5,23 +5,12 @@ import { ArrowLeft, Sparkles, ChefHat } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { SmartMenuWizardView } from '@/components/planner/SmartMenuWizardView';
+import { SmartMenuViewPlanButton } from '@/components/planner/SmartMenuViewPlanButton';
 import { getWeeklyPlanAction } from '@/app/actions/mealPlanner';
 import { Receta } from '@/types/recipe';
+import { formatLocalDate, getMondayOfDate } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
-
-function getMonday(d: Date): Date {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  date.setDate(diff);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function formatDateISO(d: Date): string {
-  return d.toISOString().split('T')[0];
-}
 
 export default async function SmartMenuPage() {
   const supabase = await createClient();
@@ -40,12 +29,12 @@ export default async function SmartMenuPage() {
     .single();
 
   // Calcular semana actual a partir del lunes activo
-  const monday = getMonday(new Date());
+  const monday = getMondayOfDate(new Date());
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 13); // Traer 2 semanas para historial reciente
 
-  const startDate = formatDateISO(monday);
-  const endDate = formatDateISO(sunday);
+  const startDate = formatLocalDate(monday);
+  const endDate = formatLocalDate(sunday);
 
   // Consultar planes recientes y recetas completas del usuario
   const [planRes, recipesRes] = await Promise.all([
@@ -89,6 +78,7 @@ export default async function SmartMenuPage() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <SmartMenuViewPlanButton />
             <LanguageToggle />
             <UserDropdownMenu
               fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}

@@ -555,6 +555,12 @@ export const TRANSLATIONS = {
     smart_menu_reset_history_title: '¿Resetear historial de recetas recientes?',
     smart_menu_reset_history_desc: 'Ignora las recetas usadas en las últimas semanas para disponer del 100% de tu recetario sin penalizaciones por repetición.',
     smart_menu_overwrite_notice: 'Los platos existentes en los slots seleccionados serán actualizados automáticamente en tu planificador.',
+    smart_menu_next_step: 'Siguiente: Elegir comidas →',
+    smart_menu_prev_step: '← Volver a fechas',
+    smart_menu_step_1_pill: '1. Duración y Fecha',
+    smart_menu_step_2_pill: '2. Momentos del Día',
+    smart_menu_view_plan_btn: 'Ver mi Plan Semanal',
+    smart_menu_view_plan_btn_short: 'Ver Plan',
 
     // Herramienta de Limpieza en /meal-planner
     planner_clear_week_btn: 'Limpiar semana',
@@ -1116,6 +1122,12 @@ export const TRANSLATIONS = {
     smart_menu_reset_history_title: 'Reset recent recipe history?',
     smart_menu_reset_history_desc: 'Ignore recipes used in recent weeks to unlock 100% of your cookbook without repetition penalties.',
     smart_menu_overwrite_notice: 'Existing dishes in the selected slots will be updated automatically in your meal planner.',
+    smart_menu_next_step: 'Next: Choose meals →',
+    smart_menu_prev_step: '← Back to dates',
+    smart_menu_step_1_pill: '1. Duration & Date',
+    smart_menu_step_2_pill: '2. Meals of the Day',
+    smart_menu_view_plan_btn: 'View Weekly Plan',
+    smart_menu_view_plan_btn_short: 'View Plan',
 
     // Clear Week tool in /meal-planner
     planner_clear_week_btn: 'Clear week',

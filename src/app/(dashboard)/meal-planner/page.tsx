@@ -7,29 +7,23 @@ import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { MealPlannerHeaderTitle } from '@/components/planner/MealPlannerHeaderTitle';
 import { MealPlannerView } from '@/components/planner/MealPlannerView';
 import { getWeeklyPlanAction } from '@/app/actions/mealPlanner';
+import { formatLocalDate, parseLocalDate, getMondayOfDate } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
-function getMonday(d: Date): Date {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  date.setDate(diff);
-  date.setHours(0, 0, 0, 0);
-  return date;
+interface MealPlannerPageProps {
+  searchParams?: Promise<{ date?: string; generated?: string }>;
 }
 
-function formatDateISO(d: Date): string {
-  return d.toISOString().split('T')[0];
-}
-
-export default async function MealPlannerPage() {
+export default async function MealPlannerPage(props: MealPlannerPageProps) {
+  const searchParams = props.searchParams ? await props.searchParams : {};
   const supabase = await createClient();
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (authError || !user) {
     redirect('/login');
   }
 
@@ -39,13 +33,14 @@ export default async function MealPlannerPage() {
     .eq('id', user.id)
     .single();
 
-  // Calcular la semana actual (Lunes a Domingo)
-  const monday = getMonday(new Date());
+  // Calcular la semana objetivo (Lunes a Domingo) según searchParams.date o la fecha actual
+  const targetDate = searchParams?.date ? parseLocalDate(searchParams.date) : new Date();
+  const monday = getMondayOfDate(targetDate);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
 
-  const startDate = formatDateISO(monday);
-  const endDate = formatDateISO(sunday);
+  const startDate = formatLocalDate(monday);
+  const endDate = formatLocalDate(sunday);
 
   // Obtener planes de la semana y recetas del usuario
   const [planRes, recipesRes] = await Promise.all([
@@ -92,6 +87,7 @@ export default async function MealPlannerPage() {
           initialPlans={initialPlans}
           userRecipes={userRecipes}
           userProfile={profile}
+          initialTargetDate={searchParams?.date || startDate}
         />
       </main>
     </div>

@@ -101,7 +101,7 @@ export async function getWeeklyPlanAction(
 
     const mapped = (data || []).map((row: any) => ({
       ...row,
-      receta: row.recetas || null,
+      receta: Array.isArray(row.recetas) ? (row.recetas[0] || null) : (row.recetas || null),
     })) as PlannedSlotItem[];
 
     return { success: true, data: mapped };
@@ -215,7 +215,15 @@ export async function batchAssignMealSlotsAction(
 
     const userServings = (userProfile as any)?.porciones_por_defecto ?? userProfile?.raciones_defecto ?? 4;
 
-    const rows = items.map((it) => ({
+    // Deduplicar ítems por clave compuesta (fecha + slot) para evitar error de PostgreSQL:
+    // "ON CONFLICT DO UPDATE command cannot affect row a second time"
+    const uniqueItemsMap = new Map<string, (typeof items)[0]>();
+    for (const it of items) {
+      uniqueItemsMap.set(`${it.fecha}___${it.slot}`, it);
+    }
+    const uniqueItems = Array.from(uniqueItemsMap.values());
+
+    const rows = uniqueItems.map((it) => ({
       usuario_id: user.id,
       fecha: it.fecha,
       slot: it.slot,
