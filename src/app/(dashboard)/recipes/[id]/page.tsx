@@ -11,10 +11,13 @@ export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ servings?: string; from?: string }>;
 }
 
-export default async function RecipeDetailPage({ params }: PageProps) {
+export default async function RecipeDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const query = searchParams ? await searchParams : {};
+  const queryServings = query.servings && Number(query.servings) > 0 ? Number(query.servings) : undefined;
 
   const supabase = await createClient();
   const {
@@ -115,6 +118,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
             userRacionesDefecto={userRacionesDefecto}
             recipeDataForAdapt={recipeDataForAdapt}
             diarioEntries={diarioEntries || []}
+            initialServings={queryServings}
           />
         </ErrorBoundary>
 

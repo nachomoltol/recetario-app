@@ -232,6 +232,31 @@ export async function batchAssignMealSlotsAction(
       updated_at: new Date().toISOString(),
     }));
 
+    // Limpieza de slots incompatibles de almuerzo (Plato Único 'almuerzo' vs Doble Plato 'almuerzo_1'/'almuerzo_2')
+    const datesWithPlatoUnico = Array.from(
+      new Set(uniqueItems.filter((it) => it.slot === 'almuerzo').map((it) => it.fecha))
+    );
+    if (datesWithPlatoUnico.length > 0) {
+      await supabase
+        .from('plan_comidas')
+        .delete()
+        .eq('usuario_id', user.id)
+        .in('fecha', datesWithPlatoUnico)
+        .in('slot', ['almuerzo_1', 'almuerzo_2']);
+    }
+
+    const datesWithDosPlatos = Array.from(
+      new Set(uniqueItems.filter((it) => it.slot === 'almuerzo_1' || it.slot === 'almuerzo_2').map((it) => it.fecha))
+    );
+    if (datesWithDosPlatos.length > 0) {
+      await supabase
+        .from('plan_comidas')
+        .delete()
+        .eq('usuario_id', user.id)
+        .in('fecha', datesWithDosPlatos)
+        .eq('slot', 'almuerzo');
+    }
+
     let { error } = await supabase.from('plan_comidas').upsert(
       rows,
       { onConflict: 'usuario_id,fecha,slot' }

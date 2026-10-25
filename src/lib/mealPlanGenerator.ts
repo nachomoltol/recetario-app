@@ -1,6 +1,7 @@
 import type { Receta } from '@/types/recipe';
 import type { MomentoDia, RolPlato } from '@/types/database';
 import { inferRecipeCategory, isDessertExcludedFromSlot } from './recipeCategorizer';
+import { formatLocalDate, parseLocalDate } from '@/lib/dateUtils';
 
 export interface MealPlanGeneratorOptions {
   dias: number; // Entre 1 y 7
@@ -26,7 +27,7 @@ export interface MealPlanGeneratorResult {
     primerosAsignados: number;
     segundosAsignados: number;
     platosUnicosAsignados: number;
-    advertencias: string[]; // Ej: "Pocas recetas de desayuno disponibles, se repitió 1 receta"
+    advertencias: string[];
   };
 }
 
@@ -54,46 +55,38 @@ const PROTEIN_GROUPS = {
 };
 
 /**
- * Formatea un objeto Date a string YYYY-MM-DD local
- */
-function formatDateToYYYYMMDD(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-/**
- * Genera la secuencia de fechas a partir de la fecha de inicio
+ * Genera la secuencia estricta de fechas a partir de la fecha de inicio
+ * Garantiza exactamente numDias iteraciones y elementos únicos.
  */
 function generateDates(fechaInicioStr: string, numDias: number): string[] {
-  let baseDate: Date;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(fechaInicioStr)) {
-    const [y, m, d] = fechaInicioStr.split('-').map(Number);
-    baseDate = new Date(y, m - 1, d);
-  } else {
-    baseDate = new Date();
-  }
+  const safeDias = Math.min(7, Math.max(1, Math.floor(numDias)));
+  const baseDate = parseLocalDate(fechaInicioStr);
 
   const result: string[] = [];
-  for (let i = 0; i < numDias; i++) {
+  for (let i = 0; i < safeDias; i++) {
     const d = new Date(baseDate);
     d.setDate(baseDate.getDate() + i);
-    result.push(formatDateToYYYYMMDD(d));
+    result.push(formatLocalDate(d));
   }
-  return result;
+  return Array.from(new Set(result)).slice(0, safeDias);
 }
 
 /**
- * Extrae metadatos culinarios homogéneos de cada receta
+ * Extrae metadatos culinarios homogéneos de cada receta con filtrado estricto
+ * de momentos del día (sin fallbacks permisivos como asignar todas las recetas a almuerzo y cena).
  */
 function extractPlanningMeta(receta: Receta): RecipePlanningMeta {
-  const hasSavedMoments = Array.isArray(receta.momentos_dia) && receta.momentos_dia.length > 0;
+  const rawMoments = (Array.isArray(receta.momentos_dia) && receta.momentos_dia.length > 0)
+    ? (receta.momentos_dia as MomentoDia[])
+    : ((receta as any).momentos_recomendados as MomentoDia[]) || [];
+
+  const hasSavedMoments = rawMoments.length > 0;
   const inferred = (!hasSavedMoments || !receta.rol_plato) ? inferRecipeCategory(receta) : null;
 
+  // Filtrado riguroso: solo se consideran momentos explícitamente etiquetados o inferidos por heurística culinaria de la propia receta
   const momentos: MomentoDia[] = hasSavedMoments
-    ? (receta.momentos_dia as MomentoDia[])
-    : (inferred?.momentos_dia || ['almuerzo', 'cena']);
+    ? rawMoments
+    : (inferred?.momentos_dia || []);
 
   let rol: RolPlato = receta.rol_plato || inferred?.rol_plato || 'completo';
   if (momentos.includes('postre')) {
@@ -125,7 +118,9 @@ function detectProteinGroup(meta: RecipePlanningMeta): string | null {
 }
 
 /**
- * Puntuación y selección inteligente de la mejor receta de un pool
+ * Puntuación y selección inteligente con BLOQUEO ANTIRREPETICIÓN INTRA-SEMANAL estricto:
+ * Si existen recetas alternativas válidas en el pool sin usar en la semana,
+ * se excluyen al 100% las recetas ya asignadas.
  */
 function pickBestRecipe(
   pool: RecipePlanningMeta[],
@@ -137,17 +132,23 @@ function pickBestRecipe(
 ): RecipePlanningMeta | null {
   if (pool.length === 0) return null;
 
-  const scoredCandidates = pool.map((item) => {
+  // Bloqueo antirrepetición intra-semanal:
+  // Si hay recetas válidas en el pool que no se hayan usado todavía en este plan,
+  // excluimos por completo cualquier receta ya usada.
+  const unusedCandidates = pool.filter((item) => (usedCountMap.get(item.receta.id) || 0) === 0);
+  const candidatePool = unusedCandidates.length > 0 ? unusedCandidates : pool;
+
+  const scoredCandidates = candidatePool.map((item) => {
     let score = 100;
     const timesUsedInPlan = usedCountMap.get(item.receta.id) || 0;
 
-    // 1. Penalización masiva por reutilización dentro del mismo plan semanal
-    score -= timesUsedInPlan * 1000;
+    // 1. Penalización masiva si ya se utilizó en el mismo plan semanal (cuando no hay alternativas)
+    score -= timesUsedInPlan * 10000;
 
     // 2. Penalización si se utilizó en el mismo día o en el día inmediatamente anterior
     const lastDate = lastUsedDateMap.get(item.receta.id);
     if (lastDate === currentDate) {
-      score -= 800;
+      score -= 2000;
     }
 
     // 3. Penalización por historial reciente de semanas anteriores
@@ -186,8 +187,8 @@ export function generateMealPlan(
 ): MealPlanGeneratorResult {
   const advertencias: string[] = [];
 
-  // 1. Validación de entrada
-  const numDias = Math.min(7, Math.max(1, opciones.dias || 7));
+  // 1. Validación de entrada y duración estricta
+  const numDias = Math.min(7, Math.max(1, Math.floor(opciones.dias || 5)));
   const fechas = generateDates(opciones.fechaInicio, numDias);
 
   if (!recetasDisponibles || recetasDisponibles.length === 0) {
@@ -208,33 +209,33 @@ export function generateMealPlan(
   const recentHistorySet = new Set(opciones.historialRecientesIds || []);
 
   // 3. Creación de Pools por momento y rol culinario
+  // Exigencia estricta: Cada pool contiene única y exclusivamente recetas que tengan el momento etiquetado
   const desayunosPool = allMetas.filter(
-    (m) => (m.momentos.includes('desayuno') || m.rol === 'desayuno_snack') && !isDessertExcludedFromSlot(m.rol, 'desayuno')
+    (m) => m.momentos.includes('desayuno') && !isDessertExcludedFromSlot(m.rol, 'desayuno')
   );
 
-  const primerosPool = allMetas.filter(
-    (m) => m.rol === 'primero' && !m.isDessert && !isDessertExcludedFromSlot(m.rol, 'almuerzo_1')
+  const almuerzoPool = allMetas.filter(
+    (m) => m.momentos.includes('almuerzo') && !m.isDessert && !isDessertExcludedFromSlot(m.rol, 'almuerzo')
   );
 
-  const segundosPool = allMetas.filter(
-    (m) => m.rol === 'segundo' && !m.isDessert && !isDessertExcludedFromSlot(m.rol, 'almuerzo_2')
+  const primerosPool = almuerzoPool.filter(
+    (m) => m.rol === 'primero'
   );
 
-  const completosPool = allMetas.filter(
-    (m) => m.rol === 'completo' && !m.isDessert && !isDessertExcludedFromSlot(m.rol, 'almuerzo_1')
+  const segundosPool = almuerzoPool.filter(
+    (m) => m.rol === 'segundo'
+  );
+
+  const almuerzoCompletosPool = almuerzoPool.filter(
+    (m) => m.rol === 'completo'
   );
 
   const cenasPool = allMetas.filter(
-    (m) => (m.momentos.includes('cena') || m.rol === 'completo' || m.rol === 'primero' || m.rol === 'segundo') && !m.isDessert
+    (m) => m.momentos.includes('cena') && !m.isDessert
   );
 
   const snacksPostresPool = allMetas.filter(
-    (m) => m.momentos.includes('snack') || m.momentos.includes('postre') || m.isDessert || m.rol === 'desayuno_snack'
-  );
-
-  // Pool general de reserva para platos salados de almuerzo
-  const almuerzoFallbackPool = allMetas.filter(
-    (m) => !m.isDessert && m.rol !== 'desayuno_snack' && !isDessertExcludedFromSlot(m.rol, 'almuerzo_1')
+    (m) => m.momentos.includes('snack') || m.momentos.includes('postre')
   );
 
   // 4. Estados de asignación y conteo
@@ -249,13 +250,18 @@ export function generateMealPlan(
   let fallbackPlatoUnicoOccurred = false;
   let lastMealGroup: string | null = null;
 
-  // 5. Bucle de asignación día a día
+  // Helper para registrar uso de una receta
+  const markAssigned = (meta: RecipePlanningMeta, fecha: string) => {
+    usedCountMap.set(meta.receta.id, (usedCountMap.get(meta.receta.id) || 0) + 1);
+    lastUsedDateMap.set(meta.receta.id, fecha);
+  };
+
+  // 5. Bucle de asignación día a día (estrictamente numDias iteraciones)
   for (const fecha of fechas) {
     // --- DESAYUNO ---
-    if (opciones.incluirDesayunos) {
-      const candidates = desayunosPool.length > 0 ? desayunosPool : allMetas.filter((m) => m.rol === 'desayuno_snack');
+    if (opciones.incluirDesayunos && desayunosPool.length > 0) {
       const selected = pickBestRecipe(
-        candidates,
+        desayunosPool,
         usedCountMap,
         recentHistorySet,
         lastUsedDateMap,
@@ -265,15 +271,15 @@ export function generateMealPlan(
 
       if (selected) {
         items.push({ fecha, slot: 'desayuno', receta: selected.receta });
-        usedCountMap.set(selected.receta.id, (usedCountMap.get(selected.receta.id) || 0) + 1);
-        lastUsedDateMap.set(selected.receta.id, fecha);
+        markAssigned(selected, fecha);
       }
     }
 
     // --- ALMUERZO ---
-    if (opciones.incluirAlmuerzos) {
+    if (opciones.incluirAlmuerzos && almuerzoPool.length > 0) {
       let pairedSuccessfully = false;
 
+      // Respeto estricto: Solo si el switch intentarPrimeroYSegundo está encendido
       if (opciones.intentarPrimeroYSegundo) {
         const canTryPair = primerosPool.length > 0 && segundosPool.length > 0;
 
@@ -287,31 +293,30 @@ export function generateMealPlan(
             lastMealGroup
           );
 
-          // Excluimos temporalmente el primero elegido para que no coincida con el segundo
-          const segundosDisponibles = segundosPool.filter((s) => s.receta.id !== primero?.receta.id);
-          const segundo = pickBestRecipe(
-            segundosDisponibles,
-            usedCountMap,
-            recentHistorySet,
-            lastUsedDateMap,
-            fecha,
-            primero ? detectProteinGroup(primero) : null
-          );
+          if (primero) {
+            // Excluir la receta elegida para el primer plato para no repetirla en el segundo
+            const segundosDisponibles = segundosPool.filter((s) => s.receta.id !== primero.receta.id);
+            const segundo = pickBestRecipe(
+              segundosDisponibles,
+              usedCountMap,
+              recentHistorySet,
+              lastUsedDateMap,
+              fecha,
+              detectProteinGroup(primero)
+            );
 
-          if (primero && segundo) {
-            items.push({ fecha, slot: 'almuerzo_1', receta: primero.receta });
-            items.push({ fecha, slot: 'almuerzo_2', receta: segundo.receta });
+            if (segundo) {
+              items.push({ fecha, slot: 'almuerzo_1', receta: primero.receta });
+              items.push({ fecha, slot: 'almuerzo_2', receta: segundo.receta });
 
-            usedCountMap.set(primero.receta.id, (usedCountMap.get(primero.receta.id) || 0) + 1);
-            usedCountMap.set(segundo.receta.id, (usedCountMap.get(segundo.receta.id) || 0) + 1);
+              markAssigned(primero, fecha);
+              markAssigned(segundo, fecha);
 
-            lastUsedDateMap.set(primero.receta.id, fecha);
-            lastUsedDateMap.set(segundo.receta.id, fecha);
-
-            primerosAsignados++;
-            segundosAsignados++;
-            pairedSuccessfully = true;
-            lastMealGroup = detectProteinGroup(segundo) || detectProteinGroup(primero);
+              primerosAsignados++;
+              segundosAsignados++;
+              pairedSuccessfully = true;
+              lastMealGroup = detectProteinGroup(segundo) || detectProteinGroup(primero);
+            }
           }
         }
 
@@ -320,9 +325,9 @@ export function generateMealPlan(
         }
       }
 
-      // Si no se emparejó (por no solicitarlo o por falta de stock de 1º/2º), asignar Plato Único
+      // Si no se emparejó (switch apagado o falta de stock), asignar única y exclusivamente Plato Único ('almuerzo')
       if (!pairedSuccessfully) {
-        const candidates = completosPool.length > 0 ? completosPool : almuerzoFallbackPool;
+        const candidates = almuerzoCompletosPool.length > 0 ? almuerzoCompletosPool : almuerzoPool;
         const selected = pickBestRecipe(
           candidates,
           usedCountMap,
@@ -334,8 +339,7 @@ export function generateMealPlan(
 
         if (selected) {
           items.push({ fecha, slot: 'almuerzo', receta: selected.receta });
-          usedCountMap.set(selected.receta.id, (usedCountMap.get(selected.receta.id) || 0) + 1);
-          lastUsedDateMap.set(selected.receta.id, fecha);
+          markAssigned(selected, fecha);
 
           if (selected.rol === 'primero') {
             primerosAsignados++;
@@ -350,10 +354,9 @@ export function generateMealPlan(
     }
 
     // --- CENA ---
-    if (opciones.incluirCenas) {
-      const candidates = cenasPool.length > 0 ? cenasPool : almuerzoFallbackPool;
+    if (opciones.incluirCenas && cenasPool.length > 0) {
       const selected = pickBestRecipe(
-        candidates,
+        cenasPool,
         usedCountMap,
         recentHistorySet,
         lastUsedDateMap,
@@ -363,8 +366,7 @@ export function generateMealPlan(
 
       if (selected) {
         items.push({ fecha, slot: 'cena', receta: selected.receta });
-        usedCountMap.set(selected.receta.id, (usedCountMap.get(selected.receta.id) || 0) + 1);
-        lastUsedDateMap.set(selected.receta.id, fecha);
+        markAssigned(selected, fecha);
 
         if (selected.rol === 'primero') {
           primerosAsignados++;
@@ -378,10 +380,9 @@ export function generateMealPlan(
     }
 
     // --- SNACK O POSTRE ---
-    if (opciones.incluirSnackPostre) {
-      const candidates = snacksPostresPool.length > 0 ? snacksPostresPool : allMetas;
+    if (opciones.incluirSnackPostre && snacksPostresPool.length > 0) {
       const selected = pickBestRecipe(
-        candidates,
+        snacksPostresPool,
         usedCountMap,
         recentHistorySet,
         lastUsedDateMap,
@@ -391,8 +392,7 @@ export function generateMealPlan(
 
       if (selected) {
         items.push({ fecha, slot: 'snack_postre', receta: selected.receta });
-        usedCountMap.set(selected.receta.id, (usedCountMap.get(selected.receta.id) || 0) + 1);
-        lastUsedDateMap.set(selected.receta.id, fecha);
+        markAssigned(selected, fecha);
       }
     }
   }
@@ -421,11 +421,14 @@ export function generateMealPlan(
   if (opciones.incluirDesayunos && !items.some((it) => it.slot === 'desayuno')) {
     advertencias.push('No se encontraron recetas adecuadas de desayuno en la colección.');
   }
-  if (opciones.incluirAlmuerzos && !items.some((it) => it.slot === 'almuerzo_1')) {
+  if (opciones.incluirAlmuerzos && !items.some((it) => it.slot === 'almuerzo' || it.slot === 'almuerzo_1')) {
     advertencias.push('No se encontraron recetas adecuadas de almuerzo en la colección.');
   }
   if (opciones.incluirCenas && !items.some((it) => it.slot === 'cena')) {
     advertencias.push('No se encontraron recetas adecuadas de cena en la colección.');
+  }
+  if (opciones.incluirSnackPostre && !items.some((it) => it.slot === 'snack_postre')) {
+    advertencias.push('No se encontraron recetas adecuadas de snack o postre en la colección.');
   }
 
   // 7. Cálculo de días completos
@@ -434,7 +437,7 @@ export function generateMealPlan(
     const dayItems = items.filter((it) => it.fecha === fecha);
 
     const hasDesayuno = !opciones.incluirDesayunos || dayItems.some((it) => it.slot === 'desayuno');
-    const hasAlmuerzo = !opciones.incluirAlmuerzos || dayItems.some((it) => it.slot === 'almuerzo_1');
+    const hasAlmuerzo = !opciones.incluirAlmuerzos || dayItems.some((it) => it.slot === 'almuerzo' || it.slot === 'almuerzo_1');
     const hasCena = !opciones.incluirCenas || dayItems.some((it) => it.slot === 'cena');
     const hasSnack = !opciones.incluirSnackPostre || dayItems.some((it) => it.slot === 'snack_postre');
 
@@ -456,4 +459,3 @@ export function generateMealPlan(
 }
 
 export const generateSmartMealPlan = generateMealPlan;
-

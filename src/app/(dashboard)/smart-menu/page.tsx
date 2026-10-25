@@ -1,10 +1,9 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { ArrowLeft, Sparkles, ChefHat } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { SmartMenuWizardView } from '@/components/planner/SmartMenuWizardView';
+import { SmartMenuBackButton } from '@/components/planner/SmartMenuBackButton';
 import { SmartMenuViewPlanButton } from '@/components/planner/SmartMenuViewPlanButton';
 import { getWeeklyPlanAction } from '@/app/actions/mealPlanner';
 import { Receta } from '@/types/recipe';
@@ -49,36 +48,32 @@ export default async function SmartMenuPage() {
   const existingPlans = planRes.success && planRes.data ? planRes.data : [];
   const userRecipes = (recipesRes.data || []) as Receta[];
 
+  // Fecha más reciente de planificación existente o lunes activo
+  const latestPlanDate = existingPlans.length > 0
+    ? [...existingPlans].map((p) => p.fecha).filter(Boolean).sort().reverse()[0]
+    : startDate;
+
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
-      {/* Cabecera Luminosa Editorial */}
+      {/* Cabecera Limpia y Minimalista */}
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/meal-planner"
-              className="w-10 h-10 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] hover:bg-stone-200 transition shadow-2xs"
-              title="Volver al planificador"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-bold font-serif-recipe tracking-tight text-stone-900 block leading-tight">
-                  Menú con IA
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 uppercase tracking-wider shadow-2xs">
-                  PRO
-                </span>
-              </div>
-              <span className="text-[10px] text-stone-500 tracking-wider uppercase block font-medium">
-                Asistente de Planificación Inteligente
-              </span>
-            </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+          {/* Izquierda: Botón de retorno táctil minimalista */}
+          <SmartMenuBackButton />
+
+          {/* Centro: Título corto y badge PRO */}
+          <div className="flex items-center gap-2">
+            <span className="text-base sm:text-lg font-bold font-serif-recipe tracking-tight text-stone-900 block leading-tight">
+              Menú con IA
+            </span>
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 uppercase tracking-wider shadow-2xs">
+              PRO
+            </span>
           </div>
 
+          {/* Derecha: Botón Ver mi Plan y perfil */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <SmartMenuViewPlanButton />
+            <SmartMenuViewPlanButton initialDate={latestPlanDate} />
             <LanguageToggle />
             <UserDropdownMenu
               fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}

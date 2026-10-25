@@ -537,7 +537,7 @@ export function MealPlannerView({
 
             {/* Título de la receta en font-serif-recipe */}
             <Link
-              href={`/recipes/${assignedPlan.receta.id}`}
+              href={`/recipes/${assignedPlan.receta.id}?servings=${displayDiners}&from=planner`}
               className="text-xs sm:text-sm font-bold font-serif-recipe text-stone-900 hover:text-[#a86224] transition-colors block truncate leading-tight"
               title={assignedPlan.receta.titulo}
             >
@@ -639,7 +639,7 @@ export function MealPlannerView({
           {/* Título de la receta: tipografía holgada en varias líneas */}
           <div className="flex-1 py-0.5">
             <Link
-              href={`/recipes/${assignedPlan.receta.id}`}
+              href={`/recipes/${assignedPlan.receta.id}?servings=${displayDiners}&from=planner`}
               className="text-xs sm:text-sm font-bold font-serif-recipe text-stone-900 hover:text-[#a86224] transition-colors block line-clamp-2 leading-snug"
               title={assignedPlan.receta.titulo}
             >

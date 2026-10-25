@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Sparkles,
@@ -100,6 +100,20 @@ export function SmartMenuWizardView({
   const hasAtLeastOneMeal = useMemo(() => {
     return incluirDesayunos || incluirAlmuerzos || incluirCenas || incluirSnackPostre;
   }, [incluirDesayunos, incluirAlmuerzos, incluirCenas, incluirSnackPostre]);
+
+  // Sincronizar fecha de planificación activa para el botón "Ver mi Plan"
+  useEffect(() => {
+    if (startDate) {
+      try {
+        localStorage.setItem('miga_active_planner_date', startDate);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('miga:planner-date-changed', { detail: startDate })
+          );
+        }
+      } catch (e) {}
+    }
+  }, [startDate]);
 
   // Cálculo de fechas cubiertas para la vista previa en tiempo real
   const datesPreview = useMemo(() => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Layers,
   Sparkles,
@@ -47,15 +48,28 @@ export function RecipeInteractiveSections({
   userProfile,
 }: RecipeInteractiveSectionsProps) {
   const t = useLanguageStore((s) => s.t);
-  const [servings, setServings] = useState(basePorciones || 2);
+  const searchParams = useSearchParams();
+  const queryServings = searchParams?.get('servings') ? Number(searchParams.get('servings')) : null;
+
+  const resolvedInitialServings = (queryServings && queryServings > 0)
+    ? queryServings
+    : (defaultServings && defaultServings > 0 ? defaultServings : (basePorciones || 2));
+
+  const [servings, setServings] = useState(resolvedInitialServings);
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
   const [isStepsOpen, setIsStepsOpen] = useState(false);
   const [substitutions, setSubstitutions] = useState<Record<string, string>>({});
 
-  // Sincronizar comensales con las porciones base originales de la receta
+  // Sincronizar comensales con parámetro de URL ?servings, defaultServings o basePorciones
   useEffect(() => {
-    setServings(basePorciones || 2);
-  }, [recetaId, basePorciones]);
+    if (queryServings && queryServings > 0) {
+      setServings(queryServings);
+    } else if (defaultServings && defaultServings > 0) {
+      setServings(defaultServings);
+    } else {
+      setServings(basePorciones || 2);
+    }
+  }, [recetaId, basePorciones, defaultServings, queryServings]);
 
   // Limpiar sustituciones activas cuando cambia la receta o cuando se aplica/revierte una adaptación
   useEffect(() => {
