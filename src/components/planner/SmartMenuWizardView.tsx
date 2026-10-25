@@ -49,6 +49,7 @@ function getTomorrowString(): string {
 
 function getNextMondayString(): string {
   const d = new Date();
+  d.setHours(12, 0, 0, 0);
   const day = d.getDay();
   const daysUntilNextMonday = ((1 + 7 - day) % 7) || 7;
   d.setDate(d.getDate() + daysUntilNextMonday);
@@ -81,7 +82,12 @@ export function SmartMenuWizardView({
 
   // Estados de configuración del Wizard
   const [dias, setDias] = useState<number>(7);
-  const [startDate, setStartDate] = useState<string>(() => initialStartDate || getTodayString());
+  const [startDate, setStartDate] = useState<string>(() => {
+    if (initialStartDate) return initialStartDate;
+    const d = new Date();
+    const day = d.getDay();
+    return (day === 0 || day === 6) ? getNextMondayString() : getTodayString();
+  });
   const [incluirDesayunos, setIncluirDesayunos] = useState<boolean>(true);
   const [incluirAlmuerzos, setIncluirAlmuerzos] = useState<boolean>(true);
   const [intentarPrimeroYSegundo, setIntentarPrimeroYSegundo] = useState<boolean>(false);
@@ -119,8 +125,8 @@ export function SmartMenuWizardView({
   const datesPreview = useMemo(() => {
     if (!startDate) return { startText: '', endText: '' };
     const [year, month, day] = startDate.split('-').map(Number);
-    const start = new Date(year, (month || 1) - 1, day || 1);
-    const end = new Date(year, (month || 1) - 1, (day || 1) + (dias - 1));
+    const start = new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0);
+    const end = new Date(year, (month || 1) - 1, (day || 1) + (dias - 1), 12, 0, 0, 0);
 
     const locale = language === 'en' ? 'en-US' : 'es-ES';
     const startFormatted = start.toLocaleDateString(locale, {
@@ -326,6 +332,18 @@ export function SmartMenuWizardView({
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
+                onClick={() => setStartDate(nextMondayStr)}
+                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                  startDate === nextMondayStr
+                    ? 'bg-[#a86224] text-white border-[#a86224] shadow-2xs font-bold'
+                    : 'bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-700 border-[#e7dfd5]'
+                }`}
+              >
+                {t('smart_menu_date_next_monday')}
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setStartDate(todayStr)}
                 className={`py-2 px-3 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                   startDate === todayStr
@@ -346,18 +364,6 @@ export function SmartMenuWizardView({
                 }`}
               >
                 {t('smart_menu_date_tomorrow')}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStartDate(nextMondayStr)}
-                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                  startDate === nextMondayStr
-                    ? 'bg-[#a86224] text-white border-[#a86224] shadow-2xs font-bold'
-                    : 'bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-700 border-[#e7dfd5]'
-                }`}
-              >
-                {t('smart_menu_date_next_monday')}
               </button>
 
               <div className="flex-1 min-w-[140px]">

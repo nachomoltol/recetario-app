@@ -48,13 +48,27 @@ export default async function SmartMenuPage() {
   const existingPlans = planRes.success && planRes.data ? planRes.data : [];
   const userRecipes = (recipesRes.data || []) as Receta[];
 
-  // Fecha natural de hoy (sin forzar salto al lunes)
-  const todayStr = formatLocalDate(new Date());
+  // Determinar la fecha de inicio por defecto para la planificación semanal:
+  // Si hoy es fin de semana (sábado = 6 o domingo = 0), sugerir el próximo lunes como inicio natural del menú.
+  // En días laborales (lunes a viernes), sugerir hoy.
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  const todayStr = formatLocalDate(today);
+  const dayOfWeek = today.getDay();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-  // Fecha más reciente de planificación existente o fecha actual
+  const daysUntilNextMonday = ((1 + 7 - dayOfWeek) % 7) || 7;
+  const nextMonday = new Date(today);
+  nextMonday.setDate(today.getDate() + daysUntilNextMonday);
+  nextMonday.setHours(12, 0, 0, 0);
+  const nextMondayStr = formatLocalDate(nextMonday);
+
+  const defaultStartDate = isWeekend ? nextMondayStr : todayStr;
+
+  // Fecha más reciente de planificación existente o fecha de inicio recomendada
   const latestPlanDate = existingPlans.length > 0
     ? [...existingPlans].map((p) => p.fecha).filter(Boolean).sort().reverse()[0]
-    : todayStr;
+    : defaultStartDate;
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
@@ -80,7 +94,7 @@ export default async function SmartMenuPage() {
         <SmartMenuWizardView
           userRecipes={userRecipes}
           existingPlans={existingPlans}
-          initialStartDate={todayStr}
+          initialStartDate={defaultStartDate}
           userProfile={profile}
         />
       </main>

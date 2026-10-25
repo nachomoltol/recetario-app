@@ -195,6 +195,7 @@ export function MealPlannerView({
     return Array.from({ length: 7 }, (_, i) => {
       const day = new Date(currentMonday);
       day.setDate(currentMonday.getDate() + i);
+      day.setHours(12, 0, 0, 0);
       const locale = language === 'en' ? 'en-US' : 'es-ES';
       return {
         date: day,
@@ -267,6 +268,7 @@ export function MealPlannerView({
   const handlePrevWeek = () => {
     const prev = new Date(currentMonday);
     prev.setDate(currentMonday.getDate() - 7);
+    prev.setHours(12, 0, 0, 0);
     setCurrentMonday(prev);
     loadPlansForMonday(prev);
   };
@@ -274,6 +276,7 @@ export function MealPlannerView({
   const handleNextWeek = () => {
     const next = new Date(currentMonday);
     next.setDate(currentMonday.getDate() + 7);
+    next.setHours(12, 0, 0, 0);
     setCurrentMonday(next);
     loadPlansForMonday(next);
   };
@@ -484,19 +487,30 @@ export function MealPlannerView({
         canAddSecondCourse: !planAlmuerzo2,
       });
     } else if (planAlmuerzo1 && !planAlmuerzo2) {
-      // Solo almuerzo_1 asignado -> Etiquetar como Plato Único y ocultar el 2º
+      // 1er plato asignado pero 2º plato pendiente de asignación
       result.push({
         slot: 'almuerzo_1',
-        label: t('slot_lunch_unique'),
-        icon: Utensils,
+        label: t('slot_course_1'),
+        icon: Soup,
         plan: planAlmuerzo1,
-        canAddSecondCourse: true,
       });
-    } else if (planAlmuerzo2 && !planAlmuerzo1) {
-      // Solo almuerzo_2 asignado
       result.push({
         slot: 'almuerzo_2',
-        label: t('slot_lunch_unique'),
+        label: t('slot_course_2'),
+        icon: Utensils,
+        plan: undefined,
+      });
+    } else if (planAlmuerzo2 && !planAlmuerzo1) {
+      // 2º plato asignado pero 1er plato pendiente de asignación: dejamos 1º vacío (+ Asignar)
+      result.push({
+        slot: 'almuerzo_1',
+        label: t('slot_course_1'),
+        icon: Soup,
+        plan: undefined,
+      });
+      result.push({
+        slot: 'almuerzo_2',
+        label: t('slot_course_2'),
         icon: Utensils,
         plan: planAlmuerzo2,
       });
