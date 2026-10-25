@@ -528,6 +528,18 @@ export const TRANSLATIONS = {
     planner_wizard_submit_btn: 'Generar y rellenar semana',
     planner_wizard_submitting_btn: 'Generando menú inteligente...',
     planner_wizard_success_toast: '¡Menú semanal generado y rellenado con éxito!',
+
+    // Página Asistente Dedicado (/smart-menu)
+    nav_create_ai_menu: 'Crear Menú con IA',
+    smart_menu_title: 'Asistente de Menú con IA',
+    smart_menu_subtitle: 'Configura tus días y qué comidas deseas planificar automáticamente',
+    smart_menu_generate_btn: 'Generar Menú Semanal con IA',
+    smart_menu_generating_btn: 'Generando menú inteligente con IA...',
+    smart_menu_quick_5_days: 'Lunes a Viernes (5 días)',
+    smart_menu_quick_7_days: 'Semana completa (7 días)',
+    smart_menu_applied_success: '¡Menú semanal generado con IA aplicado con éxito!',
+    smart_menu_back_btn: 'Volver al planificador',
+    smart_menu_no_recipes_warning: 'No se encontraron recetas suficientes en tu recetario para los momentos elegidos.',
   },
   en: {
     // Header & Global Nav
@@ -1056,6 +1068,18 @@ export const TRANSLATIONS = {
     planner_wizard_submit_btn: 'Generate & Fill Week',
     planner_wizard_submitting_btn: 'Generating smart plan...',
     planner_wizard_success_toast: 'Weekly meal plan generated and filled successfully!',
+
+    // Dedicated Assistant Page (/smart-menu)
+    nav_create_ai_menu: 'Create AI Menu',
+    smart_menu_title: 'AI Smart Menu',
+    smart_menu_subtitle: 'Configure your days and meals to automatically generate your weekly schedule with AI',
+    smart_menu_generate_btn: 'Generate Weekly Menu with AI',
+    smart_menu_generating_btn: 'Generating smart menu with AI...',
+    smart_menu_quick_5_days: 'Mon to Fri (5 days)',
+    smart_menu_quick_7_days: 'Full week (7 days)',
+    smart_menu_applied_success: 'Weekly meal plan successfully generated and applied with AI!',
+    smart_menu_back_btn: 'Back to meal planner',
+    smart_menu_no_recipes_warning: 'Not enough recipes found in your cookbook for the selected meals.',
   },
 } as const;
 

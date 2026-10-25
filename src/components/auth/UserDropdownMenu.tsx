@@ -197,6 +197,20 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
             </Link>
 
             <Link
+              href="/smart-menu"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-800 hover:text-stone-950 hover:bg-gradient-to-r hover:from-amber-50/90 hover:to-orange-50/90 transition cursor-pointer font-semibold border border-transparent hover:border-amber-200/70"
+            >
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-4 h-4 text-[#a86224]" />
+                <span>{t('nav_create_ai_menu')}</span>
+              </div>
+              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-400 text-stone-900 shadow-2xs">
+                PRO
+              </span>
+            </Link>
+
+            <Link
               href="/profile"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium"
