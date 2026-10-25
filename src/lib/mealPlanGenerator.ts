@@ -37,7 +37,7 @@ export interface MealPlanGeneratorResult {
 interface RecipePlanningMeta {
   receta: Receta;
   momentos: MomentoDia[];
-  rol: RolPlato;
+  rol: RolPlato | 'principal';
   esFavorito: boolean;
   isDessert: boolean;
   tagsNorm: string[];
@@ -84,11 +84,115 @@ function normalizeString(text: string): string {
 }
 
 /**
+ * Heurística culinaria para detectar si una receta es un 1er Plato / Entrante:
+ * Sopas, cremas, caldos, purés, gazpachos, salmorejos o ensaladas ligeras de verduras.
+ * Cualquier otra receta de almuerzo (carnes, pescados, arroces, pastas, legumbres, guisos, etc.)
+ * se clasifica automáticamente como Plato Principal.
+ */
+export function isFirstCourseStarter(
+  receta: Receta,
+  tagsNorm: string[],
+  titleNorm: string,
+  ingrNorm: string[] = []
+): boolean {
+  // 1. Exclusiones de platos contundentes / completos (Plato Principal obligatorio)
+  const HEAVY_EXCLUSIONS = [
+    // Legumbres y guisos tradicionales
+    'lentejas', 'garbanzos', 'alubias', 'judias blancas', 'judías blancas',
+    'fabada', 'cocido', 'potaje', 'puchero', 'estofado', 'guiso', 'chili',
+    // Arroces y pastas
+    'paella', 'risotto', 'arroz caldoso', 'arroz meloso', 'arroz',
+    'espaguetis', 'spaghetti', 'macarrones', 'lasana', 'lasaña', 'canelones',
+    'pasta', 'fideua', 'fideuá', 'tallarines', 'noodles', 'ramen',
+    // Platos combinados / masas
+    'pizza', 'hamburguesa', 'burger', 'tacos', 'burrito', 'fajitas', 'poke bowl',
+    // Ensaladas contundentes (plato único)
+    'ensalada de pasta', 'ensalada de arroz', 'ensalada de patata', 'ensalada campera',
+    'ensalada cesar', 'ensalada césar', 'caesar salad', 'ensaladilla rusa'
+  ];
+
+  for (const excl of HEAVY_EXCLUSIONS) {
+    const norm = normalizeString(excl);
+    if (titleNorm.includes(norm) || tagsNorm.includes(norm)) {
+      return false;
+    }
+  }
+
+  // 2. Proteínas principales animales evidentes (salvo si son caldos o sopas con pollo/pescado)
+  const hasLiquidPrefix = ['sopa', 'crema', 'caldo', 'consome', 'consomé', 'pure', 'puré'].some((lp) =>
+    titleNorm.includes(normalizeString(lp))
+  );
+
+  if (!hasLiquidPrefix) {
+    const MAIN_PROTEIN_KEYWORDS = [
+      'pollo', 'pavo', 'ternera', 'cerdo', 'conejo', 'cordero', 'vaca', 'buey',
+      'salmon', 'salmón', 'merluza', 'bacalao', 'lubina', 'dorada', 'trucha',
+      'atun', 'atún', 'bonito', 'emperador', 'solomillo', 'entrecot', 'albondigas',
+      'albóndigas', 'costillas', 'lomo', 'chuletas', 'hamburguesa'
+    ];
+    for (const prot of MAIN_PROTEIN_KEYWORDS) {
+      const normProt = normalizeString(prot);
+      const regex = new RegExp(`(^|\\s)${normProt}(\\s|s|es)?($|\\s)`, 'i');
+      if (regex.test(titleNorm)) {
+        return false;
+      }
+    }
+  }
+
+  // 3. Sopas, cremas, caldos, purés y sopas frías tradicionales
+  const LIQUID_STARTER_KEYWORDS = [
+    'sopa', 'sopas', 'soup',
+    'crema', 'cremas', 'crema de',
+    'caldo', 'caldos', 'consome', 'consomé', 'broth',
+    'pure', 'puré', 'pures', 'purés', 'puree', 'veloute', 'velouté',
+    'gazpacho', 'gazpachos', 'salmorejo', 'salmorejos', 'ajoblanco', 'vichyssoise'
+  ];
+
+  for (const kw of LIQUID_STARTER_KEYWORDS) {
+    const normKw = normalizeString(kw);
+    const regex = new RegExp(`(^|\\s)${normKw}(\\s|s|es)?($|\\s)`, 'i');
+    if (regex.test(titleNorm) || tagsNorm.includes(normKw)) {
+      return true;
+    }
+  }
+
+  // 4. Verduras ligeras y entrantes de huerta
+  const VEG_STARTER_KEYWORDS = [
+    'ensalada verde', 'ensalada mixta', 'ensalada simple', 'ensalada mediterranea',
+    'ensalada de tomate', 'ensalada de pepino', 'ensalada de canonigos', 'ensalada de espinacas',
+    'verduras al vapor', 'menestra', 'pisto', 'escalivada', 'alcachofas', 'esparragos',
+    'espárragos', 'judias verdes', 'judías verdes', 'brocoli al vapor', 'brócoli al vapor',
+    'champinones al ajillo', 'champiñones al ajillo', 'setas salteadas', 'carpaccio de calabacin'
+  ];
+
+  for (const kw of VEG_STARTER_KEYWORDS) {
+    const normKw = normalizeString(kw);
+    if (titleNorm.includes(normKw) || tagsNorm.includes(normKw)) {
+      return true;
+    }
+  }
+
+  // 5. Ensaladas ligeras (verificar que no contengan proteínas pesadas en el título)
+  if (titleNorm.includes('ensalada')) {
+    const heavyProteins = ['pollo', 'atun', 'atún', 'salmon', 'salmón', 'pavo', 'bacon', 'queso de cabra'];
+    const hasHeavyProtein = heavyProteins.some((hp) => titleNorm.includes(normalizeString(hp)));
+    if (!hasHeavyProtein) {
+      return true;
+    }
+  }
+
+  // 6. Verificación de tipo_plato si viniera indicado en la receta
+  const tipo = normalizeString((receta as any).tipo_plato || (receta as any).tipo || '');
+  if (tipo.includes('entrante') || tipo.includes('primero') || tipo.includes('sopa') || tipo.includes('crema')) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Genera la secuencia matemática estricta de fechas a partir de la fecha de inicio.
  * Cero ajustes al lunes: si el usuario define fecha de inicio, empieza exactamente en ella.
- * Si numDias = 5 y fechaInicio = '2026-10-26', genera exactamente:
- * ['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30'].
- * Queda terminantemente prohibido generar o tocar slots del domingo anterior o sábado posterior.
  */
 function generateDates(fechaInicioStr: string, numDias: number): string[] {
   const safeDias = Math.min(7, Math.max(1, Math.floor(numDias)));
@@ -103,8 +207,9 @@ function generateDates(fechaInicioStr: string, numDias: number): string[] {
 }
 
 /**
- * Extrae metadatos culinarios homogéneos de cada receta con TOLERANCIA CERO A COMODINES:
+ * Extrae metadatos culinarios homogéneos de cada receta:
  * Única y exclusivamente momentos explícitamente etiquetados en la receta (momentos_dia o momentos_recomendados).
+ * Deduce el rol culinario sin depender de selecciones manuales de 'segundo plato'.
  */
 function extractPlanningMeta(receta: Receta): RecipePlanningMeta {
   const rawMoments = (
@@ -116,12 +221,6 @@ function extractPlanningMeta(receta: Receta): RecipePlanningMeta {
     .map((m) => String(m).toLowerCase().trim() as MomentoDia);
 
   const momentos: MomentoDia[] = rawMoments;
-
-  const inferred = (!receta.rol_plato) ? inferRecipeCategory(receta) : null;
-  let rol: RolPlato = receta.rol_plato || inferred?.rol_plato || 'completo';
-  if (momentos.includes('postre')) {
-    rol = 'postre';
-  }
 
   const tagsNorm = (receta.etiquetas || []).map((t) => normalizeString(t.trim()));
   const titleNorm = normalizeString(receta.titulo || '');
@@ -147,12 +246,33 @@ function extractPlanningMeta(receta: Receta): RecipePlanningMeta {
     ...ingrNorm,
   ];
 
+  const isDessert =
+    receta.rol_plato === 'postre' ||
+    momentos.includes('postre') ||
+    isDessertExcludedFromSlot(receta.rol_plato, 'almuerzo');
+
+  let rol: RolPlato | 'principal';
+  if (isDessert) {
+    rol = 'postre';
+  } else if (
+    receta.rol_plato === 'primero' ||
+    isFirstCourseStarter(receta, tagsNorm, titleNorm, ingrNorm)
+  ) {
+    rol = 'primero';
+  } else if (momentos.includes('almuerzo')) {
+    rol = 'principal';
+  } else if (momentos.includes('desayuno') || momentos.includes('snack')) {
+    rol = 'desayuno_snack';
+  } else {
+    rol = 'principal';
+  }
+
   return {
     receta,
     momentos,
     rol,
     esFavorito: Boolean((receta as any).es_favorito_menu || (receta as any).es_favorita),
-    isDessert: rol === 'postre' || momentos.includes('postre'),
+    isDessert,
     tagsNorm: allWords,
   };
 }
@@ -195,9 +315,11 @@ function detectProteinGroup(meta: RecipePlanningMeta): ProteinGroup | null {
 }
 
 /**
- * Puntuación y selección con TOLERANCIA CERO A LA REPETICIÓN INTRA-SEMANAL y BALANCE NUTRICIONAL:
- * - Si no hay recetas no usadas en el pool, retorna null (slot vacío).
- * - Aplica una penalización crítica si coincide consecutivamente con la misma fuente proteica.
+ * Puntuación y selección con BALANCE NUTRICIONAL y PRIORIZACIÓN DE VARIEDAD:
+ * - Prioridad absoluta a candidatos no utilizados en este plan (repetición cero intra-semanal).
+ * - Si se agotan los platos sin usar y el slot es obligatorio (almuerzo principal, desayuno, cena),
+ *   rescata las recetas menos utilizadas para nunca dejar el slot en blanco si existen recetas en el catálogo.
+ * - Aplica penalización crítica si coincide consecutivamente con la misma fuente proteica.
  */
 function pickBestRecipe(
   pool: RecipePlanningMeta[],
@@ -206,54 +328,71 @@ function pickBestRecipe(
   lastUsedDateMap: Map<string, string>,
   currentDate: string,
   previousMealGroup: ProteinGroup | null,
-  sameMealGroup?: ProteinGroup | null
+  sameMealGroup?: ProteinGroup | null,
+  allowRepetitionIfExhausted = false,
+  isDinner = false
 ): RecipePlanningMeta | null {
   if (pool.length === 0) return null;
 
-  // 1. TOLERANCIA CERO A LA REPETICIÓN INTRA-SEMANAL:
-  // Ninguna receta puede asignarse más de una vez en todo el plan.
-  // Si se acaban las recetas sin usar del pool, retornamos null (sin duplicados).
-  const unusedCandidates = pool.filter((item) => (usedCountMap.get(item.receta.id) || 0) === 0);
-  if (unusedCandidates.length === 0) {
+  // 1. Prioridad absoluta: recetas sin usar en todo el plan
+  let candidates = pool.filter((item) => (usedCountMap.get(item.receta.id) || 0) === 0);
+
+  // 2. Si no quedan recetas sin usar y el slot es obligatorio (allowRepetitionIfExhausted):
+  // Rescatar las recetas menos utilizadas, evitando repetir en la misma fecha
+  if (candidates.length === 0 && allowRepetitionIfExhausted) {
+    const poolNotToday = pool.filter((item) => lastUsedDateMap.get(item.receta.id) !== currentDate);
+    const validPool = poolNotToday.length > 0 ? poolNotToday : pool;
+    const minUses = Math.min(...validPool.map((item) => usedCountMap.get(item.receta.id) || 0));
+    candidates = validPool.filter((item) => (usedCountMap.get(item.receta.id) || 0) === minUses);
+  }
+
+  if (candidates.length === 0) {
     return null;
   }
 
-  const scoredCandidates = unusedCandidates.map((item) => {
+  const scoredCandidates = candidates.map((item) => {
     let score = 100;
+    const useCount = usedCountMap.get(item.receta.id) || 0;
 
-    // 2. Penalización por historial de semanas anteriores
+    // Penalización drástica por reutilización intra-semanal forzada
+    if (useCount > 0) {
+      score -= useCount * 1000;
+    }
+
+    // Penalización por historial de semanas anteriores
     if (recentHistorySet.has(item.receta.id)) {
       score -= 250;
     }
 
-    // 3. Bonificación para recetas marcadas como "Favorito para menús"
+    // Bonificación para recetas marcadas como "Favorito para menús"
     if (item.esFavorito) {
       score += 150;
     }
 
-    // 4. CRITERIO DE EQUILIBRIO Y ALTERNANCIA PROTEICA ESTRICTA:
-    // Evitar asignar consecutivamente la misma fuente principal de proteína
-    // (alternar entre carne/ave, pescado/marisco, legumbres/vegetariano y pasta/huevos).
+    // Para cenas: priorizar ligeramente recetas que no estén marcadas para almuerzo,
+    // preservando los platos principales del mediodía.
+    if (isDinner && item.momentos.includes('cena') && !item.momentos.includes('almuerzo')) {
+      score += 75;
+    }
+
+    // CRITERIO DE EQUILIBRIO Y ALTERNANCIA PROTEICA ESTRICTA:
     const candidateGroup = detectProteinGroup(item);
     if (candidateGroup) {
       if (previousMealGroup && candidateGroup === previousMealGroup) {
-        // Bloqueo estricto de repetición respecto al almuerzo anterior
         score -= 5000;
       }
       if (sameMealGroup && candidateGroup === sameMealGroup) {
-        // Bloqueo estricto de repetición respecto al primer plato del mismo almuerzo
         score -= 5000;
       }
       if (
         (previousMealGroup && candidateGroup !== previousMealGroup) ||
         (sameMealGroup && candidateGroup !== sameMealGroup)
       ) {
-        // Bonificación sustancial por alternancia culinaria
         score += 250;
       }
     }
 
-    // 5. Pequeño factor aleatorio determinista para enriquecer variedad si hay empate
+    // Pequeño factor aleatorio determinista para enriquecer variedad si hay empate
     const jitter = Math.floor(Math.random() * 20);
     score += jitter;
 
@@ -296,24 +435,18 @@ export function generateMealPlan(
 
   // 3. Creación de Pools por momento y rol culinario
   const desayunosPool = allMetas.filter(
-    (m) => m.momentos.includes('desayuno') && !isDessertExcludedFromSlot(m.rol, 'desayuno')
+    (m) => m.momentos.includes('desayuno') && !m.isDessert
   );
 
   const almuerzoPool = allMetas.filter(
-    (m) => m.momentos.includes('almuerzo') && !m.isDessert && !isDessertExcludedFromSlot(m.rol, 'almuerzo')
+    (m) => m.momentos.includes('almuerzo') && !m.isDessert
   );
 
-  const primerosPool = almuerzoPool.filter(
-    (m) => m.rol === 'primero'
-  );
+  // 1er Plato / Entrante: sopas, cremas, caldos, purés, gazpacho, ensaladas ligeras
+  const primerosPool = almuerzoPool.filter((m) => m.rol === 'primero');
 
-  const segundosPool = almuerzoPool.filter(
-    (m) => m.rol === 'segundo'
-  );
-
-  const almuerzoCompletosPool = almuerzoPool.filter(
-    (m) => m.rol === 'completo'
-  );
+  // Platos Principales: toda receta de almuerzo que no sea un entrante ligero
+  const platosPrincipalesPool = almuerzoPool.filter((m) => m.rol !== 'primero');
 
   const cenasPool = allMetas.filter(
     (m) => m.momentos.includes('cena') && !m.isDessert
@@ -341,9 +474,8 @@ export function generateMealPlan(
     lastUsedDateMap.set(meta.receta.id, fecha);
   };
 
-  // 5. Distribución uniforme de platos en stock limitado (sin duplicar ninguna receta)
-  // Si el catálogo solo tiene K recetas distintas (K < numDias), se reparten de forma equilibrada
-  // a lo largo de los días de la semana, dejando los demás slots vacíos (+ Asignar)
+  // 5. Distribución uniforme de 1er plato en stock limitado (sin duplicar ninguna receta)
+  // Los primeros platos son opcionales: si hay K < numDias, se reparten uniformemente y el resto queda en blanco (+ Asignar)
   const computeDesignatedDays = (availableCount: number): Set<number> => {
     if (availableCount >= numDias) {
       return new Set(Array.from({ length: numDias }, (_, i) => i));
@@ -357,13 +489,12 @@ export function generateMealPlan(
   };
 
   const designatedPrimerosDays = computeDesignatedDays(primerosPool.length);
-  const designatedSegundosDays = computeDesignatedDays(segundosPool.length);
 
   // 6. Bucle de asignación día a día (estrictamente numDias iteraciones)
   for (let dayIdx = 0; dayIdx < fechas.length; dayIdx++) {
     const fecha = fechas[dayIdx];
 
-    // --- DESAYUNO ---
+    // --- DESAYUNO (Obligatorio si está habilitado) ---
     if (opciones.incluirDesayunos && desayunosPool.length > 0) {
       const selected = pickBestRecipe(
         desayunosPool,
@@ -371,7 +502,9 @@ export function generateMealPlan(
         recentHistorySet,
         lastUsedDateMap,
         fecha,
-        null
+        null,
+        null,
+        true // allowRepetitionIfExhausted
       );
 
       if (selected) {
@@ -382,10 +515,13 @@ export function generateMealPlan(
 
     // --- ALMUERZO ---
     if (opciones.incluirAlmuerzos && almuerzoPool.length > 0) {
+      const mainCoursePool = platosPrincipalesPool.length > 0 ? platosPrincipalesPool : almuerzoPool;
+
       if (opciones.intentarPrimeroYSegundo) {
         // Modo 1º + 2º Plato:
-        // Si hay primeros disponibles en la colección, se asignan según la distribución calculada.
-        // Tolerancia cero a duplicar: los días sin primero disponible quedan vacíos (+ Asignar) para el usuario.
+        // 1. Asignación opcional de 1er plato / entrante:
+        // Si hay primeros disponibles en la colección, se asignan en los días designados sin repetir.
+        // Los días sin primero disponible quedan como slots opcionales vacíos (+ Asignar).
         let primeroAsignado: RecipePlanningMeta | null = null;
         if (designatedPrimerosDays.has(dayIdx)) {
           primeroAsignado = pickBestRecipe(
@@ -394,7 +530,9 @@ export function generateMealPlan(
             recentHistorySet,
             lastUsedDateMap,
             fecha,
-            lastLunchProteinGroup
+            lastLunchProteinGroup,
+            null,
+            false // 1er plato es opcional: no repetir si se agota el stock
           );
 
           if (primeroAsignado) {
@@ -404,82 +542,52 @@ export function generateMealPlan(
           }
         }
 
-        // Asignación de 2º plato (alternando proteína respecto al día anterior y al primer plato del mismo almuerzo)
-        if (designatedSegundosDays.has(dayIdx)) {
-          const primeroProtein = primeroAsignado ? detectProteinGroup(primeroAsignado) : null;
-          const segundo = pickBestRecipe(
-            segundosPool,
-            usedCountMap,
-            recentHistorySet,
-            lastUsedDateMap,
-            fecha,
-            lastLunchProteinGroup,
-            primeroProtein
-          );
-
-          if (segundo) {
-            items.push({ fecha, slot: 'almuerzo_2', receta: segundo.receta });
-            markAssigned(segundo, fecha);
-            segundosAsignados++;
-
-            // Actualizar grupo proteico del almuerzo para la alternancia del día siguiente
-            lastLunchProteinGroup = detectProteinGroup(segundo) || (primeroAsignado ? detectProteinGroup(primeroAsignado) : null);
-          } else if (primeroAsignado) {
-            lastLunchProteinGroup = detectProteinGroup(primeroAsignado);
-          }
-        } else if (primeroAsignado) {
-          lastLunchProteinGroup = detectProteinGroup(primeroAsignado);
-        }
-
-        // Si ambos pools (1º y 2º) están completamente vacíos en el catálogo del usuario,
-        // fallback a Plato Único para no dejar la semana huérfana
-        if (primerosPool.length === 0 && segundosPool.length === 0) {
-          const candidates = almuerzoCompletosPool.length > 0 ? almuerzoCompletosPool : almuerzoPool;
-          const selected = pickBestRecipe(
-            candidates,
-            usedCountMap,
-            recentHistorySet,
-            lastUsedDateMap,
-            fecha,
-            lastLunchProteinGroup
-          );
-
-          if (selected) {
-            items.push({ fecha, slot: 'almuerzo', receta: selected.receta });
-            markAssigned(selected, fecha);
-            platosUnicosAsignados++;
-            lastLunchProteinGroup = detectProteinGroup(selected);
-          }
-        }
-      } else {
-        // Modo Plato Único: Asignar estrictamente una receta única sin repetición
-        const candidates = almuerzoCompletosPool.length > 0 ? almuerzoCompletosPool : almuerzoPool;
-        const selected = pickBestRecipe(
-          candidates,
+        // 2. Asignación OBLIGATORIA de Plato Principal (almuerzo_2):
+        // NUNCA puede quedar vacío si hay platos disponibles en el catálogo.
+        // Se nutre de la piscina completa de Platos Principales (o almuerzos totales si no hay principales clasificados).
+        const primeroProtein = primeroAsignado ? detectProteinGroup(primeroAsignado) : null;
+        const segundo = pickBestRecipe(
+          mainCoursePool,
           usedCountMap,
           recentHistorySet,
           lastUsedDateMap,
           fecha,
-          lastLunchProteinGroup
+          lastLunchProteinGroup,
+          primeroProtein,
+          true // Plato principal es obligatorio
+        );
+
+        if (segundo) {
+          items.push({ fecha, slot: 'almuerzo_2', receta: segundo.receta });
+          markAssigned(segundo, fecha);
+          segundosAsignados++;
+          lastLunchProteinGroup = detectProteinGroup(segundo) || primeroProtein;
+        } else if (primeroAsignado) {
+          lastLunchProteinGroup = detectProteinGroup(primeroAsignado);
+        }
+      } else {
+        // Modo Plato Único: Asignar obligatoriamente un plato principal como 'almuerzo'
+        const selected = pickBestRecipe(
+          mainCoursePool,
+          usedCountMap,
+          recentHistorySet,
+          lastUsedDateMap,
+          fecha,
+          lastLunchProteinGroup,
+          null,
+          true // Plato principal obligatorio
         );
 
         if (selected) {
           items.push({ fecha, slot: 'almuerzo', receta: selected.receta });
           markAssigned(selected, fecha);
-
-          if (selected.rol === 'primero') {
-            primerosAsignados++;
-          } else if (selected.rol === 'segundo') {
-            segundosAsignados++;
-          } else {
-            platosUnicosAsignados++;
-          }
+          platosUnicosAsignados++;
           lastLunchProteinGroup = detectProteinGroup(selected);
         }
       }
     }
 
-    // --- CENA ---
+    // --- CENA (Obligatoria si está habilitada) ---
     if (opciones.incluirCenas && cenasPool.length > 0) {
       const selected = pickBestRecipe(
         cenasPool,
@@ -487,24 +595,19 @@ export function generateMealPlan(
         recentHistorySet,
         lastUsedDateMap,
         fecha,
-        lastLunchProteinGroup
+        lastLunchProteinGroup,
+        null,
+        true, // Cena obligatoria
+        true  // isDinner
       );
 
       if (selected) {
         items.push({ fecha, slot: 'cena', receta: selected.receta });
         markAssigned(selected, fecha);
-
-        if (selected.rol === 'primero') {
-          primerosAsignados++;
-        } else if (selected.rol === 'segundo') {
-          segundosAsignados++;
-        } else {
-          platosUnicosAsignados++;
-        }
       }
     }
 
-    // --- SNACK O POSTRE ---
+    // --- SNACK O POSTRE (Opcional) ---
     if (opciones.incluirSnackPostre && snacksPostresPool.length > 0) {
       const selected = pickBestRecipe(
         snacksPostresPool,
@@ -512,7 +615,9 @@ export function generateMealPlan(
         recentHistorySet,
         lastUsedDateMap,
         fecha,
-        null
+        null,
+        null,
+        false
       );
 
       if (selected) {
@@ -526,12 +631,12 @@ export function generateMealPlan(
   if (opciones.intentarPrimeroYSegundo) {
     if (primerosPool.length > 0 && primerosPool.length < numDias) {
       advertencias.push(
-        `Se distribuyeron las ${primerosPool.length} receta(s) de primer plato disponibles sin repetir; los días restantes se dejaron vacíos (+ Asignar) para tu elección.`
+        `Se distribuyeron las ${primerosPool.length} receta(s) de primer plato disponibles sin repetir; los días restantes se dejaron listos para asignar (+ Asignar).`
       );
     }
-    if (segundosPool.length > 0 && segundosPool.length < numDias) {
+    if (primerosPool.length === 0) {
       advertencias.push(
-        `Se distribuyeron las ${segundosPool.length} receta(s) de segundo plato disponibles sin repetir; los días restantes se dejaron vacíos (+ Asignar) para tu elección.`
+        'No se encontraron recetas de primer plato o entrantes ligeros en la colección; se asignaron platos principales para cada día y los primeros se dejaron vacíos (+ Asignar).'
       );
     }
   }
@@ -540,7 +645,7 @@ export function generateMealPlan(
   if (opciones.incluirDesayunos && !items.some((it) => it.slot === 'desayuno')) {
     advertencias.push('No se encontraron recetas adecuadas de desayuno en la colección.');
   }
-  if (opciones.incluirAlmuerzos && !items.some((it) => it.slot === 'almuerzo' || it.slot === 'almuerzo_1' || it.slot === 'almuerzo_2')) {
+  if (opciones.incluirAlmuerzos && !items.some((it) => it.slot === 'almuerzo' || it.slot === 'almuerzo_2')) {
     advertencias.push('No se encontraron recetas adecuadas de almuerzo en la colección.');
   }
   if (opciones.incluirCenas && !items.some((it) => it.slot === 'cena')) {
@@ -550,13 +655,15 @@ export function generateMealPlan(
     advertencias.push('No se encontraron recetas adecuadas de snack o postre en la colección.');
   }
 
-  // 8. Cálculo de días completos
+  // 8. Cálculo de días completos (El almuerzo requiere plato principal 'almuerzo' o 'almuerzo_2')
   let diasCompletos = 0;
   for (const fecha of fechas) {
     const dayItems = items.filter((it) => it.fecha === fecha);
 
     const hasDesayuno = !opciones.incluirDesayunos || dayItems.some((it) => it.slot === 'desayuno');
-    const hasAlmuerzo = !opciones.incluirAlmuerzos || dayItems.some((it) => it.slot === 'almuerzo' || it.slot === 'almuerzo_1' || it.slot === 'almuerzo_2');
+    const hasAlmuerzo =
+      !opciones.incluirAlmuerzos ||
+      dayItems.some((it) => it.slot === 'almuerzo' || it.slot === 'almuerzo_2');
     const hasCena = !opciones.incluirCenas || dayItems.some((it) => it.slot === 'cena');
     const hasSnack = !opciones.incluirSnackPostre || dayItems.some((it) => it.slot === 'snack_postre');
 

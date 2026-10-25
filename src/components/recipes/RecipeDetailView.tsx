@@ -52,7 +52,6 @@ interface RecipeDetailViewProps {
   ingredientes: RecetaIngrediente[];
   pasos: Paso[];
   userProfile: any;
-  userRacionesDefecto?: number;
   recipeDataForAdapt: any;
   diarioEntries: DiarioCocinados[];
   initialServings?: number;
@@ -63,7 +62,6 @@ export function RecipeDetailView({
   ingredientes,
   pasos,
   userProfile,
-  userRacionesDefecto,
   recipeDataForAdapt,
   diarioEntries,
   initialServings,
@@ -971,7 +969,7 @@ export function RecipeDetailView({
           tiempoCoccionMin={receta?.tiempo_coccion_min ?? null}
           ingredientes={currentIngredientes || []}
           pasos={currentPasos || []}
-          defaultServings={initialServings || userRacionesDefecto || receta?.porciones || 2}
+          defaultServings={initialServings}
           onSubstitutePersist={handleSubstitutePersist}
           isAdapted={isAdapted}
           userProfile={userProfile}

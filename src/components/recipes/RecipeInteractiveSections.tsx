@@ -49,27 +49,32 @@ export function RecipeInteractiveSections({
 }: RecipeInteractiveSectionsProps) {
   const t = useLanguageStore((s) => s.t);
   const searchParams = useSearchParams();
-  const queryServings = searchParams?.get('servings') ? Number(searchParams.get('servings')) : null;
+  const isFromPlanner = searchParams?.get('from') === 'planner';
+  const plannerServings = isFromPlanner && searchParams?.get('servings')
+    ? Number(searchParams.get('servings'))
+    : null;
 
-  const resolvedInitialServings = (queryServings && queryServings > 0)
-    ? queryServings
-    : (defaultServings && defaultServings > 0 ? defaultServings : (basePorciones || 2));
+  // Solo si la URL contiene explícitamente from=planner y servings se inicializa con dicho valor;
+  // al abrir la receta desde el recetario o colección, el estado inicial DEBE ser SIEMPRE la base de la receta.
+  const resolvedInitialServings = (plannerServings && plannerServings > 0)
+    ? plannerServings
+    : (isFromPlanner && defaultServings && defaultServings > 0 ? defaultServings : (basePorciones || 2));
 
   const [servings, setServings] = useState(resolvedInitialServings);
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
   const [isStepsOpen, setIsStepsOpen] = useState(false);
   const [substitutions, setSubstitutions] = useState<Record<string, string>>({});
 
-  // Sincronizar comensales con parámetro de URL ?servings, defaultServings o basePorciones
+  // Sincronizar comensales: solo se adopta el valor de URL si proviene contextualmente del planificador (?from=planner&servings=X)
   useEffect(() => {
-    if (queryServings && queryServings > 0) {
-      setServings(queryServings);
-    } else if (defaultServings && defaultServings > 0) {
+    if (isFromPlanner && plannerServings && plannerServings > 0) {
+      setServings(plannerServings);
+    } else if (isFromPlanner && defaultServings && defaultServings > 0) {
       setServings(defaultServings);
     } else {
       setServings(basePorciones || 2);
     }
-  }, [recetaId, basePorciones, defaultServings, queryServings]);
+  }, [recetaId, basePorciones, isFromPlanner, plannerServings, defaultServings]);
 
   // Limpiar sustituciones activas cuando cambia la receta o cuando se aplica/revierte una adaptación
   useEffect(() => {

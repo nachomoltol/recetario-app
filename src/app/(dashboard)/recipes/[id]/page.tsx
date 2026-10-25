@@ -17,9 +17,10 @@ interface PageProps {
 export default async function RecipeDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
   const query = searchParams ? await searchParams : {};
-  const queryServings = query.servings && Number(query.servings) > 0 ? Number(query.servings) : undefined;
   const queryFrom = query.from;
   const queryDate = query.date;
+  const isFromPlanner = queryFrom === 'planner';
+  const queryServings = isFromPlanner && query.servings && Number(query.servings) > 0 ? Number(query.servings) : undefined;
 
   const supabase = await createClient();
   const {
@@ -30,14 +31,12 @@ export default async function RecipeDetailPage({ params, searchParams }: PagePro
     redirect(`/login?redirectTo=/recipes/${id}`);
   }
 
-  // Consultar perfil del usuario para preferencias (alergias, nivel, raciones y plan)
+  // Consultar perfil del usuario para preferencias (alergias, nivel y plan)
   const { data: userProfile } = await supabase
     .from('usuarios')
     .select('id, nombre, raciones_defecto, nivel_culinario, preferencias_dieteticas, alergenos, plan_suscripcion')
     .eq('id', user.id)
     .single();
-
-  const userRacionesDefecto = userProfile?.raciones_defecto || undefined;
 
   // 1. Consultar receta principal
   const { data: recetaData, error: errReceta } = await supabase
@@ -119,7 +118,6 @@ export default async function RecipeDetailPage({ params, searchParams }: PagePro
             ingredientes={ingredientes || []}
             pasos={pasos || []}
             userProfile={userProfile}
-            userRacionesDefecto={userRacionesDefecto}
             recipeDataForAdapt={recipeDataForAdapt}
             diarioEntries={diarioEntries || []}
             initialServings={queryServings}
