@@ -53,7 +53,7 @@ export function RecipeDetailHeader({
   const isFromPlanner = effectiveFrom === 'planner';
   const backLabel = isFromPlanner
     ? (language === 'en' ? 'Planner' : 'Planificador')
-    : (language === 'en' ? 'Cookbook' : 'Recetario');
+    : (t('btn_back') || (language === 'en' ? 'Back' : 'Volver'));
   const backTitle = isFromPlanner
     ? (language === 'en' ? 'Back to meal planner' : 'Volver al planificador')
     : (language === 'en' ? 'Back to cookbook' : 'Volver al recetario');
@@ -68,10 +68,10 @@ export function RecipeDetailHeader({
           <button
             type="button"
             onClick={handleBack}
-            className="h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl inline-flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm font-semibold text-stone-600 hover:text-stone-900 hover:bg-[#faf7f2] border border-transparent hover:border-[#e7dfd5] transition-all cursor-pointer shrink-0"
+            className="h-9 sm:h-10 px-3 sm:px-3.5 rounded-2xl bg-[#f4efe6] hover:bg-[#ebe3d5] border border-[#e7dfd5] inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#a86224] hover:text-[#8c4f1a] transition shadow-2xs cursor-pointer shrink-0 touch-manipulation active:scale-95"
             title={backTitle}
           >
-            <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#a86224] shrink-0" />
+            <ArrowLeft className="w-4 h-4 text-[#a86224] shrink-0" />
             <span className="truncate">{backLabel}</span>
           </button>
         </div>

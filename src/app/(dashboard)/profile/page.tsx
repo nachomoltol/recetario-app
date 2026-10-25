@@ -1,9 +1,8 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { ArrowLeft, Settings, ChefHat } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
+import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
 import { ProfileForm } from '@/components/profile/ProfileForm';
 import {
   ProfileHeaderTitle,
@@ -67,14 +66,10 @@ export default async function ProfilePage() {
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link
-              href="/recipes"
-              className="w-10 h-10 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] hover:bg-stone-200 transition"
-              title="Volver al recetario"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <ProfileHeaderTitle />
+            <HeaderBackButton fallbackUrl="/recipes" />
+            <div className="hidden sm:block">
+              <ProfileHeaderTitle />
+            </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">

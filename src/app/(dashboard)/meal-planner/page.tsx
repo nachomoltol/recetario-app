@@ -1,10 +1,8 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { ChefHat, ArrowLeft, Calendar } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
-import { MealPlannerHeaderTitle } from '@/components/planner/MealPlannerHeaderTitle';
+import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
 import { MealPlannerView } from '@/components/planner/MealPlannerView';
 import { getWeeklyPlanAction } from '@/app/actions/mealPlanner';
 import { formatLocalDate, parseLocalDate, getMondayOfDate } from '@/lib/dateUtils';
@@ -61,14 +59,7 @@ export default async function MealPlannerPage(props: MealPlannerPageProps) {
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link
-              href="/recipes"
-              className="w-10 h-10 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] hover:bg-stone-200 transition shadow-2xs"
-              title="Volver al recetario"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <MealPlannerHeaderTitle />
+            <HeaderBackButton fallbackUrl="/recipes" />
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">

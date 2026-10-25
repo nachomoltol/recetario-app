@@ -1,9 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
-import { LanguageToggle } from '@/components/layout/LanguageToggle';
+import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
 import { SmartMenuWizardView } from '@/components/planner/SmartMenuWizardView';
-import { SmartMenuBackButton } from '@/components/planner/SmartMenuBackButton';
 import { SmartMenuViewPlanButton } from '@/components/planner/SmartMenuViewPlanButton';
 import { getWeeklyPlanAction } from '@/app/actions/mealPlanner';
 import { Receta } from '@/types/recipe';
@@ -62,23 +61,12 @@ export default async function SmartMenuPage() {
       {/* Cabecera Limpia y Minimalista */}
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-          {/* Izquierda: Botón de retorno táctil minimalista */}
-          <SmartMenuBackButton />
+          {/* Extremo izquierdo: Botón táctil [ ← Volver ] */}
+          <HeaderBackButton fallbackUrl="/meal-planner" />
 
-          {/* Centro: Título corto y badge PRO */}
-          <div className="flex items-center gap-2">
-            <span className="text-base sm:text-lg font-bold font-serif-recipe tracking-tight text-stone-900 block leading-tight">
-              Menú con IA
-            </span>
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 uppercase tracking-wider shadow-2xs">
-              PRO
-            </span>
-          </div>
-
-          {/* Derecha: Botón Ver mi Plan y perfil */}
+          {/* Centro / Derecha: Botón [ 📅 Ver Plan ] y Menú de usuario */}
           <div className="flex items-center gap-2 sm:gap-3">
             <SmartMenuViewPlanButton initialDate={latestPlanDate} />
-            <LanguageToggle />
             <UserDropdownMenu
               fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
               email={user.email || ''}

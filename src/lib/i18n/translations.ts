@@ -14,6 +14,7 @@ export const TRANSLATIONS = {
     nav_plan: 'Plan Semanal',
     nav_settings: 'Configuración',
     nav_logout: 'Cerrar sesión',
+    btn_back: 'Volver',
 
     // Home & Capture Card
     home_tag: 'Miga: recetas de redes',
@@ -581,6 +582,7 @@ export const TRANSLATIONS = {
     nav_plan: 'Meal Plan',
     nav_settings: 'Settings',
     nav_logout: 'Sign Out',
+    btn_back: 'Back',
 
     // Home & Capture Card
     home_tag: 'Miga: social recipes',

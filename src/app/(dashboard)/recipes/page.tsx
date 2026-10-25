@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { BookOpen } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
+import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
 import { RecipeCaptureCard } from '@/components/recipes/RecipeCaptureCard';
 import { HomeRecentRecipesSection } from '@/components/recipes/HomeRecentRecipesSection';
 import {
@@ -45,8 +46,9 @@ export default async function RecipesDashboardPage() {
       {/* Barra de navegación superior luminosa */}
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          {/* Zona izquierda: Selector de idioma con banderas */}
-          <div className="flex items-center">
+          {/* Zona izquierda: Botón de retorno estándar y Selector de idioma */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <HeaderBackButton fallbackUrl="/recipes/collection" />
             <LanguageToggle />
           </div>
 
