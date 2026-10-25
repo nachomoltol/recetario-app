@@ -55,8 +55,11 @@ const PROTEIN_GROUPS = {
 };
 
 /**
- * Genera la secuencia estricta de fechas a partir de la fecha de inicio
- * Garantiza exactamente numDias iteraciones y elementos únicos.
+ * Genera la secuencia matemática estricta de fechas a partir de la fecha de inicio.
+ * Cero ajustes al lunes: si el usuario define fecha de inicio, empieza exactamente en ella.
+ * Si numDias = 5 y fechaInicio = '2026-10-26', genera exactamente:
+ * ['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30'].
+ * Queda terminantemente prohibido generar o tocar slots del domingo anterior o sábado posterior.
  */
 function generateDates(fechaInicioStr: string, numDias: number): string[] {
   const safeDias = Math.min(7, Math.max(1, Math.floor(numDias)));
@@ -64,30 +67,30 @@ function generateDates(fechaInicioStr: string, numDias: number): string[] {
 
   const result: string[] = [];
   for (let i = 0; i < safeDias; i++) {
-    const d = new Date(baseDate);
-    d.setDate(baseDate.getDate() + i);
+    const d = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + i, 12, 0, 0, 0);
     result.push(formatLocalDate(d));
   }
-  return Array.from(new Set(result)).slice(0, safeDias);
+  return result;
 }
 
 /**
- * Extrae metadatos culinarios homogéneos de cada receta con filtrado estricto
- * de momentos del día (sin fallbacks permisivos como asignar todas las recetas a almuerzo y cena).
+ * Extrae metadatos culinarios homogéneos de cada receta con TOLERANCIA CERO A COMODINES:
+ * Única y exclusivamente momentos explícitamente etiquetados en la receta (momentos_dia o momentos_recomendados).
+ * Queda prohibido inferir o asignar momentos cruzados (ej. almuerzo en cenas o viceversa).
  */
 function extractPlanningMeta(receta: Receta): RecipePlanningMeta {
-  const rawMoments = (Array.isArray(receta.momentos_dia) && receta.momentos_dia.length > 0)
-    ? (receta.momentos_dia as MomentoDia[])
-    : ((receta as any).momentos_recomendados as MomentoDia[]) || [];
+  const rawMoments = (
+    Array.isArray(receta.momentos_dia) && receta.momentos_dia.length > 0
+      ? (receta.momentos_dia as string[])
+      : ((receta as any).momentos_recomendados as string[]) || []
+  )
+    .filter(Boolean)
+    .map((m) => String(m).toLowerCase().trim() as MomentoDia);
 
-  const hasSavedMoments = rawMoments.length > 0;
-  const inferred = (!hasSavedMoments || !receta.rol_plato) ? inferRecipeCategory(receta) : null;
+  // Exigencia estricta: solo los momentos explícitamente guardados en la receta (cero comodines/inferencias cruzadas)
+  const momentos: MomentoDia[] = rawMoments;
 
-  // Filtrado riguroso: solo se consideran momentos explícitamente etiquetados o inferidos por heurística culinaria de la propia receta
-  const momentos: MomentoDia[] = hasSavedMoments
-    ? rawMoments
-    : (inferred?.momentos_dia || []);
-
+  const inferred = (!receta.rol_plato) ? inferRecipeCategory(receta) : null;
   let rol: RolPlato = receta.rol_plato || inferred?.rol_plato || 'completo';
   if (momentos.includes('postre')) {
     rol = 'postre';

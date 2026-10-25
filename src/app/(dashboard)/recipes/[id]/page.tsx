@@ -11,13 +11,15 @@ export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ servings?: string; from?: string }>;
+  searchParams?: Promise<{ servings?: string; from?: string; date?: string }>;
 }
 
 export default async function RecipeDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
   const query = searchParams ? await searchParams : {};
   const queryServings = query.servings && Number(query.servings) > 0 ? Number(query.servings) : undefined;
+  const queryFrom = query.from;
+  const queryDate = query.date;
 
   const supabase = await createClient();
   const {
@@ -105,6 +107,8 @@ export default async function RecipeDetailPage({ params, searchParams }: PagePro
         dificultad={receta?.dificultad}
         userName={userProfile?.nombre || user.email?.split('@')[0] || 'Chef'}
         userEmail={user.email || ''}
+        from={queryFrom}
+        returnDate={queryDate}
       />
 
       {/* Contenido Editorial con Modo Cocina */}

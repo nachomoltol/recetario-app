@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Play, ExternalLink } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { useLanguageStore } from '@/stores/useLanguageStore';
@@ -11,6 +11,8 @@ interface RecipeDetailHeaderProps {
   dificultad?: string | null;
   userName?: string;
   userEmail?: string;
+  from?: string | null;
+  returnDate?: string | null;
 }
 
 export function RecipeDetailHeader({
@@ -19,12 +21,25 @@ export function RecipeDetailHeader({
   dificultad,
   userName,
   userEmail,
+  from,
+  returnDate,
 }: RecipeDetailHeaderProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useLanguageStore((s) => s.t);
   const language = useLanguageStore((s) => s.language);
 
+  const effectiveFrom = from || searchParams.get('from');
+  const effectiveDate = returnDate || searchParams.get('date');
+
   const handleBack = () => {
+    // Si la navegación procede del planificador de comidas, retornar a la semana/día exacto consultado
+    if (effectiveFrom === 'planner') {
+      const query = effectiveDate ? `?date=${encodeURIComponent(effectiveDate)}` : '';
+      router.push(`/meal-planner${query}`);
+      return;
+    }
+
     if (
       typeof window !== 'undefined' &&
       (window.history.state?.idx > 0 || (document.referrer && document.referrer.includes('/recipes')))
@@ -34,6 +49,14 @@ export function RecipeDetailHeader({
       router.push('/recipes/collection');
     }
   };
+
+  const isFromPlanner = effectiveFrom === 'planner';
+  const backLabel = isFromPlanner
+    ? (language === 'en' ? 'Planner' : 'Planificador')
+    : (language === 'en' ? 'Cookbook' : 'Recetario');
+  const backTitle = isFromPlanner
+    ? (language === 'en' ? 'Back to meal planner' : 'Volver al planificador')
+    : (language === 'en' ? 'Back to cookbook' : 'Volver al recetario');
 
   const isVideoSource = fuenteTipo !== 'web' && fuenteTipo !== 'manual';
 
@@ -46,10 +69,10 @@ export function RecipeDetailHeader({
             type="button"
             onClick={handleBack}
             className="h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl inline-flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm font-semibold text-stone-600 hover:text-stone-900 hover:bg-[#faf7f2] border border-transparent hover:border-[#e7dfd5] transition-all cursor-pointer shrink-0"
-            title={language === 'en' ? 'Back to cookbook' : 'Volver al recetario'}
+            title={backTitle}
           >
             <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#a86224] shrink-0" />
-            <span className="truncate">{language === 'en' ? 'Cookbook' : 'Recetario'}</span>
+            <span className="truncate">{backLabel}</span>
           </button>
         </div>
 

@@ -81,7 +81,7 @@ export function SmartMenuWizardView({
 
   // Estados de configuración del Wizard
   const [dias, setDias] = useState<number>(7);
-  const [startDate, setStartDate] = useState<string>(() => getTodayString());
+  const [startDate, setStartDate] = useState<string>(() => initialStartDate || getTodayString());
   const [incluirDesayunos, setIncluirDesayunos] = useState<boolean>(true);
   const [incluirAlmuerzos, setIncluirAlmuerzos] = useState<boolean>(true);
   const [intentarPrimeroYSegundo, setIntentarPrimeroYSegundo] = useState<boolean>(false);

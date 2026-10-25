@@ -123,7 +123,19 @@ export function MealPlannerView({
 
   const [plans, setPlans] = useState<PlannedSlotItem[]>(initialPlans);
   const [isLoadingWeek, setIsLoadingWeek] = useState(false);
-  const [activeDayIndex, setActiveDayIndex] = useState(0); // Para vista móvil por día
+  const [activeDayIndex, setActiveDayIndex] = useState<number>(() => {
+    if (dateParam) {
+      try {
+        const target = parseLocalDate(dateParam);
+        const monday = getMondayOfDate(target);
+        const diffDays = Math.round((target.getTime() - monday.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays >= 0 && diffDays < 7) {
+          return diffDays;
+        }
+      } catch (e) {}
+    }
+    return 0;
+  });
   const [pickerModal, setPickerModal] = useState<{ fecha: string; slot: MealSlot } | null>(null);
   const [shoppingModal, setShoppingModal] = useState<UnifiedShoppingItem[] | null>(null);
   const [checkedShoppingItems, setCheckedShoppingItems] = useState<string[]>([]);
@@ -141,12 +153,17 @@ export function MealPlannerView({
   useEffect(() => {
     if (dateParam) {
       try {
-        const targetMonday = getMondayOfDate(parseLocalDate(dateParam));
+        const targetDate = parseLocalDate(dateParam);
+        const targetMonday = getMondayOfDate(targetDate);
         const targetStr = formatLocalDate(targetMonday);
         const currentStr = formatLocalDate(currentMonday);
         if (targetStr !== currentStr) {
           setCurrentMonday(targetMonday);
           loadPlansForMonday(targetMonday);
+        }
+        const diffDays = Math.round((targetDate.getTime() - targetMonday.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays >= 0 && diffDays < 7) {
+          setActiveDayIndex(diffDays);
         }
       } catch (err) {
         console.error('Error sincronizando fecha desde URL:', err);
@@ -537,7 +554,7 @@ export function MealPlannerView({
 
             {/* Título de la receta en font-serif-recipe */}
             <Link
-              href={`/recipes/${assignedPlan.receta.id}?servings=${displayDiners}&from=planner`}
+              href={`/recipes/${assignedPlan.receta.id}?servings=${displayDiners}&from=planner&date=${dayDateStr}`}
               className="text-xs sm:text-sm font-bold font-serif-recipe text-stone-900 hover:text-[#a86224] transition-colors block truncate leading-tight"
               title={assignedPlan.receta.titulo}
             >
@@ -639,7 +656,7 @@ export function MealPlannerView({
           {/* Título de la receta: tipografía holgada en varias líneas */}
           <div className="flex-1 py-0.5">
             <Link
-              href={`/recipes/${assignedPlan.receta.id}?servings=${displayDiners}&from=planner`}
+              href={`/recipes/${assignedPlan.receta.id}?servings=${displayDiners}&from=planner&date=${dayDateStr}`}
               className="text-xs sm:text-sm font-bold font-serif-recipe text-stone-900 hover:text-[#a86224] transition-colors block line-clamp-2 leading-snug"
               title={assignedPlan.receta.titulo}
             >

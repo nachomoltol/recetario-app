@@ -7,7 +7,7 @@ import { SmartMenuBackButton } from '@/components/planner/SmartMenuBackButton';
 import { SmartMenuViewPlanButton } from '@/components/planner/SmartMenuViewPlanButton';
 import { getWeeklyPlanAction } from '@/app/actions/mealPlanner';
 import { Receta } from '@/types/recipe';
-import { formatLocalDate, getMondayOfDate } from '@/lib/dateUtils';
+import { formatLocalDate } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,17 +27,18 @@ export default async function SmartMenuPage() {
     .eq('id', user.id)
     .single();
 
-  // Calcular semana actual a partir del lunes activo
-  const monday = getMondayOfDate(new Date());
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 13); // Traer 2 semanas para historial reciente
+  // Traer historial reciente (2 semanas) para evitar repeticiones en el generador
+  const historyStart = new Date();
+  historyStart.setDate(historyStart.getDate() - 14);
+  const historyEnd = new Date();
+  historyEnd.setDate(historyEnd.getDate() + 14);
 
-  const startDate = formatLocalDate(monday);
-  const endDate = formatLocalDate(sunday);
+  const startHistoryStr = formatLocalDate(historyStart);
+  const endHistoryStr = formatLocalDate(historyEnd);
 
   // Consultar planes recientes y recetas completas del usuario
   const [planRes, recipesRes] = await Promise.all([
-    getWeeklyPlanAction(startDate, endDate),
+    getWeeklyPlanAction(startHistoryStr, endHistoryStr),
     supabase
       .from('recetas')
       .select('*')
@@ -48,10 +49,13 @@ export default async function SmartMenuPage() {
   const existingPlans = planRes.success && planRes.data ? planRes.data : [];
   const userRecipes = (recipesRes.data || []) as Receta[];
 
-  // Fecha más reciente de planificación existente o lunes activo
+  // Fecha natural de hoy (sin forzar salto al lunes)
+  const todayStr = formatLocalDate(new Date());
+
+  // Fecha más reciente de planificación existente o fecha actual
   const latestPlanDate = existingPlans.length > 0
     ? [...existingPlans].map((p) => p.fecha).filter(Boolean).sort().reverse()[0]
-    : startDate;
+    : todayStr;
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
@@ -88,7 +92,7 @@ export default async function SmartMenuPage() {
         <SmartMenuWizardView
           userRecipes={userRecipes}
           existingPlans={existingPlans}
-          initialStartDate={startDate}
+          initialStartDate={todayStr}
           userProfile={profile}
         />
       </main>
