@@ -289,8 +289,7 @@ export function buildRecipeSystemInstruction(options?: {
      * Instead of "Pour 15ml of oil", write: "Pour one tablespoon of extra virgin olive oil (15 ml)".
      * Instead of "Add 200 of chicken", write: "Incorporate the 200 g of diced chicken breast".
      * Instead of "Add 2 units of egg", write: "Add the 2 beaten eggs".
-   - If original video servings differ from target user servings, apply the mathematical conversion factor to all ingredients and reflect those scaled quantities naturally in the steps narrative.
-   - Set the 'porciones' field exactly to the final scaled number of servings.`
+   - Faithfully extract the recipe's native base servings into the 'porciones' field. Ingredient quantities integrated into the steps narrative must correspond accurately to those base servings.`
       : `8. REDACCIÓN EN PROSA CULINARIA NATURAL E INTEGRACIÓN MÉTRICA EXACTA:
    - En el array de 'pasos' o 'preparación', integra siempre las cantidades exactas de los ingredientes de forma fluida, profesional y natural.
    - PROHIBICIÓN ESTRICTA DE DECIMALES DE LABORATORIO: Queda TERMINANTEMENTE PROHIBIDO redactar expresiones frías, artificiales o de laboratorio como "añade 0.5 unidades de cebolla", "vierte 0.25 cucharadas" o "agrega 15ml de aceite".
@@ -299,8 +298,7 @@ export function buildRecipeSystemInstruction(options?: {
      * En lugar de "Vierte 15ml de aceite", escribe: "Vierte una cucharada de aceite de oliva virgen extra (15 ml)".
      * En lugar de "Añade 200 de pollo", escribe: "Incorpora los 200 g de pechuga de pollo cortada en dados".
      * En lugar de "Agrega 2 unidades de huevo", escribe: "Agrega los 2 huevos batidos".
-   - Si las raciones del metraje original difieren de las raciones objetivo del usuario, aplica el factor de conversión matemático a todos los ingredientes e inyecta esas cantidades ya calculadas (escaladas) en la redacción natural de los pasos.
-   - Establece el campo 'porciones' exactamente con el número final de raciones ya escaladas.`;
+   - Extrae con total fidelidad las porciones o raciones base originales de la elaboración y refléjalas en el campo 'porciones'. Las cantidades integradas en los pasos deben corresponderse exactamente con dichas porciones base.`;
 
   return `
 Eres un Chef Ejecutivo y Nutricionista Clínico de élite especializado en estandarización culinaria, análisis audiovisual y salud sostenible.

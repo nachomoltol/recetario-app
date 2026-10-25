@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from 'react';
 import { Users, Sparkles, Check, Minus, Plus, Flame, ShieldCheck } from 'lucide-react';
 import { updateCookingSettingsAction } from '@/app/actions/userPreferences';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { useProfileStore } from '@/stores/useProfileStore';
 
 interface CookingSettingsFormProps {
   initialServings: number;
@@ -48,6 +49,10 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
     startTransition(async () => {
       const res = await updateCookingSettingsAction({ raciones_defecto: clamped });
       if (res.success) {
+        const currentProfile = useProfileStore.getState().profile;
+        if (currentProfile) {
+          useProfileStore.getState().setProfile({ ...currentProfile, raciones_defecto: clamped });
+        }
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus('idle'), 2500);
       } else {

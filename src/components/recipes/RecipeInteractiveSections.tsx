@@ -47,10 +47,15 @@ export function RecipeInteractiveSections({
   userProfile,
 }: RecipeInteractiveSectionsProps) {
   const t = useLanguageStore((s) => s.t);
-  const [servings, setServings] = useState(defaultServings || basePorciones || 2);
+  const [servings, setServings] = useState(basePorciones || 2);
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
   const [isStepsOpen, setIsStepsOpen] = useState(false);
   const [substitutions, setSubstitutions] = useState<Record<string, string>>({});
+
+  // Sincronizar comensales con las porciones base originales de la receta
+  useEffect(() => {
+    setServings(basePorciones || 2);
+  }, [recetaId, basePorciones]);
 
   // Limpiar sustituciones activas cuando cambia la receta o cuando se aplica/revierte una adaptación
   useEffect(() => {

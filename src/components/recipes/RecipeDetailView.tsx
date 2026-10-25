@@ -969,7 +969,7 @@ export function RecipeDetailView({
           tiempoCoccionMin={receta?.tiempo_coccion_min ?? null}
           ingredientes={currentIngredientes || []}
           pasos={currentPasos || []}
-          defaultServings={userRacionesDefecto}
+          defaultServings={receta?.porciones || 2}
           onSubstitutePersist={handleSubstitutePersist}
           isAdapted={isAdapted}
           userProfile={userProfile}
