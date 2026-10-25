@@ -35,7 +35,8 @@ export const recipeExtractionSchema = {
     },
     porciones: {
       type: Type.INTEGER,
-      description: 'Número de raciones resultantes de la receta.',
+      description:
+        'Número de raciones resultantes de la receta. Si el autor no las declara explícitamente, DEBES deducirlas dividiendo el peso del ingrediente principal entre la Tabla Maestra de Referencia Nutricional.',
     },
     dificultad: {
       type: Type.STRING,
@@ -281,7 +282,7 @@ export function buildRecipeSystemInstruction(options?: {
      * Siempre completa los gramos_estimados equivalentes según el peso estándar de la pieza (ej. 2 unidades de huevo = 120 g, 1 diente de ajo = 5 g).`;
   const rule8Quantities =
     idioma === 'en'
-      ? `8. NATURAL CULINARY PROSE AND PRECISE METRIC INTEGRATION:
+      ? `8. NATURAL CULINARY PROSE, MASTER GRAMMAGE REFERENCE, AND BASE SERVINGS INFERENCE:
    - In the 'pasos' / preparation array, integrate exact ingredient quantities using fluent, professional, and natural culinary prose.
    - STRICT FORBIDDANCE OF LABORATORY DECIMALS: You are STRICTLY FORBIDDEN from writing cold, unnatural, or laboratory-like phrasing such as "add 0.5 units of onion", "pour 0.25 tablespoons", or "add 15ml of oil".
    - MANDATORY CULINARY PHRASING DIRECTIVE: Integrate precise quantities into natural culinary English:
@@ -289,8 +290,45 @@ export function buildRecipeSystemInstruction(options?: {
      * Instead of "Pour 15ml of oil", write: "Pour one tablespoon of extra virgin olive oil (15 ml)".
      * Instead of "Add 200 of chicken", write: "Incorporate the 200 g of diced chicken breast".
      * Instead of "Add 2 units of egg", write: "Add the 2 beaten eggs".
+   - MANDATORY BASE SERVINGS INFERENCE DIRECTIVE (MASTER NUTRITIONAL REFERENCE TABLE):
+     If the creator does not state or write the exact number of servings, NEVER assume 1 serving nor apply random values. You MUST calculate 'porciones' by deducing the volume of the main base ingredient according to this Master Nutritional Reference Table (per single serving/person):
+     * LEGUMES:
+       - Dry legumes (lentils, chickpeas, beans): 60 – 80 g dry weight per main dish serving.
+       - Cooked / drained canned legumes: 160 – 200 g per main dish serving (100 – 120 g in cold salads or side dishes).
+     * ANIMAL PROTEINS (trimmed/cleaned):
+       - White meat / poultry (chicken breast, boneless thighs, turkey): 140 – 180 g raw weight per serving.
+       - Red meat / lean cuts (beef, pork loin): 150 – 180 g raw weight per serving.
+       - White fish (hake, cod, sea bream): 160 – 200 g raw weight per serving.
+       - Oily / fatty fish (salmon, tuna, mackerel): 130 – 160 g raw weight per serving.
+       - Clean shellfish / cephalopods (shrimp, squid): 150 – 200 g raw weight per serving.
+       - Eggs: 2 units (or 100 – 120 g pasteurized egg whites) per main dish serving.
+     * PLANT-BASED ALTERNATIVES / VEGAN PROTEIN:
+       - Firm tofu or tempeh: 120 – 150 g per serving.
+       - Textured soy protein (TVP): 35 – 50 g dry weight (yields ~120-150 g hydrated).
+       - Seitan: 100 – 130 g per serving.
+     * GRAINS, TUBERS AND CARBOHYDRATES:
+       - Dry pasta / noodles: 70 – 90 g raw weight per serving (main dish); 40 – 50 g in soups or sides.
+       - Rice grains: 70 – 85 g raw weight (dry/paella dishes); 40 – 50 g in brothy soups.
+       - Potatoes / Sweet potatoes: 200 – 250 g whole raw weight per serving (main dish); 120 – 150 g as side.
+       - Bread / Toast: 50 – 70 g per individual serving.
+       - Rolled oats / morning flours: 40 – 60 g per breakfast serving.
+     * VEGETABLES, GREENS AND SALADS:
+       - Main dish vegetables (ratatouille, roasted vegetables, stir-fry): 250 – 350 g raw weight.
+       - Vegetable creams or purées: 300 – 400 g raw vegetables + 150 – 200 ml broth/liquid per serving.
+       - Salad greens (lettuce, baby spinach, arugula): 60 – 80 g raw per serving.
+     * LIQUIDS, BROTHS AND BASE SAUCES:
+       - Broth in first-course soups: 250 – 350 ml per diner.
+       - Milk / Plant-based milk in breakfasts: 200 – 250 ml per serving.
+       - Natural / Greek yogurt: 125 – 150 g per serving (1 standard unit).
+       - Tomato sauce or concentrated sofrito base: 80 – 120 g per serving.
+     * CULINARY FATS AND DRESSINGS:
+       - Extra virgin olive oil raw / dressing: 10 – 15 ml (1 tablespoon) per person.
+       - Nuts / seeds: 25 – 30 g (a standard handful).
+     * BREAKFASTS AND SINGLE-PORTION BAKING:
+       - Mug cakes / cup cakes / individual pancakes: batter summing between 90 – 140 g corresponds to exactly 1 serving.
+     * MANDATORY CONSEQUENCE: Calculate servings by dividing the weight of the base ingredient by its reference unit weight and round to the nearest whole integer (e.g. 400 g cooked chickpeas with greens = 2 servings; 500 g chicken breast = 3 servings; 160 g dry pasta = 2 servings).
    - Faithfully extract the recipe's native base servings into the 'porciones' field. Ingredient quantities integrated into the steps narrative must correspond accurately to those base servings.`
-      : `8. REDACCIÓN EN PROSA CULINARIA NATURAL E INTEGRACIÓN MÉTRICA EXACTA:
+      : `8. REDACCIÓN EN PROSA CULINARIA NATURAL, TABLA MAESTRA DE GRAMAJES E INFERENCIA DE RACIONES:
    - En el array de 'pasos' o 'preparación', integra siempre las cantidades exactas de los ingredientes de forma fluida, profesional y natural.
    - PROHIBICIÓN ESTRICTA DE DECIMALES DE LABORATORIO: Queda TERMINANTEMENTE PROHIBIDO redactar expresiones frías, artificiales o de laboratorio como "añade 0.5 unidades de cebolla", "vierte 0.25 cucharadas" o "agrega 15ml de aceite".
    - DIRECTIVA OBLIGATORIA DE REDACCIÓN NATURAL: Utiliza lenguaje gastronómico natural incorporando la precisión métrica idónea:
@@ -298,6 +336,43 @@ export function buildRecipeSystemInstruction(options?: {
      * En lugar de "Vierte 15ml de aceite", escribe: "Vierte una cucharada de aceite de oliva virgen extra (15 ml)".
      * En lugar de "Añade 200 de pollo", escribe: "Incorpora los 200 g de pechuga de pollo cortada en dados".
      * En lugar de "Agrega 2 unidades de huevo", escribe: "Agrega los 2 huevos batidos".
+   - DIRECTIVA OBLIGATORIA DE INFERENCIA DE RACIONES BASE (TABLA MAESTRA NUTRICIONAL):
+     Si el creador no verbaliza ni escribe el número exacto de raciones, NUNCA asumas 1 ración ni apliques valores al azar. DEBES calcular las 'porciones' deduciendo el volumen del ingrediente principal o base de la elaboración según esta Tabla Maestra de Referencia Nutricional (por persona/ración individual):
+     * LEGUMBRES:
+       - Legumbre seca (lentejas, garbanzos, alubias): 60 – 80 g en seco por ración de plato principal.
+       - Legumbre cocida / bote escurrido: 160 – 200 g por ración de plato principal (100 – 120 g en ensaladas frías o guarniciones).
+     * PROTEÍNAS ANIMALES (limpias de merma):
+       - Carne blanca / ave (pechuga, contramuslo deshuesado, pavo): 140 – 180 g crudo por ración.
+       - Carne roja / magra (ternera, lomo de cerdo): 150 – 180 g crudo por ración.
+       - Pescado blanco (merluza, bacalao, dorada limpia): 160 – 200 g en crudo por ración.
+       - Pescado azul graso (salmón, atún, caballa): 130 – 160 g en crudo por ración.
+       - Marisco limpio / cefalópodos (gambas, calamares): 150 – 200 g crudo por ración.
+       - Huevos: 2 unidades (o 100 – 120 g de clara pasteurizada) por ración de plato principal.
+     * ALTERNATIVAS VEGETALES / PROTEÍNA VEGANA:
+       - Tofu firme o tempeh: 120 – 150 g por ración.
+       - Soja texturizada: 35 – 50 g en seco (equivale a ~120-150 g hidratada).
+       - Seitán: 100 – 130 g por ración.
+     * CEREALES, TUBÉRCULOS Y CARBOHIDRATOS:
+       - Pasta seca / fideos: 70 – 90 g en crudo por ración (plato principal); 40 – 50 g en sopas o guarniciones.
+       - Arroz en grano: 70 – 85 g en crudo (platos secos/paellas); 40 – 50 g en caldosos/sopas.
+       - Patatas / Boniatos: 200 – 250 g enteros en crudo por ración (plato principal); 120 – 150 g como guarnición.
+       - Pan / Tostadas: 50 – 70 g por ración individual.
+       - Copos de avena / harinas matutinas: 40 – 60 g por ración de desayuno.
+     * VERDURAS, HORTALIZAS Y ENSALADAS:
+       - Verduras de plato principal (menestra, pisto, salteado, verduras al horno): 250 – 350 g en crudo.
+       - Cremas o purés de verduras: 300 – 400 g de verduras brutas + 150 – 200 ml de líquido/caldo por ración.
+       - Hojas verdes para ensalada (lechuga, espinacas baby, canónigos, rúcula): 60 – 80 g en crudo por ración.
+     * LÍQUIDOS, CALDOS Y SALSAS BASE:
+       - Caldos en sopas de primer plato: 250 – 350 ml por comensal.
+       - Leche / Bebidas vegetales en desayunos: 200 – 250 ml por ración.
+       - Yogur natural / griego: 125 – 150 g por ración (1 unidad estándar).
+       - Salsa de tomate o sofrito base concentrado: 80 – 120 g por ración.
+     * GRASAS CULINARIAS Y ADEREZOS:
+       - Aceite de oliva virgen extra en crudo / aliño: 10 – 15 ml (1 cucharada sopera) por persona.
+       - Frutos secos / semillas: 25 – 30 g (un puñado estándar).
+     * DESAYUNOS Y REPOSTERÍA MONOPORCIÓN:
+       - Mug cakes / bizcochos en taza / tortitas individuales: masas que sumen entre 90 – 140 g totales corresponden exactamente a 1 ración.
+     * CONSECUENCIA OBLIGATORIA: Calcula las raciones dividiendo el peso del ingrediente base entre su gramaje unitario de referencia y redondea al entero más próximo (ej: 400 g de garbanzos cocidos con hojas verdes = 2 raciones; 500 g de pechuga de pollo = 3 raciones; 160 g de pasta seca = 2 raciones).
    - Extrae con total fidelidad las porciones o raciones base originales de la elaboración y refléjalas en el campo 'porciones'. Las cantidades integradas en los pasos deben corresponderse exactamente con dichas porciones base.`;
 
   return `

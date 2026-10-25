@@ -1580,6 +1580,7 @@ DIRECTIVAS CRÍTICAS DE PRECISIÓN Y TOLERANCIA CERO A LA ALUCINACIÓN:
    - Especifica en "motivo_invalido" el motivo exacto (ej: "Vídeo no culinario", "Contenido sin ingredientes ni pasos de cocina").
    - NO inventes ingredientes ni pasos.
 3. Si el contenido SÍ es una receta real, establece "es_receta_valida": true y cruza exhaustivamente el vídeo/audio con el texto del post para extraer cantidades, ingredientes canónicos, pasos en prosa culinaria natural y tiempos.
+4. INFERENCIA RIGUROSA DE PORCIONES BASE: Si el creador no verbaliza ni escribe el número exacto de raciones, NUNCA asumas 1 ración por defecto ni valores al azar. Calcula obligatoriamente 'porciones' deduciendo el volumen del ingrediente principal o base de la receta según la Tabla Maestra de Referencia Nutricional del sistema.
 ${compatibilidadDirective}
 ${langDirective}
 ${garlicDirective}

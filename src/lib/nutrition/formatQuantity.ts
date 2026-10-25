@@ -209,39 +209,58 @@ export function formatCulinaryAmount(
 
   // A) Heurística defensiva para el ajo: unidad obligatoria "diente" / "dientes"
   if (isGarlic && (isCountableUnit || isClove || !u)) {
+    const effectiveAmount =
+      amount >= 2
+        ? Math.ceil(amount)
+        : amount < 1
+        ? Math.max(0.5, Math.round(amount * 2) / 2)
+        : Math.round(amount * 2) / 2;
     const cloveUnit =
       lang === 'en'
-        ? amount > 1
+        ? effectiveAmount > 1
           ? 'cloves'
           : 'clove'
-        : amount > 1
+        : effectiveAmount > 1
         ? 'dientes'
         : 'diente';
-    const numStr = formatQuantityNumber(amount);
+    const numStr = formatQuantityNumber(effectiveAmount);
     return `${numStr} ${cloveUnit}`;
   }
 
   // B) Dientes de ajo o afines explícitos
   if (isClove) {
+    const effectiveAmount =
+      amount >= 2
+        ? Math.ceil(amount)
+        : amount < 1
+        ? Math.max(0.5, Math.round(amount * 2) / 2)
+        : Math.round(amount * 2) / 2;
     const cloveUnit =
       lang === 'en'
-        ? amount > 1
+        ? effectiveAmount > 1
           ? 'cloves'
           : 'clove'
-        : amount > 1
+        : effectiveAmount > 1
         ? 'dientes'
         : 'diente';
-    const numStr = formatQuantityNumber(amount);
+    const numStr = formatQuantityNumber(effectiveAmount);
     return `${numStr} ${cloveUnit}`;
   }
 
   // C) Unidades contables (cebolla, limón, tomate...): omitir palabra "unidad"
   if (isCountableUnit) {
-    if (Math.abs(amount - 0.5) <= 0.05) {
+    if (amount >= 2) {
+      return String(Math.ceil(amount));
+    }
+    const cleanAmount =
+      amount < 1
+        ? Math.max(0.5, Math.round(amount * 2) / 2)
+        : Math.round(amount * 2) / 2;
+    if (Math.abs(cleanAmount - 0.5) <= 0.05) {
       if (lang === 'en') return 'Half';
       return isFeminineCulinaryNoun(ingredientName) ? 'Media' : 'Medio';
     }
-    return formatQuantityNumber(amount);
+    return formatQuantityNumber(cleanAmount);
   }
 
   // D) Medidas de cuchara / taza (permiten fracciones culinarias como 1/2, 1/4, 1 ½)
@@ -253,21 +272,36 @@ export function formatCulinaryAmount(
 
   // E) Sin unidad definida:
   if (!u) {
-    if (Math.abs(amount - 0.5) <= 0.05) {
+    if (amount >= 2) {
+      return String(Math.ceil(amount));
+    }
+    const cleanAmount =
+      amount < 1
+        ? Math.max(0.5, Math.round(amount * 2) / 2)
+        : Math.round(amount * 2) / 2;
+    if (Math.abs(cleanAmount - 0.5) <= 0.05) {
       if (lang === 'en') return 'Half';
       return isFeminineCulinaryNoun(ingredientName) ? 'Media' : 'Medio';
     }
-    if (Number.isInteger(amount)) return String(amount);
-    const rounded = Math.round(amount * 10) / 10;
-    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+    return formatQuantityNumber(cleanAmount);
   }
 
   // =========================================================================
   // 4. RESTO DE UNIDADES (paquete, bote, lata, pizca, manojo, etc.):
   //    NUNCA fracciones. Redondeo limpio a entero o 1 decimal máximo.
   // =========================================================================
-  const numStr = Number.isInteger(amount) ? String(amount) : (Math.round(amount * 10) / 10).toFixed(1);
-  const unitFormatted = formatIngredientUnit(unit, amount, lang);
+  const isPackOrCan = /^(bote|botes|lata|latas|can|cans|paquete|paquetes|package|packages|jar|jars|sobre|sobres)$/i.test(u);
+  let effectiveAmount = amount;
+  if (isPackOrCan) {
+    effectiveAmount =
+      amount >= 2
+        ? Math.ceil(amount)
+        : amount < 1
+        ? Math.max(0.5, Math.round(amount * 2) / 2)
+        : Math.round(amount * 2) / 2;
+  }
+  const numStr = Number.isInteger(effectiveAmount) ? String(effectiveAmount) : (Math.round(effectiveAmount * 10) / 10).toFixed(1);
+  const unitFormatted = formatIngredientUnit(unit, effectiveAmount, lang);
   return `${numStr} ${unitFormatted}`.trim();
 }
 
