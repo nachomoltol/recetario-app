@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ChefHat, ArrowLeft, Calendar } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
+import { MealPlannerHeaderTitle } from '@/components/planner/MealPlannerHeaderTitle';
 import { MealPlannerView } from '@/components/planner/MealPlannerView';
 import { getWeeklyPlanAction } from '@/app/actions/mealPlanner';
 
@@ -72,19 +73,7 @@ export default async function MealPlannerPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-bold font-serif-recipe tracking-tight text-stone-900 block leading-tight">
-                  Plan de Comidas
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
-                  Semanal
-                </span>
-              </div>
-              <span className="text-[10px] text-stone-500 tracking-wider uppercase block font-medium">
-                Organización Culinaria & Compra Unificada
-              </span>
-            </div>
+            <MealPlannerHeaderTitle />
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -99,7 +88,11 @@ export default async function MealPlannerPage() {
 
       {/* Contenido Principal */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <MealPlannerView initialPlans={initialPlans} userRecipes={userRecipes} />
+        <MealPlannerView
+          initialPlans={initialPlans}
+          userRecipes={userRecipes}
+          userProfile={profile}
+        />
       </main>
     </div>
   );

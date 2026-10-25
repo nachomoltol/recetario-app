@@ -104,6 +104,7 @@ export default async function SmartMenuPage() {
           userRecipes={userRecipes}
           existingPlans={existingPlans}
           initialStartDate={startDate}
+          userProfile={profile}
         />
       </main>
     </div>

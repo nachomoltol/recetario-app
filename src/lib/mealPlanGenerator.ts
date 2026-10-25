@@ -15,7 +15,7 @@ export interface MealPlanGeneratorOptions {
 
 export interface PlanItemSugerido {
   fecha: string;
-  slot: 'desayuno' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre';
+  slot: 'desayuno' | 'almuerzo' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre';
   receta: Receta;
 }
 
@@ -333,7 +333,7 @@ export function generateMealPlan(
         );
 
         if (selected) {
-          items.push({ fecha, slot: 'almuerzo_1', receta: selected.receta });
+          items.push({ fecha, slot: 'almuerzo', receta: selected.receta });
           usedCountMap.set(selected.receta.id, (usedCountMap.get(selected.receta.id) || 0) + 1);
           lastUsedDateMap.set(selected.receta.id, fecha);
 

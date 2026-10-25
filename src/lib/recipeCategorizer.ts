@@ -351,7 +351,7 @@ export function inferRecipeCategory(receta: {
  */
 export function isDessertExcludedFromSlot(rolPlato?: RolPlato | null, slot?: string): boolean {
   if (rolPlato === 'postre') {
-    return slot === 'almuerzo_1' || slot === 'almuerzo_2';
+    return slot === 'almuerzo' || slot === 'almuerzo_1' || slot === 'almuerzo_2' || slot === 'cena';
   }
   return false;
 }

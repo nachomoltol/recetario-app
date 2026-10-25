@@ -4,7 +4,6 @@ import { useState, useEffect, useTransition, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
-  Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -12,23 +11,20 @@ import {
   ShoppingCart,
   Check,
   Copy,
-  Clock,
   Utensils,
   Sun,
   Soup,
   Moon,
   Apple,
   X,
-  Sparkles,
   BookOpen,
   Filter,
   SlidersHorizontal,
   Tag,
-  AlertCircle,
   Users,
   Loader2,
 } from 'lucide-react';
-import { Receta } from '@/types/recipe';
+import { Receta, Usuario } from '@/types/recipe';
 import {
   MealSlot,
   PlannedSlotItem,
@@ -38,14 +34,16 @@ import {
   clearWeeklyPlanAction,
   generateUnifiedShoppingListAction,
 } from '@/app/actions/mealPlanner';
-import { groupItemsByAisle, SupermarketAisle } from '@/lib/culinary/aisles';
+import { groupItemsByAisle } from '@/lib/culinary/aisles';
 import { isDessertExcludedFromSlot } from '@/lib/recipeCategorizer';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { useProfileStore } from '@/stores/useProfileStore';
 import { TranslationKey } from '@/lib/i18n/translations';
 
 interface MealPlannerViewProps {
   initialPlans: PlannedSlotItem[];
   userRecipes: Receta[];
+  userProfile?: Usuario | null;
 }
 
 const SLOTS_CONFIG: { slot: MealSlot; labelKey: TranslationKey; icon: typeof Sun }[] = [
@@ -89,13 +87,33 @@ function formatDateISO(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
-export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewProps) {
+interface DaySlotItem {
+  slot: MealSlot;
+  label: string;
+  icon: typeof Sun;
+  plan?: PlannedSlotItem;
+  canAddSecondCourse?: boolean;
+}
+
+export function MealPlannerView({ initialPlans, userRecipes, userProfile }: MealPlannerViewProps) {
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
+  const profileStore = useProfileStore((s) => s.profile);
+
+  // 2. Consulta de forma prioritaria la configuración de raciones del perfil del usuario
+  const defaultDiners = useMemo(() => {
+    return (
+      (userProfile as any)?.porciones_por_defecto ??
+      userProfile?.raciones_defecto ??
+      (profileStore as any)?.porciones_por_defecto ??
+      profileStore?.raciones_defecto ??
+      4
+    );
+  }, [userProfile, profileStore]);
 
   const [currentMonday, setCurrentMonday] = useState<Date>(() => getMonday(new Date()));
   const [plans, setPlans] = useState<PlannedSlotItem[]>(initialPlans);
-  const [activeDayIndex, setActiveDayIndex] = useState(0); // Para vista móvil por pestañas
+  const [activeDayIndex, setActiveDayIndex] = useState(0); // Para vista móvil por día
   const [pickerModal, setPickerModal] = useState<{ fecha: string; slot: MealSlot } | null>(null);
   const [shoppingModal, setShoppingModal] = useState<UnifiedShoppingItem[] | null>(null);
   const [checkedShoppingItems, setCheckedShoppingItems] = useState<string[]>([]);
@@ -137,6 +155,11 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
         shortName: t(DAY_SHORT_KEYS[i]),
         dayNum: day.getDate(),
         monthName: day.toLocaleDateString(locale, { month: 'short' }),
+        fullDateLabel: day.toLocaleDateString(locale, {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+        }),
       };
     });
   }, [currentMonday, language, t]);
@@ -185,15 +208,15 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
   };
 
   const handleSelectWorkdays = () => {
-    setSelectedDates(weekDays.slice(0, 5).map((d) => d.dateStr)); // Lunes a Viernes
+    setSelectedDates(weekDays.slice(0, 5).map((d) => d.dateStr));
   };
 
   const handleSelectMonToThu = () => {
-    setSelectedDates(weekDays.slice(0, 4).map((d) => d.dateStr)); // Lunes a Jueves
+    setSelectedDates(weekDays.slice(0, 4).map((d) => d.dateStr));
   };
 
   const handleSelectWeekend = () => {
-    setSelectedDates(weekDays.slice(5, 7).map((d) => d.dateStr)); // Sábado y Domingo
+    setSelectedDates(weekDays.slice(5, 7).map((d) => d.dateStr));
   };
 
   const handleToggleDay = (dateStr: string) => {
@@ -223,13 +246,14 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
     const { fecha, slot } = pickerModal;
     const recipe = userRecipes.find((r) => r.id === recetaId);
 
-    // Optimistic UI
+    // Optimistic UI con porciones del perfil del usuario
     const optimisticItem: PlannedSlotItem = {
       id: `temp-${Date.now()}`,
       usuario_id: '',
       receta_id: recetaId,
       fecha,
       slot,
+      porciones: defaultDiners,
       notas: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -242,7 +266,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
     ]);
     setPickerModal(null);
 
-    await assignMealSlotAction({ fecha, slot, recetaId });
+    await assignMealSlotAction({ fecha, slot, recetaId, porciones: defaultDiners });
   };
 
   // Quitar receta de un slot
@@ -251,7 +275,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
     await removeMealSlotAction({ fecha, slot });
   };
 
-  // 5. Herramienta de Reseteo / Limpieza de Menús:
+  // Herramienta de Reseteo / Limpieza de Menús
   const [isClearingWeek, setIsClearingWeek] = useState(false);
   const handleClearWeek = async () => {
     if (!window.confirm(t('planner_clear_week_confirm'))) return;
@@ -275,8 +299,13 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
     const activeDates = selectedDates.length > 0 ? selectedDates : weekDays.map((d) => d.dateStr);
     const activeSlots: MealSlot[] =
       selectedSlots.length > 0
-        ? selectedSlots
-        : (['desayuno', 'almuerzo_1', 'almuerzo_2', 'cena', 'snack_postre'] as MealSlot[]);
+        ? [
+            ...selectedSlots,
+            ...(selectedSlots.includes('almuerzo_1') || selectedSlots.includes('almuerzo_2')
+              ? (['almuerzo'] as MealSlot[])
+              : []),
+          ]
+        : (['desayuno', 'almuerzo', 'almuerzo_1', 'almuerzo_2', 'cena', 'snack_postre'] as MealSlot[]);
 
     startShoppingTransition(async () => {
       const res = await generateUnifiedShoppingListAction(startDateStr, endDateStr, {
@@ -322,17 +351,287 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
     }
 
     lines.push('\n=======================================================');
-    lines.push(isEn ? 'Created with Smart Cookbook (Organized by Aisles)' : 'Creado con Recetario App (Organización por Pasillos)');
+    lines.push(isEn ? 'Created with Miga (Organized by Aisles)' : 'Creado con Miga (Organización por Pasillos)');
 
     navigator.clipboard.writeText(lines.join('\n'));
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2500);
   };
 
+  // 3. Corrección Lógica de Almuerzos (1º + 2º vs Plato Único):
+  // Helper dinámico para calcular los slots a renderizar por día
+  const getDaySlots = (dateStr: string): DaySlotItem[] => {
+    const dayPlans = plans.filter((p) => p.fecha === dateStr);
+    const result: DaySlotItem[] = [];
+
+    // 1. Desayuno
+    const desayuno = dayPlans.find((p) => p.slot === 'desayuno');
+    result.push({
+      slot: 'desayuno',
+      label: t('slot_breakfast'),
+      icon: Sun,
+      plan: desayuno,
+    });
+
+    // 2. Almuerzo
+    const planAlmuerzo = dayPlans.find((p) => p.slot === 'almuerzo');
+    const planAlmuerzo1 = dayPlans.find((p) => p.slot === 'almuerzo_1');
+    const planAlmuerzo2 = dayPlans.find((p) => p.slot === 'almuerzo_2');
+
+    if (planAlmuerzo1 && planAlmuerzo2) {
+      // 1º y 2º plato complementarios asignados
+      result.push({
+        slot: 'almuerzo_1',
+        label: t('slot_course_1'),
+        icon: Soup,
+        plan: planAlmuerzo1,
+      });
+      result.push({
+        slot: 'almuerzo_2',
+        label: t('slot_course_2'),
+        icon: Utensils,
+        plan: planAlmuerzo2,
+      });
+    } else if (planAlmuerzo) {
+      // Plato único explícito asignado por algoritmo o usuario
+      result.push({
+        slot: 'almuerzo',
+        label: t('slot_lunch_unique'),
+        icon: Utensils,
+        plan: planAlmuerzo,
+        canAddSecondCourse: !planAlmuerzo2,
+      });
+    } else if (planAlmuerzo1 && !planAlmuerzo2) {
+      // Solo almuerzo_1 asignado -> Etiquetar como Plato Único y ocultar el 2º
+      result.push({
+        slot: 'almuerzo_1',
+        label: t('slot_lunch_unique'),
+        icon: Utensils,
+        plan: planAlmuerzo1,
+        canAddSecondCourse: true,
+      });
+    } else if (planAlmuerzo2 && !planAlmuerzo1) {
+      // Solo almuerzo_2 asignado
+      result.push({
+        slot: 'almuerzo_2',
+        label: t('slot_lunch_unique'),
+        icon: Utensils,
+        plan: planAlmuerzo2,
+      });
+    } else {
+      // Ningún plato asignado para almuerzo: único slot limpio (ocultando 2º plato)
+      result.push({
+        slot: 'almuerzo',
+        label: t('slot_lunch_short'),
+        icon: Utensils,
+        plan: undefined,
+      });
+    }
+
+    // 3. Cena
+    const cena = dayPlans.find((p) => p.slot === 'cena');
+    result.push({
+      slot: 'cena',
+      label: t('slot_dinner'),
+      icon: Moon,
+      plan: cena,
+    });
+
+    // 4. Snack / Postre
+    const snack = dayPlans.find((p) => p.slot === 'snack_postre');
+    result.push({
+      slot: 'snack_postre',
+      label: t('slot_snack_dessert'),
+      icon: Apple,
+      plan: snack,
+    });
+
+    return result;
+  };
+
+  // Renderizador de cada tarjeta de comida (compacta, sin scroll vertical, sin tiempo, con comensales reales)
+  const renderSlotCard = (dayDateStr: string, slotItem: DaySlotItem) => {
+    const assignedPlan = slotItem.plan;
+    const currentSlot = slotItem.slot;
+    const SlotIcon = slotItem.icon;
+    const slotLabel = slotItem.label;
+    const displayDiners = assignedPlan?.porciones ?? defaultDiners;
+
+    if (assignedPlan && assignedPlan.receta) {
+      return (
+        <div
+          key={`${dayDateStr}-${currentSlot}`}
+          className="w-full max-w-full p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between gap-2.5 transition-all hover:border-[#a86224]/50 group shadow-2xs"
+        >
+          <div className="min-w-0 flex-1 space-y-0.5">
+            {/* Micro header: Icono + Nombre del momento/rol */}
+            <div className="flex items-center gap-1.5 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+              <SlotIcon className="w-3 h-3 text-[#a86224] shrink-0" />
+              <span className="truncate">{slotLabel}</span>
+            </div>
+
+            {/* Título de la receta en font-serif-recipe */}
+            <Link
+              href={`/recipes/${assignedPlan.receta.id}`}
+              className="text-xs sm:text-sm font-bold font-serif-recipe text-stone-900 hover:text-[#a86224] transition-colors block truncate leading-tight"
+              title={assignedPlan.receta.titulo}
+            >
+              {assignedPlan.receta.titulo}
+            </Link>
+
+            {/* Número de comensales prioritario con icono 👥 (tiempo de cocción eliminado) */}
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-[#a86224]">
+              <span className="flex items-center gap-1 shrink-0">
+                <Users className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+                <span>{displayDiners}</span>
+              </span>
+
+              {slotItem.canAddSecondCourse && (
+                <>
+                  <span className="text-stone-300">·</span>
+                  <button
+                    type="button"
+                    onClick={() => setPickerModal({ fecha: dayDateStr, slot: 'almuerzo_2' })}
+                    className="text-[10px] font-semibold text-stone-500 hover:text-[#a86224] hover:underline cursor-pointer"
+                  >
+                    {t('planner_add_second_course')}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Botones discretos de sustituir y eliminar plato */}
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setPickerModal({ fecha: dayDateStr, slot: currentSlot })}
+              className="w-7 h-7 rounded-xl bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] text-stone-600 hover:text-[#a86224] flex items-center justify-center transition cursor-pointer shadow-2xs"
+              title={t('planner_replace_dish')}
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleRemoveSlot(dayDateStr, currentSlot)}
+              className="w-7 h-7 rounded-xl bg-white hover:bg-red-50 border border-[#e7dfd5] hover:border-red-200 text-stone-400 hover:text-red-600 flex items-center justify-center transition cursor-pointer shadow-2xs"
+              title={t('planner_remove_recipe')}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Slot vacío para asignar plato
+    return (
+      <div
+        key={`${dayDateStr}-${currentSlot}`}
+        className="w-full max-w-full p-2.5 sm:p-3 rounded-2xl bg-white border border-dashed border-[#d5cabb] hover:border-[#a86224] transition-all flex items-center justify-between gap-2.5"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-xl bg-[#faf7f2] flex items-center justify-center text-stone-400 shrink-0">
+            <SlotIcon className="w-3.5 h-3.5 text-stone-500" />
+          </div>
+          <span className="text-xs font-semibold text-stone-600 truncate">{slotLabel}</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setPickerModal({ fecha: dayDateStr, slot: currentSlot })}
+          className="min-h-[28px] px-2.5 py-1 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer shrink-0"
+        >
+          <Plus className="w-3 h-3" />
+          <span>{t('planner_assign_btn')}</span>
+        </button>
+      </div>
+    );
+  };
+
+  const activeDay = weekDays[activeDayIndex];
+
   return (
-    <div className="space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
-      {/* Barra de Navegación de la Semana y Acciones Principales */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
+      {/* ============================================================== */}
+      {/* 1. CABECERA MÓVIL MINIMALISTA (sm:hidden)                       */}
+      {/* ============================================================== */}
+      <div className="flex sm:hidden items-center justify-between gap-2 p-2.5 rounded-2xl bg-white border border-[#e7dfd5] shadow-xs">
+        {/* Selector de semana compacto */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handlePrevWeek}
+            className="w-8 h-8 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-stone-700 transition cursor-pointer"
+            title={t('planner_prev_week')}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={handleCurrentWeek}
+            className="px-2.5 py-1 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[11px] font-bold font-serif-recipe text-stone-800 transition cursor-pointer leading-tight"
+          >
+            {language === 'en'
+              ? `${weekDays[0].monthName} ${weekDays[0].dayNum}–${weekDays[6].dayNum}`
+              : `${weekDays[0].dayNum}–${weekDays[6].dayNum} ${weekDays[0].monthName}`}
+          </button>
+          <button
+            type="button"
+            onClick={handleNextWeek}
+            className="w-8 h-8 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-stone-700 transition cursor-pointer"
+            title={t('planner_next_week')}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Acciones discretas en móvil */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleClearWeek}
+            disabled={isClearingWeek || plans.length === 0}
+            className="w-8 h-8 rounded-xl border border-[#e7dfd5] bg-white text-stone-500 hover:text-red-600 flex items-center justify-center transition cursor-pointer disabled:opacity-30"
+            title={t('planner_clear_week_btn')}
+          >
+            {isClearingWeek ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+            className={`w-8 h-8 rounded-xl border flex items-center justify-center transition cursor-pointer ${
+              isFilterPanelOpen
+                ? 'bg-[#f4efe6] border-[#a86224] text-[#a86224]'
+                : 'bg-white border-[#e7dfd5] text-stone-600'
+            }`}
+            title={t('planner_shopping_filters')}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGenerateShoppingList}
+            disabled={isShoppingPending}
+            className="h-8 px-2.5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs flex items-center gap-1 shadow-xs transition cursor-pointer disabled:opacity-50"
+            title={t('planner_generate_shopping_list')}
+          >
+            {isShoppingPending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <ShoppingCart className="w-3.5 h-3.5" />
+            )}
+            <span className="text-[11px] font-bold">{t('planner_shopping_btn_short')}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* 2. CABECERA COMPLETA PARA DESKTOP (hidden sm:flex)             */}
+      {/* ============================================================== */}
+      <div className="hidden sm:flex items-center justify-between gap-4 p-4 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -372,9 +671,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
           </div>
         </div>
 
-        {/* Acciones de Lista de Compra, Limpieza y Filtros */}
         <div className="flex items-center gap-2">
-          {/* Botón de Limpieza de Semana */}
           <button
             type="button"
             onClick={handleClearWeek}
@@ -387,9 +684,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
             ) : (
               <Trash2 className="w-4 h-4" />
             )}
-            <span className="hidden sm:inline">
-              {isClearingWeek ? t('planner_clearing_week') : t('planner_clear_week_btn')}
-            </span>
+            <span>{isClearingWeek ? t('planner_clearing_week') : t('planner_clear_week_btn')}</span>
           </button>
 
           <button
@@ -425,7 +720,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
 
       {/* Banner de confirmación cuando llega desde /smart-menu */}
       {showGeneratedBanner && (
-        <div className="p-4 rounded-2xl border bg-emerald-50 border-emerald-200 text-emerald-800 flex items-center justify-between gap-3 text-xs sm:text-sm animate-fade-in shadow-xs">
+        <div className="p-3.5 sm:p-4 rounded-2xl border bg-emerald-50 border-emerald-200 text-emerald-800 flex items-center justify-between gap-3 text-xs sm:text-sm animate-fade-in shadow-xs">
           <div className="flex items-center gap-2.5">
             <Check className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="font-semibold">{t('smart_menu_applied_success')}</span>
@@ -442,7 +737,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
 
       {/* PANEL DE FILTROS INTERACTIVOS DE EXPORTACIÓN */}
       {isFilterPanelOpen && (
-        <div className="p-5 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4 animate-fade-in">
+        <div className="p-4 sm:p-5 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4 animate-fade-in">
           <div className="flex items-center justify-between border-b border-[#f4efe6] pb-2">
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-[#a86224]" />
@@ -569,36 +864,62 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
         </div>
       )}
 
-      {/* Selector de día para Móviles (Tabs horizontales) */}
-      <div className="flex sm:hidden overflow-x-auto gap-1.5 p-1.5 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] no-scrollbar">
+      {/* ============================================================== */}
+      {/* 3. CARRUSEL HORIZONTAL COMPACTO DE DÍAS (MÓVIL)                */}
+      {/* ============================================================== */}
+      <div className="flex sm:hidden overflow-x-auto gap-1.5 p-1 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] no-scrollbar">
         {weekDays.map((d, idx) => (
           <button
             key={d.dateStr}
             type="button"
             onClick={() => setActiveDayIndex(idx)}
-            className={`min-h-[44px] px-3.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex flex-col items-center justify-center flex-1 ${
+            className={`min-h-[42px] px-2 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex flex-col items-center justify-center flex-1 ${
               activeDayIndex === idx
                 ? 'bg-white text-stone-900 shadow-2xs font-bold border border-[#e7dfd5]'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <span>{d.shortName}</span>
-            <span className="text-[10px] font-normal">{d.dayNum}</span>
+            <span className="text-[9px] uppercase font-bold leading-none tracking-tight">{d.shortName}</span>
+            <span className="text-xs font-bold leading-tight mt-0.5">{d.dayNum}</span>
           </button>
         ))}
       </div>
 
-      {/* Cuadrícula de Planificación (En móvil muestra el día activo; en desktop muestra los 7 días) */}
-      <div className="grid grid-cols-1 sm:grid-cols-7 gap-4 w-full max-w-full">
-        {weekDays.map((day, idx) => {
-          const isHiddenOnMobile = activeDayIndex !== idx;
+      {/* ============================================================== */}
+      {/* 4. VISTA MÓVIL POR DÍA SIN SCROLL VERTICAL                     */}
+      {/* ============================================================== */}
+      <div className="block sm:hidden w-full max-w-full">
+        <div className="rounded-3xl bg-white border border-[#e7dfd5] p-3 space-y-3 shadow-2xs w-full max-w-full overflow-hidden">
+          {/* Cabecera del día activo */}
+          <div className="border-b border-[#f4efe6] pb-2 flex items-center justify-between">
+            <span className="text-sm font-bold font-serif-recipe text-stone-900 capitalize">
+              {activeDay.fullDateLabel}
+            </span>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[#a86224] px-2 py-0.5 rounded-lg bg-[#faf7f2] border border-[#e7dfd5]">
+              {activeDay.shortName} {activeDay.dayNum}
+            </span>
+          </div>
+
+          {/* Tarjetas compactas de las comidas de ese día */}
+          <div className="space-y-2 w-full max-w-full">
+            {getDaySlots(activeDay.dateStr).map((slotItem) =>
+              renderSlotCard(activeDay.dateStr, slotItem)
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* 5. VISTA DESKTOP: CUADRÍCULA DE 7 COLUMNAS                     */}
+      {/* ============================================================== */}
+      <div className="hidden sm:grid sm:grid-cols-7 gap-3.5 w-full max-w-full">
+        {weekDays.map((day) => {
+          const slots = getDaySlots(day.dateStr);
 
           return (
             <div
               key={day.dateStr}
-              className={`rounded-3xl bg-white border border-[#e7dfd5] p-3 sm:p-4 space-y-4 shadow-2xs w-full max-w-full overflow-hidden ${
-                isHiddenOnMobile ? 'hidden sm:block' : 'block'
-              }`}
+              className="rounded-3xl bg-white border border-[#e7dfd5] p-3 space-y-3 shadow-2xs w-full max-w-full overflow-hidden"
             >
               {/* Encabezado del día */}
               <div className="border-b border-[#f4efe6] pb-2 text-center">
@@ -610,69 +931,9 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                 </span>
               </div>
 
-              {/* Los 4-5 slots fijos diarios */}
-              <div className="space-y-3 w-full max-w-full">
-                {SLOTS_CONFIG.map(({ slot, labelKey, icon: SlotIcon }) => {
-                  const assignedPlan = plans.find(
-                    (p) => p.fecha === day.dateStr && p.slot === slot
-                  );
-
-                  return (
-                    <div
-                      key={slot}
-                      className="w-full max-w-full overflow-hidden p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2 text-left"
-                    >
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-stone-600 gap-1">
-                        <span className="flex items-center gap-1.5 capitalize truncate">
-                          <SlotIcon className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
-                          <span className="truncate">{t(labelKey)}</span>
-                        </span>
-
-                        {assignedPlan && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSlot(day.dateStr, slot)}
-                            className="w-6 h-6 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition cursor-pointer shrink-0"
-                            title={t('planner_remove_recipe')}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-
-                      {assignedPlan && assignedPlan.receta ? (
-                        <div className="space-y-1 w-full max-w-full overflow-hidden">
-                          <Link
-                            href={`/recipes/${assignedPlan.receta.id}`}
-                            className="text-xs font-bold font-serif-recipe text-stone-900 hover:text-[#a86224] transition-colors block line-clamp-2 leading-snug break-words"
-                          >
-                            {assignedPlan.receta.titulo}
-                          </Link>
-                          <div className="flex items-center gap-1.5 text-xs text-stone-500 whitespace-nowrap overflow-hidden text-ellipsis">
-                            <span className="flex items-center gap-1 shrink-0">
-                              <Clock className="w-3 h-3 text-[#a86224]" />
-                              <span>{assignedPlan.receta.tiempo_total_min || 15}m</span>
-                            </span>
-                            <span className="text-stone-300">·</span>
-                            <span className="flex items-center gap-1 shrink-0 font-medium">
-                              <Users className="w-3 h-3 text-[#a86224]" />
-                              <span>{assignedPlan.porciones ?? assignedPlan.receta.porciones ?? 2}</span>
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setPickerModal({ fecha: day.dateStr, slot })}
-                          className="w-full min-h-[40px] py-1.5 px-2 rounded-xl border border-dashed border-[#d5cabb] hover:border-[#a86224] text-stone-500 hover:text-[#a86224] hover:bg-white text-[11px] font-medium transition flex items-center justify-center gap-1 cursor-pointer truncate"
-                        >
-                          <Plus className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{t('planner_assign_btn')}</span>
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+              {/* Slots calculados para el día */}
+              <div className="space-y-2.5 w-full max-w-full">
+                {slots.map((slotItem) => renderSlotCard(day.dateStr, slotItem))}
               </div>
             </div>
           );
@@ -684,24 +945,27 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
       {/* ============================================================== */}
       {pickerModal && (
         <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-lg rounded-3xl bg-white border border-[#e7dfd5] shadow-2xl p-6 space-y-4 max-h-[85vh] flex flex-col">
+          <div className="w-full max-w-lg rounded-3xl bg-white border border-[#e7dfd5] shadow-2xl p-5 sm:p-6 space-y-4 max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-[#e7dfd5] pb-3">
               <div>
-                <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
+                <h3 className="text-base sm:text-lg font-bold font-serif-recipe text-stone-900">
                   {t('planner_assign_modal_title')}{' '}
                   {(() => {
+                    if (pickerModal.slot === 'almuerzo') return t('slot_lunch_unique');
+                    if (pickerModal.slot === 'almuerzo_1') return t('slot_course_1');
+                    if (pickerModal.slot === 'almuerzo_2') return t('slot_course_2');
                     const found = SLOTS_CONFIG.find((s) => s.slot === pickerModal.slot);
                     return found ? t(found.labelKey) : pickerModal.slot;
                   })()}
                 </h3>
                 <p className="text-xs text-stone-500">
-                  {t('planner_assign_date')}: {pickerModal.fecha}
+                  {t('planner_assign_date')}: {pickerModal.fecha} · <span className="text-[#a86224] font-semibold">👥 {defaultDiners}</span>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setPickerModal(null)}
-                className="w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center cursor-pointer hover:bg-stone-200 transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -731,21 +995,16 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                     key={r.id}
                     type="button"
                     onClick={() => handleAssignRecipe(r.id)}
-                    className="w-full min-h-[52px] p-3 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] hover:border-[#a86224] transition text-left flex items-center justify-between gap-3 cursor-pointer group"
+                    className="w-full min-h-[48px] p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] hover:border-[#a86224] transition text-left flex items-center justify-between gap-3 cursor-pointer group"
                   >
                     <div className="min-w-0 flex-1">
                       <h4 className="font-bold text-xs sm:text-sm text-stone-900 group-hover:text-[#a86224] transition-colors line-clamp-1">
                         {r.titulo}
                       </h4>
                       <div className="flex items-center gap-1.5 text-xs text-stone-500 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5">
-                        <span className="flex items-center gap-1 shrink-0">
-                          <Clock className="w-3 h-3 text-[#a86224]" />
-                          <span>{r.tiempo_total_min || 15}m</span>
-                        </span>
-                        <span className="text-stone-300">·</span>
-                        <span className="flex items-center gap-1 shrink-0 font-medium">
+                        <span className="flex items-center gap-1 shrink-0 font-semibold text-[#a86224]">
                           <Users className="w-3 h-3 text-[#a86224]" />
-                          <span>{r.porciones || 2}</span>
+                          <span>{defaultDiners}</span>
                         </span>
                       </div>
                     </div>
@@ -763,14 +1022,14 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
       {/* ============================================================== */}
       {shoppingModal && (
         <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-xl rounded-3xl bg-white border border-[#e7dfd5] shadow-2xl p-6 space-y-4 max-h-[88vh] flex flex-col">
+          <div className="w-full max-w-xl rounded-3xl bg-white border border-[#e7dfd5] shadow-2xl p-5 sm:p-6 space-y-4 max-h-[88vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-[#e7dfd5] pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center">
                   <ShoppingCart className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
+                  <h3 className="text-base sm:text-lg font-bold font-serif-recipe text-stone-900">
                     {t('planner_shopping_modal_title')}
                   </h3>
                   <p className="text-xs text-stone-500">
@@ -783,7 +1042,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
               <button
                 type="button"
                 onClick={() => setShoppingModal(null)}
-                className="w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center cursor-pointer hover:bg-stone-200 transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -855,7 +1114,7 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                                       : [...prev, item.nombre]
                                   );
                                 }}
-                                className={`min-h-[50px] p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                                className={`min-h-[48px] p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                                   isChecked
                                     ? 'bg-[#f7f5f0] border-[#e2dbce] opacity-75'
                                     : 'bg-[#faf7f2] hover:bg-white border-[#e7dfd5]'

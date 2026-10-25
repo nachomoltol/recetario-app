@@ -168,6 +168,10 @@ export const TRANSLATIONS = {
     slot_lunch_short: 'Almuerzo',
     slot_course_1: '1er Plato',
     slot_course_2: '2do Plato',
+    slot_lunch_unique: 'Almuerzo (Plato Único)',
+    planner_shopping_btn_short: 'Comprar',
+    planner_add_second_course: '+ 2º plato',
+    planner_replace_dish: 'Cambiar plato',
 
     // Configuración (Settings)
     settings_title: 'Configuración',
@@ -725,6 +729,10 @@ export const TRANSLATIONS = {
     slot_lunch_short: 'Lunch',
     slot_course_1: '1st Course',
     slot_course_2: '2nd Course',
+    slot_lunch_unique: 'Lunch (Single Course)',
+    planner_shopping_btn_short: 'Shop',
+    planner_add_second_course: '+ 2nd course',
+    planner_replace_dish: 'Replace dish',
 
     // Settings
     settings_title: 'Settings',

@@ -19,7 +19,7 @@ import {
   CheckCircle2,
   RotateCcw,
 } from 'lucide-react';
-import { Receta } from '@/types/recipe';
+import { Usuario, Receta } from '@/types/recipe';
 import { MealSlot, PlannedSlotItem, batchAssignMealSlotsAction } from '@/app/actions/mealPlanner';
 import { generateSmartMealPlan } from '@/lib/mealPlanGenerator';
 import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
@@ -30,6 +30,7 @@ export interface SmartMenuWizardViewProps {
   userRecipes: Receta[];
   existingPlans: PlannedSlotItem[];
   initialStartDate: string; // YYYY-MM-DD
+  userProfile?: Usuario | null;
 }
 
 function formatLocalDate(d: Date): string {
@@ -61,13 +62,15 @@ export function SmartMenuWizardView({
   userRecipes,
   existingPlans,
   initialStartDate,
+  userProfile,
 }: SmartMenuWizardViewProps) {
   const router = useRouter();
   const t = useLanguageStore((s) => s.t);
   const language = useLanguageStore((s) => s.language);
 
   // Perfil del usuario y estado PRO
-  const profile = useProfileStore((s) => s.profile);
+  const profileFromStore = useProfileStore((s) => s.profile);
+  const profile = userProfile ?? profileFromStore;
   const isPro = profile?.plan_suscripcion === 'pro';
 
   // 3. Selector y Corrección Dinámica de Fechas en /smart-menu:
@@ -188,8 +191,8 @@ export function SmartMenuWizardView({
       }
 
       // 2. Respeto Estricto de los Comensales del Usuario (porciones):
-      // Lee el número de porciones configurado en el perfil del usuario (perfil.raciones_defecto)
-      const defaultServings = profile?.raciones_defecto || 2;
+      // Lee el número de porciones configurado en el perfil del usuario (perfil.raciones_defecto o porciones_por_defecto)
+      const defaultServings = (profile as any)?.porciones_por_defecto ?? profile?.raciones_defecto ?? 4;
 
       // Persistir ítems generados en Supabase mediante Server Action atómica en lote
       const batchItems = result.items.map((it) => ({

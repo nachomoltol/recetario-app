@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { PlanComida, Receta, RecetaIngrediente } from '@/types/recipe';
 import { classifyIngredientAisle } from '@/lib/culinary/aisles';
 
-export type MealSlot = 'desayuno' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre';
+export type MealSlot = 'desayuno' | 'almuerzo' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre';
 
 export interface PlannedSlotItem extends PlanComida {
   porciones?: number | null;
@@ -143,7 +143,7 @@ export async function assignMealSlotAction({
         .select('raciones_defecto')
         .eq('id', user.id)
         .maybeSingle();
-      finalPorciones = userProfile?.raciones_defecto || 2;
+      finalPorciones = (userProfile as any)?.porciones_por_defecto ?? userProfile?.raciones_defecto ?? 4;
     }
 
     const rowToUpsert: any = {
@@ -205,21 +205,21 @@ export async function batchAssignMealSlotsAction(
     }
 
     // 2. Respeto Estricto de los Comensales del Usuario (porciones):
-    // Leer número de porciones configurado en el perfil del usuario (perfil.raciones_defecto)
+    // Leer número de porciones configurado en el perfil del usuario (perfil.raciones_defecto o comensales)
     const { data: userProfile } = await supabase
       .from('usuarios')
       .select('raciones_defecto')
       .eq('id', user.id)
       .maybeSingle();
 
-    const userServings = userProfile?.raciones_defecto || 2;
+    const userServings = (userProfile as any)?.porciones_por_defecto ?? userProfile?.raciones_defecto ?? 4;
 
     const rows = items.map((it) => ({
       usuario_id: user.id,
       fecha: it.fecha,
       slot: it.slot,
       receta_id: it.recetaId,
-      porciones: it.porciones ?? userServings,
+      porciones: it.porciones && it.porciones > 0 ? it.porciones : userServings,
       updated_at: new Date().toISOString(),
     }));
 
@@ -361,7 +361,7 @@ export async function generateUnifiedShoppingListAction(
       .eq('id', user.id)
       .maybeSingle();
 
-    const userDefaultServings = userProfile?.raciones_defecto || 2;
+    const userDefaultServings = (userProfile as any)?.porciones_por_defecto ?? userProfile?.raciones_defecto ?? 4;
 
     // 1. Obtener los slots que tienen receta asignada en el rango, aplicando filtros interactivos
     let query = supabase
