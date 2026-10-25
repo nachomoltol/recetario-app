@@ -99,7 +99,7 @@ export default async function SmartMenuPage() {
       </header>
 
       {/* Contenido Principal con Wizard */}
-      <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <SmartMenuWizardView
           userRecipes={userRecipes}
           existingPlans={existingPlans}

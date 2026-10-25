@@ -92,7 +92,7 @@ export function GenerateMealPlanModal({
       }
 
       // 3. Persistir en Supabase en lote (upsert atómico)
-      const defaultServings = profile?.raciones_defecto || 2;
+      const defaultServings = (profile as any)?.porciones_por_defecto ?? profile?.raciones_defecto ?? 4;
       const batchItems = result.items.map((it) => ({
         fecha: it.fecha,
         slot: it.slot as MealSlot,

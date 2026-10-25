@@ -449,8 +449,8 @@ export function MealPlannerView({ initialPlans, userRecipes, userProfile }: Meal
     return result;
   };
 
-  // Renderizador de cada tarjeta de comida (compacta, sin scroll vertical, sin tiempo, con comensales reales)
-  const renderSlotCard = (dayDateStr: string, slotItem: DaySlotItem) => {
+  // Renderizador de cada tarjeta de comida para MÓVIL (compacta, sin scroll vertical, con comensales reales)
+  const renderMobileSlotCard = (dayDateStr: string, slotItem: DaySlotItem) => {
     const assignedPlan = slotItem.plan;
     const currentSlot = slotItem.slot;
     const SlotIcon = slotItem.icon;
@@ -479,7 +479,7 @@ export function MealPlannerView({ initialPlans, userRecipes, userProfile }: Meal
               {assignedPlan.receta.titulo}
             </Link>
 
-            {/* Número de comensales prioritario con icono 👥 (tiempo de cocción eliminado) */}
+            {/* Número de comensales prioritario con icono 👥 */}
             <div className="flex items-center gap-2 text-[11px] font-semibold text-[#a86224]">
               <span className="flex items-center gap-1 shrink-0">
                 <Users className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
@@ -524,7 +524,7 @@ export function MealPlannerView({ initialPlans, userRecipes, userProfile }: Meal
       );
     }
 
-    // Slot vacío para asignar plato
+    // Slot vacío para asignar plato en móvil
     return (
       <div
         key={`${dayDateStr}-${currentSlot}`}
@@ -541,6 +541,107 @@ export function MealPlannerView({ initialPlans, userRecipes, userProfile }: Meal
           type="button"
           onClick={() => setPickerModal({ fecha: dayDateStr, slot: currentSlot })}
           className="min-h-[28px] px-2.5 py-1 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer shrink-0"
+        >
+          <Plus className="w-3 h-3" />
+          <span>{t('planner_assign_btn')}</span>
+        </button>
+      </div>
+    );
+  };
+
+  // Renderizador de cada tarjeta de comida para ESCRITORIO Y TABLET (tipografía holgada, varias líneas, botones horizontales)
+  const renderDesktopSlotCard = (dayDateStr: string, slotItem: DaySlotItem) => {
+    const assignedPlan = slotItem.plan;
+    const currentSlot = slotItem.slot;
+    const SlotIcon = slotItem.icon;
+    const slotLabel = slotItem.label;
+    const displayDiners = assignedPlan?.porciones ?? defaultDiners;
+
+    if (assignedPlan && assignedPlan.receta) {
+      return (
+        <div
+          key={`${dayDateStr}-${currentSlot}`}
+          className="w-full p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2 text-left hover:border-[#a86224]/50 transition-all group shadow-2xs flex flex-col justify-between"
+        >
+          {/* Fila superior: Icono de comida + Nombre del slot */}
+          <div className="flex items-center justify-between text-[11px] font-semibold text-stone-600">
+            <span className="flex items-center gap-1.5 capitalize text-stone-600">
+              <SlotIcon className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+              <span className="truncate">{slotLabel}</span>
+            </span>
+          </div>
+
+          {/* Título de la receta: tipografía holgada en varias líneas */}
+          <div className="flex-1 py-0.5">
+            <Link
+              href={`/recipes/${assignedPlan.receta.id}`}
+              className="text-xs sm:text-sm font-bold font-serif-recipe text-stone-900 hover:text-[#a86224] transition-colors block line-clamp-2 leading-snug"
+              title={assignedPlan.receta.titulo}
+            >
+              {assignedPlan.receta.titulo}
+            </Link>
+          </div>
+
+          {/* Barra inferior: Raciones y Botones de acción ordenados horizontalmente sin comprimirse */}
+          <div className="flex items-center justify-between pt-1.5 border-t border-[#e7dfd5]/60 text-[11px] font-semibold text-[#a86224]">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="flex items-center gap-1 text-[#a86224]" title={`${displayDiners} ${t('planner_servings')}`}>
+                <Users className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+                <span>{displayDiners}</span>
+              </span>
+
+              {slotItem.canAddSecondCourse && (
+                <>
+                  <span className="text-stone-300">·</span>
+                  <button
+                    type="button"
+                    onClick={() => setPickerModal({ fecha: dayDateStr, slot: 'almuerzo_2' })}
+                    className="text-[10px] font-semibold text-stone-500 hover:text-[#a86224] hover:underline cursor-pointer"
+                    title={t('planner_add_second_course')}
+                  >
+                    + 2º
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setPickerModal({ fecha: dayDateStr, slot: currentSlot })}
+                className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] text-stone-600 hover:text-[#a86224] flex items-center justify-center transition cursor-pointer shadow-2xs"
+                title={t('planner_replace_dish')}
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRemoveSlot(dayDateStr, currentSlot)}
+                className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white hover:bg-red-50 border border-[#e7dfd5] hover:border-red-200 text-stone-400 hover:text-red-600 flex items-center justify-center transition cursor-pointer shadow-2xs"
+                title={t('planner_remove_recipe')}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Slot vacío para asignar plato en escritorio y tablet
+    return (
+      <div
+        key={`${dayDateStr}-${currentSlot}`}
+        className="w-full p-2.5 sm:p-3 rounded-2xl bg-white border border-dashed border-[#d5cabb] hover:border-[#a86224] transition-all space-y-1.5"
+      >
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-stone-500">
+          <SlotIcon className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+          <span className="truncate">{slotLabel}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setPickerModal({ fecha: dayDateStr, slot: currentSlot })}
+          className="w-full min-h-[34px] py-1 px-2 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] text-[11px] font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
         >
           <Plus className="w-3 h-3" />
           <span>{t('planner_assign_btn')}</span>
@@ -903,41 +1004,43 @@ export function MealPlannerView({ initialPlans, userRecipes, userProfile }: Meal
           {/* Tarjetas compactas de las comidas de ese día */}
           <div className="space-y-2 w-full max-w-full">
             {getDaySlots(activeDay.dateStr).map((slotItem) =>
-              renderSlotCard(activeDay.dateStr, slotItem)
+              renderMobileSlotCard(activeDay.dateStr, slotItem)
             )}
           </div>
         </div>
       </div>
 
       {/* ============================================================== */}
-      {/* 5. VISTA DESKTOP: CUADRÍCULA DE 7 COLUMNAS                     */}
+      {/* 5. VISTA ESCRITORIO Y TABLET: CUADRÍCULA DE 7 COLUMNAS         */}
       {/* ============================================================== */}
-      <div className="hidden sm:grid sm:grid-cols-7 gap-3.5 w-full max-w-full">
-        {weekDays.map((day) => {
-          const slots = getDaySlots(day.dateStr);
+      <div className="hidden sm:block w-full overflow-x-auto pb-4">
+        <div className="grid grid-cols-7 gap-3 lg:gap-3.5 min-w-[840px] w-full">
+          {weekDays.map((day) => {
+            const slots = getDaySlots(day.dateStr);
 
-          return (
-            <div
-              key={day.dateStr}
-              className="rounded-3xl bg-white border border-[#e7dfd5] p-3 space-y-3 shadow-2xs w-full max-w-full overflow-hidden"
-            >
-              {/* Encabezado del día */}
-              <div className="border-b border-[#f4efe6] pb-2 text-center">
-                <span className="text-xs uppercase font-bold tracking-wider text-[#a86224] block truncate">
-                  {day.name}
-                </span>
-                <span className="text-xl font-bold font-serif-recipe text-stone-900">
-                  {day.dayNum}
-                </span>
-              </div>
+            return (
+              <div
+                key={day.dateStr}
+                className="rounded-3xl bg-white border border-[#e7dfd5] p-3 sm:p-3.5 space-y-3 shadow-2xs flex flex-col justify-start"
+              >
+                {/* Encabezado del día */}
+                <div className="border-b border-[#f4efe6] pb-2 text-center">
+                  <span className="text-xs uppercase font-bold tracking-wider text-[#a86224] block truncate">
+                    {day.name}
+                  </span>
+                  <span className="text-xl font-bold font-serif-recipe text-stone-900">
+                    {day.dayNum}
+                  </span>
+                </div>
 
-              {/* Slots calculados para el día */}
-              <div className="space-y-2.5 w-full max-w-full">
-                {slots.map((slotItem) => renderSlotCard(day.dateStr, slotItem))}
+                {/* Slots calculados para el día */}
+                <div className="space-y-2.5 flex-1">
+                  {slots.map((slotItem) => renderDesktopSlotCard(day.dateStr, slotItem))}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* ============================================================== */}

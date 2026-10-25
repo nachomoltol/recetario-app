@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useTransition } from 'react';
-import Link from 'next/link';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Sparkles,
@@ -10,12 +9,8 @@ import {
   Soup,
   Moon,
   Apple,
-  Check,
   AlertCircle,
-  ArrowLeft,
-  BookOpen,
   Loader2,
-  Utensils,
   CheckCircle2,
   RotateCcw,
 } from 'lucide-react';
@@ -222,51 +217,15 @@ export function SmartMenuWizardView({
   };
 
   return (
-    <div className="space-y-8 animate-fade-in w-full max-w-full overflow-x-hidden">
-      {/* Navegación y Volver */}
-      <div className="flex items-center justify-between">
-        <Link
-          href="/meal-planner"
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] text-xs sm:text-sm font-semibold text-stone-700 transition shadow-2xs cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4 text-[#a86224]" />
-          <span>{t('smart_menu_back_btn')}</span>
-        </Link>
-
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 shadow-xs">
-          <Sparkles className="w-3.5 h-3.5 fill-current" />
-          <span>PRO</span>
-        </span>
-      </div>
-
-      {/* Hero Header Editorial */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-white via-[#faf7f2] to-[#f4efe6] border border-[#e7dfd5] shadow-xs space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#a86224] to-[#c27835] text-white flex items-center justify-center shadow-sm shrink-0">
-            <Sparkles className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 tracking-tight">
-              {t('smart_menu_title')}
-            </h1>
-            <p className="text-xs sm:text-sm text-stone-600 mt-0.5">
-              {t('smart_menu_subtitle')}
-            </p>
-          </div>
-        </div>
-
-        {/* Badge Informativo de Recetas Disponibles */}
-        <div className="pt-2 flex flex-wrap items-center gap-3 text-xs text-stone-600 border-t border-[#e7dfd5]/80">
-          <span className="flex items-center gap-1.5 font-medium">
-            <BookOpen className="w-3.5 h-3.5 text-[#a86224]" />
-            <span>{t('smart_menu_available_recipes_badge').replace('{count}', String(userRecipes.length))}</span>
-          </span>
-          <span>·</span>
-          <span className="flex items-center gap-1.5 font-medium">
-            <Utensils className="w-3.5 h-3.5 text-[#a86224]" />
-            <span>{t('smart_menu_slots_estimation').replace('{count}', String(estimatedSlots))}</span>
-          </span>
-        </div>
+    <div className="space-y-4 sm:space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
+      {/* Cabecera Minimalista Limpia */}
+      <div className="space-y-1">
+        <h1 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 tracking-tight">
+          {t('smart_menu_title')}
+        </h1>
+        <p className="text-xs sm:text-sm text-stone-600">
+          {t('smart_menu_subtitle')}
+        </p>
       </div>
 
       {/* Alerta de Error si ocurre */}
@@ -287,7 +246,7 @@ export function SmartMenuWizardView({
       )}
 
       {/* PASO 1: ¿Cuántos días planificamos? */}
-      <section className="p-6 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-5">
+      <section className="p-4 sm:p-6 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-sm sm:text-base font-bold font-serif-recipe text-stone-900">

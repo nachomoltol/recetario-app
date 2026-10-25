@@ -64,7 +64,7 @@ export default async function MealPlannerPage() {
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
       {/* Cabecera Luminosa Lino / Terracotta */}
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/recipes"
@@ -87,7 +87,7 @@ export default async function MealPlannerPage() {
       </header>
 
       {/* Contenido Principal */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main className="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <MealPlannerView
           initialPlans={initialPlans}
           userRecipes={userRecipes}

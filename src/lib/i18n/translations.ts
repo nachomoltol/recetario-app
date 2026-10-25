@@ -535,8 +535,8 @@ export const TRANSLATIONS = {
 
     // Página Asistente Dedicado (/smart-menu)
     nav_create_ai_menu: 'Crear Menú con IA',
-    smart_menu_title: 'Asistente de Menú con IA',
-    smart_menu_subtitle: 'Configura tus días y qué comidas deseas planificar automáticamente',
+    smart_menu_title: 'Déjanos crear tu menú semanal por ti',
+    smart_menu_subtitle: 'Configura tus días y generaremos tu planificación en segundos.',
     smart_menu_generate_btn: 'Generar Menú Semanal con IA',
     smart_menu_generating_btn: 'Generando menú inteligente con IA...',
     smart_menu_quick_5_days: 'Lunes a Viernes (5 días)',
@@ -1096,8 +1096,8 @@ export const TRANSLATIONS = {
 
     // Dedicated Assistant Page (/smart-menu)
     nav_create_ai_menu: 'Create AI Menu',
-    smart_menu_title: 'AI Smart Menu',
-    smart_menu_subtitle: 'Configure your days and meals to automatically generate your weekly schedule with AI',
+    smart_menu_title: 'Let us create your weekly meal plan',
+    smart_menu_subtitle: 'Configure your days and we will generate your schedule in seconds.',
     smart_menu_generate_btn: 'Generate Weekly Menu with AI',
     smart_menu_generating_btn: 'Generating smart menu with AI...',
     smart_menu_quick_5_days: 'Mon to Fri (5 days)',

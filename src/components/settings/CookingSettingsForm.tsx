@@ -12,7 +12,7 @@ interface CookingSettingsFormProps {
 
 export function CookingSettingsForm({ initialServings }: CookingSettingsFormProps) {
   const t = useLanguageStore((s) => s.t);
-  const [servings, setServings] = useState(initialServings || 2);
+  const [servings, setServings] = useState(initialServings || 4);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   const [wakeLockSupported, setWakeLockSupported] = useState(true);
   const [isPending, startTransition] = useTransition();

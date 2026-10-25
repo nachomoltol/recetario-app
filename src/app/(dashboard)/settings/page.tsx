@@ -60,7 +60,7 @@ export default async function SettingsPage() {
         <SettingsHeroCard />
 
         {/* Formulario de Preferencias: Raciones por defecto + Modo Manos en la Masa */}
-        <CookingSettingsForm initialServings={profile?.raciones_defecto || 2} />
+        <CookingSettingsForm initialServings={profile?.raciones_defecto ?? 4} />
 
 
         {/* Pie de página con enlace legal */}

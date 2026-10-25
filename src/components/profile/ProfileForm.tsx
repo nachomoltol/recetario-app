@@ -171,7 +171,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
         preferencias_dieteticas: initialProfile.preferencias_dieteticas || [],
         alergenos: initialProfile.alergenos || [],
         objetivo_calorico_diario: null,
-        raciones_defecto: initialProfile.raciones_defecto ?? 2,
+        raciones_defecto: initialProfile.raciones_defecto ?? 4,
         nivel_culinario: initialProfile.nivel_culinario || 'Principiante',
         plan_suscripcion: (initialProfile.plan_suscripcion as any) || 'gratis',
         capturas_mes_actual: 0,

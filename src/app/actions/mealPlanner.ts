@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { PlanComida, Receta, RecetaIngrediente } from '@/types/recipe';
 import { classifyIngredientAisle } from '@/lib/culinary/aisles';
+import { generateShoppingListFromPlans } from '@/lib/culinary/shoppingListGenerator';
 
 export type MealSlot = 'desayuno' | 'almuerzo' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre';
 
@@ -219,7 +220,7 @@ export async function batchAssignMealSlotsAction(
       fecha: it.fecha,
       slot: it.slot,
       receta_id: it.recetaId,
-      porciones: it.porciones && it.porciones > 0 ? it.porciones : userServings,
+      porciones: userServings && userServings > 0 ? userServings : (it.porciones && it.porciones > 0 ? it.porciones : 4),
       updated_at: new Date().toISOString(),
     }));
 
@@ -370,6 +371,7 @@ export async function generateUnifiedShoppingListAction(
         fecha,
         slot,
         receta_id,
+        porciones,
         recetas:receta_id (
           id,
           titulo,
@@ -389,34 +391,44 @@ export async function generateUnifiedShoppingListAction(
       query = query.in('slot', options.selectedSlots);
     }
 
-    const { data: plans, error: errPlans } = await query;
+    let { data: plans, error: errPlans } = await query;
+
+    // Resiliencia si la columna porciones no existe aún en la base de datos
+    if (errPlans && (errPlans.code === '42703' || errPlans.message?.includes('porciones'))) {
+      let fallbackQuery = supabase
+        .from('plan_comidas')
+        .select(`
+          fecha,
+          slot,
+          receta_id,
+          recetas:receta_id (
+            id,
+            titulo,
+            porciones
+          )
+        `)
+        .eq('usuario_id', user.id)
+        .gte('fecha', startDate)
+        .lte('fecha', endDate)
+        .not('receta_id', 'is', null);
+
+      if (options?.selectedDates && options.selectedDates.length > 0) {
+        fallbackQuery = fallbackQuery.in('fecha', options.selectedDates);
+      }
+      if (options?.selectedSlots && options.selectedSlots.length > 0) {
+        fallbackQuery = fallbackQuery.in('slot', options.selectedSlots);
+      }
+      const retry = await fallbackQuery;
+      plans = retry.data as any;
+      errPlans = retry.error;
+    }
 
     if (errPlans) {
       console.error('[mealPlanner] Error obteniendo planes para lista de compras:', errPlans);
       return { success: false, error: errPlans.message };
     }
 
-    // Mapa de factor de escala por receta: escala según comensales del usuario vs receta base
-    const recipeScaleFactors = new Map<string, number>();
-    const recipeMap = new Map<string, string>();
-    const recipeIds: string[] = [];
-
-    for (const p of plans || []) {
-      if (p.receta_id) {
-        recipeIds.push(p.receta_id);
-        const titulo = (p.recetas as any)?.titulo || 'Receta';
-        const basePorciones = Number((p.recetas as any)?.porciones) || 2;
-        const targetServings = Number((p as any).porciones) || userDefaultServings;
-        const factor = Math.max(0.1, targetServings / basePorciones);
-
-        recipeMap.set(p.receta_id, titulo);
-        recipeScaleFactors.set(
-          p.receta_id,
-          (recipeScaleFactors.get(p.receta_id) || 0) + factor
-        );
-      }
-    }
-
+    const recipeIds = (plans || []).map((p) => p.receta_id).filter(Boolean);
     if (recipeIds.length === 0) {
       return { success: true, items: [] };
     }
@@ -432,43 +444,12 @@ export async function generateUnifiedShoppingListAction(
       return { success: false, error: errIng.message };
     }
 
-    // 3. Motor de consolidación inteligente agrupado por pasillo y unidad compatible, escalado por comensales
-    const consolidated = new Map<string, UnifiedShoppingItem>();
-
-    for (const ing of (rawIngredientes || []) as (RecetaIngrediente & { pasillo_supermercado?: string })[]) {
-      const rawName = (ing.nombre_limpio || ing.nombre_crudo || '').trim();
-      const canonName = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
-      const unidad = (ing.unidad || 'unidad').trim().toLowerCase();
-      const key = `${canonName.toLowerCase()}___${unidad}`;
-
-      const recipeScale = recipeScaleFactors.get(ing.receta_id) || 1;
-      const cant = (Number(ing.cantidad) || 0) * recipeScale;
-      const gramos = (Number(ing.gramos_calculados) || 0) * recipeScale;
-      const recipeTitle = recipeMap.get(ing.receta_id) || 'Receta';
-      const pasillo = classifyIngredientAisle(canonName, ing.pasillo_supermercado);
-
-      if (consolidated.has(key)) {
-        const existing = consolidated.get(key)!;
-        existing.cantidadTotal = Math.round((existing.cantidadTotal + cant) * 10) / 10;
-        existing.gramosTotal = Math.round(existing.gramosTotal + gramos);
-        if (!existing.recetasNombres.includes(recipeTitle)) {
-          existing.recetasNombres.push(recipeTitle);
-        }
-      } else {
-        consolidated.set(key, {
-          nombre: canonName,
-          cantidadTotal: Math.round(cant * 10) / 10,
-          unidad,
-          gramosTotal: Math.round(gramos),
-          pasillo_supermercado: pasillo,
-          recetasNombres: [recipeTitle],
-        });
-      }
-    }
-
-    const items = Array.from(consolidated.values()).sort((a, b) => {
-      return a.nombre.localeCompare(b.nombre, 'es');
-    });
+    // 3. Generar la lista de la compra proporcional según las porciones configuradas
+    const items = generateShoppingListFromPlans(
+      (plans || []) as any,
+      (rawIngredientes || []) as any,
+      userDefaultServings
+    );
 
     return { success: true, items };
   } catch (err: any) {
