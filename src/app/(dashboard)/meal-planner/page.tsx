@@ -59,7 +59,7 @@ export default async function MealPlannerPage(props: MealPlannerPageProps) {
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <HeaderBackButton fallbackUrl="/recipes" />
+            <HeaderBackButton fallbackUrl="/" />
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">

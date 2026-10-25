@@ -11,7 +11,7 @@ interface HeaderBackButtonProps {
 }
 
 export function HeaderBackButton({
-  fallbackUrl = '/recipes',
+  fallbackUrl = '/',
   className = '',
   title,
 }: HeaderBackButtonProps) {
@@ -20,11 +20,7 @@ export function HeaderBackButton({
   const backLabel = t('btn_back') || 'Volver';
 
   const handleBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push(fallbackUrl);
-    }
+    router.push(fallbackUrl);
   };
 
   return (

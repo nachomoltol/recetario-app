@@ -76,7 +76,7 @@ export default async function SmartMenuPage() {
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           {/* Extremo izquierdo: Botón táctil [ ← Volver ] */}
-          <HeaderBackButton fallbackUrl="/meal-planner" />
+          <HeaderBackButton fallbackUrl="/" />
 
           {/* Centro / Derecha: Botón [ 📅 Ver Plan ] y Menú de usuario */}
           <div className="flex items-center gap-2 sm:gap-3">

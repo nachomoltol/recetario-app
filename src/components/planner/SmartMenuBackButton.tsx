@@ -3,7 +3,7 @@
 import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
 
 export function SmartMenuBackButton() {
-  return <HeaderBackButton fallbackUrl="/meal-planner" />;
+  return <HeaderBackButton fallbackUrl="/" />;
 }
 
 export default SmartMenuBackButton;

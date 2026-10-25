@@ -220,11 +220,24 @@ function extractPlanningMeta(receta: Receta): RecipePlanningMeta {
     .filter(Boolean)
     .map((m) => String(m).toLowerCase().trim() as MomentoDia);
 
-  const momentos: MomentoDia[] = rawMoments;
+  const momentos: MomentoDia[] = [...rawMoments];
 
   const tagsNorm = (receta.etiquetas || []).map((t) => normalizeString(t.trim()));
   const titleNorm = normalizeString(receta.titulo || '');
   const descNorm = normalizeString(receta.descripcion || '');
+
+  // Inclusión inteligente de desayunos:
+  // Si en etiquetas o título se indica desayuno/avena/porridge/tortita/tostada/pancakes/smoothie bowl,
+  // asegurar que quede clasificado para desayuno.
+  const isBreakfastSign = [
+    'desayuno', 'desayunos', 'breakfast', 'porridge', 'avena', 'oatmeal',
+    'tortita', 'tortitas', 'pancake', 'pancakes', 'tostada', 'tostadas',
+    'crepe', 'crepes', 'gofre', 'gofres', 'waffle', 'waffles', 'smoothie bowl'
+  ].some((kw) => titleNorm.includes(kw) || tagsNorm.includes(kw));
+
+  if (isBreakfastSign && !momentos.includes('desayuno')) {
+    momentos.push('desayuno');
+  }
 
   // Ingredientes normalizados si están presentes
   const ingrNorm: string[] = [];
@@ -330,11 +343,12 @@ function pickBestRecipe(
   previousMealGroup: ProteinGroup | null,
   sameMealGroup?: ProteinGroup | null,
   allowRepetitionIfExhausted = false,
-  isDinner = false
+  isDinner = false,
+  previousDate?: string | null
 ): RecipePlanningMeta | null {
   if (pool.length === 0) return null;
 
-  // 1. Prioridad absoluta: recetas sin usar en todo el plan
+  // 1. Prioridad absoluta: recetas sin usar en todo el plan (tolerancia cero a repetición intra-semanal)
   let candidates = pool.filter((item) => (usedCountMap.get(item.receta.id) || 0) === 0);
 
   // 2. Si no quedan recetas sin usar y el slot es obligatorio (allowRepetitionIfExhausted):
@@ -362,6 +376,11 @@ function pickBestRecipe(
     // Penalización por historial de semanas anteriores
     if (recentHistorySet.has(item.receta.id)) {
       score -= 250;
+    }
+
+    // Penalización por repetición consecutiva en días consecutivos si se fuerza reutilización
+    if (previousDate && lastUsedDateMap.get(item.receta.id) === previousDate) {
+      score -= 2000;
     }
 
     // Bonificación para recetas marcadas como "Favorito para menús"
@@ -434,8 +453,10 @@ export function generateMealPlan(
   const recentHistorySet = new Set(opciones.historialRecientesIds || []);
 
   // 3. Creación de Pools por momento y rol culinario
+  // Pool de Desayunos: Toda receta que contenga 'desayuno' es apta,
+  // sin descartarla aunque comparta tags secundarios como 'snack', 'merienda' o 'postre'.
   const desayunosPool = allMetas.filter(
-    (m) => m.momentos.includes('desayuno') && !m.isDessert
+    (m) => m.momentos.includes('desayuno')
   );
 
   const almuerzoPool = allMetas.filter(
@@ -493,6 +514,7 @@ export function generateMealPlan(
   // 6. Bucle de asignación día a día (estrictamente numDias iteraciones)
   for (let dayIdx = 0; dayIdx < fechas.length; dayIdx++) {
     const fecha = fechas[dayIdx];
+    const previousDate = dayIdx > 0 ? fechas[dayIdx - 1] : null;
 
     // --- DESAYUNO (Obligatorio si está habilitado) ---
     if (opciones.incluirDesayunos && desayunosPool.length > 0) {
@@ -504,7 +526,9 @@ export function generateMealPlan(
         fecha,
         null,
         null,
-        true // allowRepetitionIfExhausted
+        true, // allowRepetitionIfExhausted
+        false, // isDinner
+        previousDate
       );
 
       if (selected) {

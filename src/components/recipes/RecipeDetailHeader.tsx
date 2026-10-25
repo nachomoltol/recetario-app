@@ -32,31 +32,37 @@ export function RecipeDetailHeader({
   const effectiveFrom = from || searchParams.get('from');
   const effectiveDate = returnDate || searchParams.get('date');
 
+  const isFromPlanner = effectiveFrom === 'planner';
+  const isFromRecipes =
+    effectiveFrom === 'recipes' ||
+    (typeof window !== 'undefined' && document.referrer && document.referrer.includes('/recipes'));
+
   const handleBack = () => {
-    // Si la navegación procede del planificador de comidas, retornar a la semana/día exacto consultado
-    if (effectiveFrom === 'planner') {
+    // 1. Si la navegación procede del planificador de comidas, retornar al planificador
+    if (isFromPlanner) {
       const query = effectiveDate ? `?date=${encodeURIComponent(effectiveDate)}` : '';
       router.push(`/meal-planner${query}`);
       return;
     }
 
-    if (
-      typeof window !== 'undefined' &&
-      (window.history.state?.idx > 0 || (document.referrer && document.referrer.includes('/recipes')))
-    ) {
-      router.back();
-    } else {
-      router.push('/recipes/collection');
+    // 2. Si el usuario entró navegando desde el Recetario (/recipes), llevar de vuelta a /recipes
+    if (isFromRecipes) {
+      router.push('/recipes');
+      return;
     }
+
+    // 3. Si se accede directamente sin referer/origen, redirige a / (Inicio)
+    router.push('/');
   };
 
-  const isFromPlanner = effectiveFrom === 'planner';
   const backLabel = isFromPlanner
     ? (language === 'en' ? 'Planner' : 'Planificador')
     : (t('btn_back') || (language === 'en' ? 'Back' : 'Volver'));
   const backTitle = isFromPlanner
     ? (language === 'en' ? 'Back to meal planner' : 'Volver al planificador')
-    : (language === 'en' ? 'Back to cookbook' : 'Volver al recetario');
+    : isFromRecipes
+    ? (language === 'en' ? 'Back to cookbook' : 'Volver al recetario')
+    : (language === 'en' ? 'Back to home' : 'Volver a inicio');
 
   const isVideoSource = fuenteTipo !== 'web' && fuenteTipo !== 'manual';
 

@@ -584,7 +584,7 @@ export function RecipeCollectionOrganizer({
           />
         </div>
         <Link
-          href={`/recipes/${r.id}`}
+          href={`/recipes/${r.id}?from=recipes`}
           className="block group-hover:text-[#a86224] transition-colors"
         >
           <h3 className="font-semibold sm:font-bold text-stone-900 font-serif-recipe text-xs sm:text-base leading-snug line-clamp-2">
@@ -614,7 +614,7 @@ export function RecipeCollectionOrganizer({
           <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#a86224]" /> {r.tiempo_total_min || 15} min
         </span>
         <Link
-          href={`/recipes/${r.id}`}
+          href={`/recipes/${r.id}?from=recipes`}
           className="text-[#a86224] hover:text-[#8e511c] font-semibold inline-flex items-center gap-0.5 sm:gap-1 transition-colors text-[10px] sm:text-xs"
         >
           <span className="hidden xs:inline">{t('collection_open_recipe')}</span>

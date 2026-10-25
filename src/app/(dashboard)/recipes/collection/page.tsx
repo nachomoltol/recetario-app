@@ -5,6 +5,7 @@ import { ChefHat, ArrowLeft, BookOpen, Clock, ArrowRight, Utensils, Sparkles } f
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
+import { HeaderHomeButton } from '@/components/layout/HeaderHomeButton';
 import { RecipeCollectionOrganizer } from '@/components/recipes/RecipeCollectionOrganizer';
 import { CollectionHeroHeader } from '@/components/recipes/CollectionHeaderComponents';
 
@@ -62,8 +63,9 @@ export default async function RecipeCollectionPage() {
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <HeaderBackButton fallbackUrl="/recipes" />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <HeaderBackButton fallbackUrl="/" />
+            <HeaderHomeButton />
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
