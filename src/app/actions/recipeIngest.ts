@@ -188,7 +188,6 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     url,
     texto,
     file,
-    porcionesUsuario: perfilUsuario?.raciones_defecto || undefined,
     idioma,
     alertasClinicas,
   });
@@ -245,26 +244,10 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     const prepMin = Math.max(0, Number(extracted.tiempo_preparacion_min) || 0);
     const coccMin = Math.max(0, Number(extracted.tiempo_coccion_min) || 0);
     const tiempoTotal = Math.max(1, prepMin + coccMin);
+    // Guardar las porciones originales nativas de la receta según la extracción,
+    // desacoplándolas de las preferencias globales del perfil de usuario
     const porcionesNum = Math.max(1, Number(extracted.porciones) || 2);
-
-    const porcionesFinales =
-      perfilUsuario?.raciones_defecto &&
-      perfilUsuario.raciones_defecto >= 1 &&
-      perfilUsuario.raciones_defecto <= 12
-        ? perfilUsuario.raciones_defecto
-        : porcionesNum;
-
-    // Si Gemini ya procesó el factor de conversión matemático para las raciones objetivo,
-    // los ingredientes y los pasos ya vienen calculados y sincronizados
-    const escaladoYaAplicadoPorGemini = Boolean(
-      perfilUsuario?.raciones_defecto &&
-      perfilUsuario.raciones_defecto > 0 &&
-      (extracted.porciones === porcionesFinales || perfilUsuario.raciones_defecto === porcionesFinales)
-    );
-
-    const factorEscalado = !escaladoYaAplicadoPorGemini && porcionesNum > 0
-      ? porcionesFinales / porcionesNum
-      : 1;
+    const factorEscalado = 1;
 
     // 4. Inserción en 'recetas'
     const { data: nuevaReceta, error: errReceta } = await supabase
@@ -275,7 +258,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         descripcion: extracted.descripcion || null,
         tiempo_preparacion_min: prepMin,
         tiempo_coccion_min: coccMin,
-        porciones: porcionesFinales,
+        porciones: porcionesNum,
         dificultad: dificultadReceta,
         fuente_tipo: fuenteTipo,
         fuente_url: fuenteUrl,
