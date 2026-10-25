@@ -17,6 +17,7 @@ import {
   Loader2,
   Utensils,
   CheckCircle2,
+  RotateCcw,
 } from 'lucide-react';
 import { Receta } from '@/types/recipe';
 import { MealSlot, PlannedSlotItem, batchAssignMealSlotsAction } from '@/app/actions/mealPlanner';
@@ -29,6 +30,31 @@ export interface SmartMenuWizardViewProps {
   userRecipes: Receta[];
   existingPlans: PlannedSlotItem[];
   initialStartDate: string; // YYYY-MM-DD
+}
+
+function formatLocalDate(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayString(): string {
+  return formatLocalDate(new Date());
+}
+
+function getTomorrowString(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return formatLocalDate(d);
+}
+
+function getNextMondayString(): string {
+  const d = new Date();
+  const day = d.getDay();
+  const daysUntilNextMonday = ((1 + 7 - day) % 7) || 7;
+  d.setDate(d.getDate() + daysUntilNextMonday);
+  return formatLocalDate(d);
 }
 
 export function SmartMenuWizardView({
@@ -44,14 +70,23 @@ export function SmartMenuWizardView({
   const profile = useProfileStore((s) => s.profile);
   const isPro = profile?.plan_suscripcion === 'pro';
 
+  // 3. Selector y Corrección Dinámica de Fechas en /smart-menu:
+  // Se calculan las fechas de forma dinámica en el cliente
+  const todayStr = useMemo(() => getTodayString(), []);
+  const tomorrowStr = useMemo(() => getTomorrowString(), []);
+  const nextMondayStr = useMemo(() => getNextMondayString(), []);
+
   // Estados de configuración del Wizard
   const [dias, setDias] = useState<number>(7);
-  const [startDate, setStartDate] = useState<string>(initialStartDate);
+  const [startDate, setStartDate] = useState<string>(() => getTodayString());
   const [incluirDesayunos, setIncluirDesayunos] = useState<boolean>(true);
   const [incluirAlmuerzos, setIncluirAlmuerzos] = useState<boolean>(true);
   const [intentarPrimeroYSegundo, setIntentarPrimeroYSegundo] = useState<boolean>(false);
   const [incluirCenas, setIncluirCenas] = useState<boolean>(true);
   const [incluirSnackPostre, setIncluirSnackPostre] = useState<boolean>(false);
+
+  // 5. Herramienta de Reseteo / Limpieza de Historial
+  const [resetRecentHistory, setResetRecentHistory] = useState<boolean>(false);
 
   // Estados de ejecución y feedback
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -63,11 +98,12 @@ export function SmartMenuWizardView({
     return incluirDesayunos || incluirAlmuerzos || incluirCenas || incluirSnackPostre;
   }, [incluirDesayunos, incluirAlmuerzos, incluirCenas, incluirSnackPostre]);
 
-  // Cálculo de fechas cubiertas para la vista previa
+  // Cálculo de fechas cubiertas para la vista previa en tiempo real
   const datesPreview = useMemo(() => {
-    const start = new Date(startDate + 'T00:00:00');
-    const end = new Date(start);
-    end.setDate(start.getDate() + (dias - 1));
+    if (!startDate) return { startText: '', endText: '' };
+    const [year, month, day] = startDate.split('-').map(Number);
+    const start = new Date(year, (month || 1) - 1, day || 1);
+    const end = new Date(year, (month || 1) - 1, (day || 1) + (dias - 1));
 
     const locale = language === 'en' ? 'en-US' : 'es-ES';
     const startFormatted = start.toLocaleDateString(locale, {
@@ -121,14 +157,17 @@ export function SmartMenuWizardView({
     setIsGenerating(true);
 
     try {
-      // Historial de IDs de recetas usadas recientemente para evitar repeticiones excesivas
-      const historialRecientesIds = Array.from(
-        new Set(
-          (existingPlans || [])
-            .map((p) => p.receta_id)
-            .filter((id): id is string => Boolean(id))
-        )
-      );
+      // 5. Historial de IDs de recetas usadas recientemente para evitar repeticiones excesivas,
+      // o reseteo completo (vacío) si el usuario decide ignorarlo para desbloquear el 100% del recetario
+      const historialRecientesIds = resetRecentHistory
+        ? []
+        : Array.from(
+            new Set(
+              (existingPlans || [])
+                .map((p) => p.receta_id)
+                .filter((id): id is string => Boolean(id))
+            )
+          );
 
       // Invocar motor inteligente de generación de menús
       const result = generateSmartMealPlan(userRecipes, {
@@ -148,11 +187,16 @@ export function SmartMenuWizardView({
         return;
       }
 
+      // 2. Respeto Estricto de los Comensales del Usuario (porciones):
+      // Lee el número de porciones configurado en el perfil del usuario (perfil.raciones_defecto)
+      const defaultServings = profile?.raciones_defecto || 2;
+
       // Persistir ítems generados en Supabase mediante Server Action atómica en lote
       const batchItems = result.items.map((it) => ({
         fecha: it.fecha,
         slot: it.slot as MealSlot,
         recetaId: it.receta.id,
+        porciones: defaultServings,
       }));
 
       const saveRes = await batchAssignMealSlotsAction(batchItems);
@@ -212,12 +256,12 @@ export function SmartMenuWizardView({
         <div className="pt-2 flex flex-wrap items-center gap-3 text-xs text-stone-600 border-t border-[#e7dfd5]/80">
           <span className="flex items-center gap-1.5 font-medium">
             <BookOpen className="w-3.5 h-3.5 text-[#a86224]" />
-            <span>{userRecipes.length} recetas disponibles en tu recetario</span>
+            <span>{t('smart_menu_available_recipes_badge').replace('{count}', String(userRecipes.length))}</span>
           </span>
           <span>·</span>
           <span className="flex items-center gap-1.5 font-medium">
             <Utensils className="w-3.5 h-3.5 text-[#a86224]" />
-            <span>Estimación: ~{estimatedSlots} platos configurados</span>
+            <span>{t('smart_menu_slots_estimation').replace('{count}', String(estimatedSlots))}</span>
           </span>
         </div>
       </div>
@@ -253,6 +297,68 @@ export function SmartMenuWizardView({
           <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
             {dias} {t('planner_wizard_days_unit')}
           </span>
+        </div>
+
+        {/* 3. Selector táctil de fecha de inicio (fechaInicio) */}
+        <div className="space-y-2.5 pt-1">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-[#a86224]" />
+              <span>{t('smart_menu_start_date_label')}</span>
+            </label>
+            <span className="text-[11px] text-stone-500">
+              {t('smart_menu_start_date_desc')}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setStartDate(todayStr)}
+              className={`py-2 px-3 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                startDate === todayStr
+                  ? 'bg-[#a86224] text-white border-[#a86224] shadow-2xs font-bold'
+                  : 'bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-700 border-[#e7dfd5]'
+              }`}
+            >
+              {t('smart_menu_date_today')}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStartDate(tomorrowStr)}
+              className={`py-2 px-3 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                startDate === tomorrowStr
+                  ? 'bg-[#a86224] text-white border-[#a86224] shadow-2xs font-bold'
+                  : 'bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-700 border-[#e7dfd5]'
+              }`}
+            >
+              {t('smart_menu_date_tomorrow')}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStartDate(nextMondayStr)}
+              className={`py-2 px-3 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                startDate === nextMondayStr
+                  ? 'bg-[#a86224] text-white border-[#a86224] shadow-2xs font-bold'
+                  : 'bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-700 border-[#e7dfd5]'
+              }`}
+            >
+              {t('smart_menu_date_next_monday')}
+            </button>
+
+            <div className="flex-1 min-w-[140px]">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  if (e.target.value) setStartDate(e.target.value);
+                }}
+                className="w-full h-9 px-3 rounded-xl border border-[#e7dfd5] bg-white text-xs font-medium text-stone-800 focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] cursor-pointer"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Botones rápidos de selección */}
@@ -301,7 +407,7 @@ export function SmartMenuWizardView({
               >
                 <span>{num}</span>
                 <span className="text-[9px] uppercase tracking-wider opacity-80 font-normal">
-                  {num === 1 ? 'día' : 'días'}
+                  {num === 1 ? (language === 'en' ? 'day' : 'día') : (language === 'en' ? 'days' : 'días')}
                 </span>
               </button>
             );
@@ -312,7 +418,7 @@ export function SmartMenuWizardView({
         <div className="p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between text-xs text-stone-700">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-[#a86224]" />
-            <span className="font-semibold">Período planificado:</span>
+            <span className="font-semibold">{t('smart_menu_period_planned')}</span>
           </div>
           <span className="font-bold text-stone-900">
             {datesPreview.startText} → {datesPreview.endText}
@@ -562,6 +668,53 @@ export function SmartMenuWizardView({
             </button>
           </div>
         </div>
+
+        {/* 5. Toggle para Resetear Historial Reciente */}
+        <div
+          onClick={() => setResetRecentHistory(!resetRecentHistory)}
+          className={`p-4 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
+            resetRecentHistory
+              ? 'bg-amber-50/80 border-amber-300 shadow-2xs'
+              : 'bg-[#faf7f2] border-[#e7dfd5] hover:bg-stone-50'
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                resetRecentHistory ? 'bg-amber-100 text-amber-700' : 'bg-stone-200 text-stone-500'
+              }`}
+            >
+              <RotateCcw className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-xs sm:text-sm font-bold text-stone-900 block">
+                {t('smart_menu_reset_history_title')}
+              </span>
+              <span className="text-[11px] text-stone-500 block">
+                {t('smart_menu_reset_history_desc')}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={resetRecentHistory}
+            onClick={(e) => {
+              e.stopPropagation();
+              setResetRecentHistory(!resetRecentHistory);
+            }}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+              resetRecentHistory ? 'bg-[#a86224]' : 'bg-stone-300'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                resetRecentHistory ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
       </section>
 
       {/* Botón Principal de Acción Inferior */}
@@ -589,7 +742,7 @@ export function SmartMenuWizardView({
         </button>
 
         <p className="text-center text-[11px] text-stone-500">
-          Los platos existentes en los slots seleccionados serán actualizados automáticamente en tu planificador.
+          {t('smart_menu_overwrite_notice')}
         </p>
       </div>
 

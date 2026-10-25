@@ -25,6 +25,8 @@ import {
   SlidersHorizontal,
   Tag,
   AlertCircle,
+  Users,
+  Loader2,
 } from 'lucide-react';
 import { Receta } from '@/types/recipe';
 import {
@@ -33,6 +35,7 @@ import {
   UnifiedShoppingItem,
   assignMealSlotAction,
   removeMealSlotAction,
+  clearWeeklyPlanAction,
   generateUnifiedShoppingListAction,
 } from '@/app/actions/mealPlanner';
 import { groupItemsByAisle, SupermarketAisle } from '@/lib/culinary/aisles';
@@ -248,6 +251,25 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
     await removeMealSlotAction({ fecha, slot });
   };
 
+  // 5. Herramienta de Reseteo / Limpieza de Menús:
+  const [isClearingWeek, setIsClearingWeek] = useState(false);
+  const handleClearWeek = async () => {
+    if (!window.confirm(t('planner_clear_week_confirm'))) return;
+    setIsClearingWeek(true);
+    try {
+      const res = await clearWeeklyPlanAction(startDateStr, endDateStr);
+      if (res.success) {
+        setPlans((prev) => prev.filter((p) => p.fecha < startDateStr || p.fecha > endDateStr));
+      } else {
+        alert(res.error || 'Error al vaciar la semana');
+      }
+    } catch (err: any) {
+      console.error('Error clearing weekly plan:', err);
+    } finally {
+      setIsClearingWeek(false);
+    }
+  };
+
   // Generar lista de la compra unificada con filtros activos
   const handleGenerateShoppingList = () => {
     const activeDates = selectedDates.length > 0 ? selectedDates : weekDays.map((d) => d.dateStr);
@@ -350,8 +372,26 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
           </div>
         </div>
 
-        {/* Acciones de Lista de Compra y Filtros */}
+        {/* Acciones de Lista de Compra, Limpieza y Filtros */}
         <div className="flex items-center gap-2">
+          {/* Botón de Limpieza de Semana */}
+          <button
+            type="button"
+            onClick={handleClearWeek}
+            disabled={isClearingWeek || plans.length === 0}
+            className="min-h-[46px] px-3.5 rounded-2xl border border-[#e7dfd5] bg-white hover:bg-red-50 hover:border-red-200 text-stone-600 hover:text-red-600 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
+            title={t('planner_clear_week_btn')}
+          >
+            {isClearingWeek ? (
+              <Loader2 className="w-4 h-4 animate-spin text-stone-400" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline">
+              {isClearingWeek ? t('planner_clearing_week') : t('planner_clear_week_btn')}
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
@@ -549,20 +589,20 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
       </div>
 
       {/* Cuadrícula de Planificación (En móvil muestra el día activo; en desktop muestra los 7 días) */}
-      <div className="grid grid-cols-1 sm:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-7 gap-4 w-full max-w-full">
         {weekDays.map((day, idx) => {
           const isHiddenOnMobile = activeDayIndex !== idx;
 
           return (
             <div
               key={day.dateStr}
-              className={`rounded-3xl bg-white border border-[#e7dfd5] p-4 space-y-4 shadow-2xs ${
+              className={`rounded-3xl bg-white border border-[#e7dfd5] p-3 sm:p-4 space-y-4 shadow-2xs w-full max-w-full overflow-hidden ${
                 isHiddenOnMobile ? 'hidden sm:block' : 'block'
               }`}
             >
               {/* Encabezado del día */}
               <div className="border-b border-[#f4efe6] pb-2 text-center">
-                <span className="text-xs uppercase font-bold tracking-wider text-[#a86224] block">
+                <span className="text-xs uppercase font-bold tracking-wider text-[#a86224] block truncate">
                   {day.name}
                 </span>
                 <span className="text-xl font-bold font-serif-recipe text-stone-900">
@@ -570,8 +610,8 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                 </span>
               </div>
 
-              {/* Los 4 slots fijos diarios */}
-              <div className="space-y-3">
+              {/* Los 4-5 slots fijos diarios */}
+              <div className="space-y-3 w-full max-w-full">
                 {SLOTS_CONFIG.map(({ slot, labelKey, icon: SlotIcon }) => {
                   const assignedPlan = plans.find(
                     (p) => p.fecha === day.dateStr && p.slot === slot
@@ -580,19 +620,19 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                   return (
                     <div
                       key={slot}
-                      className="p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2 text-left"
+                      className="w-full max-w-full overflow-hidden p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2 text-left"
                     >
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-stone-600">
-                        <span className="flex items-center gap-1.5 capitalize">
-                          <SlotIcon className="w-3.5 h-3.5 text-[#a86224]" />
-                          {t(labelKey)}
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-stone-600 gap-1">
+                        <span className="flex items-center gap-1.5 capitalize truncate">
+                          <SlotIcon className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+                          <span className="truncate">{t(labelKey)}</span>
                         </span>
 
                         {assignedPlan && (
                           <button
                             type="button"
                             onClick={() => handleRemoveSlot(day.dateStr, slot)}
-                            className="w-6 h-6 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition cursor-pointer"
+                            className="w-6 h-6 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition cursor-pointer shrink-0"
                             title={t('planner_remove_recipe')}
                           >
                             <Trash2 className="w-3 h-3" />
@@ -601,21 +641,22 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                       </div>
 
                       {assignedPlan && assignedPlan.receta ? (
-                        <div className="space-y-1">
+                        <div className="space-y-1 w-full max-w-full overflow-hidden">
                           <Link
                             href={`/recipes/${assignedPlan.receta.id}`}
-                            className="text-xs font-bold font-serif-recipe text-stone-900 hover:text-[#a86224] transition-colors block line-clamp-2"
+                            className="text-xs font-bold font-serif-recipe text-stone-900 hover:text-[#a86224] transition-colors block line-clamp-2 leading-snug break-words"
                           >
                             {assignedPlan.receta.titulo}
                           </Link>
-                          <div className="flex items-center gap-2 text-[10px] text-stone-500">
-                            <span className="flex items-center gap-0.5">
-                              <Clock className="w-2.5 h-2.5 text-[#a86224]" />
-                              {assignedPlan.receta.tiempo_total_min || 15}m
+                          <div className="flex items-center gap-1.5 text-xs text-stone-500 whitespace-nowrap overflow-hidden text-ellipsis">
+                            <span className="flex items-center gap-1 shrink-0">
+                              <Clock className="w-3 h-3 text-[#a86224]" />
+                              <span>{assignedPlan.receta.tiempo_total_min || 15}m</span>
                             </span>
-                            <span>·</span>
-                            <span>
-                              {assignedPlan.receta.porciones} {t('planner_servings')}
+                            <span className="text-stone-300">·</span>
+                            <span className="flex items-center gap-1 shrink-0 font-medium">
+                              <Users className="w-3 h-3 text-[#a86224]" />
+                              <span>{assignedPlan.porciones ?? assignedPlan.receta.porciones ?? 2}</span>
                             </span>
                           </div>
                         </div>
@@ -623,10 +664,10 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                         <button
                           type="button"
                           onClick={() => setPickerModal({ fecha: day.dateStr, slot })}
-                          className="w-full min-h-[40px] py-1.5 px-2 rounded-xl border border-dashed border-[#d5cabb] hover:border-[#a86224] text-stone-500 hover:text-[#a86224] hover:bg-white text-[11px] font-medium transition flex items-center justify-center gap-1 cursor-pointer"
+                          className="w-full min-h-[40px] py-1.5 px-2 rounded-xl border border-dashed border-[#d5cabb] hover:border-[#a86224] text-stone-500 hover:text-[#a86224] hover:bg-white text-[11px] font-medium transition flex items-center justify-center gap-1 cursor-pointer truncate"
                         >
-                          <Plus className="w-3 h-3" />
-                          <span>{t('planner_assign_btn')}</span>
+                          <Plus className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{t('planner_assign_btn')}</span>
                         </button>
                       )}
                     </div>
@@ -692,17 +733,19 @@ export function MealPlannerView({ initialPlans, userRecipes }: MealPlannerViewPr
                     onClick={() => handleAssignRecipe(r.id)}
                     className="w-full min-h-[52px] p-3 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] hover:border-[#a86224] transition text-left flex items-center justify-between gap-3 cursor-pointer group"
                   >
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <h4 className="font-bold text-xs sm:text-sm text-stone-900 group-hover:text-[#a86224] transition-colors line-clamp-1">
                         {r.titulo}
                       </h4>
-                      <div className="flex items-center gap-2 text-[11px] text-stone-500 mt-0.5">
-                        <span>
-                          {r.tiempo_total_min || 15} {t('planner_min')}
+                      <div className="flex items-center gap-1.5 text-xs text-stone-500 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5">
+                        <span className="flex items-center gap-1 shrink-0">
+                          <Clock className="w-3 h-3 text-[#a86224]" />
+                          <span>{r.tiempo_total_min || 15}m</span>
                         </span>
-                        <span>·</span>
-                        <span>
-                          {r.porciones} {t('planner_servings')}
+                        <span className="text-stone-300">·</span>
+                        <span className="flex items-center gap-1 shrink-0 font-medium">
+                          <Users className="w-3 h-3 text-[#a86224]" />
+                          <span>{r.porciones || 2}</span>
                         </span>
                       </div>
                     </div>

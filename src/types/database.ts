@@ -448,6 +448,7 @@ export interface Database {
           receta_id: string | null;
           fecha: string;
           slot: 'desayuno' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre' | 'almuerzo' | 'snack';
+          porciones?: number | null;
           notas: string | null;
           created_at: string;
           updated_at: string;
@@ -458,6 +459,7 @@ export interface Database {
           receta_id?: string | null;
           fecha: string;
           slot: 'desayuno' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre' | 'almuerzo' | 'snack';
+          porciones?: number | null;
           notas?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -468,6 +470,7 @@ export interface Database {
           receta_id?: string | null;
           fecha?: string;
           slot?: 'desayuno' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre' | 'almuerzo' | 'snack';
+          porciones?: number | null;
           notas?: string | null;
           created_at?: string;
           updated_at?: string;

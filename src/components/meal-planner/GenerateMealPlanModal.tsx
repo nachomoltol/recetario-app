@@ -19,6 +19,7 @@ import { Receta } from '@/types/recipe';
 import { MealSlot, PlannedSlotItem, batchAssignMealSlotsAction } from '@/app/actions/mealPlanner';
 import { generateSmartMealPlan } from '@/lib/mealPlanGenerator';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { useProfileStore } from '@/stores/useProfileStore';
 
 export interface GenerateMealPlanModalProps {
   isOpen: boolean;
@@ -39,6 +40,7 @@ export function GenerateMealPlanModal({
 }: GenerateMealPlanModalProps) {
   const t = useLanguageStore((s) => s.t);
   const language = useLanguageStore((s) => s.language);
+  const profile = useProfileStore((s) => s.profile);
 
   // Estados del asistente Wizard
   const [selectedDays, setSelectedDays] = useState<number>(7);
@@ -90,10 +92,12 @@ export function GenerateMealPlanModal({
       }
 
       // 3. Persistir en Supabase en lote (upsert atómico)
+      const defaultServings = profile?.raciones_defecto || 2;
       const batchItems = result.items.map((it) => ({
         fecha: it.fecha,
         slot: it.slot as MealSlot,
         recetaId: it.receta.id,
+        porciones: defaultServings,
       }));
 
       const saveRes = await batchAssignMealSlotsAction(batchItems);
@@ -111,6 +115,7 @@ export function GenerateMealPlanModal({
         receta_id: it.receta.id,
         fecha: it.fecha,
         slot: it.slot as MealSlot,
+        porciones: defaultServings,
         notas: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

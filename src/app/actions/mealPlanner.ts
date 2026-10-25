@@ -8,6 +8,7 @@ import { classifyIngredientAisle } from '@/lib/culinary/aisles';
 export type MealSlot = 'desayuno' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre';
 
 export interface PlannedSlotItem extends PlanComida {
+  porciones?: number | null;
   receta?: Pick<Receta, 'id' | 'titulo' | 'tiempo_total_min' | 'porciones' | 'dificultad'> | null;
 }
 
@@ -40,7 +41,7 @@ export async function getWeeklyPlanAction(
       return { success: false, error: 'No autenticado' };
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('plan_comidas')
       .select(`
         id,
@@ -48,6 +49,7 @@ export async function getWeeklyPlanAction(
         receta_id,
         fecha,
         slot,
+        porciones,
         notas,
         created_at,
         updated_at,
@@ -62,6 +64,34 @@ export async function getWeeklyPlanAction(
       .eq('usuario_id', user.id)
       .gte('fecha', startDate)
       .lte('fecha', endDate);
+
+    // Fallback de resiliencia si la columna 'porciones' aún no se ha ejecutado en Supabase
+    if (error && (error.code === '42703' || error.message?.includes('porciones'))) {
+      const fallback = await supabase
+        .from('plan_comidas')
+        .select(`
+          id,
+          usuario_id,
+          receta_id,
+          fecha,
+          slot,
+          notas,
+          created_at,
+          updated_at,
+          recetas:receta_id (
+            id,
+            titulo,
+            tiempo_total_min,
+            porciones,
+            dificultad
+          )
+        `)
+        .eq('usuario_id', user.id)
+        .gte('fecha', startDate)
+        .lte('fecha', endDate);
+      data = fallback.data as any;
+      error = fallback.error;
+    }
 
     if (error) {
       console.error('[mealPlanner] Error al consultar plan semanal:', error);
@@ -87,10 +117,12 @@ export async function assignMealSlotAction({
   fecha,
   slot,
   recetaId,
+  porciones,
 }: {
   fecha: string;
   slot: MealSlot;
   recetaId: string;
+  porciones?: number;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient();
@@ -103,16 +135,40 @@ export async function assignMealSlotAction({
       return { success: false, error: 'No autenticado' };
     }
 
-    const { error } = await supabase.from('plan_comidas').upsert(
-      {
-        usuario_id: user.id,
-        fecha,
-        slot,
-        receta_id: recetaId,
-        updated_at: new Date().toISOString(),
-      },
+    // Si no se especifican porciones, consultar raciones_defecto del usuario
+    let finalPorciones = porciones;
+    if (!finalPorciones) {
+      const { data: userProfile } = await supabase
+        .from('usuarios')
+        .select('raciones_defecto')
+        .eq('id', user.id)
+        .maybeSingle();
+      finalPorciones = userProfile?.raciones_defecto || 2;
+    }
+
+    const rowToUpsert: any = {
+      usuario_id: user.id,
+      fecha,
+      slot,
+      receta_id: recetaId,
+      porciones: finalPorciones,
+      updated_at: new Date().toISOString(),
+    };
+
+    let { error } = await supabase.from('plan_comidas').upsert(
+      rowToUpsert,
       { onConflict: 'usuario_id,fecha,slot' }
     );
+
+    // Resiliencia si la columna porciones no existe en la BD
+    if (error && (error.code === '42703' || error.message?.includes('porciones'))) {
+      const { porciones: _, ...rowWithoutPorciones } = rowToUpsert;
+      const retry = await supabase.from('plan_comidas').upsert(
+        rowWithoutPorciones,
+        { onConflict: 'usuario_id,fecha,slot' }
+      );
+      error = retry.error;
+    }
 
     if (error) {
       console.error('[mealPlanner] Error asignando plato al planificador:', error);
@@ -131,7 +187,7 @@ export async function assignMealSlotAction({
 }
 
 export async function batchAssignMealSlotsAction(
-  items: { fecha: string; slot: MealSlot; recetaId: string }[]
+  items: { fecha: string; slot: MealSlot; recetaId: string; porciones?: number }[]
 ): Promise<{ success: boolean; error?: string; count?: number }> {
   try {
     if (!items || items.length === 0) {
@@ -148,18 +204,39 @@ export async function batchAssignMealSlotsAction(
       return { success: false, error: 'No autenticado' };
     }
 
+    // 2. Respeto Estricto de los Comensales del Usuario (porciones):
+    // Leer número de porciones configurado en el perfil del usuario (perfil.raciones_defecto)
+    const { data: userProfile } = await supabase
+      .from('usuarios')
+      .select('raciones_defecto')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const userServings = userProfile?.raciones_defecto || 2;
+
     const rows = items.map((it) => ({
       usuario_id: user.id,
       fecha: it.fecha,
       slot: it.slot,
       receta_id: it.recetaId,
+      porciones: it.porciones ?? userServings,
       updated_at: new Date().toISOString(),
     }));
 
-    const { error } = await supabase.from('plan_comidas').upsert(
+    let { error } = await supabase.from('plan_comidas').upsert(
       rows,
       { onConflict: 'usuario_id,fecha,slot' }
     );
+
+    // Resiliencia si la columna porciones no existe en la BD
+    if (error && (error.code === '42703' || error.message?.includes('porciones'))) {
+      const rowsWithout = rows.map(({ porciones, ...rest }) => rest);
+      const retry = await supabase.from('plan_comidas').upsert(
+        rowsWithout,
+        { onConflict: 'usuario_id,fecha,slot' }
+      );
+      error = retry.error;
+    }
 
     if (error) {
       console.error('[mealPlanner] Error guardando lote en el planificador:', error);
@@ -218,6 +295,49 @@ export async function removeMealSlotAction({
   }
 }
 
+/**
+ * 5. Herramienta de Reseteo / Limpieza de Menús:
+ * Vacía todas las comidas asignadas de la semana o rango de fechas seleccionado
+ */
+export async function clearWeeklyPlanAction(
+  startDate: string,
+  endDate: string
+): Promise<{ success: boolean; error?: string; count?: number }> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const { error, count } = await supabase
+      .from('plan_comidas')
+      .delete({ count: 'exact' })
+      .eq('usuario_id', user.id)
+      .gte('fecha', startDate)
+      .lte('fecha', endDate);
+
+    if (error) {
+      console.error('[mealPlanner] Error vaciando plan semanal:', error);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/meal-planner');
+    revalidatePath('/smart-menu');
+    return { success: true, count: count ?? 0 };
+  } catch (err: any) {
+    console.error('[mealPlanner] Error no controlado en clearWeeklyPlanAction:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Error inesperado al vaciar el plan.',
+    };
+  }
+}
+
 export async function generateUnifiedShoppingListAction(
   startDate: string,
   endDate: string,
@@ -234,6 +354,15 @@ export async function generateUnifiedShoppingListAction(
       return { success: false, error: 'No autenticado' };
     }
 
+    // Consultar raciones por defecto del usuario
+    const { data: userProfile } = await supabase
+      .from('usuarios')
+      .select('raciones_defecto')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const userDefaultServings = userProfile?.raciones_defecto || 2;
+
     // 1. Obtener los slots que tienen receta asignada en el rango, aplicando filtros interactivos
     let query = supabase
       .from('plan_comidas')
@@ -243,7 +372,8 @@ export async function generateUnifiedShoppingListAction(
         receta_id,
         recetas:receta_id (
           id,
-          titulo
+          titulo,
+          porciones
         )
       `)
       .eq('usuario_id', user.id)
@@ -266,6 +396,8 @@ export async function generateUnifiedShoppingListAction(
       return { success: false, error: errPlans.message };
     }
 
+    // Mapa de factor de escala por receta: escala según comensales del usuario vs receta base
+    const recipeScaleFactors = new Map<string, number>();
     const recipeMap = new Map<string, string>();
     const recipeIds: string[] = [];
 
@@ -273,7 +405,15 @@ export async function generateUnifiedShoppingListAction(
       if (p.receta_id) {
         recipeIds.push(p.receta_id);
         const titulo = (p.recetas as any)?.titulo || 'Receta';
+        const basePorciones = Number((p.recetas as any)?.porciones) || 2;
+        const targetServings = Number((p as any).porciones) || userDefaultServings;
+        const factor = Math.max(0.1, targetServings / basePorciones);
+
         recipeMap.set(p.receta_id, titulo);
+        recipeScaleFactors.set(
+          p.receta_id,
+          (recipeScaleFactors.get(p.receta_id) || 0) + factor
+        );
       }
     }
 
@@ -285,14 +425,14 @@ export async function generateUnifiedShoppingListAction(
     const { data: rawIngredientes, error: errIng } = await supabase
       .from('receta_ingredientes')
       .select('*')
-      .in('receta_id', recipeIds);
+      .in('receta_id', Array.from(new Set(recipeIds)));
 
     if (errIng) {
       console.error('[mealPlanner] Error obteniendo ingredientes para lista unificada:', errIng);
       return { success: false, error: errIng.message };
     }
 
-    // 3. Motor de consolidación inteligente agrupado por pasillo y unidad compatible
+    // 3. Motor de consolidación inteligente agrupado por pasillo y unidad compatible, escalado por comensales
     const consolidated = new Map<string, UnifiedShoppingItem>();
 
     for (const ing of (rawIngredientes || []) as (RecetaIngrediente & { pasillo_supermercado?: string })[]) {
@@ -301,8 +441,9 @@ export async function generateUnifiedShoppingListAction(
       const unidad = (ing.unidad || 'unidad').trim().toLowerCase();
       const key = `${canonName.toLowerCase()}___${unidad}`;
 
-      const cant = Number(ing.cantidad) || 0;
-      const gramos = Number(ing.gramos_calculados) || 0;
+      const recipeScale = recipeScaleFactors.get(ing.receta_id) || 1;
+      const cant = (Number(ing.cantidad) || 0) * recipeScale;
+      const gramos = (Number(ing.gramos_calculados) || 0) * recipeScale;
       const recipeTitle = recipeMap.get(ing.receta_id) || 'Receta';
       const pasillo = classifyIngredientAisle(canonName, ing.pasillo_supermercado);
 

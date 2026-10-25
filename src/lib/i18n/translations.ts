@@ -540,6 +540,23 @@ export const TRANSLATIONS = {
     smart_menu_applied_success: '¡Menú semanal generado con IA aplicado con éxito!',
     smart_menu_back_btn: 'Volver al planificador',
     smart_menu_no_recipes_warning: 'No se encontraron recetas suficientes en tu recetario para los momentos elegidos.',
+    smart_menu_start_date_label: 'Fecha de inicio:',
+    smart_menu_start_date_desc: 'Elige el primer día de tu planificación',
+    smart_menu_date_today: 'Hoy',
+    smart_menu_date_tomorrow: 'Mañana',
+    smart_menu_date_next_monday: 'Próximo Lunes',
+    smart_menu_period_planned: 'Período planificado:',
+    smart_menu_available_recipes_badge: '{count} recetas disponibles en tu recetario',
+    smart_menu_slots_estimation: 'Estimación: ~{count} platos configurados',
+    smart_menu_reset_history_title: '¿Resetear historial de recetas recientes?',
+    smart_menu_reset_history_desc: 'Ignora las recetas usadas en las últimas semanas para disponer del 100% de tu recetario sin penalizaciones por repetición.',
+    smart_menu_overwrite_notice: 'Los platos existentes en los slots seleccionados serán actualizados automáticamente en tu planificador.',
+
+    // Herramienta de Limpieza en /meal-planner
+    planner_clear_week_btn: 'Limpiar semana',
+    planner_clear_week_confirm: '¿Seguro que deseas vaciar todas las comidas planificadas para esta semana? Esta acción no se puede deshacer.',
+    planner_clear_week_success: 'Comidas de la semana eliminadas correctamente.',
+    planner_clearing_week: 'Vaciando...',
   },
   en: {
     // Header & Global Nav
@@ -1080,6 +1097,23 @@ export const TRANSLATIONS = {
     smart_menu_applied_success: 'Weekly meal plan successfully generated and applied with AI!',
     smart_menu_back_btn: 'Back to meal planner',
     smart_menu_no_recipes_warning: 'Not enough recipes found in your cookbook for the selected meals.',
+    smart_menu_start_date_label: 'Start date:',
+    smart_menu_start_date_desc: 'Choose the first day of your plan',
+    smart_menu_date_today: 'Today',
+    smart_menu_date_tomorrow: 'Tomorrow',
+    smart_menu_date_next_monday: 'Next Monday',
+    smart_menu_period_planned: 'Planned period:',
+    smart_menu_available_recipes_badge: '{count} recipes available in your cookbook',
+    smart_menu_slots_estimation: 'Estimate: ~{count} planned dishes',
+    smart_menu_reset_history_title: 'Reset recent recipe history?',
+    smart_menu_reset_history_desc: 'Ignore recipes used in recent weeks to unlock 100% of your cookbook without repetition penalties.',
+    smart_menu_overwrite_notice: 'Existing dishes in the selected slots will be updated automatically in your meal planner.',
+
+    // Clear Week tool in /meal-planner
+    planner_clear_week_btn: 'Clear week',
+    planner_clear_week_confirm: 'Are you sure you want to clear all planned meals for this week? This action cannot be undone.',
+    planner_clear_week_success: 'Week meals cleared successfully.',
+    planner_clearing_week: 'Clearing...',
   },
 } as const;
 
