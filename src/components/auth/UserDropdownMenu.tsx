@@ -47,6 +47,10 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
 
+  const isPaidPlan = ['pro', 'chef', 'premium', 'admin'].includes(
+    profile?.plan_suscripcion?.toLowerCase() || ''
+  );
+
   const handleLogout = async () => {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
@@ -185,16 +189,35 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
               </div>
             </Link>
 
-            <Link
-              href="/meal-planner"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium"
-            >
-              <Calendar className="w-4 h-4 text-[#a86224]" />
-              <div className="flex-1">
-                <span>{t('nav_meal_planner_full')}</span>
+            {isPaidPlan ? (
+              <div
+                className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-400 bg-stone-50/80 border border-stone-200/50 cursor-not-allowed select-none opacity-60 pointer-events-none"
+                title={
+                  language === 'en'
+                    ? 'Manual meal planner disabled: You have the AI Smart Menu available'
+                    : 'Planificador manual desactivado: Tienes activo el Menú con IA'
+                }
+              >
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-4 h-4 text-stone-400" />
+                  <span className="line-through">{t('nav_meal_planner_full')}</span>
+                </div>
+                <span className="text-[10px] font-semibold text-[#a86224] bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
+                  {language === 'en' ? 'Use AI Menu' : 'Usa Menú con IA'}
+                </span>
               </div>
-            </Link>
+            ) : (
+              <Link
+                href="/meal-planner"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium"
+              >
+                <Calendar className="w-4 h-4 text-[#a86224]" />
+                <div className="flex-1">
+                  <span>{t('nav_meal_planner_full')}</span>
+                </div>
+              </Link>
+            )}
 
             <Link
               href="/smart-menu"

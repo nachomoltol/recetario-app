@@ -14,10 +14,7 @@ interface SmartMenuPageProps {
   searchParams?: Promise<{ replan?: string; force?: string }>;
 }
 
-export default async function SmartMenuPage(props: SmartMenuPageProps) {
-  const searchParams = props.searchParams ? await props.searchParams : {};
-  const isReplan = searchParams?.replan === 'true' || searchParams?.force === 'true';
-
+export default async function SmartMenuPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -32,12 +29,6 @@ export default async function SmartMenuPage(props: SmartMenuPageProps) {
     .select('*')
     .eq('id', user.id)
     .single();
-
-  // Protección Freemium / Paywall: /smart-menu es exclusivo para usuarios PRO
-  const isPro = (profile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
-  if (!isPro) {
-    redirect('/billing?feature=smart-menu');
-  }
 
   // Traer historial reciente (2 semanas) para evitar repeticiones en el generador
   const historyStart = new Date();
@@ -61,10 +52,6 @@ export default async function SmartMenuPage(props: SmartMenuPageProps) {
   const existingPlans = planRes.success && planRes.data ? planRes.data : [];
   const userRecipes = (recipesRes.data || []) as Receta[];
 
-  // 1. Enrutamiento y Navegación Contextual del Planificador:
-  // Al acceder a Menú con IA, si la semana en curso ya contiene comidas planificadas
-  // (hasMealsInCurrentWeek === true) y no se solicitó replanificación explícita (?replan=true),
-  // redirigir directamente al planificador semanal con la fecha del lunes correspondiente.
   const today = new Date();
   today.setHours(12, 0, 0, 0);
   const currentMonday = getMondayOfDate(today);
@@ -73,14 +60,6 @@ export default async function SmartMenuPage(props: SmartMenuPageProps) {
 
   const currentMondayStr = formatLocalDate(currentMonday);
   const currentSundayStr = formatLocalDate(currentSunday);
-
-  const hasMealsInCurrentWeek = existingPlans.some(
-    (p) => p.fecha >= currentMondayStr && p.fecha <= currentSundayStr
-  );
-
-  if (!isReplan && hasMealsInCurrentWeek) {
-    redirect(`/meal-planner?date=${currentMondayStr}`);
-  }
 
   // Determinar la fecha de inicio por defecto para la planificación semanal:
   // Si hoy es fin de semana (sábado = 6 o domingo = 0), sugerir el próximo lunes como inicio natural del menú.

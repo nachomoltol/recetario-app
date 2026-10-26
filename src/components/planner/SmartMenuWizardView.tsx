@@ -67,10 +67,12 @@ export function SmartMenuWizardView({
   const t = useLanguageStore((s) => s.t);
   const language = useLanguageStore((s) => s.language);
 
-  // Perfil del usuario y estado PRO
+  // Perfil del usuario y estado de plan de pago
   const profileFromStore = useProfileStore((s) => s.profile);
   const profile = userProfile ?? profileFromStore;
-  const isPro = profile?.plan_suscripcion === 'pro';
+  const isPaidPlan = ['pro', 'chef', 'premium', 'admin'].includes(
+    (profile?.plan_suscripcion || '').trim().toLowerCase()
+  );
 
   // Paso actual del asistente (1: Duración y Fechas, 2: Momentos del día)
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
@@ -141,8 +143,8 @@ export function SmartMenuWizardView({
   const handleGeneratePlan = async () => {
     setErrorMessage(null);
 
-    // 1. Blindaje Freemium: si el usuario no es PRO, abre el modal de suscripción
-    if (!isPro) {
+    // 1. Blindaje Freemium: si el usuario no es de pago, abre el modal de suscripción
+    if (!isPaidPlan) {
       setIsProModalOpen(true);
       return;
     }

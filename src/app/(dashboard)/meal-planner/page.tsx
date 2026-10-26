@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
-import { MealPlannerHeaderReplanButton } from '@/components/planner/MealPlannerHeaderReplanButton';
 import { MealPlannerView } from '@/components/planner/MealPlannerView';
 import { getWeeklyPlanAction } from '@/app/actions/mealPlanner';
 import { formatLocalDate, parseLocalDate, getMondayOfDate } from '@/lib/dateUtils';
@@ -53,24 +52,19 @@ export default async function MealPlannerPage(props: MealPlannerPageProps) {
 
   const initialPlans = planRes.success && planRes.data ? planRes.data : [];
   const userRecipes = recipesRes.data || [];
-  const isPro = (profile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
-
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
-      {/* Cabecera Luminosa Lino / Terracotta (1 Sola Fila Horizontal en todas las resoluciones) */}
+      {/* Cabecera Luminosa Lino / Terracotta (Manual y limpia, sin botones de IA) */}
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-3 w-full">
-            {/* Botón Izquierdo: Volver compacto en móvil */}
-            <HeaderBackButton fallbackUrl="/" compactOnMobile />
-
-            {/* Botón Central: Replanificar con IA (flexible, estilizado, con paywall PRO) */}
-            <div className="flex-1 max-w-[210px] sm:max-w-xs mx-1 flex justify-center">
-              <MealPlannerHeaderReplanButton isPro={isPro} />
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-14 sm:h-16 flex items-center justify-between gap-3 w-full">
+            {/* Lado izquierdo: Botón Volver */}
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <HeaderBackButton fallbackUrl="/" />
             </div>
 
-            {/* Botón Derecho: Menú de usuario */}
-            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Lado derecho: Idioma + Menú de usuario */}
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <LanguageToggle />
               <UserDropdownMenu
                 fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
