@@ -431,7 +431,8 @@ export function MealPlannerView({
         const isChecked = checkedShoppingItems.includes(item.nombre);
         const prefix = isChecked ? '✓' : '☐';
         const forLabel = isEn ? 'for' : 'para';
-        lines.push(`${prefix} ${item.cantidadTotal} ${item.unidad} ${item.nombre} (${forLabel}: ${item.recetasNombres.join(', ')})`);
+        const qtyStr = item.cantidadTotal > 0 ? `${item.cantidadTotal} ${item.unidad}` : item.unidad;
+        lines.push(`${prefix} ${qtyStr} ${item.nombre} (${forLabel}: ${item.recetasNombres.join(', ')})`);
       }
     }
 
@@ -1306,12 +1307,12 @@ export function MealPlannerView({
 
                         {/* Lista de ítems en este pasillo */}
                         <div className="space-y-1.5">
-                          {group.items.map((item) => {
+                          {group.items.map((item, index) => {
                             const isChecked = checkedShoppingItems.includes(item.nombre);
 
                             return (
                               <div
-                                key={item.nombre}
+                                key={`${item.nombre}___${item.unidad || 'ud'}___${index}`}
                                 onClick={() => {
                                   setCheckedShoppingItems((prev) =>
                                     prev.includes(item.nombre)
@@ -1355,7 +1356,7 @@ export function MealPlannerView({
                                     isChecked ? 'line-through text-stone-400' : 'text-[#a86224]'
                                   }`}
                                 >
-                                  {item.cantidadTotal} {item.unidad}
+                                  {item.cantidadTotal > 0 ? `${item.cantidadTotal} ${item.unidad}` : item.unidad}
                                 </span>
                               </div>
                             );

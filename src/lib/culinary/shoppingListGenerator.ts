@@ -64,9 +64,14 @@ export function lemmatizeSpanishWord(word: string): string {
  */
 export const FRESH_PIECE_WEIGHT_G: Record<string, number> = {
   cebolla: 150,
+  'cebolla morada': 150,
   tomate: 150,
   patata: 180,
+  boniato: 250,
+  batata: 250,
+  lechuga: 250,
   limon: 100,
+  lima: 80,
   zanahoria: 100,
   aguacate: 150,
   calabacin: 250,
@@ -81,19 +86,82 @@ export const FRESH_PIECE_WEIGHT_G: Record<string, number> = {
 };
 
 /**
+ * Lista de especias, hierbas secas y condimentos básicos de despensa.
+ * En la lista de la compra se consolidan bajo indicación "Comprobar despensa"
+ * sin mostrar gramajes mínimos innecesarios (ej. 2 g o 3 g).
+ */
+export const PANTRY_SPICE_KEYWORDS = [
+  'oregano',
+  'comino',
+  'pimenton',
+  'pimenton dulce',
+  'pimenton picante',
+  'canela',
+  'pimienta',
+  'pimienta negra',
+  'pimienta blanca',
+  'tomillo',
+  'nuez moscada',
+  'clavo',
+  'clavo de olor',
+  'azafran',
+  'curcuma',
+  'curry',
+  'cardamomo',
+  'cayena',
+  'guindilla',
+  'laurel',
+  'romero',
+  'eneldo',
+  'vainilla',
+  'albahaca seca',
+  'jengibre en polvo',
+  'ajo en polvo',
+  'cebolla en polvo',
+  'hierbas provenzales',
+  'hierbas italianas',
+  'sal fina',
+  'sal marina',
+  'sal de mesa',
+  'sal comun',
+  'sal',
+];
+
+export function isPantrySpice(keyOrName: string): boolean {
+  if (!keyOrName) return false;
+  const norm = keyOrName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+  return PANTRY_SPICE_KEYWORDS.some((sp) => {
+    const reg = new RegExp(`(^|\\s)${sp}(\\s|$)`, 'i');
+    return reg.test(norm);
+  });
+}
+
+/**
  * Normalización canónica de ingredientes culinarios para la lista de la compra:
  * 1. Remueve acentos, mayúsculas y caracteres diacríticos.
- * 2. Erradica calibres y clases secundarias (ej. "huevos l", "huevo tamano m" -> "huevo").
- * 3. Lematiza locuciones compuestas en español con preposiciones ('de', 'del', 'al', 'con', 'en')
+ * 2. Recorta opciones secundarias ("... o queso...", "... o tofu...") y notas de texto largo.
+ * 3. Erradica calibres y clases secundarias (ej. "huevos l", "huevo tamano m" -> "huevo").
+ * 4. Lematiza locuciones compuestas en español con preposiciones ('de', 'del', 'al', 'con', 'en')
  *    (ej. "filetes de merluza" -> "filete de merluza", "pechugas de pollo" -> "pechuga de pollo", "latas de atun" -> "lata de atun").
- * 4. Lematiza singular/plural culinario (ej. "huevos" -> "huevo", "cebollas" -> "cebolla", "dientes de ajo" -> "diente de ajo").
- * 5. Aplica diccionario de sinónimos y variantes ortográficas directas.
+ * 5. Lematiza singular/plural culinario y aplica sinónimos culinarios consolidados.
  */
 export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   if (!rawName) return { key: '', displayName: '' };
 
-  // 1. Normalizar tildes, mayúsculas y caracteres diacríticos
-  let norm = rawName
+  // 1. Limpieza de alternativas ("... o queso...", "... o tofu..."), notas secundarias y puntuación
+  let cleanedOriginal = rawName.trim();
+  cleanedOriginal = cleanedOriginal
+    .replace(/\s*\([^)]*\)/g, ' ')
+    .replace(/\s+(o|u)\s+.*$/i, '')
+    .replace(/\b(al gusto|opcional|para decorar|para servir|para acompanar)\b/gi, '')
+    .trim();
+
+  // Normalizar tildes, mayúsculas y caracteres diacríticos
+  let norm = cleanedOriginal
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
@@ -159,6 +227,63 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'pimienta negra molida': { key: 'pimienta negra', displayName: 'Pimienta negra' },
     'pimienta molida': { key: 'pimienta negra', displayName: 'Pimienta negra' },
     'pimienta': { key: 'pimienta negra', displayName: 'Pimienta negra' },
+
+    'zumo de limon': { key: 'limon', displayName: 'Limón' },
+    'zumo limon': { key: 'limon', displayName: 'Limón' },
+    'jugo de limon': { key: 'limon', displayName: 'Limón' },
+    'jugo limon': { key: 'limon', displayName: 'Limón' },
+    'zumo de lima': { key: 'lima', displayName: 'Lima' },
+    'zumo lima': { key: 'lima', displayName: 'Lima' },
+    'jugo de lima': { key: 'lima', displayName: 'Lima' },
+    'jugo lima': { key: 'lima', displayName: 'Lima' },
+
+    'boniato asado': { key: 'boniato', displayName: 'Boniato' },
+    'boniatos asados': { key: 'boniato', displayName: 'Boniato' },
+    'batata asada': { key: 'boniato', displayName: 'Boniato' },
+    'batatas asadas': { key: 'boniato', displayName: 'Boniato' },
+    'batata': { key: 'boniato', displayName: 'Boniato' },
+    'batatas': { key: 'boniato', displayName: 'Boniato' },
+    'camote': { key: 'boniato', displayName: 'Boniato' },
+    'camotes': { key: 'boniato', displayName: 'Boniato' },
+
+    'lechuga romana': { key: 'lechuga', displayName: 'Lechuga' },
+    'lechugas romanas': { key: 'lechuga', displayName: 'Lechuga' },
+    'lechuga iceberg': { key: 'lechuga', displayName: 'Lechuga' },
+    'lechugas iceberg': { key: 'lechuga', displayName: 'Lechuga' },
+    'lechuga rizada': { key: 'lechuga', displayName: 'Lechuga' },
+    'cogollo de lechuga': { key: 'lechuga', displayName: 'Lechuga' },
+    'cogollos de lechuga': { key: 'lechuga', displayName: 'Lechuga' },
+    'cogollo': { key: 'lechuga', displayName: 'Lechuga' },
+    'cogollos': { key: 'lechuga', displayName: 'Lechuga' },
+
+    'yogur': { key: 'yogur natural', displayName: 'Yogur natural' },
+    'yogures': { key: 'yogur natural', displayName: 'Yogur natural' },
+    'yogur natural': { key: 'yogur natural', displayName: 'Yogur natural' },
+    'yogures naturales': { key: 'yogur natural', displayName: 'Yogur natural' },
+    'yogur griego': { key: 'yogur natural', displayName: 'Yogur natural' },
+    'yogures griegos': { key: 'yogur natural', displayName: 'Yogur natural' },
+    'yogur griego natural': { key: 'yogur natural', displayName: 'Yogur natural' },
+    'yogures griegos naturales': { key: 'yogur natural', displayName: 'Yogur natural' },
+
+    'oregano seco': { key: 'oregano', displayName: 'Orégano' },
+    'oregano en polvo': { key: 'oregano', displayName: 'Orégano' },
+    'comino en polvo': { key: 'comino', displayName: 'Comino' },
+    'comino molido': { key: 'comino', displayName: 'Comino' },
+    'canela en polvo': { key: 'canela', displayName: 'Canela' },
+    'canela molida': { key: 'canela', displayName: 'Canela' },
+    'curcuma en polvo': { key: 'curcuma', displayName: 'Cúrcuma' },
+    'curry en polvo': { key: 'curry', displayName: 'Curry' },
+    'jengibre en polvo': { key: 'jengibre', displayName: 'Jengibre' },
+    'tomillo seco': { key: 'tomillo', displayName: 'Tomillo' },
+    'romero seco': { key: 'romero', displayName: 'Romero' },
+    'albahaca seca': { key: 'albahaca', displayName: 'Albahaca' },
+    'perejil seco': { key: 'perejil', displayName: 'Perejil' },
+    'pimenton dulce': { key: 'pimenton dulce', displayName: 'Pimentón dulce' },
+    'pimenton picante': { key: 'pimenton picante', displayName: 'Pimentón picante' },
+    'pimenton de la vera': { key: 'pimenton', displayName: 'Pimentón' },
+    'laurel seco': { key: 'laurel', displayName: 'Laurel' },
+    'hojas de laurel': { key: 'laurel', displayName: 'Laurel' },
+    'hoja de laurel': { key: 'laurel', displayName: 'Laurel' },
   };
 
   if (SYNONYMS[norm]) {
@@ -167,8 +292,16 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
 
   // 5. Lematización singular/plural culinaria
   const LEMMAS: Record<string, { key: string; displayName: string }> = {
-    'huevo': { key: 'huevo', displayName: 'Huevo' },
-    'huevos': { key: 'huevo', displayName: 'Huevo' },
+    'huevo': { key: 'huevo', displayName: 'Huevos' },
+    'huevos': { key: 'huevo', displayName: 'Huevos' },
+    'huevo cocido': { key: 'huevo', displayName: 'Huevos' },
+    'huevos cocidos': { key: 'huevo', displayName: 'Huevos' },
+    'huevo de gallina': { key: 'huevo', displayName: 'Huevos' },
+    'huevos de gallina': { key: 'huevo', displayName: 'Huevos' },
+    'huevo campero': { key: 'huevo', displayName: 'Huevos' },
+    'huevos camperos': { key: 'huevo', displayName: 'Huevos' },
+    'huevo duro': { key: 'huevo', displayName: 'Huevos' },
+    'huevos duros': { key: 'huevo', displayName: 'Huevos' },
     'clara de huevo': { key: 'clara de huevo', displayName: 'Clara de huevo' },
     'claras de huevo': { key: 'clara de huevo', displayName: 'Clara de huevo' },
     'claras': { key: 'clara de huevo', displayName: 'Clara de huevo' },
@@ -194,6 +327,12 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'patatas': { key: 'patata', displayName: 'Patata' },
     'papa': { key: 'patata', displayName: 'Patata' },
     'papas': { key: 'patata', displayName: 'Patata' },
+
+    'boniato': { key: 'boniato', displayName: 'Boniato' },
+    'boniatos': { key: 'boniato', displayName: 'Boniato' },
+
+    'lechuga': { key: 'lechuga', displayName: 'Lechuga' },
+    'lechugas': { key: 'lechuga', displayName: 'Lechuga' },
 
     'zanahoria': { key: 'zanahoria', displayName: 'Zanahoria' },
     'zanahorias': { key: 'zanahoria', displayName: 'Zanahoria' },
@@ -248,6 +387,24 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'muslos de pollo': { key: 'muslo de pollo', displayName: 'Muslo de pollo' },
     'alita de pollo': { key: 'alitas de pollo', displayName: 'Alitas de pollo' },
     'alitas de pollo': { key: 'alitas de pollo', displayName: 'Alitas de pollo' },
+
+    'oregano': { key: 'oregano', displayName: 'Orégano' },
+    'comino': { key: 'comino', displayName: 'Comino' },
+    'canela': { key: 'canela', displayName: 'Canela' },
+    'tomillo': { key: 'tomillo', displayName: 'Tomillo' },
+    'romero': { key: 'romero', displayName: 'Romero' },
+    'azafran': { key: 'azafran', displayName: 'Azafrán' },
+    'curcuma': { key: 'curcuma', displayName: 'Cúrcuma' },
+    'curry': { key: 'curry', displayName: 'Curry' },
+    'jengibre': { key: 'jengibre', displayName: 'Jengibre' },
+    'clavo': { key: 'clavo', displayName: 'Clavo de olor' },
+    'clavos': { key: 'clavo', displayName: 'Clavo de olor' },
+    'clavo de olor': { key: 'clavo', displayName: 'Clavo de olor' },
+    'clavos de olor': { key: 'clavo', displayName: 'Clavo de olor' },
+    'nuez moscada': { key: 'nuez moscada', displayName: 'Nuez moscada' },
+    'laurel': { key: 'laurel', displayName: 'Laurel' },
+    'perejil': { key: 'perejil', displayName: 'Perejil' },
+    'albahaca': { key: 'albahaca', displayName: 'Albahaca' },
   };
 
   if (LEMMAS[norm]) {
@@ -258,7 +415,7 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   const lemmaKey = lemmatizeSpanishWord(norm);
 
   // Capitalización limpia del nombre
-  let displayName = rawName.trim();
+  let displayName = cleanedOriginal.trim();
   if (wasCompoundLemmatized || lemmaKey !== norm) {
     displayName = lemmaKey.charAt(0).toUpperCase() + lemmaKey.slice(1);
   } else {
@@ -455,8 +612,20 @@ export function generateShoppingListFromPlans(
       let cant = rawAmount * unitConversionFactor;
       let gramos = Number(item.gramos_escalados) || 0;
 
-      // 1. Unificación de ajos bajo la unidad contable canónica 'diente'
-      if (canon.key === 'diente de ajo') {
+      // 1. Especias y condimentos: no mostrar en gramos mínimos ("2 g", "3 g") -> marcar como despensa
+      if (isPantrySpice(canon.key)) {
+        canonicalUnitKey = 'despensa';
+        cant = 0;
+        gramos = 0;
+      }
+      // 2. Aceite de oliva / AOVE: no acumular mililitros fraccionados de cocina -> presentar como 1 botella (o revisar despensa)
+      else if (canon.key === 'aceite de oliva virgen extra') {
+        canonicalUnitKey = 'botella';
+        cant = 1;
+        gramos = 0;
+      }
+      // 3. Unificación de ajos bajo la unidad contable canónica 'diente'
+      else if (canon.key === 'diente de ajo') {
         if (canonicalUnitKey === 'unidad' || canonicalUnitKey === 'diente') {
           canonicalUnitKey = 'diente';
         } else if (canonicalUnitKey === 'g') {
@@ -465,17 +634,43 @@ export function generateShoppingListFromPlans(
           canonicalUnitKey = 'diente';
         }
       }
-
-      // 2. Puente de conversión peso/pieza para alimentos frescos comunes
-      const pieceWeightG = FRESH_PIECE_WEIGHT_G[canon.key];
-      if (pieceWeightG) {
-        if (canonicalUnitKey === 'g') {
-          // Convertir gramos a fracción de unidad usando el peso promedio
-          cant = cant / pieceWeightG;
+      // 4. Huevos: unificación bajo unidad contable canónica
+      else if (canon.key === 'huevo') {
+        canonicalUnitKey = 'unidad';
+      }
+      // 5. Limón y cítricos: si se piden ml de zumo, convertir mediante equivalencia (1 limón ≈ 35 ml de zumo)
+      else if (canon.key === 'limon' || canon.key === 'lima') {
+        if (canonicalUnitKey === 'ml') {
+          cant = cant / 35;
           canonicalUnitKey = 'unidad';
-        } else if (canonicalUnitKey === 'unidad') {
-          if (gramos === 0) {
-            gramos = cant * pieceWeightG;
+        } else if (canonicalUnitKey === 'g') {
+          const pieceWeight = FRESH_PIECE_WEIGHT_G[canon.key] || 100;
+          cant = cant / pieceWeight;
+          canonicalUnitKey = 'unidad';
+        }
+      }
+      // 6. Yogures: consolidar bajo su categoría principal en gramos (1 unidad/bote ≈ 125 g)
+      else if (canon.key === 'yogur natural') {
+        if (canonicalUnitKey === 'unidad' || canonicalUnitKey === 'bote' || canonicalUnitKey === 'paquete') {
+          cant = cant * 125;
+          canonicalUnitKey = 'g';
+        }
+        if (gramos === 0) {
+          gramos = cant;
+        }
+      }
+      // 7. Puente de conversión peso/pieza para alimentos frescos y hortalizas comunes
+      else {
+        const pieceWeightG = FRESH_PIECE_WEIGHT_G[canon.key];
+        if (pieceWeightG) {
+          if (canonicalUnitKey === 'g') {
+            // Convertir gramos a fracción de unidad usando el peso promedio
+            cant = cant / pieceWeightG;
+            canonicalUnitKey = 'unidad';
+          } else if (canonicalUnitKey === 'unidad') {
+            if (gramos === 0) {
+              gramos = cant * pieceWeightG;
+            }
           }
         }
       }
@@ -508,6 +703,32 @@ export function generateShoppingListFromPlans(
   // 4. Transformar a ShoppingListItem con redondeo y formato homogéneo de unidades
   const result: ShoppingListItem[] = [];
   for (const acc of consolidated.values()) {
+    // 1. Manejo especial de despensa para especias y condimentos
+    if (acc.unidad === 'despensa') {
+      result.push({
+        nombre: acc.nombre,
+        cantidadTotal: 0,
+        unidad: 'Comprobar despensa',
+        gramosTotal: 0,
+        pasillo_supermercado: acc.pasillo_supermercado,
+        recetasNombres: acc.recetasNombres,
+      });
+      continue;
+    }
+
+    // 2. Manejo especial para aceite de oliva
+    if (acc.unidad === 'botella') {
+      result.push({
+        nombre: acc.nombre,
+        cantidadTotal: 1,
+        unidad: 'botella (o revisar despensa)',
+        gramosTotal: 0,
+        pasillo_supermercado: acc.pasillo_supermercado,
+        recetasNombres: acc.recetasNombres,
+      });
+      continue;
+    }
+
     let finalUnit = acc.unidad;
     let finalAmount = acc.rawCantidad;
 
