@@ -1,6 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Search,
   X,
@@ -19,9 +20,11 @@ import {
   Wheat,
   Wine,
   BookOpen,
+  Plus,
 } from 'lucide-react';
 import { Receta } from '@/types/recipe';
 import { MomentoDia, RolPlato } from '@/types/database';
+import { assignMealSlotAction, MealSlot } from '@/app/actions/mealPlanner';
 import { DeleteRecipeButton } from './DeleteRecipeButton';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { QuickCategorizeBanner } from './QuickCategorizeBanner';
@@ -460,6 +463,7 @@ interface RecipeCollectionOrganizerProps {
     nivel_culinario?: string | null;
     preferencias_dieteticas?: string[] | null;
     alergenos?: string[] | null;
+    raciones_defecto?: number | null;
   } | null;
 }
 export function RecipeCollectionOrganizer({
@@ -503,8 +507,20 @@ export function RecipeCollectionOrganizer({
     );
   };
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const momentoParam = searchParams?.get('momento');
+  const assignDateParam = searchParams?.get('assignDate');
+  const assignSlotParam = searchParams?.get('assignSlot') as MealSlot | null;
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [filtroActivo, setFiltroActivo] = useState<string>('Todas');
+  const [filtroActivo, setFiltroActivo] = useState<string>(() => {
+    if (momentoParam === 'desayuno') return 'Desayunos y Meriendas';
+    if (momentoParam === 'primero') return 'Ensaladas y Entrantes';
+    if (momentoParam === 'snack_postre' || momentoParam === 'postre') return 'Postres y Dulces';
+    return 'Todas';
+  });
   const tieneAdaptacionClinica = Boolean(
     (userProfile?.preferencias_dieteticas &&
       userProfile.preferencias_dieteticas.length > 0) ||
@@ -613,18 +629,57 @@ export function RecipeCollectionOrganizer({
         <span className="flex items-center gap-1 font-medium">
           <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#a86224]" /> {r.tiempo_total_min || 15} min
         </span>
-        <Link
-          href={`/recipes/${r.id}?from=recipes`}
-          className="text-[#a86224] hover:text-[#8e511c] font-semibold inline-flex items-center gap-0.5 sm:gap-1 transition-colors text-[10px] sm:text-xs"
-        >
-          <span className="hidden xs:inline">{t('collection_open_recipe')}</span>
-          <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 group-hover:translate-x-0.5 transition-transform" />
-        </Link>
+        {assignDateParam && assignSlotParam ? (
+          <button
+            type="button"
+            onClick={async () => {
+              await assignMealSlotAction({
+                fecha: assignDateParam,
+                slot: assignSlotParam,
+                recetaId: r.id,
+                porciones: userProfile?.raciones_defecto ?? 4,
+              });
+              router.push(`/meal-planner?date=${assignDateParam}`);
+            }}
+            className="min-h-[28px] px-2.5 py-1 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold flex items-center gap-1 transition text-[11px] cursor-pointer shadow-2xs"
+          >
+            <Plus className="w-3 h-3" />
+            <span>{language === 'en' ? 'Assign' : 'Asignar'}</span>
+          </button>
+        ) : (
+          <Link
+            href={`/recipes/${r.id}?from=recipes`}
+            className="text-[#a86224] hover:text-[#8e511c] font-semibold inline-flex items-center gap-0.5 sm:gap-1 transition-colors text-[10px] sm:text-xs"
+          >
+            <span className="hidden xs:inline">{t('collection_open_recipe')}</span>
+            <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        )}
       </div>
     </div>
   );
   return (
     <div className="space-y-6 sm:space-y-8">
+      {/* Banner de Modo Asignación al Planificador */}
+      {assignDateParam && assignSlotParam && (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-between gap-3 text-xs sm:text-sm animate-fade-in">
+          <div className="flex items-center gap-2 min-w-0">
+            <Sparkles className="w-4 h-4 text-[#a86224] shrink-0" />
+            <span className="text-stone-800 font-medium truncate">
+              {language === 'en'
+                ? `Assignment mode: Pick a recipe for ${assignSlotParam} (${assignDateParam}).`
+                : `Modo Asignación: Elige una receta para ${assignSlotParam} (${assignDateParam}).`}
+            </span>
+          </div>
+          <Link
+            href={`/meal-planner?date=${assignDateParam}`}
+            className="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-amber-200 text-[#a86224] font-semibold text-xs shrink-0 transition"
+          >
+            {language === 'en' ? 'Back to planner' : 'Volver al plan'}
+          </Link>
+        </div>
+      )}
+
       {/* Banner de Categorización Rápida si hay recetas sin clasificar */}
       <QuickCategorizeBanner
         unclassifiedCount={unclassifiedRecipes.length}

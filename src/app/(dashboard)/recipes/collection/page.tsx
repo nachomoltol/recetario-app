@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -103,10 +104,18 @@ export default async function RecipeCollectionPage() {
             </Link>
           </div>
         ) : (
-          <RecipeCollectionOrganizer
-            recetas={recetasConIngredientes}
-            userProfile={profile}
-          />
+          <Suspense
+            fallback={
+              <div className="p-12 text-center text-xs text-stone-400 animate-pulse">
+                Cargando recetario...
+              </div>
+            }
+          >
+            <RecipeCollectionOrganizer
+              recetas={recetasConIngredientes}
+              userProfile={profile}
+            />
+          </Suspense>
         )}
 
         <footer className="pt-8 pb-4 border-t border-[#e7dfd5] text-center text-xs text-stone-400 space-y-1">

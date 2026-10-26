@@ -24,6 +24,9 @@ import {
   Users,
   Loader2,
   Calendar,
+  Search,
+  Clock,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { Receta, Usuario } from '@/types/recipe';
 import {
@@ -56,6 +59,41 @@ const SLOTS_CONFIG: { slot: MealSlot; labelKey: TranslationKey; icon: typeof Sun
   { slot: 'almuerzo_2', labelKey: 'slot_lunch_2', icon: Utensils },
   { slot: 'cena', labelKey: 'slot_dinner', icon: Moon },
   { slot: 'snack_postre', labelKey: 'slot_snack_dessert', icon: Apple },
+];
+
+export type ContextualMomentoFilter = 'todos' | 'desayuno' | 'primero' | 'almuerzo' | 'cena' | 'snack_postre';
+
+export function getInitialFilterForSlot(slot: MealSlot): ContextualMomentoFilter {
+  switch (slot) {
+    case 'desayuno':
+      return 'desayuno';
+    case 'almuerzo_1':
+      return 'primero';
+    case 'almuerzo_2':
+      return 'almuerzo';
+    case 'almuerzo':
+      return 'almuerzo';
+    case 'cena':
+      return 'cena';
+    case 'snack_postre':
+      return 'snack_postre';
+    default:
+      return 'todos';
+  }
+}
+
+const PICKER_FILTER_CHIPS: {
+  id: ContextualMomentoFilter;
+  labelEs: string;
+  labelEn: string;
+  icon: typeof Sun;
+}[] = [
+  { id: 'todos', labelEs: 'Todos', labelEn: 'All', icon: Utensils },
+  { id: 'desayuno', labelEs: 'Desayuno', labelEn: 'Breakfast', icon: Sun },
+  { id: 'primero', labelEs: '1er Plato / Entrante', labelEn: '1st Course', icon: Soup },
+  { id: 'almuerzo', labelEs: 'Almuerzo / Principal', labelEn: 'Lunch / Main', icon: UtensilsCrossed },
+  { id: 'cena', labelEs: 'Cena', labelEn: 'Dinner', icon: Moon },
+  { id: 'snack_postre', labelEs: 'Snack / Postre', labelEn: 'Snack / Dessert', icon: Apple },
 ];
 
 const DAY_KEYS: TranslationKey[] = [
@@ -93,6 +131,7 @@ export function MealPlannerView({
   initialTargetDate,
 }: MealPlannerViewProps) {
   const language = useLanguageStore((s) => s.language);
+  const isEn = language === 'en';
   const t = useLanguageStore((s) => s.t);
   const profileStore = useProfileStore((s) => s.profile);
   const searchParams = useSearchParams();
@@ -137,7 +176,9 @@ export function MealPlannerView({
     }
     return 0;
   });
-  const [pickerModal, setPickerModal] = useState<{ fecha: string; slot: MealSlot } | null>(null);
+  const [pickerModal, setPickerModal] = useState<{ fecha: string; slot: MealSlot; momento?: ContextualMomentoFilter } | null>(null);
+  const [pickerFilterCategory, setPickerFilterCategory] = useState<ContextualMomentoFilter>('todos');
+  const [pickerSearchQuery, setPickerSearchQuery] = useState<string>('');
   const [shoppingModal, setShoppingModal] = useState<UnifiedShoppingItem[] | null>(null);
   const [checkedShoppingItems, setCheckedShoppingItems] = useState<string[]>([]);
   const [isCopied, setIsCopied] = useState(false);
@@ -247,19 +288,154 @@ export function MealPlannerView({
     }
   };
 
-  // Filtrar recetas para el selector según el slot (los postres se excluyen de platos principales y primeros)
+  // Manejador centralizado para abrir el modal de asignación prefiltrado por el contexto del slot
+  const handleOpenAssignModal = (fecha: string, slot: MealSlot) => {
+    const initialCategory = getInitialFilterForSlot(slot);
+    setPickerFilterCategory(initialCategory);
+    setPickerSearchQuery('');
+    setPickerModal({ fecha, slot, momento: initialCategory });
+  };
+
+  // Contadores de recetas por categoría para mostrar en cada chip del selector
+  const recipeCategoryCounts = useMemo(() => {
+    const counts: Record<ContextualMomentoFilter, number> = {
+      todos: userRecipes.length,
+      desayuno: 0,
+      primero: 0,
+      almuerzo: 0,
+      cena: 0,
+      snack_postre: 0,
+    };
+
+    for (const r of userRecipes) {
+      const titleLower = (r.titulo || '').toLowerCase();
+      const tags = (r.etiquetas || []).map((t) => t.toLowerCase().trim());
+      const moments = (r.momentos_dia || []).map((m) => m.toLowerCase().trim());
+      const rol = r.rol_plato;
+
+      // Desayuno
+      if (
+        moments.includes('desayuno') ||
+        rol === 'desayuno_snack' ||
+        tags.some((t) => /desayuno|breakfast|avena|porridge|tostada|pancake|tortita|gofre|crepe|smoothie/i.test(t)) ||
+        /desayuno|breakfast|avena|porridge|tostada|pancake|tortita|gofre|crepe|smoothie/i.test(titleLower)
+      ) {
+        counts.desayuno++;
+      }
+
+      // 1er Plato / Entrante
+      if (
+        rol === 'primero' ||
+        tags.some((t) => /primero|entrante|ensalada|sopa|crema|starter|appetizer/i.test(t)) ||
+        /primero|entrante|ensalada|sopa|crema/i.test(titleLower)
+      ) {
+        counts.primero++;
+      }
+
+      // Almuerzo / Principal
+      if (
+        ((rol === 'segundo' || rol === 'completo' || moments.includes('almuerzo')) && rol !== 'postre') ||
+        tags.some((t) => /almuerzo|principal|segundo|comida|lunch/i.test(t))
+      ) {
+        counts.almuerzo++;
+      }
+
+      // Cena
+      if (
+        moments.includes('cena') ||
+        tags.some((t) => /cena|dinner/i.test(t)) ||
+        (rol !== 'postre' && rol !== 'desayuno_snack' && (moments.includes('almuerzo') || rol === 'completo' || rol === 'segundo'))
+      ) {
+        counts.cena++;
+      }
+
+      // Snack / Postre
+      if (
+        rol === 'postre' ||
+        moments.includes('postre') ||
+        moments.includes('snack') ||
+        rol === 'desayuno_snack' ||
+        tags.some((t) => /postre|snack|merienda|dulce|tarta|bizcocho|galleta|dessert/i.test(t)) ||
+        /postre|snack|merienda|dulce|tarta|bizcocho|galleta/i.test(titleLower)
+      ) {
+        counts.snack_postre++;
+      }
+    }
+
+    return counts;
+  }, [userRecipes]);
+
+  // Filtrar recetas para el selector según el filtro de categoría activo y búsqueda
   const filteredPickerRecipes = useMemo(() => {
     if (!pickerModal) return userRecipes;
-    return userRecipes
-      .filter((r) => !isDessertExcludedFromSlot(r.rol_plato, pickerModal.slot))
-      .sort((a, b) => {
-        if (pickerModal.slot === 'snack_postre') {
-          if (a.rol_plato === 'postre' && b.rol_plato !== 'postre') return -1;
-          if (b.rol_plato === 'postre' && a.rol_plato !== 'postre') return 1;
+
+    let list = userRecipes;
+
+    // 1. Filtrado contextual por categoría seleccionada
+    if (pickerFilterCategory !== 'todos') {
+      list = list.filter((r) => {
+        const titleLower = (r.titulo || '').toLowerCase();
+        const tags = (r.etiquetas || []).map((t) => t.toLowerCase().trim());
+        const moments = (r.momentos_dia || []).map((m) => m.toLowerCase().trim());
+        const rol = r.rol_plato;
+
+        switch (pickerFilterCategory) {
+          case 'desayuno':
+            return (
+              moments.includes('desayuno') ||
+              rol === 'desayuno_snack' ||
+              tags.some((t) => /desayuno|breakfast|avena|porridge|tostada|pancake|tortita|gofre|crepe|smoothie/i.test(t)) ||
+              /desayuno|breakfast|avena|porridge|tostada|pancake|tortita|gofre|crepe|smoothie/i.test(titleLower)
+            );
+
+          case 'primero':
+            return (
+              rol === 'primero' ||
+              tags.some((t) => /primero|entrante|ensalada|sopa|crema|starter|appetizer/i.test(t)) ||
+              /primero|entrante|ensalada|sopa|crema/i.test(titleLower)
+            );
+
+          case 'almuerzo':
+            return (
+              ((rol === 'segundo' || rol === 'completo' || moments.includes('almuerzo')) && rol !== 'postre') ||
+              tags.some((t) => /almuerzo|principal|segundo|comida|lunch/i.test(t))
+            );
+
+          case 'cena':
+            return (
+              moments.includes('cena') ||
+              tags.some((t) => /cena|dinner/i.test(t)) ||
+              (rol !== 'postre' && rol !== 'desayuno_snack' && (moments.includes('almuerzo') || rol === 'completo' || rol === 'segundo'))
+            );
+
+          case 'snack_postre':
+            return (
+              rol === 'postre' ||
+              moments.includes('postre') ||
+              moments.includes('snack') ||
+              rol === 'desayuno_snack' ||
+              tags.some((t) => /postre|snack|merienda|dulce|tarta|bizcocho|galleta|dessert/i.test(t)) ||
+              /postre|snack|merienda|dulce|tarta|bizcocho|galleta/i.test(titleLower)
+            );
+
+          default:
+            return true;
         }
-        return a.titulo.localeCompare(b.titulo, 'es');
       });
-  }, [userRecipes, pickerModal]);
+    }
+
+    // 2. Buscador en tiempo real por texto (título, descripción, etiquetas)
+    if (pickerSearchQuery.trim()) {
+      const q = pickerSearchQuery.toLowerCase().trim();
+      list = list.filter((r) => {
+        const matchTitle = (r.titulo || '').toLowerCase().includes(q);
+        const matchTags = (r.etiquetas || []).some((t) => t.toLowerCase().includes(q));
+        return matchTitle || matchTags;
+      });
+    }
+
+    return list.sort((a, b) => a.titulo.localeCompare(b.titulo, 'es'));
+  }, [userRecipes, pickerModal, pickerFilterCategory, pickerSearchQuery]);
 
   // Sincronizar fechas seleccionadas por defecto con toda la semana activa
   useEffect(() => {
@@ -600,7 +776,7 @@ export function MealPlannerView({
                   <span className="text-stone-300">·</span>
                   <button
                     type="button"
-                    onClick={() => setPickerModal({ fecha: dayDateStr, slot: 'almuerzo_2' })}
+                    onClick={() => handleOpenAssignModal(dayDateStr, 'almuerzo_2')}
                     className="text-[10px] font-semibold text-stone-500 hover:text-[#a86224] hover:underline cursor-pointer"
                   >
                     {t('planner_add_second_course')}
@@ -614,7 +790,7 @@ export function MealPlannerView({
           <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
-              onClick={() => setPickerModal({ fecha: dayDateStr, slot: currentSlot })}
+              onClick={() => handleOpenAssignModal(dayDateStr, currentSlot)}
               className="w-7 h-7 rounded-xl bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] text-stone-600 hover:text-[#a86224] flex items-center justify-center transition cursor-pointer shadow-2xs"
               title={t('planner_replace_dish')}
             >
@@ -648,7 +824,7 @@ export function MealPlannerView({
 
         <button
           type="button"
-          onClick={() => setPickerModal({ fecha: dayDateStr, slot: currentSlot })}
+          onClick={() => handleOpenAssignModal(dayDateStr, currentSlot)}
           className="min-h-[28px] px-2.5 py-1 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer shrink-0"
         >
           <Plus className="w-3 h-3" />
@@ -704,7 +880,7 @@ export function MealPlannerView({
                   <span className="text-stone-300">·</span>
                   <button
                     type="button"
-                    onClick={() => setPickerModal({ fecha: dayDateStr, slot: 'almuerzo_2' })}
+                    onClick={() => handleOpenAssignModal(dayDateStr, 'almuerzo_2')}
                     className="text-[10px] font-semibold text-stone-500 hover:text-[#a86224] hover:underline cursor-pointer"
                     title={t('planner_add_second_course')}
                   >
@@ -717,7 +893,7 @@ export function MealPlannerView({
             <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
-                onClick={() => setPickerModal({ fecha: dayDateStr, slot: currentSlot })}
+                onClick={() => handleOpenAssignModal(dayDateStr, currentSlot)}
                 className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] text-stone-600 hover:text-[#a86224] flex items-center justify-center transition cursor-pointer shadow-2xs"
                 title={t('planner_replace_dish')}
               >
@@ -749,7 +925,7 @@ export function MealPlannerView({
         </div>
         <button
           type="button"
-          onClick={() => setPickerModal({ fecha: dayDateStr, slot: currentSlot })}
+          onClick={() => handleOpenAssignModal(dayDateStr, currentSlot)}
           className="w-full min-h-[34px] py-1 px-2 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] text-[11px] font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
         >
           <Plus className="w-3 h-3" />
@@ -1003,11 +1179,12 @@ export function MealPlannerView({
       {/* MODAL 1: PICKER PARA ASIGNAR RECETAS DEL USUARIO AL SLOT       */}
       {/* ============================================================== */}
       {pickerModal && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-lg rounded-3xl bg-white border border-[#e7dfd5] shadow-2xl p-5 sm:p-6 space-y-4 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-[#e7dfd5] pb-3">
-              <div>
-                <h3 className="text-base sm:text-lg font-bold font-serif-recipe text-stone-900">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+          <div className="w-full max-w-lg rounded-3xl bg-white border border-[#e7dfd5] shadow-2xl p-4 sm:p-6 space-y-3.5 max-h-[88vh] flex flex-col">
+            {/* Cabecera del modal */}
+            <div className="flex items-center justify-between border-b border-[#e7dfd5] pb-3 shrink-0">
+              <div className="min-w-0 pr-2">
+                <h3 className="text-base sm:text-lg font-bold font-serif-recipe text-stone-900 truncate">
                   {t('planner_assign_modal_title')}{' '}
                   {(() => {
                     if (pickerModal.slot === 'almuerzo') return t('slot_lunch_unique');
@@ -1017,35 +1194,154 @@ export function MealPlannerView({
                     return found ? t(found.labelKey) : pickerModal.slot;
                   })()}
                 </h3>
-                <p className="text-xs text-stone-500">
-                  {t('planner_assign_date')}: {pickerModal.fecha} · <span className="text-[#a86224] font-semibold">👥 {defaultDiners}</span>
+                <p className="text-xs text-stone-500 flex items-center gap-2 mt-0.5">
+                  <span>
+                    {t('planner_assign_date')}: <span className="font-medium text-stone-700">{pickerModal.fecha}</span>
+                  </span>
+                  <span>·</span>
+                  <span className="text-[#a86224] font-semibold flex items-center gap-1">
+                    <Users className="w-3 h-3" />
+                    <span>{defaultDiners} {t('home_servings')}</span>
+                  </span>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setPickerModal(null)}
-                className="w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center cursor-pointer hover:bg-stone-200 transition"
+                className="w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center cursor-pointer hover:bg-stone-200 transition shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {filteredPickerRecipes.length === 0 ? (
-              <div className="p-8 text-center space-y-3">
-                <BookOpen className="w-10 h-10 text-stone-300 mx-auto" />
-                <p className="text-xs text-stone-500">
-                  {userRecipes.length === 0
-                    ? t('planner_no_recipes_title')
-                    : language === 'en'
-                    ? 'No matching recipes available for this meal course (e.g. desserts are excluded from main courses).'
-                    : 'No hay recetas compatibles con este rol (los postres están excluidos de primeros y segundos platos).'}
-                </p>
-                <Link
-                  href="/recipes"
-                  className="inline-block px-4 py-2 rounded-xl bg-[#a86224] text-white text-xs font-semibold"
+            {/* Buscador de texto interactivo */}
+            <div className="relative shrink-0">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+              <input
+                type="text"
+                value={pickerSearchQuery}
+                onChange={(e) => setPickerSearchQuery(e.target.value)}
+                placeholder={isEn ? 'Search by title or tag...' : 'Buscar receta por título o etiqueta...'}
+                className="w-full pl-9 pr-8 py-2 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#a86224] focus:bg-white transition"
+              />
+              {pickerSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setPickerSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5 cursor-pointer"
                 >
-                  {t('planner_go_to_cookbook')}
-                </Link>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Chips de filtro contextual (Desayuno, 1er Plato, Almuerzo, Cena, Snack/Postre, Todos) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs shrink-0">
+              {PICKER_FILTER_CHIPS.map((chip) => {
+                const isActive = pickerFilterCategory === chip.id;
+                const ChipIcon = chip.icon;
+                const label = isEn ? chip.labelEn : chip.labelEs;
+                const count = recipeCategoryCounts[chip.id] ?? 0;
+
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => {
+                      if (isActive && chip.id !== 'todos') {
+                        setPickerFilterCategory('todos');
+                      } else {
+                        setPickerFilterCategory(chip.id);
+                      }
+                    }}
+                    className={`min-h-[30px] px-2.5 sm:px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer border ${
+                      isActive
+                        ? 'bg-[#a86224] text-white border-[#a86224] shadow-xs'
+                        : 'bg-[#faf7f2] hover:bg-white text-stone-600 border-[#e7dfd5]'
+                    }`}
+                  >
+                    <ChipIcon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-stone-500'}`} />
+                    <span>{label}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        isActive ? 'bg-white/25 text-white' : 'bg-stone-200/80 text-stone-600'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Indicador de filtro activo con reset rápido */}
+            {pickerFilterCategory !== 'todos' && (
+              <div className="flex items-center justify-between text-[11px] text-stone-500 px-1 shrink-0">
+                <span>
+                  {isEn ? 'Filtered by' : 'Filtrando por'}:{' '}
+                  <strong className="text-[#a86224]">
+                    {isEn
+                      ? PICKER_FILTER_CHIPS.find((c) => c.id === pickerFilterCategory)?.labelEn
+                      : PICKER_FILTER_CHIPS.find((c) => c.id === pickerFilterCategory)?.labelEs}
+                  </strong>{' '}
+                  ({filteredPickerRecipes.length} {isEn ? 'recipes' : 'recetas'})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPickerFilterCategory('todos')}
+                  className="text-[#a86224] hover:underline font-semibold cursor-pointer"
+                >
+                  {isEn ? 'Show all' : 'Mostrar todas'}
+                </button>
+              </div>
+            )}
+
+            {/* Lista de recetas filtradas o estado vacío */}
+            {filteredPickerRecipes.length === 0 ? (
+              <div className="p-6 sm:p-8 text-center space-y-3 my-auto">
+                <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center mx-auto">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-stone-800">
+                    {pickerFilterCategory !== 'todos'
+                      ? isEn
+                        ? 'No recipes match this category'
+                        : 'No tienes recetas en esta categoría'
+                      : isEn
+                      ? 'No recipes found'
+                      : 'No se encontraron recetas'}
+                  </h4>
+                  <p className="text-xs text-stone-500 max-w-xs mx-auto">
+                    {pickerFilterCategory !== 'todos'
+                      ? isEn
+                        ? 'You can switch to All recipes or explore your cookbook.'
+                        : 'Puedes pulsar «Ver todas» para asignar cualquier plato guardado a este momento.'
+                      : isEn
+                      ? 'Try adjusting your search terms.'
+                      : 'Prueba a cambiar el término de búsqueda o explora el recetario.'}
+                  </p>
+                </div>
+                <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+                  {pickerFilterCategory !== 'todos' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPickerFilterCategory('todos');
+                        setPickerSearchQuery('');
+                      }}
+                      className="px-4 py-2 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+                    >
+                      {isEn ? `View all recipes (${userRecipes.length})` : `Ver todas mis recetas (${userRecipes.length})`}
+                    </button>
+                  )}
+                  <Link
+                    href={`/recipes/collection?momento=${pickerFilterCategory}&assignDate=${pickerModal.fecha}&assignSlot=${pickerModal.slot}`}
+                    className="px-4 py-2 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] text-stone-700 text-xs font-semibold transition"
+                  >
+                    {t('planner_go_to_cookbook')}
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="overflow-y-auto space-y-2 pr-1 flex-1">
@@ -1054,20 +1350,37 @@ export function MealPlannerView({
                     key={r.id}
                     type="button"
                     onClick={() => handleAssignRecipe(r.id)}
-                    className="w-full min-h-[48px] p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] hover:border-[#a86224] transition text-left flex items-center justify-between gap-3 cursor-pointer group"
+                    className="w-full min-h-[48px] p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] hover:bg-white border border-[#e7dfd5] hover:border-[#a86224] transition text-left flex items-center justify-between gap-3 cursor-pointer group shadow-2xs"
                   >
                     <div className="min-w-0 flex-1">
                       <h4 className="font-bold text-xs sm:text-sm text-stone-900 group-hover:text-[#a86224] transition-colors line-clamp-1">
                         {r.titulo}
                       </h4>
-                      <div className="flex items-center gap-1.5 text-xs text-stone-500 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5">
-                        <span className="flex items-center gap-1 shrink-0 font-semibold text-[#a86224]">
-                          <Users className="w-3 h-3 text-[#a86224]" />
-                          <span>{defaultDiners}</span>
+                      <div className="flex items-center gap-2 text-[11px] text-stone-500 mt-0.5">
+                        <span className="flex items-center gap-1 font-semibold text-[#a86224]">
+                          <Users className="w-3 h-3" />
+                          <span>{defaultDiners} {t('home_servings')}</span>
                         </span>
+                        {r.tiempo_total_min && (
+                          <>
+                            <span>·</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-stone-400" />
+                              <span>{r.tiempo_total_min} min</span>
+                            </span>
+                          </>
+                        )}
+                        {r.rol_plato && (
+                          <>
+                            <span>·</span>
+                            <span className="capitalize text-stone-400">{r.rol_plato.replace('_', ' ')}</span>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <Plus className="w-4 h-4 text-stone-400 group-hover:text-[#a86224] shrink-0" />
+                    <div className="w-7 h-7 rounded-xl bg-white group-hover:bg-[#a86224] border border-[#e7dfd5] group-hover:border-[#a86224] flex items-center justify-center shrink-0 transition-colors">
+                      <Plus className="w-4 h-4 text-stone-500 group-hover:text-white" />
+                    </div>
                   </button>
                 ))}
               </div>

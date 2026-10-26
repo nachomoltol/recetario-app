@@ -1,7 +1,8 @@
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Sparkles } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
@@ -14,7 +15,13 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-export default async function RecipesDashboardPage() {
+interface RecipesDashboardPageProps {
+  searchParams?: Promise<{ momento?: string; assignDate?: string; assignSlot?: string }>;
+}
+
+export default async function RecipesDashboardPage(props: RecipesDashboardPageProps) {
+  const searchParams = props.searchParams ? await props.searchParams : {};
+  const { momento, assignDate, assignSlot } = searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -66,6 +73,24 @@ export default async function RecipesDashboardPage() {
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8 sm:space-y-10">
         {/* Cabecera y Bienvenida Dinámica Bilingüe */}
         <HomeWelcomeHeader userName={userName} />
+
+        {/* Banner contextual de asignación de menú si viene del planificador */}
+        {assignSlot && assignDate && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-between gap-3 text-xs sm:text-sm animate-fade-in shadow-2xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <Sparkles className="w-4 h-4 text-[#a86224] shrink-0" />
+              <span className="text-stone-800 font-medium truncate">
+                Asignando plato para <strong>{assignSlot}</strong> ({assignDate}).
+              </span>
+            </div>
+            <Link
+              href={`/recipes/collection?momento=${momento || ''}&assignDate=${assignDate}&assignSlot=${assignSlot}`}
+              className="px-3.5 py-1.5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs shrink-0 transition"
+            >
+              Explorar colección
+            </Link>
+          </div>
+        )}
 
         {/* Foco 1: Módulo de Captura Rápida de Recetas */}
         <Suspense
