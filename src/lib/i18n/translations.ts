@@ -173,6 +173,9 @@ export const TRANSLATIONS = {
     planner_shopping_btn_short: 'Comprar',
     planner_add_second_course: '+ 2º plato',
     planner_replace_dish: 'Cambiar plato',
+    planner_replan_with_ai: '✨ Replanificar con IA',
+    planner_scroll_left: 'Desplazar a la izquierda',
+    planner_scroll_right: 'Desplazar a la derecha',
 
     // Configuración (Settings)
     settings_title: 'Configuración',
@@ -741,6 +744,9 @@ export const TRANSLATIONS = {
     planner_shopping_btn_short: 'Shop',
     planner_add_second_course: '+ 2nd course',
     planner_replace_dish: 'Replace dish',
+    planner_replan_with_ai: '✨ Replan with AI',
+    planner_scroll_left: 'Scroll left',
+    planner_scroll_right: 'Scroll right',
 
     // Settings
     settings_title: 'Settings',

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info } from 'lucide-react';
 import { formatLocalDate, parseLocalDate } from '@/lib/dateUtils';
 import { useLanguageStore } from '@/stores/useLanguageStore';
@@ -16,6 +16,37 @@ export interface CalendarRangePickerProps {
 const WEEKDAYS_ES = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const WEEKDAYS_EN = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
+interface DayCell {
+  dateStr: string;
+  dayNum: number;
+  monthType: 'prev' | 'current' | 'next';
+  isToday: boolean;
+}
+
+/**
+ * Calcula el rango ordenado y acotado por maxDays / minDays
+ */
+function getCappedRange(
+  d1: string,
+  d2: string,
+  minDays: number,
+  maxDays: number
+): { start: string; end: string; count: number } {
+  const startStr = d1 <= d2 ? d1 : d2;
+  const endStr = d1 <= d2 ? d2 : d1;
+  const s = parseLocalDate(startStr);
+  const e = parseLocalDate(endStr);
+  const diff = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+  if (diff > maxDays) {
+    const capped = new Date(s);
+    capped.setDate(capped.getDate() + (maxDays - 1));
+    return { start: startStr, end: formatLocalDate(capped), count: maxDays };
+  }
+
+  return { start: startStr, end: endStr, count: Math.max(minDays, diff) };
+}
+
 export function CalendarRangePicker({
   startDate,
   endDate,
@@ -26,16 +57,29 @@ export function CalendarRangePicker({
   const language = useLanguageStore((s) => s.language);
   const isEn = language === 'en';
 
-  // Mes que se está visualizando en el calendario (por defecto el mes de startDate)
+  // Mes visible en el calendario (por defecto el mes de startDate)
   const [viewDate, setViewDate] = useState<Date>(() => {
     const initial = parseLocalDate(startDate);
     return new Date(initial.getFullYear(), initial.getMonth(), 1, 12, 0, 0, 0);
   });
 
-  // Estado intermedio durante el segundo clic (patrón Booking / Airbnb)
-  // Si selectingEnd es true, el usuario ya seleccionó startDate y está eligiendo endDate
+  // Estado intermedio para el método de 2 clics simples (Booking / Airbnb)
   const [selectingEnd, setSelectingEnd] = useState<boolean>(false);
   const [hoverDate, setHoverDate] = useState<string | null>(null);
+
+  // Estado para previsualización dinámica durante arrastre (Drag-to-select)
+  const [dragState, setDragState] = useState<{ anchor: string; current: string } | null>(null);
+
+  // Refs de control para ratón y táctil
+  const isMouseDownRef = useRef(false);
+  const dragAnchorRef = useRef<string | null>(null);
+  const dragCurrentRef = useRef<string | null>(null);
+  const hasMovedRef = useRef(false);
+
+  const isTouchActiveRef = useRef(false);
+  const touchAnchorRef = useRef<string | null>(null);
+  const touchCurrentRef = useRef<string | null>(null);
+  const touchHasMovedRef = useRef(false);
 
   const viewYear = viewDate.getFullYear();
   const viewMonth = viewDate.getMonth();
@@ -49,7 +93,20 @@ export function CalendarRangePicker({
     setViewDate(new Date(viewYear, viewMonth + 1, 1, 12, 0, 0, 0));
   };
 
-  // Título del mes en formato legible
+  // Salto de mes continuo automático cuando se interactúa con días atenuados
+  const checkAndAdvanceMonth = useCallback(
+    (targetDateStr: string) => {
+      const targetDate = parseLocalDate(targetDateStr);
+      const targetYear = targetDate.getFullYear();
+      const targetMonth = targetDate.getMonth();
+      if (targetYear !== viewYear || targetMonth !== viewMonth) {
+        setViewDate(new Date(targetYear, targetMonth, 1, 12, 0, 0, 0));
+      }
+    },
+    [viewYear, viewMonth]
+  );
+
+  // Título del mes en formato legible bilingüe
   const monthTitle = useMemo(() => {
     const locale = isEn ? 'en-US' : 'es-ES';
     const formatter = new Intl.DateTimeFormat(locale, {
@@ -60,74 +117,232 @@ export function CalendarRangePicker({
     return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   }, [viewDate, isEn]);
 
-  // Cuadrícula del mes actual
-  const { daysInMonth, firstDayOffset, todayStr } = useMemo(() => {
+  // Cuadrícula completa con salto continuo (incluye días atenuados del mes previo y posterior)
+  const calendarGrid = useMemo<DayCell[]>(() => {
     const today = formatLocalDate(new Date());
-    // Días del mes
-    const daysCount = new Date(viewYear, viewMonth + 1, 0, 12, 0, 0, 0).getDate();
-    // Día de la semana del 1er día (Lunes = 0, Domingo = 6)
-    const firstDay = new Date(viewYear, viewMonth, 1, 12, 0, 0, 0).getDay();
-    const offset = (firstDay + 6) % 7;
 
-    return {
-      daysInMonth: daysCount,
-      firstDayOffset: offset,
-      todayStr: today,
-    };
+    // Días del mes visible
+    const daysInCurrentMonth = new Date(viewYear, viewMonth + 1, 0, 12, 0, 0, 0).getDate();
+    // Día de inicio (Lunes = 0, Domingo = 6)
+    const firstDayOfWeek = (new Date(viewYear, viewMonth, 1, 12, 0, 0, 0).getDay() + 6) % 7;
+
+    // Días del mes anterior
+    const daysInPrevMonth = new Date(viewYear, viewMonth, 0, 12, 0, 0, 0).getDate();
+
+    const cells: DayCell[] = [];
+
+    // 1. Días atenuados del mes anterior
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      const dayNum = daysInPrevMonth - firstDayOfWeek + 1 + i;
+      const prevDate = new Date(viewYear, viewMonth - 1, dayNum, 12, 0, 0, 0);
+      const dateStr = formatLocalDate(prevDate);
+      cells.push({
+        dateStr,
+        dayNum,
+        monthType: 'prev',
+        isToday: dateStr === today,
+      });
+    }
+
+    // 2. Días del mes actual
+    for (let dayNum = 1; dayNum <= daysInCurrentMonth; dayNum++) {
+      const curDate = new Date(viewYear, viewMonth, dayNum, 12, 0, 0, 0);
+      const dateStr = formatLocalDate(curDate);
+      cells.push({
+        dateStr,
+        dayNum,
+        monthType: 'current',
+        isToday: dateStr === today,
+      });
+    }
+
+    // 3. Días atenuados del mes siguiente para completar la cuadrícula continua
+    // Garantizamos siempre días visibles del mes siguiente para interacción continua
+    let totalCells = Math.ceil(cells.length / 7) * 7;
+    if (totalCells === cells.length) {
+      // Si el mes termina exactamente en domingo, añadimos una semana del mes siguiente para permitir selección continua
+      totalCells += 7;
+    }
+    const nextDaysNeeded = totalCells - cells.length;
+
+    for (let dayNum = 1; dayNum <= nextDaysNeeded; dayNum++) {
+      const nextDate = new Date(viewYear, viewMonth + 1, dayNum, 12, 0, 0, 0);
+      const dateStr = formatLocalDate(nextDate);
+      cells.push({
+        dateStr,
+        dayNum,
+        monthType: 'next',
+        isToday: dateStr === today,
+      });
+    }
+
+    return cells;
   }, [viewYear, viewMonth]);
 
-  // Rango activo o previo para visualización
-  const effectiveStart = startDate;
-  const effectiveEnd = selectingEnd && hoverDate && hoverDate >= startDate ? hoverDate : endDate;
+  // Rango activo o dinámico en previsualización (Drag o 2-clics)
+  const { effectiveStart, effectiveEnd } = useMemo(() => {
+    if (dragState) {
+      const { start, end } = getCappedRange(dragState.anchor, dragState.current, minDays, maxDays);
+      return { effectiveStart: start, effectiveEnd: end };
+    }
 
-  // Lógica de interacción Booking / Airbnb
-  const handleDayClick = (dateStr: string) => {
-    if (!selectingEnd) {
-      // 1er Clic: fijar nuevo día de inicio
-      setSelectingEnd(true);
-      onChangeRange(dateStr, dateStr, 1);
-    } else {
-      // 2do Clic: fijar día de fin
-      if (dateStr < startDate) {
-        // Si hace clic en un día anterior, se convierte en el nuevo día de inicio
-        onChangeRange(dateStr, dateStr, 1);
-        setSelectingEnd(true);
-      } else {
-        const startD = parseLocalDate(startDate);
-        const clickedD = parseLocalDate(dateStr);
-        const diffDays =
-          Math.round((clickedD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-        if (diffDays > maxDays) {
-          // Si supera el máximo de 31 días, limitar a maxDays días
-          const cappedEnd = new Date(startD);
-          cappedEnd.setDate(cappedEnd.getDate() + (maxDays - 1));
-          const cappedStr = formatLocalDate(cappedEnd);
-          onChangeRange(startDate, cappedStr, maxDays);
-        } else {
-          onChangeRange(startDate, dateStr, Math.max(minDays, diffDays));
-        }
-        setSelectingEnd(false);
-        setHoverDate(null);
+    if (selectingEnd && hoverDate) {
+      if (hoverDate >= startDate) {
+        const { start, end } = getCappedRange(startDate, hoverDate, minDays, maxDays);
+        return { effectiveStart: start, effectiveEnd: end };
       }
+      return { effectiveStart: hoverDate, effectiveEnd: hoverDate };
+    }
+
+    return { effectiveStart: startDate, effectiveEnd: endDate };
+  }, [dragState, selectingEnd, hoverDate, startDate, endDate, minDays, maxDays]);
+
+  // Método alternativo de 2 clics simples (fallback de accesibilidad y rapidez)
+  const handleDayClick = useCallback(
+    (dateStr: string) => {
+      if (!selectingEnd) {
+        // Clic 1: fijar inicio
+        setSelectingEnd(true);
+        onChangeRange(dateStr, dateStr, 1);
+        checkAndAdvanceMonth(dateStr);
+      } else {
+        // Clic 2: fijar fin
+        if (dateStr < startDate) {
+          onChangeRange(dateStr, dateStr, 1);
+          setSelectingEnd(true);
+          checkAndAdvanceMonth(dateStr);
+        } else {
+          const { start, end, count } = getCappedRange(startDate, dateStr, minDays, maxDays);
+          onChangeRange(start, end, count);
+          checkAndAdvanceMonth(dateStr);
+          setSelectingEnd(false);
+          setHoverDate(null);
+        }
+      }
+    },
+    [selectingEnd, startDate, minDays, maxDays, onChangeRange, checkAndAdvanceMonth]
+  );
+
+  // Manejo de drag con ratón en PC/Tablet
+  const handleMouseDown = (dateStr: string, e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Solo botón principal izquierdo
+    isMouseDownRef.current = true;
+    dragAnchorRef.current = dateStr;
+    dragCurrentRef.current = dateStr;
+    hasMovedRef.current = false;
+    setDragState({ anchor: dateStr, current: dateStr });
+  };
+
+  const handleMouseEnter = (dateStr: string) => {
+    if (isMouseDownRef.current && dragAnchorRef.current) {
+      if (dateStr !== dragAnchorRef.current) {
+        hasMovedRef.current = true;
+      }
+      dragCurrentRef.current = dateStr;
+      setDragState({ anchor: dragAnchorRef.current, current: dateStr });
+    } else if (selectingEnd) {
+      setHoverDate(dateStr);
     }
   };
 
-  // Conteo de días seleccionados
+  // Listener global de mouseup para finalizar arrastre de ratón limpiamente en cualquier punto
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (!isMouseDownRef.current) return;
+      isMouseDownRef.current = false;
+
+      const anchor = dragAnchorRef.current;
+      const current = dragCurrentRef.current;
+
+      if (hasMovedRef.current && anchor && current) {
+        // Se completó un arrastre con éxito
+        const { start, end, count } = getCappedRange(anchor, current, minDays, maxDays);
+        onChangeRange(start, end, count);
+        checkAndAdvanceMonth(current);
+        setSelectingEnd(false);
+        setHoverDate(null);
+      }
+      setDragState(null);
+      dragAnchorRef.current = null;
+      dragCurrentRef.current = null;
+    };
+
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [minDays, maxDays, onChangeRange, checkAndAdvanceMonth]);
+
+  // Manejo táctil touch-first para móvil (Drag-to-select fluido y sin interferir con scroll)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const dateEl = el?.closest('[data-calendar-date]');
+    const dateStr = dateEl?.getAttribute('data-calendar-date');
+
+    if (dateStr) {
+      isTouchActiveRef.current = true;
+      touchAnchorRef.current = dateStr;
+      touchCurrentRef.current = dateStr;
+      touchHasMovedRef.current = false;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isTouchActiveRef.current || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const dateEl = el?.closest('[data-calendar-date]');
+    const dateStr = dateEl?.getAttribute('data-calendar-date');
+
+    if (dateStr && touchAnchorRef.current) {
+      if (dateStr !== touchAnchorRef.current) {
+        touchHasMovedRef.current = true;
+      }
+      touchCurrentRef.current = dateStr;
+      setDragState({ anchor: touchAnchorRef.current, current: dateStr });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isTouchActiveRef.current) return;
+    isTouchActiveRef.current = false;
+
+    const anchor = touchAnchorRef.current;
+    const current = touchCurrentRef.current;
+
+    if (touchHasMovedRef.current && anchor && current) {
+      // Arrastre táctil completado
+      const { start, end, count } = getCappedRange(anchor, current, minDays, maxDays);
+      onChangeRange(start, end, count);
+      checkAndAdvanceMonth(current);
+      setSelectingEnd(false);
+      setHoverDate(null);
+    } else if (anchor && !touchHasMovedRef.current) {
+      // Toque simple táctil -> ejecutar 2-clics
+      handleDayClick(anchor);
+    }
+
+    setDragState(null);
+    touchAnchorRef.current = null;
+    touchCurrentRef.current = null;
+    touchHasMovedRef.current = false;
+  };
+
+  // Conteo de días seleccionados para la caja de estado
   const selectedDaysCount = useMemo(() => {
-    if (!startDate || !endDate) return 1;
-    const s = parseLocalDate(startDate);
-    const e = parseLocalDate(endDate);
+    if (!effectiveStart || !effectiveEnd) return 1;
+    const s = parseLocalDate(effectiveStart);
+    const e = parseLocalDate(effectiveEnd);
     const diff = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     return Math.max(1, Math.min(maxDays, diff));
-  }, [startDate, endDate, maxDays]);
+  }, [effectiveStart, effectiveEnd, maxDays]);
 
   // Formato legible para la caja de confirmación inferior
   const formattedRangeText = useMemo(() => {
-    if (!startDate) return '';
+    if (!effectiveStart) return '';
     const locale = isEn ? 'en-US' : 'es-ES';
-    const s = parseLocalDate(startDate);
-    const e = parseLocalDate(endDate || startDate);
+    const s = parseLocalDate(effectiveStart);
+    const e = parseLocalDate(effectiveEnd || effectiveStart);
 
     const formatOptions: Intl.DateTimeFormatOptions = {
       weekday: 'short',
@@ -138,29 +353,35 @@ export function CalendarRangePicker({
     const startText = s.toLocaleDateString(locale, formatOptions);
     const endText = e.toLocaleDateString(locale, formatOptions);
 
-    if (startDate === endDate || selectedDaysCount === 1) {
+    if (effectiveStart === effectiveEnd || selectedDaysCount === 1) {
       return `${startText} (${selectedDaysCount} ${
-        isEn ? (selectedDaysCount === 1 ? 'day selected' : 'days selected') : (selectedDaysCount === 1 ? 'día seleccionado' : 'días seleccionados')
+        isEn
+          ? selectedDaysCount === 1
+            ? 'day selected'
+            : 'days selected'
+          : selectedDaysCount === 1
+          ? 'día seleccionado'
+          : 'días seleccionados'
       })`;
     }
 
     return `${startText} → ${endText} (${selectedDaysCount} ${
       isEn ? 'days selected' : 'días seleccionados'
     })`;
-  }, [startDate, endDate, selectedDaysCount, isEn]);
+  }, [effectiveStart, effectiveEnd, selectedDaysCount, isEn]);
 
   const weekdays = isEn ? WEEKDAYS_EN : WEEKDAYS_ES;
 
   return (
     <div className="space-y-4 select-none">
-      {/* Instrucción clara superior */}
+      {/* Instrucción clara superior bilingüe */}
       <div className="flex items-start gap-2.5 p-3 sm:p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-700">
         <Info className="w-4 h-4 text-[#a86224] shrink-0 mt-0.5" />
         <div className="text-xs sm:text-sm">
           <p className="font-semibold text-stone-900">
             {isEn
-              ? 'Tap start and end dates on the calendar to select your menu'
-              : 'Toca el día de inicio y el día de fin en el calendario para seleccionar tu menú'}
+              ? 'Tap start & end dates or drag on the calendar to select your menu'
+              : 'Toca el día de inicio y fin o arrastra sobre el calendario para seleccionar tu menú'}
           </p>
           <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5">
             {isEn
@@ -209,54 +430,59 @@ export function CalendarRangePicker({
           ))}
         </div>
 
-        {/* Cuadrícula de Días */}
-        <div className="grid grid-cols-7 gap-y-1 text-center">
-          {/* Celdas vacías previas al día 1 */}
-          {Array.from({ length: firstDayOffset }).map((_, i) => (
-            <div key={`offset-${i}`} className="h-10 sm:h-11" />
-          ))}
-
-          {/* Días del mes */}
-          {Array.from({ length: daysInMonth }).map((_, i) => {
-            const dayNum = i + 1;
-            const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(
-              dayNum
-            ).padStart(2, '0')}`;
+        {/* Cuadrícula de Días con soporte táctil touch-none durante interacción */}
+        <div
+          className="grid grid-cols-7 gap-y-1 text-center touch-none"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
+        >
+          {calendarGrid.map((cell) => {
+            const { dateStr, dayNum, monthType, isToday } = cell;
 
             const isStart = dateStr === effectiveStart;
             const isEnd = dateStr === effectiveEnd;
             const isSingleDay = isStart && isEnd;
             const isInRange = dateStr > effectiveStart && dateStr < effectiveEnd;
-            const isToday = dateStr === todayStr;
+            const isDimmed = monthType !== 'current';
 
-            // Clases de fondo continuo (efecto barra continua tipo Booking/Airbnb)
+            // Clases de fondo continuo tipo Booking/Airbnb
             let rangeBgClass = '';
             if (isInRange) {
               rangeBgClass = 'bg-[#f4efe6]';
             } else if (isStart && !isSingleDay) {
-              rangeBgClass = 'bg-gradient-to-r from-transparent via-[#f4efe6] to-[#f4efe6] rounded-l-2xl';
+              rangeBgClass =
+                'bg-gradient-to-r from-transparent via-[#f4efe6] to-[#f4efe6] rounded-l-2xl';
             } else if (isEnd && !isSingleDay) {
-              rangeBgClass = 'bg-gradient-to-l from-transparent via-[#f4efe6] to-[#f4efe6] rounded-r-2xl';
+              rangeBgClass =
+                'bg-gradient-to-l from-transparent via-[#f4efe6] to-[#f4efe6] rounded-r-2xl';
             }
 
             return (
               <div
                 key={dateStr}
+                data-calendar-date={dateStr}
                 className={`relative h-10 sm:h-11 flex items-center justify-center py-0.5 ${rangeBgClass}`}
-                onMouseEnter={() => {
-                  if (selectingEnd) {
-                    setHoverDate(dateStr);
-                  }
-                }}
+                onMouseEnter={() => handleMouseEnter(dateStr)}
               >
                 <button
                   type="button"
-                  onClick={() => handleDayClick(dateStr)}
+                  data-calendar-date={dateStr}
+                  onMouseDown={(e) => handleMouseDown(dateStr, e)}
+                  onClick={(e) => {
+                    // Si hubo un arrastre con ratón, el listener de mouseup ya gestionó la selección
+                    if (!hasMovedRef.current) {
+                      handleDayClick(dateStr);
+                    }
+                  }}
                   className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex flex-col items-center justify-center text-xs sm:text-sm font-semibold transition touch-manipulation cursor-pointer ${
                     isStart || isEnd
-                      ? 'bg-[#a86224] text-white font-bold shadow-xs scale-105 z-10'
+                      ? 'bg-[#a86224] text-white font-bold shadow-xs scale-105 z-10 opacity-100'
                       : isInRange
-                      ? 'text-stone-900 font-bold hover:bg-[#e7dfd5]'
+                      ? 'text-stone-900 font-bold hover:bg-[#e7dfd5] opacity-100'
+                      : isDimmed
+                      ? 'text-stone-400 opacity-60 hover:opacity-100 hover:text-stone-800 hover:bg-[#f4efe6]'
                       : 'text-stone-700 hover:bg-[#f4efe6]'
                   } ${isToday && !isStart && !isEnd ? 'border border-[#a86224]/50' : ''}`}
                 >

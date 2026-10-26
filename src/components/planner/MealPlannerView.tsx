@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition, useMemo } from 'react';
+import { useState, useEffect, useTransition, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -190,6 +190,39 @@ export function MealPlannerView({
   const [isShoppingPending, startShoppingTransition] = useTransition();
 
   const [showGeneratedBanner, setShowGeneratedBanner] = useState(false);
+  const [twoCourseDays, setTwoCourseDays] = useState<Set<string>>(new Set());
+
+  // Refs y estados para navegación por chips en el modal
+  const chipsScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkChipsScroll = () => {
+    const el = chipsScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  };
+
+  const scrollChips = (dir: 'left' | 'right') => {
+    if (chipsScrollRef.current) {
+      chipsScrollRef.current.scrollBy({
+        left: dir === 'left' ? -180 : 180,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (pickerModal) {
+      const timer = setTimeout(checkChipsScroll, 120);
+      window.addEventListener('resize', checkChipsScroll);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('resize', checkChipsScroll);
+      };
+    }
+  }, [pickerModal]);
 
   // Sincronizar con props del servidor cuando se revalide o cambie
   useEffect(() => {
@@ -455,18 +488,42 @@ export function MealPlannerView({
     };
 
     setPlans((prev) => [
-      ...prev.filter((p) => !(p.fecha === fecha && p.slot === slot)),
+      ...prev.filter(
+        (p) =>
+          !(
+            p.fecha === fecha &&
+            (p.slot === slot || (slot === 'almuerzo_1' && p.slot === 'almuerzo'))
+          )
+      ),
       optimisticItem,
     ]);
     setPickerModal(null);
+
+    if (slot === 'almuerzo_1' || slot === 'almuerzo_2') {
+      const hasLegacyAlmuerzo = plans.some((p) => p.fecha === fecha && p.slot === 'almuerzo');
+      if (hasLegacyAlmuerzo) {
+        await removeMealSlotAction({ fecha, slot: 'almuerzo' });
+      }
+    }
 
     await assignMealSlotAction({ fecha, slot, recetaId, porciones: defaultDiners });
   };
 
   // Quitar receta de un slot
   const handleRemoveSlot = async (fecha: string, slot: MealSlot) => {
-    setPlans((prev) => prev.filter((p) => !(p.fecha === fecha && p.slot === slot)));
+    setPlans((prev) =>
+      prev.filter(
+        (p) =>
+          !(
+            p.fecha === fecha &&
+            (p.slot === slot || (slot === 'almuerzo_1' && p.slot === 'almuerzo'))
+          )
+      )
+    );
     await removeMealSlotAction({ fecha, slot });
+    if (slot === 'almuerzo_1') {
+      await removeMealSlotAction({ fecha, slot: 'almuerzo' });
+    }
   };
 
   // Herramienta de Reseteo / Limpieza de Menús
@@ -584,13 +641,15 @@ export function MealPlannerView({
     const planAlmuerzo1 = dayPlans.find((p) => p.slot === 'almuerzo_1');
     const planAlmuerzo2 = dayPlans.find((p) => p.slot === 'almuerzo_2');
 
-    if (planAlmuerzo1 && planAlmuerzo2) {
-      // 1º y 2º plato complementarios asignados
+    const isTwoCourseMode = Boolean(planAlmuerzo1 || planAlmuerzo2 || twoCourseDays.has(dateStr));
+
+    if (isTwoCourseMode) {
+      // Modo dos platos: 1er plato y 2do plato
       result.push({
         slot: 'almuerzo_1',
         label: t('slot_course_1'),
         icon: Soup,
-        plan: planAlmuerzo1,
+        plan: planAlmuerzo1 || planAlmuerzo,
       });
       result.push({
         slot: 'almuerzo_2',
@@ -599,49 +658,22 @@ export function MealPlannerView({
         plan: planAlmuerzo2,
       });
     } else if (planAlmuerzo) {
-      // Plato único explícito asignado por algoritmo o usuario
+      // Plato único asignado
       result.push({
         slot: 'almuerzo',
         label: t('slot_lunch_unique'),
         icon: Utensils,
         plan: planAlmuerzo,
-        canAddSecondCourse: !planAlmuerzo2,
-      });
-    } else if (planAlmuerzo1 && !planAlmuerzo2) {
-      // 1er plato asignado pero 2º plato pendiente de asignación
-      result.push({
-        slot: 'almuerzo_1',
-        label: t('slot_course_1'),
-        icon: Soup,
-        plan: planAlmuerzo1,
-      });
-      result.push({
-        slot: 'almuerzo_2',
-        label: t('slot_course_2'),
-        icon: Utensils,
-        plan: undefined,
-      });
-    } else if (planAlmuerzo2 && !planAlmuerzo1) {
-      // 2º plato asignado pero 1er plato pendiente de asignación: dejamos 1º vacío (+ Asignar)
-      result.push({
-        slot: 'almuerzo_1',
-        label: t('slot_course_1'),
-        icon: Soup,
-        plan: undefined,
-      });
-      result.push({
-        slot: 'almuerzo_2',
-        label: t('slot_course_2'),
-        icon: Utensils,
-        plan: planAlmuerzo2,
+        canAddSecondCourse: true,
       });
     } else {
-      // Ningún plato asignado para almuerzo: único slot limpio (ocultando 2º plato)
+      // Ningún plato asignado para almuerzo: único slot limpio con opción discreta de 2º plato
       result.push({
         slot: 'almuerzo',
         label: t('slot_lunch_short'),
         icon: Utensils,
         plan: undefined,
+        canAddSecondCourse: true,
       });
     }
 
@@ -708,7 +740,10 @@ export function MealPlannerView({
                   <span className="text-stone-300">·</span>
                   <button
                     type="button"
-                    onClick={() => handleOpenAssignModal(dayDateStr, 'almuerzo_2')}
+                    onClick={() => {
+                      setTwoCourseDays((prev) => new Set(prev).add(dayDateStr));
+                      handleOpenAssignModal(dayDateStr, 'almuerzo_2');
+                    }}
                     className="text-[10px] font-semibold text-stone-500 hover:text-[#a86224] hover:underline cursor-pointer"
                   >
                     {t('planner_add_second_course')}
@@ -751,7 +786,18 @@ export function MealPlannerView({
           <div className="w-7 h-7 rounded-xl bg-[#faf7f2] flex items-center justify-center text-stone-400 shrink-0">
             <SlotIcon className="w-3.5 h-3.5 text-stone-500" />
           </div>
-          <span className="text-xs font-semibold text-stone-600 truncate">{slotLabel}</span>
+          <div className="min-w-0">
+            <span className="text-xs font-semibold text-stone-600 truncate block">{slotLabel}</span>
+            {slotItem.canAddSecondCourse && !assignedPlan && (
+              <button
+                type="button"
+                onClick={() => setTwoCourseDays((prev) => new Set(prev).add(dayDateStr))}
+                className="text-[10px] font-semibold text-stone-500 hover:text-[#a86224] hover:underline cursor-pointer flex items-center gap-0.5 mt-0.5 transition"
+              >
+                <span>{t('planner_add_second_course')}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <button
@@ -812,11 +858,14 @@ export function MealPlannerView({
                   <span className="text-stone-300">·</span>
                   <button
                     type="button"
-                    onClick={() => handleOpenAssignModal(dayDateStr, 'almuerzo_2')}
+                    onClick={() => {
+                      setTwoCourseDays((prev) => new Set(prev).add(dayDateStr));
+                      handleOpenAssignModal(dayDateStr, 'almuerzo_2');
+                    }}
                     className="text-[10px] font-semibold text-stone-500 hover:text-[#a86224] hover:underline cursor-pointer"
                     title={t('planner_add_second_course')}
                   >
-                    + 2º
+                    {t('planner_add_second_course')}
                   </button>
                 </>
               )}
@@ -863,6 +912,15 @@ export function MealPlannerView({
           <Plus className="w-3 h-3" />
           <span>{t('planner_assign_btn')}</span>
         </button>
+        {slotItem.canAddSecondCourse && !assignedPlan && (
+          <button
+            type="button"
+            onClick={() => setTwoCourseDays((prev) => new Set(prev).add(dayDateStr))}
+            className="w-full text-center text-[10px] font-semibold text-stone-500 hover:text-[#a86224] transition cursor-pointer pt-0.5"
+          >
+            {t('planner_add_second_course')}
+          </button>
+        )}
       </div>
     );
   };
@@ -1168,42 +1226,80 @@ export function MealPlannerView({
             </div>
 
             {/* Chips de filtro contextual (Desayuno, 1er Plato, Almuerzo, Cena, Snack/Postre, Todos) */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs shrink-0">
-              {PICKER_FILTER_CHIPS.map((chip) => {
-                const isActive = pickerFilterCategory === chip.id;
-                const ChipIcon = chip.icon;
-                const label = isEn ? chip.labelEn : chip.labelEs;
-                const count = recipeCategoryCounts[chip.id] ?? 0;
+            <div className="relative flex items-center group/chips shrink-0">
+              {/* Flecha scroll izquierda (PC / Tablet) */}
+              {canScrollLeft && (
+                <button
+                  type="button"
+                  onClick={() => scrollChips('left')}
+                  aria-label={t('planner_scroll_left')}
+                  className="hidden sm:flex absolute -left-2 z-20 w-7 h-7 rounded-full bg-white/95 border border-[#e7dfd5] text-stone-600 hover:text-stone-900 shadow-md items-center justify-center transition cursor-pointer hover:bg-stone-50"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              )}
 
-                return (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    onClick={() => {
-                      if (isActive && chip.id !== 'todos') {
-                        setPickerFilterCategory('todos');
-                      } else {
-                        setPickerFilterCategory(chip.id);
-                      }
-                    }}
-                    className={`min-h-[30px] px-2.5 sm:px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer border ${
-                      isActive
-                        ? 'bg-[#a86224] text-white border-[#a86224] shadow-xs'
-                        : 'bg-[#faf7f2] hover:bg-white text-stone-600 border-[#e7dfd5]'
-                    }`}
-                  >
-                    <ChipIcon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-stone-500'}`} />
-                    <span>{label}</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                        isActive ? 'bg-white/25 text-white' : 'bg-stone-200/80 text-stone-600'
+              <div
+                ref={chipsScrollRef}
+                onScroll={checkChipsScroll}
+                className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs w-full scroll-smooth"
+              >
+                {PICKER_FILTER_CHIPS.map((chip) => {
+                  const isActive = pickerFilterCategory === chip.id;
+                  const ChipIcon = chip.icon;
+                  const label = isEn ? chip.labelEn : chip.labelEs;
+                  const count = recipeCategoryCounts[chip.id] ?? 0;
+
+                  return (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      onClick={() => {
+                        if (isActive && chip.id !== 'todos') {
+                          setPickerFilterCategory('todos');
+                        } else {
+                          setPickerFilterCategory(chip.id);
+                        }
+                      }}
+                      className={`min-h-[30px] px-2.5 sm:px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer border ${
+                        isActive
+                          ? 'bg-[#a86224] text-white border-[#a86224] shadow-xs'
+                          : 'bg-[#faf7f2] hover:bg-white text-stone-600 border-[#e7dfd5]'
                       }`}
                     >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
+                      <ChipIcon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-stone-500'}`} />
+                      <span>{label}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                          isActive ? 'bg-white/25 text-white' : 'bg-stone-200/80 text-stone-600'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Flecha scroll derecha (PC / Tablet) */}
+              {canScrollRight && (
+                <button
+                  type="button"
+                  onClick={() => scrollChips('right')}
+                  aria-label={t('planner_scroll_right')}
+                  className="hidden sm:flex absolute -right-2 z-20 w-7 h-7 rounded-full bg-white/95 border border-[#e7dfd5] text-stone-600 hover:text-stone-900 shadow-md items-center justify-center transition cursor-pointer hover:bg-stone-50"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Sutil degradado en móvil a la derecha para señalar visualmente que la lista continúa */}
+              {canScrollRight && (
+                <div
+                  aria-hidden="true"
+                  className="sm:hidden pointer-events-none absolute right-0 top-0 bottom-1 w-8 bg-gradient-to-l from-white via-white/80 to-transparent z-10"
+                />
+              )}
             </div>
 
             {/* Indicador de filtro activo con reset rápido */}
