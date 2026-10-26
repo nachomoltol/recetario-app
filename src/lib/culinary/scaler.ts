@@ -38,6 +38,10 @@ const SPICE_KEYWORDS = [
 const FAT_KEYWORDS = [
   'aceite de oliva',
   'aceite de girasol',
+  'aceite virgen extra',
+  'aceite virgen',
+  'aceite',
+  'aove',
   'mantequilla',
   'manteca',
   'ghee',
@@ -130,7 +134,11 @@ export function classifyIngredient(nombre?: string | null, unidad?: string | nul
     // 2. Grasas para sofreír/sartén (dependen de la superficie 2D)
     if (
       FAT_KEYWORDS.some((kw) => norm.includes(kw)) &&
-      (uNorm.includes('cuchara') || uNorm.includes('chorro') || uNorm.includes('cda') || uNorm.includes('ml'))
+      (uNorm.includes('cuchara') ||
+        uNorm.includes('chorro') ||
+        uNorm.includes('cda') ||
+        uNorm.includes('ml') ||
+        /^(g|gr|grs|gramo|gramos)$/i.test(uNorm.trim()))
     ) {
       return 'COOKING_FAT';
     }

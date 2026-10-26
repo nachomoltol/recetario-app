@@ -29,14 +29,65 @@ export interface CanonicalIngredient {
 }
 
 /**
+ * Lematizador de palabras individuales en español (singularización).
+ */
+export function lemmatizeSpanishWord(word: string): string {
+  const w = word.trim().toLowerCase();
+  if (w.length <= 3) return w;
+
+  // Plurales en -ces (nueces -> nuez)
+  if (w.endsWith('ces') && w.length > 4) {
+    return w.slice(0, -3) + 'z';
+  }
+
+  // Plurales en -es con raíz en consonante [lrnd] (limones -> limon, champiñones -> champinon)
+  if (w.endsWith('es') && w.length > 4) {
+    const root = w.slice(0, -2);
+    if (/[lrnd]$/.test(root)) {
+      return root;
+    }
+  }
+
+  // Plurales regulares que terminan en 's' precedida de vocal (pechugas -> pechuga, filetes -> filete, rodajas -> rodaja, latas -> lata, lonchas -> loncha, huevos -> huevo)
+  if (w.endsWith('s') && !w.endsWith('ss') && w.length > 3) {
+    const beforeS = w.slice(0, -1);
+    if (/[aeiou]$/.test(beforeS)) {
+      return beforeS;
+    }
+  }
+
+  return w;
+}
+
+/**
+ * Tabla estática de equivalencias peso promedio por pieza en gramos para alimentos frescos comunes
+ */
+export const FRESH_PIECE_WEIGHT_G: Record<string, number> = {
+  cebolla: 150,
+  tomate: 150,
+  patata: 180,
+  limon: 100,
+  zanahoria: 100,
+  aguacate: 150,
+  calabacin: 250,
+  berenjena: 250,
+  pepino: 200,
+  manzana: 180,
+  platano: 120,
+  pera: 160,
+  pimiento: 150,
+  'pimiento verde': 120,
+  'pimiento rojo': 180,
+};
+
+/**
  * Normalización canónica de ingredientes culinarios para la lista de la compra:
  * 1. Remueve acentos, mayúsculas y caracteres diacríticos.
  * 2. Erradica calibres y clases secundarias (ej. "huevos l", "huevo tamano m" -> "huevo").
- * 3. Lematiza singular/plural culinario (ej. "huevos" -> "huevo", "cebollas" -> "cebolla", "dientes de ajo" -> "diente de ajo").
- * 4. Aplica diccionario de sinónimos y variantes ortográficas directas:
- *    - "azucar glass" | "azucar glas" | "azucar impalpable" -> "azúcar glas"
- *    - "aove" | "aceite de oliva virgen extra" | "aceite de oliva" -> "aceite de oliva virgen extra"
- *    - "harina de trigo" | "harina" -> "harina de trigo"
+ * 3. Lematiza locuciones compuestas en español con preposiciones ('de', 'del', 'al', 'con', 'en')
+ *    (ej. "filetes de merluza" -> "filete de merluza", "pechugas de pollo" -> "pechuga de pollo", "latas de atun" -> "lata de atun").
+ * 4. Lematiza singular/plural culinario (ej. "huevos" -> "huevo", "cebollas" -> "cebolla", "dientes de ajo" -> "diente de ajo").
+ * 5. Aplica diccionario de sinónimos y variantes ortográficas directas.
  */
 export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   if (!rawName) return { key: '', displayName: '' };
@@ -60,7 +111,23 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     .replace(/\s+/g, ' ')
     .trim();
 
-  // 3. Diccionario de variantes ortográficas y sinónimos directos
+  // 3. Lematización de locuciones compuestas en español con preposiciones ('de', 'del', 'al', 'con', 'en')
+  // Extrae el núcleo nominal inicial ("filetes", "pechugas", "rodajas", "latas", "lonchas") y lo lematiza a singular
+  const PREPOSITIONS = new Set(['de', 'del', 'al', 'con', 'en']);
+  const words = norm.split(' ');
+  let wasCompoundLemmatized = false;
+
+  if (words.length >= 2 && words.some((w, idx) => idx > 0 && PREPOSITIONS.has(w))) {
+    const head = words[0];
+    const singularHead = lemmatizeSpanishWord(head);
+    if (singularHead !== head) {
+      words[0] = singularHead;
+      norm = words.join(' ');
+      wasCompoundLemmatized = true;
+    }
+  }
+
+  // 4. Diccionario de variantes ortográficas y sinónimos directos
   const SYNONYMS: Record<string, { key: string; displayName: string }> = {
     'azucar glass': { key: 'azucar glas', displayName: 'Azúcar glas' },
     'azucar glas': { key: 'azucar glas', displayName: 'Azúcar glas' },
@@ -98,7 +165,7 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     return SYNONYMS[norm];
   }
 
-  // 4. Lematización singular/plural culinaria
+  // 5. Lematización singular/plural culinaria
   const LEMMAS: Record<string, { key: string; displayName: string }> = {
     'huevo': { key: 'huevo', displayName: 'Huevo' },
     'huevos': { key: 'huevo', displayName: 'Huevo' },
@@ -188,21 +255,15 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   }
 
   // Lematizador heurístico general para plurales regulares en español
-  let lemmaKey = norm;
-  if (lemmaKey.endsWith('es') && lemmaKey.length > 4) {
-    const root = lemmaKey.slice(0, -2);
-    if (/[lrndz]$/.test(root)) {
-      lemmaKey = root;
-    }
-  } else if (lemmaKey.endsWith('s') && !lemmaKey.endsWith('ss') && lemmaKey.length > 3) {
-    if (/[aeiou]$/.test(lemmaKey.slice(0, -1))) {
-      lemmaKey = lemmaKey.slice(0, -1);
-    }
-  }
+  const lemmaKey = lemmatizeSpanishWord(norm);
 
   // Capitalización limpia del nombre
-  const cleanedOriginal = rawName.trim();
-  const displayName = cleanedOriginal.charAt(0).toUpperCase() + cleanedOriginal.slice(1);
+  let displayName = rawName.trim();
+  if (wasCompoundLemmatized || lemmaKey !== norm) {
+    displayName = lemmaKey.charAt(0).toUpperCase() + lemmaKey.slice(1);
+  } else {
+    displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+  }
 
   return {
     key: lemmaKey,
@@ -215,8 +276,7 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
  * - Gramos y Mililitros: enteros limpios (múltiplos de 5 si > 20 g/ml).
  * - Kilos y Litros: redondear a 1 decimal como máximo (ej. 1.2 kg, nunca 1.23 kg).
  * - Piezas y Unidades Contables (huevos, cebollas, limones, dientes de ajo, botes, latas):
- *   * Si total < 2 unidades: permitir mitades limpias (0.5 o 1.5).
- *   * Si total >= 2 unidades: Math.ceil() para erradicar decimales absurdos en la compra (ej. 2.3 -> 3).
+ *   * Redondeo estricto hacia arriba con Math.ceil() para erradicar mitades o decimales absurdos en la compra (ej. 1.3 o 1.5 -> 2).
  */
 export function roundShoppingListAmount(amount: number, unidad?: string | null): number {
   if (!amount || amount <= 0 || isNaN(amount)) return 0;
@@ -236,16 +296,13 @@ export function roundShoppingListAmount(amount: number, unidad?: string | null):
   }
 
   // 3. Piezas y unidades contables (huevos, cebollas, limones, dientes de ajo, botes, latas, paquetes, unidades, ud, uds)
+  // En la lista de la compra, cualquier cantidad contable se redondea estrictamente hacia arriba con Math.ceil(amount)
   if (
     /^(unidad|unidades|unit|units|pieza|piezas|piece|pieces|huevo|huevos|egg|eggs|diente|dientes|clove|cloves|bote|botes|lata|latas|can|cans|paquete|paquetes|package|packages|jar|jars|sobre|sobres|ud|uds)$/i.test(
       u
     )
   ) {
-    if (amount < 2) {
-      const half = Math.round(amount * 2) / 2;
-      return half <= 0 ? 0.5 : half;
-    }
-    return Math.ceil(amount);
+    return Math.max(1, Math.ceil(amount));
   }
 
   // 4. Medidas de cuchara / taza
@@ -257,12 +314,8 @@ export function roundShoppingListAmount(amount: number, unidad?: string | null):
     return Math.round(amount * 2) / 2;
   }
 
-  // 5. Resto de unidades: evitar decimales absurdos en la compra
-  if (amount < 2) {
-    const half = Math.round(amount * 2) / 2;
-    return half <= 0 ? 0.5 : half;
-  }
-  return Math.ceil(amount);
+  // 5. Resto de unidades: redondeo comercial superior para evitar fracciones inutilizables en supermercado
+  return Math.max(1, Math.ceil(amount));
 }
 
 /**
@@ -395,15 +448,41 @@ export function generateShoppingListFromPlans(
         unitConversionFactor = 1000;
       }
 
-      // Clave canónica unificada
-      const key = `${canon.key}___${canonicalUnitKey}`;
-
-      const rawAmount =
+      let rawAmount =
         Number(item.cantidad_escalada) ||
         Number(item.cantidad) * (targetServings / basePorciones) ||
         0;
-      const cant = rawAmount * unitConversionFactor;
-      const gramos = Number(item.gramos_escalados) || 0;
+      let cant = rawAmount * unitConversionFactor;
+      let gramos = Number(item.gramos_escalados) || 0;
+
+      // 1. Unificación de ajos bajo la unidad contable canónica 'diente'
+      if (canon.key === 'diente de ajo') {
+        if (canonicalUnitKey === 'unidad' || canonicalUnitKey === 'diente') {
+          canonicalUnitKey = 'diente';
+        } else if (canonicalUnitKey === 'g') {
+          // Peso promedio de 1 diente de ajo ≈ 5 g
+          cant = cant / 5;
+          canonicalUnitKey = 'diente';
+        }
+      }
+
+      // 2. Puente de conversión peso/pieza para alimentos frescos comunes
+      const pieceWeightG = FRESH_PIECE_WEIGHT_G[canon.key];
+      if (pieceWeightG) {
+        if (canonicalUnitKey === 'g') {
+          // Convertir gramos a fracción de unidad usando el peso promedio
+          cant = cant / pieceWeightG;
+          canonicalUnitKey = 'unidad';
+        } else if (canonicalUnitKey === 'unidad') {
+          if (gramos === 0) {
+            gramos = cant * pieceWeightG;
+          }
+        }
+      }
+
+      // Clave canónica unificada
+      const key = `${canon.key}___${canonicalUnitKey}`;
+
       const pasillo = classifyIngredientAisle(canon.displayName, item.pasillo_supermercado);
 
       if (consolidated.has(key)) {
