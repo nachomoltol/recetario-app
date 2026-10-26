@@ -4,7 +4,7 @@ import { inferRecipeCategory, isDessertExcludedFromSlot } from './recipeCategori
 import { formatLocalDate, parseLocalDate } from '@/lib/dateUtils';
 
 export interface MealPlanGeneratorOptions {
-  dias: number; // Entre 1 y 7
+  dias: number; // Entre 1 y 31 días continuos
   fechaInicio: string; // Formato YYYY-MM-DD
   incluirDesayunos: boolean;
   incluirAlmuerzos: boolean;
@@ -195,7 +195,7 @@ export function isFirstCourseStarter(
  * Cero ajustes al lunes: si el usuario define fecha de inicio, empieza exactamente en ella.
  */
 function generateDates(fechaInicioStr: string, numDias: number): string[] {
-  const safeDias = Math.min(7, Math.max(1, Math.floor(numDias)));
+  const safeDias = Math.min(31, Math.max(1, Math.floor(numDias)));
   const baseDate = parseLocalDate(fechaInicioStr);
 
   const result: string[] = [];
@@ -431,8 +431,8 @@ export function generateMealPlan(
 ): MealPlanGeneratorResult {
   const advertencias: string[] = [];
 
-  // 1. Validación de entrada y duración estricta
-  const numDias = Math.min(7, Math.max(1, Math.floor(opciones.dias || 5)));
+  // 1. Validación de entrada y duración estricta (hasta 31 días)
+  const numDias = Math.min(31, Math.max(1, Math.floor(opciones.dias || 7)));
   const fechas = generateDates(opciones.fechaInicio, numDias);
 
   if (!recetasDisponibles || recetasDisponibles.length === 0) {

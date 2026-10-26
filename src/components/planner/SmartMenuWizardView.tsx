@@ -20,6 +20,7 @@ import { Usuario, Receta } from '@/types/recipe';
 import { MealSlot, PlannedSlotItem, batchAssignMealSlotsAction } from '@/app/actions/mealPlanner';
 import { generateSmartMealPlan } from '@/lib/mealPlanGenerator';
 import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
+import { CalendarRangePicker } from './CalendarRangePicker';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
 
@@ -77,7 +78,6 @@ export function SmartMenuWizardView({
   // 3. Selector y Corrección Dinámica de Fechas en /smart-menu:
   // Se calculan las fechas de forma dinámica en el cliente
   const todayStr = useMemo(() => getTodayString(), []);
-  const tomorrowStr = useMemo(() => getTomorrowString(), []);
   const nextMondayStr = useMemo(() => getNextMondayString(), []);
 
   // Estados de configuración del Wizard
@@ -88,13 +88,19 @@ export function SmartMenuWizardView({
     const day = d.getDay();
     return (day === 0 || day === 6) ? getNextMondayString() : getTodayString();
   });
+  const [endDate, setEndDate] = useState<string>(() => {
+    const s = initialStartDate || ((new Date().getDay() === 0 || new Date().getDay() === 6) ? getNextMondayString() : getTodayString());
+    const [y, m, d] = s.split('-').map(Number);
+    const endD = new Date(y, (m || 1) - 1, (d || 1) + 6, 12, 0, 0, 0);
+    return formatLocalDate(endD);
+  });
   const [incluirDesayunos, setIncluirDesayunos] = useState<boolean>(true);
   const [incluirAlmuerzos, setIncluirAlmuerzos] = useState<boolean>(true);
   const [intentarPrimeroYSegundo, setIntentarPrimeroYSegundo] = useState<boolean>(false);
   const [incluirCenas, setIncluirCenas] = useState<boolean>(true);
   const [incluirSnackPostre, setIncluirSnackPostre] = useState<boolean>(false);
 
-  // 5. Herramienta de Reseteo / Limpieza de Historial
+  // Herramienta de Reseteo / Limpieza de Historial
   const [resetRecentHistory, setResetRecentHistory] = useState<boolean>(false);
 
   // Estados de ejecución y feedback
@@ -120,31 +126,6 @@ export function SmartMenuWizardView({
       } catch (e) {}
     }
   }, [startDate]);
-
-  // Cálculo de fechas cubiertas para la vista previa en tiempo real
-  const datesPreview = useMemo(() => {
-    if (!startDate) return { startText: '', endText: '' };
-    const [year, month, day] = startDate.split('-').map(Number);
-    const start = new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0);
-    const end = new Date(year, (month || 1) - 1, (day || 1) + (dias - 1), 12, 0, 0, 0);
-
-    const locale = language === 'en' ? 'en-US' : 'es-ES';
-    const startFormatted = start.toLocaleDateString(locale, {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
-    const endFormatted = end.toLocaleDateString(locale, {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
-
-    return {
-      startText: startFormatted,
-      endText: endFormatted,
-    };
-  }, [startDate, dias, language]);
 
   // Estimación de platos a generar
   const estimatedSlots = useMemo(() => {
@@ -299,149 +280,21 @@ export function SmartMenuWizardView({
       </div>
 
       {/* ============================================================== */}
-      {/* PASO 1 (Duración y Fecha): Días, Accesos rápidos y Fecha inicio */}
+      {/* PASO 1 (Duración y Fecha): Selector de Rango Calendario Booking/Airbnb */}
       {/* ============================================================== */}
       {currentStep === 1 && (
-        <section className="p-4 sm:p-6 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4 animate-fade-in">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-sm sm:text-base font-bold font-serif-recipe text-stone-900">
-                {t('planner_wizard_step_days')}
-              </h2>
-              <p className="text-xs text-stone-500 mt-0.5">
-                {t('planner_wizard_step_days_desc')}
-              </p>
-            </div>
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
-              {dias} {t('planner_wizard_days_unit')}
-            </span>
-          </div>
-
-          {/* 3. Selector táctil de fecha de inicio (fechaInicio) */}
-          <div className="space-y-2.5 pt-1">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#a86224]" />
-                <span>{t('smart_menu_start_date_label')}</span>
-              </label>
-              <span className="text-[11px] text-stone-500">
-                {t('smart_menu_start_date_desc')}
-              </span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setStartDate(nextMondayStr)}
-                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                  startDate === nextMondayStr
-                    ? 'bg-[#a86224] text-white border-[#a86224] shadow-2xs font-bold'
-                    : 'bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-700 border-[#e7dfd5]'
-                }`}
-              >
-                {t('smart_menu_date_next_monday')}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStartDate(todayStr)}
-                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                  startDate === todayStr
-                    ? 'bg-[#a86224] text-white border-[#a86224] shadow-2xs font-bold'
-                    : 'bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-700 border-[#e7dfd5]'
-                }`}
-              >
-                {t('smart_menu_date_today')}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStartDate(tomorrowStr)}
-                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                  startDate === tomorrowStr
-                    ? 'bg-[#a86224] text-white border-[#a86224] shadow-2xs font-bold'
-                    : 'bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-700 border-[#e7dfd5]'
-                }`}
-              >
-                {t('smart_menu_date_tomorrow')}
-              </button>
-
-              <div className="flex-1 min-w-[140px]">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    if (e.target.value) setStartDate(e.target.value);
-                  }}
-                  className="w-full h-9 px-3 rounded-xl border border-[#e7dfd5] bg-white text-xs font-medium text-stone-800 focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] cursor-pointer"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Botones rápidos de selección */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              onClick={() => setDias(5)}
-              className={`py-2.5 px-3 rounded-2xl text-xs font-semibold border transition cursor-pointer flex items-center justify-center gap-2 ${
-                dias === 5
-                  ? 'bg-[#a86224] text-white border-[#a86224] shadow-xs'
-                  : 'bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-700 border-[#e7dfd5]'
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{t('smart_menu_quick_5_days')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setDias(7)}
-              className={`py-2.5 px-3 rounded-2xl text-xs font-semibold border transition cursor-pointer flex items-center justify-center gap-2 ${
-                dias === 7
-                  ? 'bg-[#a86224] text-white border-[#a86224] shadow-xs'
-                  : 'bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-700 border-[#e7dfd5]'
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{t('smart_menu_quick_7_days')}</span>
-            </button>
-          </div>
-
-          {/* Selector táctil de 1 a 7 días */}
-          <div className="grid grid-cols-7 gap-2">
-            {[1, 2, 3, 4, 5, 6, 7].map((num) => {
-              const isSelected = dias === num;
-              return (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => setDias(num)}
-                  className={`h-11 sm:h-12 rounded-2xl font-bold text-xs sm:text-sm flex flex-col items-center justify-center transition cursor-pointer touch-manipulation border ${
-                    isSelected
-                      ? 'bg-[#a86224] text-white border-[#a86224] shadow-xs scale-[1.03]'
-                      : 'bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-800 border-[#e7dfd5]'
-                  }`}
-                >
-                  <span>{num}</span>
-                  <span className="text-[9px] uppercase tracking-wider opacity-80 font-normal">
-                    {num === 1 ? (language === 'en' ? 'day' : 'día') : (language === 'en' ? 'days' : 'días')}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Vista previa de fechas cubiertas */}
-          <div className="p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between text-xs text-stone-700">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[#a86224]" />
-              <span className="font-semibold">{t('smart_menu_period_planned')}</span>
-            </div>
-            <span className="font-bold text-stone-900">
-              {datesPreview.startText} → {datesPreview.endText}
-            </span>
-          </div>
+        <section className="space-y-4 animate-fade-in">
+          <CalendarRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            minDays={1}
+            maxDays={31}
+            onChangeRange={(newStart, newEnd, newDays) => {
+              setStartDate(newStart);
+              setEndDate(newEnd);
+              setDias(newDays);
+            }}
+          />
 
           {/* Botón claro y táctil para avanzar al Paso 2 */}
           <div className="pt-2">
