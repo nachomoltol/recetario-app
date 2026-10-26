@@ -33,6 +33,12 @@ export default async function SmartMenuPage(props: SmartMenuPageProps) {
     .eq('id', user.id)
     .single();
 
+  // Protección Freemium / Paywall: /smart-menu es exclusivo para usuarios PRO
+  const isPro = (profile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
+  if (!isPro) {
+    redirect('/billing?feature=smart-menu');
+  }
+
   // Traer historial reciente (2 semanas) para evitar repeticiones en el generador
   const historyStart = new Date();
   historyStart.setDate(historyStart.getDate() - 14);

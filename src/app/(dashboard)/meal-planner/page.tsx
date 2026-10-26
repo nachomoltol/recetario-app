@@ -53,35 +53,30 @@ export default async function MealPlannerPage(props: MealPlannerPageProps) {
 
   const initialPlans = planRes.success && planRes.data ? planRes.data : [];
   const userRecipes = recipesRes.data || [];
+  const isPro = (profile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
-      {/* Cabecera Luminosa Lino / Terracotta (Mobile-First sin solapamientos) */}
+      {/* Cabecera Luminosa Lino / Terracotta (1 Sola Fila Horizontal en todas las resoluciones) */}
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Fila principal: distribución limpia entre navegación y usuario */}
-          <div className="h-14 sm:h-16 flex items-center justify-between gap-3">
-            {/* Lado izquierdo: Botón Volver + Replanificar en desktop */}
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-              <HeaderBackButton fallbackUrl="/" />
-              <div className="hidden sm:block">
-                <MealPlannerHeaderReplanButton />
-              </div>
+        <div className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-3 w-full">
+            {/* Botón Izquierdo: Volver compacto en móvil */}
+            <HeaderBackButton fallbackUrl="/" compactOnMobile />
+
+            {/* Botón Central: Replanificar con IA (flexible, estilizado, con paywall PRO) */}
+            <div className="flex-1 max-w-[210px] sm:max-w-xs mx-1 flex justify-center">
+              <MealPlannerHeaderReplanButton isPro={isPro} />
             </div>
 
-            {/* Lado derecho: Idioma + Perfil de usuario */}
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Botón Derecho: Menú de usuario */}
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               <LanguageToggle />
               <UserDropdownMenu
                 fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
                 email={user.email || ''}
               />
             </div>
-          </div>
-
-          {/* Sub-barra exclusiva móvil (< 640px): Botón Replanificar a ancho completo sin colisiones */}
-          <div className="sm:hidden pb-2.5 pt-0.5">
-            <MealPlannerHeaderReplanButton isMobileFullWidth />
           </div>
         </div>
       </header>
