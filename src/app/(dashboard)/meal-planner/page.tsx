@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { Sparkles } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
@@ -57,12 +59,20 @@ export default async function MealPlannerPage(props: MealPlannerPageProps) {
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
       {/* Cabecera Luminosa Lino / Terracotta */}
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <HeaderBackButton fallbackUrl="/" />
+            <Link
+              href="/smart-menu?replan=true"
+              className="min-h-[38px] px-3 sm:px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 border border-amber-200/80 text-stone-900 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs shrink-0"
+              title="Replanificar con IA"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+              <span>✨ Replanificar con IA</span>
+            </Link>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <LanguageToggle />
             <UserDropdownMenu
               fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}

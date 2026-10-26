@@ -152,8 +152,24 @@ export function isPantrySpice(keyOrName: string): boolean {
 export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   if (!rawName) return { key: '', displayName: '' };
 
-  // 1. Limpieza de alternativas ("... o queso...", "... o tofu..."), notas secundarias y puntuación
   let cleanedOriginal = rawName.trim();
+
+  // Fase A - Sanitización de Entrada:
+  // Erradicar cantidades y unidades incrustadas en el nombre del ingrediente mediante regex inicial
+  // (ej. "4 g de orégano seco" -> "orégano seco")
+  cleanedOriginal = cleanedOriginal
+    .replace(/^(\d+[\d.,/]*\s*(g|gr|grs|gramo|gramos|kg|kgs|kilo|kilos|ml|mls|l|lt|lts|litro|litros|cda|cdas|cdta|cdtas|cucharada|cucharadas|cucharadita|cucharaditas|diente|dientes|unidad|unidades|ud|uds|pieza|piezas|pizca|pizcas|punado|puñado|punados|puñados)?\s*(de\s+)?)/i, '')
+    .replace(/^(un|una|unos|unas)\s+(de\s+)?/i, '')
+    .trim();
+
+  // Fase B - Disolución de Ingredientes Compuestos con Sal:
+  // Si la cadena contiene patrones como "sal y [especia]" o "sal con [especia]" (ej. "sal y orégano", "sal y pimienta negra"), extraer la especia y descartar la sal de mesa
+  cleanedOriginal = cleanedOriginal
+    .replace(/^sal(\s+(fina|marina|de mesa|comun))?\s+(y|con)\s+/i, '')
+    .replace(/\s+(y|con)\s+sal(\s+(fina|marina|de mesa|comun))?$/i, '')
+    .trim();
+
+  // Limpieza de alternativas ("... o queso...", "... o tofu..."), notas secundarias y puntuación
   cleanedOriginal = cleanedOriginal
     .replace(/\s*\([^)]*\)/g, ' ')
     .replace(/\s+(o|u)\s+.*$/i, '')
@@ -170,7 +186,7 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   // Limpiar caracteres especiales de puntuación
   norm = norm.replace(/[.,;:"'()\[\]{}*!¡?¿/\\-]/g, ' ').replace(/\s+/g, ' ').trim();
 
-  // 2. Erradicar calibres o clases secundarias en huevos y básicos:
+  // Erradicar calibres o clases secundarias en huevos y básicos:
   // remover sufijos/modificadores como " l", " m", " xl", " s", "tamano l", "clase l", "frescos", "grandes", "medianos"
   norm = norm
     .replace(/\b(tamano|talla|calibre|clase)\s+(xl|l|m|s)\b/gi, '')
@@ -179,18 +195,27 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     .replace(/\s+/g, ' ')
     .trim();
 
-  // 3. Lematización de locuciones compuestas en español con preposiciones ('de', 'del', 'al', 'con', 'en')
-  // Extrae el núcleo nominal inicial ("filetes", "pechugas", "rodajas", "latas", "lonchas") y lo lematiza a singular
+  // Fase C - Lematización Adjetival y Compuesta:
   const PREPOSITIONS = new Set(['de', 'del', 'al', 'con', 'en']);
   const words = norm.split(' ');
   let wasCompoundLemmatized = false;
 
+  // C.1 Locuciones con preposiciones ('filetes de merluza' -> 'filete de merluza')
   if (words.length >= 2 && words.some((w, idx) => idx > 0 && PREPOSITIONS.has(w))) {
     const head = words[0];
     const singularHead = lemmatizeSpanishWord(head);
     if (singularHead !== head) {
       words[0] = singularHead;
       norm = words.join(' ');
+      wasCompoundLemmatized = true;
+    }
+  }
+  // C.2 Sintagmas nominales plurales con adjetivo o participio sin preposición ('tomates secos' / 'tomates seco' -> 'tomate seco')
+  else if (words.length >= 2 && !words.some((w) => PREPOSITIONS.has(w))) {
+    const lemmatizedWords = words.map((w) => lemmatizeSpanishWord(w));
+    const lemmatizedPhrase = lemmatizedWords.join(' ');
+    if (lemmatizedPhrase !== norm) {
+      norm = lemmatizedPhrase;
       wasCompoundLemmatized = true;
     }
   }
@@ -219,13 +244,15 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'harina 000': { key: 'harina de trigo', displayName: 'Harina de trigo' },
     'harina 0000': { key: 'harina de trigo', displayName: 'Harina de trigo' },
 
-    'sal fina': { key: 'sal', displayName: 'Sal' },
-    'sal marina': { key: 'sal', displayName: 'Sal' },
-    'sal de mesa': { key: 'sal', displayName: 'Sal' },
+    'sal fina': { key: 'sal', displayName: 'Sal fina' },
+    'sal marina': { key: 'sal', displayName: 'Sal marina' },
+    'sal de mesa': { key: 'sal', displayName: 'Sal de mesa' },
     'sal comun': { key: 'sal', displayName: 'Sal' },
+    'sal': { key: 'sal', displayName: 'Sal' },
 
     'pimienta negra molida': { key: 'pimienta negra', displayName: 'Pimienta negra' },
     'pimienta molida': { key: 'pimienta negra', displayName: 'Pimienta negra' },
+    'pimienta negra': { key: 'pimienta negra', displayName: 'Pimienta negra' },
     'pimienta': { key: 'pimienta negra', displayName: 'Pimienta negra' },
 
     'zumo de limon': { key: 'limon', displayName: 'Limón' },
@@ -265,8 +292,54 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'yogur griego natural': { key: 'yogur natural', displayName: 'Yogur natural' },
     'yogures griegos naturales': { key: 'yogur natural', displayName: 'Yogur natural' },
 
-    'oregano seco': { key: 'oregano', displayName: 'Orégano' },
+    // Tomate seco (unificación singular/plural y adjetivos)
+    'tomate seco': { key: 'tomate seco', displayName: 'Tomate seco' },
+    'tomates secos': { key: 'tomate seco', displayName: 'Tomate seco' },
+    'tomates seco': { key: 'tomate seco', displayName: 'Tomate seco' },
+    'tomate deshidratado': { key: 'tomate seco', displayName: 'Tomate seco' },
+    'tomates deshidratados': { key: 'tomate seco', displayName: 'Tomate seco' },
+
+    // Garbanzos cocidos y legumbres en conserva
+    'garbanzo en conserva': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos' },
+    'garbanzos en conserva': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos' },
+    'garbanzo cocido': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos' },
+    'garbanzos cocidos': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos' },
+    'garbanzo de bote': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos' },
+    'garbanzos de bote': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos' },
+    'garbanzo en bote': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos' },
+    'garbanzos en bote': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos' },
+    'garbanzo bote': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos' },
+    'garbanzos bote': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos' },
+    'lenteja en conserva': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas' },
+    'lentejas en conserva': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas' },
+    'lenteja cocida': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas' },
+    'lentejas cocidas': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas' },
+    'alubia en conserva': { key: 'alubias cocidas', displayName: 'Alubias cocidas' },
+    'alubias en conserva': { key: 'alubias cocidas', displayName: 'Alubias cocidas' },
+    'alubia cocida': { key: 'alubias cocidas', displayName: 'Alubias cocidas' },
+    'alubias cocidas': { key: 'alubias cocidas', displayName: 'Alubias cocidas' },
+
+    // Miel
+    'miel de abeja': { key: 'miel', displayName: 'Miel' },
+    'miel pura': { key: 'miel', displayName: 'Miel' },
+    'miel de flores': { key: 'miel', displayName: 'Miel' },
+    'miel natural': { key: 'miel', displayName: 'Miel' },
+    'miel': { key: 'miel', displayName: 'Miel' },
+
+    // Tomate triturado
+    'tomate triturado': { key: 'tomate triturado', displayName: 'Tomate triturado' },
+    'tomate triturado natural': { key: 'tomate triturado', displayName: 'Tomate triturado' },
+    'tomate natural triturado': { key: 'tomate triturado', displayName: 'Tomate triturado' },
+    'tomates triturados': { key: 'tomate triturado', displayName: 'Tomate triturado' },
+    'lata de tomate triturado': { key: 'tomate triturado', displayName: 'Tomate triturado' },
+    'latas de tomate triturado': { key: 'tomate triturado', displayName: 'Tomate triturado' },
+    'bote de tomate triturado': { key: 'tomate triturado', displayName: 'Tomate triturado' },
+    'botes de tomate triturado': { key: 'tomate triturado', displayName: 'Tomate triturado' },
+
+    // Especias y condimentos limpios
+    'oregano seco': { key: 'oregano', displayName: 'Orégano seco' },
     'oregano en polvo': { key: 'oregano', displayName: 'Orégano' },
+    'oregano': { key: 'oregano', displayName: 'Orégano' },
     'comino en polvo': { key: 'comino', displayName: 'Comino' },
     'comino molido': { key: 'comino', displayName: 'Comino' },
     'canela en polvo': { key: 'canela', displayName: 'Canela' },
@@ -703,10 +776,16 @@ export function generateShoppingListFromPlans(
   // 4. Transformar a ShoppingListItem con redondeo y formato homogéneo de unidades
   const result: ShoppingListItem[] = [];
   for (const acc of consolidated.values()) {
-    // 1. Manejo especial de despensa para especias y condimentos
+    // 1. Manejo especial de despensa para especias y condimentos:
+    // Fase D - Presentación Limpia de Especias: nombre estrictamente limpio sin prefijos numéricos residuales
     if (acc.unidad === 'despensa') {
+      const cleanSpiceName = acc.nombre
+        .replace(/^(\d+[\d.,/]*\s*(g|gr|grs|gramo|gramos|kg|kgs|ml|mls|l|cda|cdas|cdta|cdtas|cucharada|cucharadas|cucharadita|cucharaditas|diente|unidad|ud)?\s*(de\s+)?)/i, '')
+        .trim();
+      const finalSpiceName = cleanSpiceName ? (cleanSpiceName.charAt(0).toUpperCase() + cleanSpiceName.slice(1)) : acc.nombre;
+
       result.push({
-        nombre: acc.nombre,
+        nombre: finalSpiceName,
         cantidadTotal: 0,
         unidad: 'Comprobar despensa',
         gramosTotal: 0,

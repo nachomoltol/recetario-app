@@ -6,11 +6,18 @@ import { SmartMenuWizardView } from '@/components/planner/SmartMenuWizardView';
 import { SmartMenuViewPlanButton } from '@/components/planner/SmartMenuViewPlanButton';
 import { getWeeklyPlanAction } from '@/app/actions/mealPlanner';
 import { Receta } from '@/types/recipe';
-import { formatLocalDate } from '@/lib/dateUtils';
+import { formatLocalDate, getMondayOfDate } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
-export default async function SmartMenuPage() {
+interface SmartMenuPageProps {
+  searchParams?: Promise<{ replan?: string; force?: string }>;
+}
+
+export default async function SmartMenuPage(props: SmartMenuPageProps) {
+  const searchParams = props.searchParams ? await props.searchParams : {};
+  const isReplan = searchParams?.replan === 'true' || searchParams?.force === 'true';
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -48,11 +55,30 @@ export default async function SmartMenuPage() {
   const existingPlans = planRes.success && planRes.data ? planRes.data : [];
   const userRecipes = (recipesRes.data || []) as Receta[];
 
+  // 1. Enrutamiento y Navegación Contextual del Planificador:
+  // Al acceder a Menú con IA, si la semana en curso ya contiene comidas planificadas
+  // (hasMealsInCurrentWeek === true) y no se solicitó replanificación explícita (?replan=true),
+  // redirigir directamente al planificador semanal con la fecha del lunes correspondiente.
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  const currentMonday = getMondayOfDate(today);
+  const currentSunday = new Date(currentMonday);
+  currentSunday.setDate(currentMonday.getDate() + 6);
+
+  const currentMondayStr = formatLocalDate(currentMonday);
+  const currentSundayStr = formatLocalDate(currentSunday);
+
+  const hasMealsInCurrentWeek = existingPlans.some(
+    (p) => p.fecha >= currentMondayStr && p.fecha <= currentSundayStr
+  );
+
+  if (!isReplan && hasMealsInCurrentWeek) {
+    redirect(`/meal-planner?date=${currentMondayStr}`);
+  }
+
   // Determinar la fecha de inicio por defecto para la planificación semanal:
   // Si hoy es fin de semana (sábado = 6 o domingo = 0), sugerir el próximo lunes como inicio natural del menú.
   // En días laborales (lunes a viernes), sugerir hoy.
-  const today = new Date();
-  today.setHours(12, 0, 0, 0);
   const todayStr = formatLocalDate(today);
   const dayOfWeek = today.getDay();
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;

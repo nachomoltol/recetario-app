@@ -23,6 +23,7 @@ import {
   Tag,
   Users,
   Loader2,
+  Calendar,
 } from 'lucide-react';
 import { Receta, Usuario } from '@/types/recipe';
 import {
@@ -380,8 +381,14 @@ export function MealPlannerView({
   };
 
   // Generar lista de la compra unificada con filtros activos
-  const handleGenerateShoppingList = () => {
-    const activeDates = selectedDates.length > 0 ? selectedDates : weekDays.map((d) => d.dateStr);
+  const handleGenerateShoppingList = (datesOverride?: string[]) => {
+    const activeDates =
+      datesOverride && datesOverride.length > 0
+        ? datesOverride
+        : selectedDates.length > 0
+        ? selectedDates
+        : weekDays.map((d) => d.dateStr);
+
     const activeSlots: MealSlot[] =
       selectedSlots.length > 0
         ? [
@@ -402,6 +409,11 @@ export function MealPlannerView({
         setCheckedShoppingItems([]);
       }
     });
+  };
+
+  const handleUpdateDaysInModal = (newDates: string[]) => {
+    setSelectedDates(newDates);
+    handleGenerateShoppingList(newDates);
   };
 
   // Agrupar los ítems del modal por pasillo de supermercado
@@ -801,20 +813,7 @@ export function MealPlannerView({
 
           <button
             type="button"
-            onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
-            className={`w-8 h-8 rounded-xl border flex items-center justify-center transition cursor-pointer ${
-              isFilterPanelOpen
-                ? 'bg-[#f4efe6] border-[#a86224] text-[#a86224]'
-                : 'bg-white border-[#e7dfd5] text-stone-600'
-            }`}
-            title={t('planner_shopping_filters')}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            type="button"
-            onClick={handleGenerateShoppingList}
+            onClick={() => handleGenerateShoppingList()}
             disabled={isShoppingPending}
             className="h-8 px-2.5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs flex items-center gap-1 shadow-xs transition cursor-pointer disabled:opacity-50"
             title={t('planner_generate_shopping_list')}
@@ -893,24 +892,7 @@ export function MealPlannerView({
 
           <button
             type="button"
-            onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
-            className={`min-h-[46px] px-4 rounded-2xl border text-xs sm:text-sm font-semibold flex items-center gap-2 transition cursor-pointer shadow-2xs ${
-              isFilterPanelOpen
-                ? 'bg-[#f4efe6] border-[#a86224] text-[#a86224]'
-                : 'bg-white hover:bg-[#faf7f2] border-[#e7dfd5] text-stone-700'
-            }`}
-            title={t('planner_customize_export_desc')}
-          >
-            <SlidersHorizontal className="w-4 h-4 text-[#a86224]" />
-            <span>{t('planner_shopping_filters')}</span>
-            <span className="w-5 h-5 rounded-full bg-[#a86224] text-white text-[10px] flex items-center justify-center font-bold">
-              {selectedDates.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleGenerateShoppingList}
+            onClick={() => handleGenerateShoppingList()}
             disabled={isShoppingPending}
             className="min-h-[46px] px-5 py-2.5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer disabled:opacity-50"
           >
@@ -936,135 +918,6 @@ export function MealPlannerView({
           >
             ✕
           </button>
-        </div>
-      )}
-
-      {/* PANEL DE FILTROS INTERACTIVOS DE EXPORTACIÓN */}
-      {isFilterPanelOpen && (
-        <div className="p-4 sm:p-5 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4 animate-fade-in">
-          <div className="flex items-center justify-between border-b border-[#f4efe6] pb-2">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-[#a86224]" />
-              <h3 className="text-sm font-bold text-stone-900 font-serif-recipe">
-                {t('planner_customize_export_title')}
-              </h3>
-            </div>
-            <span className="text-xs text-stone-500">
-              {t('planner_customize_export_desc')}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Control 1: Días de la semana */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-stone-700">
-                  {t('planner_days_to_include')} ({selectedDates.length} / 7):
-                </span>
-                <div className="flex items-center gap-1.5 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={handleSelectAllDays}
-                    className="text-[#a86224] hover:underline cursor-pointer"
-                  >
-                    {t('planner_filter_all')}
-                  </button>
-                  <span>·</span>
-                  <button
-                    type="button"
-                    onClick={handleSelectMonToThu}
-                    className="text-[#a86224] hover:underline cursor-pointer"
-                  >
-                    {t('planner_filter_mon_thu')}
-                  </button>
-                  <span>·</span>
-                  <button
-                    type="button"
-                    onClick={handleSelectWorkdays}
-                    className="text-[#a86224] hover:underline cursor-pointer"
-                  >
-                    {t('planner_filter_mon_fri')}
-                  </button>
-                  <span>·</span>
-                  <button
-                    type="button"
-                    onClick={handleSelectWeekend}
-                    className="text-[#a86224] hover:underline cursor-pointer"
-                  >
-                    {t('planner_filter_weekend')}
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-7 gap-1.5">
-                {weekDays.map((d) => {
-                  const isSelected = selectedDates.includes(d.dateStr);
-                  return (
-                    <button
-                      key={d.dateStr}
-                      type="button"
-                      onClick={() => handleToggleDay(d.dateStr)}
-                      className={`min-h-[46px] p-1 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center ${
-                        isSelected
-                          ? 'bg-[#f4efe6] border-[#a86224] text-[#a86224] font-bold shadow-2xs'
-                          : 'bg-white border-[#e7dfd5] text-stone-500 hover:bg-stone-50'
-                      }`}
-                    >
-                      <span className="text-[10px] uppercase font-semibold leading-none">{d.shortName}</span>
-                      <span className="text-xs font-bold leading-tight mt-0.5">{d.dayNum}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Control 2: Bloques de Comida / Slots */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-stone-700">
-                  {t('planner_meal_slots')} ({selectedSlots.length} / 5):
-                </span>
-                <div className="flex items-center gap-1.5 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={handleSelectAllSlots}
-                    className="text-[#a86224] hover:underline cursor-pointer"
-                  >
-                    {t('planner_filter_all')}
-                  </button>
-                  <span>·</span>
-                  <button
-                    type="button"
-                    onClick={handleSelectMainMeals}
-                    className="text-[#a86224] hover:underline cursor-pointer"
-                  >
-                    {t('planner_filter_lunches_dinners')}
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
-                {SLOTS_CONFIG.map(({ slot, labelKey, icon: SlotIcon }) => {
-                  const isSelected = selectedSlots.includes(slot);
-                  return (
-                    <button
-                      key={slot}
-                      type="button"
-                      onClick={() => handleToggleSlot(slot)}
-                      className={`min-h-[46px] px-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#f4efe6] border-[#a86224] text-[#a86224] font-bold shadow-2xs'
-                          : 'bg-white border-[#e7dfd5] text-stone-500 hover:bg-stone-50'
-                      }`}
-                    >
-                      <SlotIcon className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{t(labelKey)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -1252,6 +1105,69 @@ export function MealPlannerView({
               >
                 <X className="w-4 h-4" />
               </button>
+            </div>
+
+            {/* Selector de días filtrados dentro del modal */}
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2 shrink-0">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-stone-700 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-[#a86224]" />
+                  <span>{t('planner_days_to_include')} ({selectedDates.length}/7):</span>
+                </span>
+                <div className="flex items-center gap-1.5 text-[11px] font-medium">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateDaysInModal(weekDays.map((d) => d.dateStr))}
+                    className="text-[#a86224] hover:underline cursor-pointer font-semibold"
+                  >
+                    {t('planner_filter_all')}
+                  </button>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateDaysInModal(weekDays.slice(0, 5).map((d) => d.dateStr))}
+                    className="text-[#a86224] hover:underline cursor-pointer font-semibold"
+                  >
+                    {t('planner_filter_mon_fri')}
+                  </button>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateDaysInModal(weekDays.slice(0, 4).map((d) => d.dateStr))}
+                    className="text-[#a86224] hover:underline cursor-pointer font-semibold"
+                  >
+                    {t('planner_filter_mon_thu')}
+                  </button>
+                </div>
+              </div>
+
+              {/* Píldoras táctiles horizontales */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                {weekDays.map((d) => {
+                  const isSelected = selectedDates.includes(d.dateStr);
+                  return (
+                    <button
+                      key={d.dateStr}
+                      type="button"
+                      onClick={() => {
+                        const nextDates = isSelected
+                          ? selectedDates.filter((date) => date !== d.dateStr)
+                          : [...selectedDates, d.dateStr];
+                        const finalDates = nextDates.length > 0 ? nextDates : [d.dateStr];
+                        handleUpdateDaysInModal(finalDates);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                        isSelected
+                          ? 'bg-[#a86224] text-white shadow-2xs font-bold'
+                          : 'bg-white hover:bg-stone-50 border border-[#e7dfd5] text-stone-600'
+                      }`}
+                    >
+                      <span>{d.shortName}</span>
+                      <span className="text-[10px] opacity-80">{d.dayNum}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {shoppingModal.length === 0 ? (
