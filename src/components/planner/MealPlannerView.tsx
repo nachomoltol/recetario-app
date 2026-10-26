@@ -40,11 +40,18 @@ import {
   getWeeklyPlanAction,
 } from '@/app/actions/mealPlanner';
 import { groupItemsByAisle } from '@/lib/culinary/aisles';
-import { isDessertExcludedFromSlot } from '@/lib/recipeCategorizer';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { TranslationKey } from '@/lib/i18n/translations';
 import { formatLocalDate, parseLocalDate, getMondayOfDate } from '@/lib/dateUtils';
+import {
+  isFirstCourseStarter,
+  getRecipeMoments,
+  matchesContextualMomento,
+  ContextualMomentoFilter,
+} from '@/lib/mealPlanGenerator';
+
+export type { ContextualMomentoFilter };
 
 interface MealPlannerViewProps {
   initialPlans: PlannedSlotItem[];
@@ -60,8 +67,6 @@ const SLOTS_CONFIG: { slot: MealSlot; labelKey: TranslationKey; icon: typeof Sun
   { slot: 'cena', labelKey: 'slot_dinner', icon: Moon },
   { slot: 'snack_postre', labelKey: 'slot_snack_dessert', icon: Apple },
 ];
-
-export type ContextualMomentoFilter = 'todos' | 'desayuno' | 'primero' | 'almuerzo' | 'cena' | 'snack_postre';
 
 export function getInitialFilterForSlot(slot: MealSlot): ContextualMomentoFilter {
   switch (slot) {
@@ -297,6 +302,7 @@ export function MealPlannerView({
   };
 
   // Contadores de recetas por categoría para mostrar en cada chip del selector
+  // Obedece estricta y exclusivamente al array oficial de momentos asignados
   const recipeCategoryCounts = useMemo(() => {
     const counts: Record<ContextualMomentoFilter, number> = {
       todos: userRecipes.length,
@@ -308,56 +314,30 @@ export function MealPlannerView({
     };
 
     for (const r of userRecipes) {
-      const titleLower = (r.titulo || '').toLowerCase();
-      const tags = (r.etiquetas || []).map((t) => t.toLowerCase().trim());
-      const moments = (r.momentos_dia || []).map((m) => m.toLowerCase().trim());
-      const rol = r.rol_plato;
+      const moments = getRecipeMoments(r);
 
-      // Desayuno
-      if (
-        moments.includes('desayuno') ||
-        rol === 'desayuno_snack' ||
-        tags.some((t) => /desayuno|breakfast|avena|porridge|tostada|pancake|tortita|gofre|crepe|smoothie/i.test(t)) ||
-        /desayuno|breakfast|avena|porridge|tostada|pancake|tortita|gofre|crepe|smoothie/i.test(titleLower)
-      ) {
+      // Desayuno -> receta.momentos.includes('desayuno')
+      if (moments.includes('desayuno')) {
         counts.desayuno++;
       }
 
-      // 1er Plato / Entrante
-      if (
-        rol === 'primero' ||
-        tags.some((t) => /primero|entrante|ensalada|sopa|crema|starter|appetizer/i.test(t)) ||
-        /primero|entrante|ensalada|sopa|crema/i.test(titleLower)
-      ) {
+      // 1er Plato (Modo dos platos) -> receta.momentos.includes('almuerzo') && isFirstCourseStarter(receta)
+      if (moments.includes('almuerzo') && isFirstCourseStarter(r)) {
         counts.primero++;
       }
 
-      // Almuerzo / Principal
-      if (
-        ((rol === 'segundo' || rol === 'completo' || moments.includes('almuerzo')) && rol !== 'postre') ||
-        tags.some((t) => /almuerzo|principal|segundo|comida|lunch/i.test(t))
-      ) {
+      // Almuerzo (Plato Único / 2do Plato) -> receta.momentos.includes('almuerzo')
+      if (moments.includes('almuerzo')) {
         counts.almuerzo++;
       }
 
-      // Cena
-      if (
-        moments.includes('cena') ||
-        tags.some((t) => /cena|dinner/i.test(t)) ||
-        (rol !== 'postre' && rol !== 'desayuno_snack' && (moments.includes('almuerzo') || rol === 'completo' || rol === 'segundo'))
-      ) {
+      // Cena -> receta.momentos.includes('cena')
+      if (moments.includes('cena')) {
         counts.cena++;
       }
 
-      // Snack / Postre
-      if (
-        rol === 'postre' ||
-        moments.includes('postre') ||
-        moments.includes('snack') ||
-        rol === 'desayuno_snack' ||
-        tags.some((t) => /postre|snack|merienda|dulce|tarta|bizcocho|galleta|dessert/i.test(t)) ||
-        /postre|snack|merienda|dulce|tarta|bizcocho|galleta/i.test(titleLower)
-      ) {
+      // Snack / Postre -> receta.momentos.includes('snack') || receta.momentos.includes('postre')
+      if (moments.includes('snack') || moments.includes('postre')) {
         counts.snack_postre++;
       }
     }
@@ -371,57 +351,9 @@ export function MealPlannerView({
 
     let list = userRecipes;
 
-    // 1. Filtrado contextual por categoría seleccionada
+    // 1. Filtrado contextual estricto por momento del día oficial (sin tags ni etiquetas automáticas)
     if (pickerFilterCategory !== 'todos') {
-      list = list.filter((r) => {
-        const titleLower = (r.titulo || '').toLowerCase();
-        const tags = (r.etiquetas || []).map((t) => t.toLowerCase().trim());
-        const moments = (r.momentos_dia || []).map((m) => m.toLowerCase().trim());
-        const rol = r.rol_plato;
-
-        switch (pickerFilterCategory) {
-          case 'desayuno':
-            return (
-              moments.includes('desayuno') ||
-              rol === 'desayuno_snack' ||
-              tags.some((t) => /desayuno|breakfast|avena|porridge|tostada|pancake|tortita|gofre|crepe|smoothie/i.test(t)) ||
-              /desayuno|breakfast|avena|porridge|tostada|pancake|tortita|gofre|crepe|smoothie/i.test(titleLower)
-            );
-
-          case 'primero':
-            return (
-              rol === 'primero' ||
-              tags.some((t) => /primero|entrante|ensalada|sopa|crema|starter|appetizer/i.test(t)) ||
-              /primero|entrante|ensalada|sopa|crema/i.test(titleLower)
-            );
-
-          case 'almuerzo':
-            return (
-              ((rol === 'segundo' || rol === 'completo' || moments.includes('almuerzo')) && rol !== 'postre') ||
-              tags.some((t) => /almuerzo|principal|segundo|comida|lunch/i.test(t))
-            );
-
-          case 'cena':
-            return (
-              moments.includes('cena') ||
-              tags.some((t) => /cena|dinner/i.test(t)) ||
-              (rol !== 'postre' && rol !== 'desayuno_snack' && (moments.includes('almuerzo') || rol === 'completo' || rol === 'segundo'))
-            );
-
-          case 'snack_postre':
-            return (
-              rol === 'postre' ||
-              moments.includes('postre') ||
-              moments.includes('snack') ||
-              rol === 'desayuno_snack' ||
-              tags.some((t) => /postre|snack|merienda|dulce|tarta|bizcocho|galleta|dessert/i.test(t)) ||
-              /postre|snack|merienda|dulce|tarta|bizcocho|galleta/i.test(titleLower)
-            );
-
-          default:
-            return true;
-        }
-      });
+      list = list.filter((r) => matchesContextualMomento(r, pickerFilterCategory));
     }
 
     // 2. Buscador en tiempo real por texto (título, descripción, etiquetas)

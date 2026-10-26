@@ -21,17 +21,44 @@ import {
   Wine,
   BookOpen,
   Plus,
+  Sun,
+  Moon,
+  Apple,
+  Utensils,
 } from 'lucide-react';
 import { Receta } from '@/types/recipe';
 import { MomentoDia, RolPlato } from '@/types/database';
 import { assignMealSlotAction, MealSlot } from '@/app/actions/mealPlanner';
+import {
+  isFirstCourseStarter,
+  getRecipeMoments,
+  matchesContextualMomento,
+  ContextualMomentoFilter,
+} from '@/lib/mealPlanGenerator';
+import { getInitialFilterForSlot } from '@/components/planner/MealPlannerView';
 import { DeleteRecipeButton } from './DeleteRecipeButton';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { QuickCategorizeBanner } from './QuickCategorizeBanner';
 import { QuickCategorizeModal } from './QuickCategorizeModal';
+
 export interface RecetaConIngredientes extends Receta {
   ingredientesNombres?: string[];
 }
+
+const MOMENTO_FILTER_CHIPS: {
+  id: ContextualMomentoFilter;
+  labelEs: string;
+  labelEn: string;
+  icon: React.ElementType;
+}[] = [
+  { id: 'todos', labelEs: 'Todos', labelEn: 'All', icon: Utensils },
+  { id: 'desayuno', labelEs: 'Desayuno', labelEn: 'Breakfast', icon: Sun },
+  { id: 'primero', labelEs: '1er Plato / Entrante', labelEn: '1st Course', icon: Soup },
+  { id: 'almuerzo', labelEs: 'Almuerzo / Principal', labelEn: 'Lunch / Main', icon: UtensilsCrossed },
+  { id: 'cena', labelEs: 'Cena', labelEn: 'Dinner', icon: Moon },
+  { id: 'snack_postre', labelEs: 'Snack / Postre', labelEn: 'Snack / Dessert', icon: Apple },
+];
+
 interface CategoryConfig {
   id: string;
   nombre: string;
@@ -63,18 +90,12 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
       'tostadas',
       'pancake',
       'pancakes',
-      'tortitas',
       'porridge',
-      'avena',
-      'smoothie',
-      'bowl',
       'crepe',
       'crepes',
       'gofre',
       'gofres',
       'muesli',
-      'snack_saludable',
-      'alta_fibra',
     ],
   },
   {
@@ -515,12 +536,45 @@ export function RecipeCollectionOrganizer({
   const assignSlotParam = searchParams?.get('assignSlot') as MealSlot | null;
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [filtroActivo, setFiltroActivo] = useState<string>(() => {
-    if (momentoParam === 'desayuno') return 'Desayunos y Meriendas';
-    if (momentoParam === 'primero') return 'Ensaladas y Entrantes';
-    if (momentoParam === 'snack_postre' || momentoParam === 'postre') return 'Postres y Dulces';
-    return 'Todas';
+  const [filtroMomento, setFiltroMomento] = useState<ContextualMomentoFilter>(() => {
+    if (momentoParam) {
+      if (['desayuno', 'primero', 'almuerzo', 'cena', 'snack_postre'].includes(momentoParam)) {
+        return momentoParam as ContextualMomentoFilter;
+      }
+      if (momentoParam === 'postre' || momentoParam === 'snack') {
+        return 'snack_postre';
+      }
+    }
+    if (assignSlotParam) {
+      return getInitialFilterForSlot(assignSlotParam);
+    }
+    return 'todos';
   });
+  const [filtroActivo, setFiltroActivo] = useState<string>('Todas');
+
+  // Contadores de recetas por momento del día
+  const momentoCategoryCounts = useMemo(() => {
+    const counts: Record<ContextualMomentoFilter, number> = {
+      todos: localRecetas.length,
+      desayuno: 0,
+      primero: 0,
+      almuerzo: 0,
+      cena: 0,
+      snack_postre: 0,
+    };
+
+    for (const r of localRecetas) {
+      const moments = getRecipeMoments(r);
+      if (moments.includes('desayuno')) counts.desayuno++;
+      if (moments.includes('almuerzo') && isFirstCourseStarter(r)) counts.primero++;
+      if (moments.includes('almuerzo')) counts.almuerzo++;
+      if (moments.includes('cena')) counts.cena++;
+      if (moments.includes('snack') || moments.includes('postre')) counts.snack_postre++;
+    }
+
+    return counts;
+  }, [localRecetas]);
+
   const tieneAdaptacionClinica = Boolean(
     (userProfile?.preferencias_dieteticas &&
       userProfile.preferencias_dieteticas.length > 0) ||
@@ -528,11 +582,19 @@ export function RecipeCollectionOrganizer({
       userProfile?.nivel_culinario === 'Principiante' ||
       userProfile?.nivel_culinario === 'Avanzado'
   );
+
   // Independencia del buscador: Busca en título, descripción, etiquetas e ingredientes
+  // Y prefiltrado contextual estricto por momentos oficiales (sin tags ni etiquetas secundarias)
   const filteredRecipes = useMemo(() => {
+    let list = localRecetas;
+
+    if (filtroMomento !== 'todos') {
+      list = list.filter((r) => matchesContextualMomento(r, filtroMomento));
+    }
+
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return localRecetas;
-    return localRecetas.filter((r) => {
+    if (!q) return list;
+    return list.filter((r) => {
       const matchTitle = (r.titulo || '').toLowerCase().includes(q);
       const matchDesc = (r.descripcion || '').toLowerCase().includes(q);
       const matchTags = (r.etiquetas || []).some((t) =>
@@ -543,7 +605,7 @@ export function RecipeCollectionOrganizer({
       );
       return matchTitle || matchDesc || matchTags || matchIngs;
     });
-  }, [localRecetas, searchQuery]);
+  }, [localRecetas, filtroMomento, searchQuery]);
   // Lista ordenada alfabéticamente (A-Z) para la vista 'Todas'
   const allSortedRecipes = useMemo(() => {
     return [...filteredRecipes].sort((a, b) =>
@@ -661,22 +723,84 @@ export function RecipeCollectionOrganizer({
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Banner de Modo Asignación al Planificador */}
-      {assignDateParam && assignSlotParam && (
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-between gap-3 text-xs sm:text-sm animate-fade-in">
-          <div className="flex items-center gap-2 min-w-0">
-            <Sparkles className="w-4 h-4 text-[#a86224] shrink-0" />
-            <span className="text-stone-800 font-medium truncate">
-              {language === 'en'
-                ? `Assignment mode: Pick a recipe for ${assignSlotParam} (${assignDateParam}).`
-                : `Modo Asignación: Elige una receta para ${assignSlotParam} (${assignDateParam}).`}
-            </span>
+      {(Boolean(assignDateParam && assignSlotParam) || Boolean(momentoParam)) && (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50 border border-amber-200/80 space-y-3 animate-fade-in">
+          {assignDateParam && assignSlotParam && (
+            <div className="flex items-center justify-between gap-3 text-xs sm:text-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                <Sparkles className="w-4 h-4 text-[#a86224] shrink-0" />
+                <span className="text-stone-800 font-medium truncate">
+                  {language === 'en'
+                    ? `Assignment mode: Pick a recipe for ${assignSlotParam} (${assignDateParam}).`
+                    : `Modo Asignación: Elige una receta para ${assignSlotParam} (${assignDateParam}).`}
+                </span>
+              </div>
+              <Link
+                href={`/meal-planner?date=${assignDateParam}`}
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-amber-200 text-[#a86224] font-semibold text-xs shrink-0 transition"
+              >
+                {language === 'en' ? 'Back to planner' : 'Volver al plan'}
+              </Link>
+            </div>
+          )}
+
+          {/* Selector de Chips de Momentos Oficiales */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+              {MOMENTO_FILTER_CHIPS.map((chip) => {
+                const isActive = filtroMomento === chip.id;
+                const ChipIcon = chip.icon;
+                const label = language === 'en' ? chip.labelEn : chip.labelEs;
+                const count = momentoCategoryCounts[chip.id] ?? 0;
+
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => {
+                      setFiltroMomento(chip.id);
+                      if (filtroActivo !== 'Todas') setFiltroActivo('Todas');
+                    }}
+                    className={`min-h-[30px] px-2.5 sm:px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer border ${
+                      isActive
+                        ? 'bg-[#a86224] text-white border-[#a86224] shadow-xs'
+                        : 'bg-white hover:bg-[#faf7f2] text-stone-600 border-[#e7dfd5]'
+                    }`}
+                  >
+                    <ChipIcon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-stone-500'}`} />
+                    <span>{label}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        isActive ? 'bg-white/25 text-white' : 'bg-stone-100 text-stone-600'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {filtroMomento !== 'todos' && (
+              <div className="flex items-center justify-between text-[11px] text-stone-500 px-1 pt-0.5">
+                <span>
+                  {language === 'en' ? 'Filtered by moment' : 'Filtrando por momento'}:{' '}
+                  <strong className="text-[#a86224]">
+                    {language === 'en'
+                      ? MOMENTO_FILTER_CHIPS.find((c) => c.id === filtroMomento)?.labelEn
+                      : MOMENTO_FILTER_CHIPS.find((c) => c.id === filtroMomento)?.labelEs}
+                  </strong>{' '}
+                  ({filteredRecipes.length} {language === 'en' ? 'recipes' : 'recetas'})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setFiltroMomento('todos')}
+                  className="text-[#a86224] hover:underline font-semibold cursor-pointer"
+                >
+                  {language === 'en' ? 'Show all moments' : 'Ver todos los momentos'}
+                </button>
+              </div>
+            )}
           </div>
-          <Link
-            href={`/meal-planner?date=${assignDateParam}`}
-            className="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-amber-200 text-[#a86224] font-semibold text-xs shrink-0 transition"
-          >
-            {language === 'en' ? 'Back to planner' : 'Volver al plan'}
-          </Link>
         </div>
       )}
 

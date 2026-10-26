@@ -83,6 +83,15 @@ function normalizeString(text: string): string {
     .toLowerCase();
 }
 
+export function getRecipeMoments(receta: Receta): string[] {
+  const raw = Array.isArray(receta.momentos_dia) && receta.momentos_dia.length > 0
+    ? receta.momentos_dia
+    : ((receta as any).momentos as string[]) || [];
+  return raw.map((m) => String(m).toLowerCase().trim());
+}
+
+export type ContextualMomentoFilter = 'todos' | 'desayuno' | 'primero' | 'almuerzo' | 'cena' | 'snack_postre';
+
 /**
  * Heurística culinaria para detectar si una receta es un 1er Plato / Entrante:
  * Sopas, cremas, caldos, purés, gazpachos, salmorejos o ensaladas ligeras de verduras.
@@ -91,10 +100,21 @@ function normalizeString(text: string): string {
  */
 export function isFirstCourseStarter(
   receta: Receta,
-  tagsNorm: string[],
-  titleNorm: string,
+  tagsNorm?: string[],
+  titleNorm?: string,
   ingrNorm: string[] = []
 ): boolean {
+  const normTags = tagsNorm || (receta.etiquetas || []).map((t) => normalizeString(t.trim()));
+  const normTitle = titleNorm ?? normalizeString(receta.titulo || '');
+
+  // 0. Si el rol explícito es primero
+  if (receta.rol_plato === 'primero') {
+    return true;
+  }
+  if (receta.rol_plato === 'segundo' || receta.rol_plato === 'postre') {
+    return false;
+  }
+
   // 1. Exclusiones de platos contundentes / completos (Plato Principal obligatorio)
   const HEAVY_EXCLUSIONS = [
     // Legumbres y guisos tradicionales
@@ -113,14 +133,14 @@ export function isFirstCourseStarter(
 
   for (const excl of HEAVY_EXCLUSIONS) {
     const norm = normalizeString(excl);
-    if (titleNorm.includes(norm) || tagsNorm.includes(norm)) {
+    if (normTitle.includes(norm) || normTags.includes(norm)) {
       return false;
     }
   }
 
   // 2. Proteínas principales animales evidentes (salvo si son caldos o sopas con pollo/pescado)
   const hasLiquidPrefix = ['sopa', 'crema', 'caldo', 'consome', 'consomé', 'pure', 'puré'].some((lp) =>
-    titleNorm.includes(normalizeString(lp))
+    normTitle.includes(normalizeString(lp))
   );
 
   if (!hasLiquidPrefix) {
@@ -133,7 +153,7 @@ export function isFirstCourseStarter(
     for (const prot of MAIN_PROTEIN_KEYWORDS) {
       const normProt = normalizeString(prot);
       const regex = new RegExp(`(^|\\s)${normProt}(\\s|s|es)?($|\\s)`, 'i');
-      if (regex.test(titleNorm)) {
+      if (regex.test(normTitle)) {
         return false;
       }
     }
@@ -151,7 +171,7 @@ export function isFirstCourseStarter(
   for (const kw of LIQUID_STARTER_KEYWORDS) {
     const normKw = normalizeString(kw);
     const regex = new RegExp(`(^|\\s)${normKw}(\\s|s|es)?($|\\s)`, 'i');
-    if (regex.test(titleNorm) || tagsNorm.includes(normKw)) {
+    if (regex.test(normTitle) || normTags.includes(normKw)) {
       return true;
     }
   }
@@ -167,27 +187,64 @@ export function isFirstCourseStarter(
 
   for (const kw of VEG_STARTER_KEYWORDS) {
     const normKw = normalizeString(kw);
-    if (titleNorm.includes(normKw) || tagsNorm.includes(normKw)) {
+    if (normTitle.includes(normKw) || normTags.includes(normKw)) {
       return true;
     }
   }
 
   // 5. Ensaladas ligeras (verificar que no contengan proteínas pesadas en el título)
-  if (titleNorm.includes('ensalada')) {
+  if (normTitle.includes('ensalada')) {
     const heavyProteins = ['pollo', 'atun', 'atún', 'salmon', 'salmón', 'pavo', 'bacon', 'queso de cabra'];
-    const hasHeavyProtein = heavyProteins.some((hp) => titleNorm.includes(normalizeString(hp)));
+    const hasHeavyProtein = heavyProteins.some((hp) => normTitle.includes(normalizeString(hp)));
     if (!hasHeavyProtein) {
       return true;
     }
   }
 
   // 6. Verificación de tipo_plato si viniera indicado en la receta
-  const tipo = normalizeString((receta as any).tipo_plato || (receta as any).tipo || '');
+  const tipo = normalizeString((receta as any).tipo_plato || (receta as any).tipo || (receta as any).rol_plato || '');
   if (tipo.includes('entrante') || tipo.includes('primero') || tipo.includes('sopa') || tipo.includes('crema')) {
     return true;
   }
 
   return false;
+}
+
+/**
+ * Evaluación estricta y limpia del momento del día contextual para prefiltrado de recetas.
+ * Elimina totalmente el uso de tags o etiquetas semánticas secundarias para momentos.
+ * Obedece de forma exclusiva al array oficial de momentos asignados a la receta (momentos_dia / momentos).
+ */
+export function matchesContextualMomento(
+  receta: Receta,
+  filter: ContextualMomentoFilter | string
+): boolean {
+  const f = filter.toLowerCase().trim();
+  if (f === 'todos' || !f) return true;
+
+  const moments = getRecipeMoments(receta);
+
+  switch (f) {
+    case 'desayuno':
+      return moments.includes('desayuno');
+
+    case 'cena':
+      return moments.includes('cena');
+
+    case 'snack_postre':
+    case 'snack':
+    case 'postre':
+      return moments.includes('snack') || moments.includes('postre');
+
+    case 'almuerzo':
+      return moments.includes('almuerzo');
+
+    case 'primero':
+      return moments.includes('almuerzo') && isFirstCourseStarter(receta);
+
+    default:
+      return true;
+  }
 }
 
 /**
