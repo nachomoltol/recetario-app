@@ -14,7 +14,10 @@ interface SmartMenuPageProps {
   searchParams?: Promise<{ replan?: string; force?: string }>;
 }
 
-export default async function SmartMenuPage() {
+export default async function SmartMenuPage(props: SmartMenuPageProps) {
+  const searchParams = props.searchParams ? await props.searchParams : {};
+  const isForce = searchParams?.force === 'true' || searchParams?.replan === 'true';
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -60,6 +63,18 @@ export default async function SmartMenuPage() {
 
   const currentMondayStr = formatLocalDate(currentMonday);
   const currentSundayStr = formatLocalDate(currentSunday);
+
+  // 1. Redirección contextual al hacer clic en "Crear menú con IA":
+  // Si la semana actual YA contiene un menú o comidas planificadas (hasMealsInCurrentWeek === true):
+  // redirige directamente a la vista del calendario con el menú cargado (/meal-planner?date=${currentMondayStr}).
+  // Si NO hay plan creado (semana vacía): navega al asistente generador (/smart-menu).
+  const hasMealsInCurrentWeek = existingPlans.some(
+    (p) => p.fecha >= currentMondayStr && p.fecha <= currentSundayStr
+  );
+
+  if (!isForce && hasMealsInCurrentWeek) {
+    redirect(`/meal-planner?date=${currentMondayStr}`);
+  }
 
   // Determinar la fecha de inicio por defecto para la planificación semanal:
   // Si hoy es fin de semana (sábado = 6 o domingo = 0), sugerir el próximo lunes como inicio natural del menú.
