@@ -66,6 +66,8 @@ export const FRESH_PIECE_WEIGHT_G: Record<string, number> = {
   cebolla: 150,
   'cebolla morada': 150,
   tomate: 150,
+  'tomate seco': 10,
+  tomate_seco: 10,
   patata: 180,
   boniato: 250,
   batata: 250,
@@ -84,6 +86,15 @@ export const FRESH_PIECE_WEIGHT_G: Record<string, number> = {
   'pimiento verde': 120,
   'pimiento rojo': 180,
 };
+
+/**
+ * Alimentos donde la compra habitual en supermercado es al peso (gramos) en lugar de piezas individuales
+ * (deshidratados, conservas, frutos secos, encurtidos con peso específico).
+ */
+export const PREFER_GRAMS_INGREDIENTS = new Set([
+  'tomate seco',
+  'tomate_seco',
+]);
 
 /**
  * Lista de especias, hierbas secas y condimentos básicos de despensa.
@@ -732,17 +743,30 @@ export function generateShoppingListFromPlans(
           gramos = cant;
         }
       }
-      // 7. Puente de conversión peso/pieza para alimentos frescos y hortalizas comunes
+      // 7. Puente de conversión peso/pieza para alimentos frescos, hortalizas y deshidratados comunes
       else {
         const pieceWeightG = FRESH_PIECE_WEIGHT_G[canon.key];
         if (pieceWeightG) {
-          if (canonicalUnitKey === 'g') {
-            // Convertir gramos a fracción de unidad usando el peso promedio
-            cant = cant / pieceWeightG;
-            canonicalUnitKey = 'unidad';
-          } else if (canonicalUnitKey === 'unidad') {
+          if (PREFER_GRAMS_INGREDIENTS.has(canon.key)) {
+            // En alimentos deshidratados, conservas o encurtidos con peso específico (ej. tomate seco),
+            // se unifica preferentemente hacia gramos (unidad comercial de compra en tarro/bolsa)
+            if (canonicalUnitKey === 'unidad') {
+              cant = cant * pieceWeightG;
+              canonicalUnitKey = 'g';
+            }
             if (gramos === 0) {
-              gramos = cant * pieceWeightG;
+              gramos = cant;
+            }
+          } else {
+            // En alimentos frescos de huerta, se unifica hacia unidades contables (piezas)
+            if (canonicalUnitKey === 'g') {
+              // Convertir gramos a fracción de unidad usando el peso promedio
+              cant = cant / pieceWeightG;
+              canonicalUnitKey = 'unidad';
+            } else if (canonicalUnitKey === 'unidad') {
+              if (gramos === 0) {
+                gramos = cant * pieceWeightG;
+              }
             }
           }
         }
