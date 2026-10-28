@@ -13,6 +13,7 @@ export interface AdaptedIngredientPayload {
   pasillo_supermercado?: string;
   notas?: string | null;
   orden?: number;
+  rol_culinario?: string | null;
 }
 
 export interface AdaptedStepPayload {
@@ -120,6 +121,7 @@ export async function saveRecipeAdaptationAction({
           pasillo_supermercado: i.pasillo_supermercado,
           notas: i.notas,
           orden: i.orden,
+          rol_culinario: i.rol_culinario || null,
         })),
         pasos: (pasosOriginales || []).map((p) => ({
           id: p.id,
@@ -170,11 +172,25 @@ export async function saveRecipeAdaptationAction({
       notas: ing.notas || null,
       orden: typeof ing.orden === 'number' ? ing.orden : idx + 1,
       es_opcional: false,
+      rol_culinario: ing.rol_culinario || null,
+      seccion: (ing as any).seccion || null,
     }));
 
-    const { error: errInsertIng } = await supabase
+    let { error: errInsertIng } = await supabase
       .from('receta_ingredientes')
       .insert(ingredientesPayload);
+
+    if (errInsertIng && /seccion/i.test(errInsertIng.message || '')) {
+      console.warn(
+        "Advertencia: Columna 'seccion' no disponible en schema cache al guardar adaptación. Reintentando sin 'seccion':",
+        errInsertIng.message
+      );
+      const fallbackPayload = ingredientesPayload.map(({ seccion, ...rest }) => rest);
+      const retryResult = await supabase
+        .from('receta_ingredientes')
+        .insert(fallbackPayload as any);
+      errInsertIng = retryResult.error;
+    }
 
     if (errInsertIng) {
       console.error('Error insertando ingredientes adaptados:', errInsertIng);
@@ -288,6 +304,7 @@ export async function revertRecipeAdaptationAction(recetaId: string): Promise<Re
         notas: ing.notas || null,
         orden: typeof ing.orden === 'number' ? ing.orden : idx + 1,
         es_opcional: false,
+        rol_culinario: ing.rol_culinario || null,
       }));
 
       await supabase.from('receta_ingredientes').insert(ingredientesPayload);

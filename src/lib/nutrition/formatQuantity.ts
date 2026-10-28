@@ -1,8 +1,17 @@
 import { formatIngredientUnit } from '@/lib/culinary/aisles';
 
 /**
- * Convierte un número decimal frecuente a su representación de fracción culinaria
- * (ej: 0.5 -> "1/2", 0.25 -> "1/4", 0.75 -> "3/4", 1.5 -> "1 ½", 1.25 -> "1 1/4").
+ * LEY UNIVERSAL DE MAGNITUD DE UNIDADES CULINARIAS:
+ * Las unidades domésticas ('cucharada', 'cucharadita', 'tbsp', 'tsp') quedan restringidas
+ * EXCLUSIVAMENTE a ingredientes con magnitud cuantitativa <= 60 (gramos o mililitros).
+ * Cualquier ingrediente cuya cantidad sea > 60 queda terminantemente bloqueado para unidades de cuchara
+ * y debe conservarse y formatearse obligatoriamente en unidades de masa o volumen estándar ('g', 'ml', 'kg', 'l').
+ */
+export const MAX_SPOON_MAGNITUDE = 60;
+
+/**
+ * Convierte un número decimal frecuente a su representación de fracción culinaria tipográfica
+ * con caracteres Unicode individuales (ej: 0.5 -> "½", 0.25 -> "¼", 0.75 -> "¾", 1.5 -> "1 ½", 1.25 -> "1 ¼").
  * Reservado EXCLUSIVAMENTE para unidades contables y medidas volumétricas tradicionales (cucharas/tazas).
  */
 export function formatQuantityNumber(amount: number): string {
@@ -15,37 +24,44 @@ export function formatQuantityNumber(amount: number): string {
     return String(amount);
   }
 
+  // Si el número entero supera 3 (ej. mantequilla), prefiere redondear al medio más próximo ("3 ½ cucharadas" en vez de "3 1/4")
+  if (amount > 3) {
+    const roundedToHalf = Math.round(amount * 2) / 2;
+    if (Number.isInteger(roundedToHalf)) {
+      return String(roundedToHalf);
+    }
+    const intP = Math.floor(roundedToHalf);
+    return `${intP} ½`;
+  }
+
   const integerPart = Math.floor(amount);
   const decimalPart = Math.round((amount - integerPart) * 1000) / 1000;
 
   // Tolerancia para aproximación de fracciones comunes (1/8, 1/4, 1/3, 1/2, 2/3, 3/4)
   const EPSILON = 0.045;
 
-  let fractionStr = '';
+  let fractionUnicode = '';
 
   if (Math.abs(decimalPart - 0.25) <= EPSILON) {
-    fractionStr = '1/4';
+    fractionUnicode = '¼';
   } else if (Math.abs(decimalPart - 0.5) <= EPSILON) {
-    fractionStr = '1/2';
+    fractionUnicode = '½';
   } else if (Math.abs(decimalPart - 0.75) <= EPSILON) {
-    fractionStr = '3/4';
+    fractionUnicode = '¾';
   } else if (Math.abs(decimalPart - 0.333) <= EPSILON) {
-    fractionStr = '1/3';
+    fractionUnicode = '⅓';
   } else if (Math.abs(decimalPart - 0.667) <= EPSILON) {
-    fractionStr = '2/3';
+    fractionUnicode = '⅔';
   } else if (Math.abs(decimalPart - 0.125) <= EPSILON) {
-    fractionStr = '1/8';
+    fractionUnicode = '⅛';
   }
 
-  if (fractionStr) {
+  if (fractionUnicode) {
     if (integerPart === 0) {
-      return fractionStr;
+      return fractionUnicode;
     }
-    // Caso especial pedido: "1 ½", "2 ½", etc. para medios enteros
-    if (fractionStr === '1/2') {
-      return `${integerPart} ½`;
-    }
-    return `${integerPart} ${fractionStr}`;
+    // Entero + fracción: separa siempre con un espacio limpio (ej: "1 ¼", "1 ½", "1 ¾", "2 ½")
+    return `${integerPart} ${fractionUnicode}`;
   }
 
   // Si no encaja en fracciones culinarias estándar, redondear a 1 decimal sin ceros sobrantes
@@ -160,9 +176,62 @@ export function formatCulinaryAmount(
   const u = rawUnit.toLowerCase().replace(/[.,;:]/g, '').trim();
   const name = (ingredientName || '').toLowerCase().trim();
 
+  // 0. BARRERA DE ENTRADA INCONDICIONAL: TÉRMINOS INVARIABLES ("al gusto", "c/n")
+  if (
+    u.includes('al gusto') ||
+    u.includes('a gusto') ||
+    u.includes('to taste') ||
+    u === 'c/n' ||
+    u === 'c.n.' ||
+    u === 'cn'
+  ) {
+    return lang === 'en' ? 'To taste' : 'Al gusto';
+  }
+
+  // BARRERA: Pizcas
+  if (/^(pizca|pizcas|pinch|pinches)$/i.test(u)) {
+    if (amount <= 1) {
+      return lang === 'en' ? '1 pinch' : '1 pizca';
+    }
+    return `${formatQuantityNumber(amount)} ${lang === 'en' ? 'pinches' : 'pizcas'}`;
+  }
+
   // =========================================================================
-  // 1. BARRERA DE ENTRADA INCONDICIONAL: GRAMOS Y MILILITROS
-  //    ESTRICTAMENTE PROHIBIDO llamar a cualquier lógica de fracciones.
+  // 1. LEY UNIVERSAL DE MAGNITUD DE UNIDADES CULINARIAS (BARRERA <= 60)
+  //    Las unidades de cuchara quedan restringidas EXCLUSIVAMENTE a magnitud <= 60.
+  //    Cualquier ingrediente cuya cantidad sea > 60 queda terminantemente bloqueado
+  //    para unidades de cuchara y DEBE formatearse en masa o volumen estándar ('g', 'ml', 'kg', 'l').
+  // =========================================================================
+  const isTsp = /^(cucharadita|cucharaditas|tsp|cdita|cditas|teaspoon|teaspoons)$/i.test(u);
+  const isTbsp = /^(cucharada|cucharadas|tbsp|cda|cdas|tablespoon|tablespoons)$/i.test(u);
+  const isSpoon = isTsp || isTbsp;
+
+  if (isSpoon) {
+    const spoonMagnitude = isTsp ? amount * 5 : amount * 15;
+    const magnitude = Math.max(amount, spoonMagnitude);
+
+    if (magnitude > MAX_SPOON_MAGNITUDE) {
+      const isLiquid = /ml/i.test(u);
+      const metricLabel = isLiquid ? 'ml' : 'g';
+      if (magnitude >= 1000) {
+        const kgOrL = Math.round((magnitude / 1000) * 10) / 10;
+        const bigUnit = isLiquid ? 'l' : 'kg';
+        return `${Number.isInteger(kgOrL) ? String(kgOrL) : kgOrL.toFixed(1)} ${bigUnit}`;
+      }
+      let entero: number;
+      if (magnitude <= 20) {
+        entero = Math.max(1, Math.round(magnitude));
+      } else {
+        entero = Math.round(magnitude / 5) * 5;
+        if (entero === 0) entero = Math.round(magnitude);
+      }
+      return `${entero} ${metricLabel}`;
+    }
+  }
+
+  // =========================================================================
+  // 2. BARRERA DE ENTRADA INCONDICIONAL: GRAMOS Y MILILITROS
+  //    ESTRICTAMENTE PROHIBIDO llamar a cualquier lógica de fracciones o cucharas.
   // =========================================================================
   const isGram = /^(g|gr|grs|gramo|gramos|gram|grams)$/i.test(u);
   const isMl = /^(ml|mls|mililitro|mililitros|milliliter|milliliters)$/i.test(u);
@@ -170,6 +239,12 @@ export function formatCulinaryAmount(
   if (isGram || isMl) {
     const metricLabel = isMl ? 'ml' : 'g';
     if (amount <= 0) return `0 ${metricLabel}`;
+
+    if (amount >= 1000) {
+      const kgOrL = Math.round((amount / 1000) * 10) / 10;
+      const bigUnit = isMl ? 'l' : 'kg';
+      return `${Number.isInteger(kgOrL) ? String(kgOrL) : kgOrL.toFixed(1)} ${bigUnit}`;
+    }
 
     let entero: number;
     if (amount <= 20) {
@@ -204,17 +279,15 @@ export function formatCulinaryAmount(
   // =========================================================================
   const isGarlic = /\bajo(s)?\b|\bgarlic\b/i.test(name) || /\bajo(s)?\b|\bgarlic\b/i.test(u);
   const isClove = /^(diente|dientes|clove|cloves)$/i.test(u);
-  const isCountableUnit = /^(unidad|unidades|unit|units|pieza|piezas|piece|pieces)$/i.test(u);
+  const isCountableUnit = /^(unidad|unidades|unit|units|pieza|piezas|piece|pieces|ud|uds|huevo|huevos|egg|eggs)$/i.test(u);
   const isSpoonOrCup = /^(cucharada|cucharadas|cucharadita|cucharaditas|tbsp|tsp|taza|tazas|cup|cups|vaso|vasos)$/i.test(u);
 
   // A) Heurística defensiva para el ajo: unidad obligatoria "diente" / "dientes"
   if (isGarlic && (isCountableUnit || isClove || !u)) {
     const effectiveAmount =
-      amount >= 2
-        ? Math.ceil(amount)
-        : amount < 1
-        ? Math.max(0.5, Math.round(amount * 2) / 2)
-        : Math.round(amount * 2) / 2;
+      amount >= 1.75
+        ? Math.round(amount)
+        : Math.max(0.5, Math.round(amount * 2) / 2);
     const cloveUnit =
       lang === 'en'
         ? effectiveAmount > 1
@@ -230,11 +303,9 @@ export function formatCulinaryAmount(
   // B) Dientes de ajo o afines explícitos
   if (isClove) {
     const effectiveAmount =
-      amount >= 2
-        ? Math.ceil(amount)
-        : amount < 1
-        ? Math.max(0.5, Math.round(amount * 2) / 2)
-        : Math.round(amount * 2) / 2;
+      amount >= 1.75
+        ? Math.round(amount)
+        : Math.max(0.5, Math.round(amount * 2) / 2);
     const cloveUnit =
       lang === 'en'
         ? effectiveAmount > 1
@@ -249,13 +320,10 @@ export function formatCulinaryAmount(
 
   // C) Unidades contables (cebolla, limón, tomate...): omitir palabra "unidad"
   if (isCountableUnit) {
-    if (amount >= 2) {
-      return String(Math.ceil(amount));
+    if (amount >= 1.75) {
+      return String(Math.round(amount));
     }
-    const cleanAmount =
-      amount < 1
-        ? Math.max(0.5, Math.round(amount * 2) / 2)
-        : Math.round(amount * 2) / 2;
+    const cleanAmount = Math.max(0.5, Math.round(amount * 2) / 2);
     if (Math.abs(cleanAmount - 0.5) <= 0.05) {
       if (lang === 'en') return 'Half';
       return isFeminineCulinaryNoun(ingredientName) ? 'Media' : 'Medio';
@@ -263,22 +331,20 @@ export function formatCulinaryAmount(
     return formatQuantityNumber(cleanAmount);
   }
 
-  // D) Medidas de cuchara / taza (permiten fracciones culinarias como 1/2, 1/4, 1 ½)
+  // D) Medidas de cuchara / taza (permiten fracciones culinarias como ½, ¼, 1 ½; si > 3 redondean al medio más próximo)
   if (isSpoonOrCup) {
-    const numStr = formatQuantityNumber(amount);
-    const unitFormatted = formatIngredientUnit(unit, amount, lang);
+    const effectiveAmount = amount > 3 ? Math.round(amount * 2) / 2 : amount;
+    const numStr = formatQuantityNumber(effectiveAmount);
+    const unitFormatted = formatIngredientUnit(unit, effectiveAmount, lang);
     return `${numStr} ${unitFormatted}`.trim();
   }
 
   // E) Sin unidad definida:
   if (!u) {
-    if (amount >= 2) {
-      return String(Math.ceil(amount));
+    if (amount >= 1.75) {
+      return String(Math.round(amount));
     }
-    const cleanAmount =
-      amount < 1
-        ? Math.max(0.5, Math.round(amount * 2) / 2)
-        : Math.round(amount * 2) / 2;
+    const cleanAmount = Math.max(0.5, Math.round(amount * 2) / 2);
     if (Math.abs(cleanAmount - 0.5) <= 0.05) {
       if (lang === 'en') return 'Half';
       return isFeminineCulinaryNoun(ingredientName) ? 'Media' : 'Medio';

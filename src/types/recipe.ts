@@ -1,6 +1,6 @@
-import { Database, RolPlato, MomentoDia } from './database';
+import { Database, RolPlato, MomentoDia, RolCulinario } from './database';
 
-export type { RolPlato, MomentoDia };
+export type { RolPlato, MomentoDia, RolCulinario };
 export type Usuario = Database['public']['Tables']['usuarios']['Row'];
 export type IngredienteMaestro = Database['public']['Tables']['ingredientes_maestro']['Row'];
 export type Receta = Database['public']['Tables']['recetas']['Row'];

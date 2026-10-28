@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ servings?: string; from?: string; date?: string }>;
+  searchParams?: Promise<{ servings?: string; from?: string; date?: string; isNew?: string }>;
 }
 
 export default async function RecipeDetailPage({ params, searchParams }: PageProps) {
@@ -21,6 +21,7 @@ export default async function RecipeDetailPage({ params, searchParams }: PagePro
   const queryDate = query.date;
   const isFromPlanner = queryFrom === 'planner';
   const queryServings = isFromPlanner && query.servings && Number(query.servings) > 0 ? Number(query.servings) : undefined;
+  const isNewRecipe = query.isNew === 'true';
 
   const supabase = await createClient();
   const {
@@ -89,6 +90,7 @@ export default async function RecipeDetailPage({ params, searchParams }: PagePro
       cantidad: Number(i?.cantidad) || 1,
       unidad: i?.unidad || 'unidad',
       pasillo_supermercado: i?.pasillo_supermercado || 'Despensa y Especias',
+      rol_culinario: i?.rol_culinario || null,
     })),
     pasos: (pasos || []).map((p, idx) => ({
       orden: p?.orden || idx + 1,
@@ -121,6 +123,7 @@ export default async function RecipeDetailPage({ params, searchParams }: PagePro
             recipeDataForAdapt={recipeDataForAdapt}
             diarioEntries={diarioEntries || []}
             initialServings={queryServings}
+            isNewRecipe={isNewRecipe}
           />
         </ErrorBoundary>
 

@@ -357,6 +357,9 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             if (typeof window !== 'undefined') {
               try {
                 localStorage.setItem('home_recent_tab', 'capturada');
+                if (res.recetaId) {
+                  localStorage.setItem('receta_recien_creada_id', res.recetaId);
+                }
                 window.dispatchEvent(
                   new CustomEvent('recipe-captured', { detail: { recetaId: res.recetaId } })
                 );
@@ -658,7 +661,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
           {createdRecetaId && (
             <button
               type="button"
-              onClick={() => router.push(`/recipes/${createdRecetaId}`)}
+              onClick={() => router.push(`/recipes/${createdRecetaId}?isNew=true`)}
               className="min-h-[40px] px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs transition cursor-pointer self-start sm:self-auto shrink-0 flex items-center gap-1.5 shadow-2xs"
             >
               <span>{t('capture_open_now')}</span>

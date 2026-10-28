@@ -17,6 +17,8 @@ import { groupItemsByAisle, classifyIngredientAisle, getAisleTranslationKey, for
 import { formatCulinaryAmount, pluralizeCulinaryNoun } from '@/lib/nutrition/formatQuantity';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 
+import { SubstituteOption } from '@/app/actions/suggestSubstitute';
+
 export type ExtendedIngredient = RecetaIngrediente & {
   cantidad_escalada?: number;
   gramos_escalados?: number;
@@ -30,7 +32,8 @@ interface ShoppingListModeProps {
   onSubstituteChange?: (
     currentTarget: string,
     newName: string | null,
-    adaptedBaseName?: string
+    adaptedBaseName?: string,
+    substituteOption?: SubstituteOption | null
   ) => void;
   userProfile?: any;
 }
@@ -207,18 +210,66 @@ export function ShoppingListMode({
 
       {/* Vista A: Modo 'Cocina' (Ingredientes con Sustituciones Inteligentes) */}
       {!isShoppingMode && (
-        <div className="divide-y divide-[#e7dfd5]">
-          {ingredientes.map((ing) => (
-            <IngredientRow
-              key={ing.id}
-              ingrediente={ing}
-              tituloReceta={tituloReceta}
-              scaledCantidad={ing.cantidad_escalada}
-              scaledGramos={ing.gramos_escalados}
-              onSubstituteChange={onSubstituteChange}
-              userProfile={userProfile}
-            />
-          ))}
+        <div className="space-y-6">
+          {(() => {
+            const sectionsList: string[] = [];
+            const seen = new Set<string>();
+            for (const ing of safeIngredientes) {
+              const sec = (ing.seccion || '').trim();
+              if (sec && !seen.has(sec.toLowerCase())) {
+                seen.add(sec.toLowerCase());
+                sectionsList.push(sec);
+              }
+            }
+
+            if (sectionsList.length > 1) {
+              return sectionsList.map((secName) => {
+                const secIngredients = safeIngredientes.filter(
+                  (i) => (i.seccion || '').trim().toLowerCase() === secName.toLowerCase()
+                );
+                if (secIngredients.length === 0) return null;
+                return (
+                  <div key={secName} className="space-y-2">
+                    <div className="flex items-center gap-2 px-1 pt-1">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#a86224] bg-[#f4efe6] px-2.5 py-1 rounded-lg border border-[#e7dfd5]">
+                        {secName}
+                      </span>
+                      <div className="h-px flex-1 bg-[#e7dfd5]" />
+                    </div>
+                    <div className="divide-y divide-[#e7dfd5] bg-white rounded-2xl border border-[#e7dfd5] px-3 shadow-2xs">
+                      {secIngredients.map((ing) => (
+                        <IngredientRow
+                          key={ing.id}
+                          ingrediente={ing}
+                          tituloReceta={tituloReceta}
+                          scaledCantidad={ing.cantidad_escalada}
+                          scaledGramos={ing.gramos_escalados}
+                          onSubstituteChange={onSubstituteChange}
+                          userProfile={userProfile}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              });
+            }
+
+            return (
+              <div className="divide-y divide-[#e7dfd5]">
+                {ingredientes.map((ing) => (
+                  <IngredientRow
+                    key={ing.id}
+                    ingrediente={ing}
+                    tituloReceta={tituloReceta}
+                    scaledCantidad={ing.cantidad_escalada}
+                    scaledGramos={ing.gramos_escalados}
+                    onSubstituteChange={onSubstituteChange}
+                    userProfile={userProfile}
+                  />
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
 

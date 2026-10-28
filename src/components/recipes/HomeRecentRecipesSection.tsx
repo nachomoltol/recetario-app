@@ -17,6 +17,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
   // Estado local para alternar pestañas: recuerda la última pestaña seleccionada
   const [activeTab, setActiveTab] = useState<'capturada' | 'vista'>('capturada');
   const [lastViewedId, setLastViewedId] = useState<string | null>(null);
+  const [newlyCapturedId, setNewlyCapturedId] = useState<string | null>(null);
 
   // Cargar pestaña guardada y última receta vista desde localStorage
   useEffect(() => {
@@ -28,6 +29,10 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
       const stored = localStorage.getItem('ultima_receta_vista_id');
       if (stored) {
         setLastViewedId(stored);
+      }
+      const createdId = localStorage.getItem('receta_recien_creada_id');
+      if (createdId) {
+        setNewlyCapturedId(createdId);
       }
     } catch {}
   }, []);
@@ -42,6 +47,9 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
       setActiveTab('capturada');
       const targetId = e?.detail?.recetaId || 'latest';
       pendingScrollRef.current = targetId;
+      if (e?.detail?.recetaId) {
+        setNewlyCapturedId(e.detail.recetaId);
+      }
       try {
         localStorage.setItem('home_recent_tab', 'capturada');
       } catch {}
@@ -97,6 +105,14 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
   if (!recipeToShow) {
     return null;
   }
+
+  const isNewlyCaptured =
+    newlyCapturedId === recipeToShow.id ||
+    (typeof window !== 'undefined' && localStorage.getItem('receta_recien_creada_id') === recipeToShow.id);
+
+  const recipeHref = isNewlyCaptured
+    ? `/recipes/${recipeToShow.id}?isNew=true`
+    : `/recipes/${recipeToShow.id}`;
 
   return (
     <section ref={sectionRef} className="space-y-4 scroll-mt-24 outline-none" id="ultima-receta" tabIndex={-1}>
@@ -171,7 +187,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
           </div>
 
           <Link
-            href={`/recipes/${recipeToShow.id}`}
+            href={recipeHref}
             className="block group-hover:text-[#a86224] transition-colors"
           >
             <h2 className="font-bold text-stone-900 font-serif-recipe text-2xl sm:text-3xl leading-snug">
@@ -218,7 +234,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
           </div>
 
           <Link
-            href={`/recipes/${recipeToShow.id}`}
+            href={recipeHref}
             className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
           >
             <span>{t('home_view_in_kitchen')}</span>

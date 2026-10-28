@@ -37,7 +37,8 @@ interface IngredientRowProps {
   onSubstituteChange?: (
     currentTarget: string,
     newName: string | null,
-    adaptedBaseName?: string
+    adaptedBaseName?: string,
+    substituteOption?: SubstituteOption | null
   ) => void;
 }
 
@@ -154,12 +155,12 @@ export function IngredientRow({
 
     if (isAlreadyApplied) {
       // Revertir sustitución actual hacia el término adaptado base
-      onSubstituteChange?.(opt.nombre_sustituto, null, adaptedBaseName);
+      onSubstituteChange?.(opt.nombre_sustituto, null, adaptedBaseName, null);
       setAppliedOption(null);
     } else {
       // Aplicar nueva sustitución: el target que está actualmente en el texto de preparación
       const currentTarget = appliedOption ? appliedOption.nombre_sustituto : adaptedBaseName;
-      onSubstituteChange?.(currentTarget, opt.nombre_sustituto, adaptedBaseName);
+      onSubstituteChange?.(currentTarget, opt.nombre_sustituto, adaptedBaseName, opt);
       setAppliedOption(opt);
     }
 
@@ -175,7 +176,9 @@ export function IngredientRow({
   const nombreMostrado = cleanIngredientName(rawNombreMostrado);
 
   const cantidadMostrada = appliedOption
-    ? appliedOption.cantidad_sugerida
+    ? (appliedOption.cantidad_ajustada && appliedOption.unidad_ajustada
+        ? formatCulinaryAmount(appliedOption.cantidad_ajustada, appliedOption.unidad_ajustada, language, nombreMostrado)
+        : appliedOption.cantidad_sugerida)
     : formatCulinaryAmount(baseCantidadNum, ingrediente?.unidad, language, nombreMostrado);
 
   // Naturalización armónica y pluralización culinaria del nombre:

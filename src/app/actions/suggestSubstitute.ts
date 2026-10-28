@@ -4,12 +4,16 @@ import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '@
 import { Type } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
 import { getDetailedClinicalProfile, buildClinicalFirewallPrompt } from '@/lib/clinicalDictionary';
+import { RolCulinario, normalizeSubstituteQuantityAndUnit } from '@/lib/culinary/scaler';
 
 export interface SubstituteOption {
   nombre_sustituto: string;
   etiqueta_dinamica: string;
   categoria_icono: 'vegetal' | 'proteina' | 'lacteo' | 'cereal' | 'despensa' | 'general';
   cantidad_sugerida: string;
+  cantidad_ajustada: number;
+  unidad_ajustada: string;
+  rol_culinario_ajustado: RolCulinario;
   razon_culinaria: string;
   beneficio_nutricional: string;
   modo_uso: string;
@@ -38,7 +42,7 @@ const substituteSchema = {
         properties: {
           nombre_sustituto: {
             type: Type.STRING,
-            description: 'Nombre canónico y limpio del ingrediente alternativo propuesto (ej: "Batata o Boniato", "Tofu firme", "Bebida de almendras sin azúcar").',
+            description: 'Nombre canónico y limpio del ingrediente alternativo propuesto (ej: "Batata o Boniato", "Tofu firme", "Ralladura de limón").',
           },
           etiqueta_dinamica: {
             type: Type.STRING,
@@ -52,7 +56,21 @@ const substituteSchema = {
           },
           cantidad_sugerida: {
             type: Type.STRING,
-            description: 'Equivalencia y ratio sugerido (ej: "Misma cantidad (1:1)", "200g por cada 150g", "1 cucharada sopera rasa").',
+            description: 'Equivalencia y ratio explicada (ej: "1 cucharadita rasa", "Misma cantidad (1:1)", "200g por cada 150g").',
+          },
+          cantidad_ajustada: {
+            type: Type.NUMBER,
+            description:
+              'Cantidad numérica ajustada del sustituto para el rendimiento base de la receta. Si cambia la potencia o densidad sensorial (ej: 30g de jengibre -> ralladura de limón), DEBE ser una cantidad culinariamente viable (ej: 1 cucharadita o 1 limón, NUNCA 30g).',
+          },
+          unidad_ajustada: {
+            type: Type.STRING,
+            description: 'Unidad de medida adecuada para el sustituto (ej: "cucharadita", "cucharada", "g", "ml", "unidad").',
+          },
+          rol_culinario_ajustado: {
+            type: Type.STRING,
+            enum: ['principal', 'sofrito_base', 'guarnicion', 'grasa_coccion', 'condimento', 'invariable'],
+            description: 'Rol culinario funcional del sustituto propuesto.',
           },
           razon_culinaria: {
             type: Type.STRING,
@@ -72,6 +90,9 @@ const substituteSchema = {
           'etiqueta_dinamica',
           'categoria_icono',
           'cantidad_sugerida',
+          'cantidad_ajustada',
+          'unidad_ajustada',
+          'rol_culinario_ajustado',
           'razon_culinaria',
           'beneficio_nutricional',
           'modo_uso',
@@ -99,7 +120,14 @@ DIRECTRICES FUNDAMENTALES DE GENERACIÓN DINÁMICA:
    - Comportamiento Culinario: Explica con rigor técnico cómo reacciona al fuego/horno/emulsión y cómo afecta al resultado final.
    - Beneficio Nutricional: Cita el impacto real en macronutrientes, digestibilidad o densidad nutricional.
 
-3. BLINDAJE CLÍNICO ESTRICTO:
+3. CONVERSIÓN DE DENSIDAD Y POTENCIA CULINARIA (CRÍTICO):
+   - Queda TERMINANTEMENTE PROHIBIDO copiar ciegamente cantidades 1:1 en peso cuando cambia radicalmente la densidad de potencia del ingrediente.
+   - Si se sustituye una raíz como jengibre fresco (ej. 30 g) por ralladura de limón, la cantidad ajustada debe ser 1 (cucharadita) o 1 (unidad), NUNCA 30 g (lo que arruinaría el plato por amargor tras rallar 10 limones).
+   - Para grasas, ajusta entre mantequilla y aceites considerando densidad (~80%).
+   - Para hierbas/especias secas vs frescas, aplica ratio de concentración 1:3.
+   - Informa 'cantidad_ajustada' como número y 'unidad_ajustada' como su unidad correspondiente.
+
+4. BLINDAJE CLÍNICO ESTRICTO:
    - Si se proporcionan directivas de cortafuegos clínico o exclusiones médicas del usuario, está TERMINANTEMENTE PROHIBIDO incluir o sugerir cualquier ingrediente vetado o derivado. Todas las alternativas DEBEN ser 100% aptas para el perfil del usuario.
 `.trim();
 
@@ -218,30 +246,60 @@ Redacta todas las alternativas, etiquetas dinámicas, razones culinarias, benefi
           throw new Error('El formato de alternativas no contiene opciones válidas.');
         }
 
-        // Mapeo defensivo asegurando soporte de etiquetas dinámicas y compatibilidad
-        const alternativas: SubstituteOption[] = rawAlternativas.map((alt: any) => ({
-          nombre_sustituto: String(alt.nombre_sustituto || '').trim(),
-          etiqueta_dinamica: String(alt.etiqueta_dinamica || alt.etiqueta_tipo || 'Alternativa').trim(),
-          categoria_icono: ['vegetal', 'proteina', 'lacteo', 'cereal', 'despensa', 'general'].includes(alt.categoria_icono)
-            ? alt.categoria_icono
-            : 'general',
-          cantidad_sugerida: String(alt.cantidad_sugerida || '1:1').trim(),
-          razon_culinaria: String(alt.razon_culinaria || '').trim(),
-          beneficio_nutricional: String(alt.beneficio_nutricional || '').trim(),
-          modo_uso: String(alt.modo_uso || '').trim(),
-          // Compatibilidad hacia atrás
-          tipo: alt.categoria_icono || alt.tipo || 'general',
-        }));
+        // Mapeo defensivo asegurando soporte de etiquetas dinámicas y normalización de densidad
+        const alternativas: SubstituteOption[] = rawAlternativas.map((alt: any) => {
+          const subName = String(alt.nombre_sustituto || '').trim();
+          const rawQty = typeof alt.cantidad_ajustada === 'number' && alt.cantidad_ajustada > 0
+            ? alt.cantidad_ajustada
+            : Number(cantidad) || 1;
+          const rawUnit = String(alt.unidad_ajustada || unidad || 'unidad').trim();
+          const rawRol = alt.rol_culinario_ajustado;
+
+          const normalized = normalizeSubstituteQuantityAndUnit(
+            nombreIngrediente,
+            subName,
+            rawQty,
+            rawUnit,
+            rawRol
+          );
+
+          return {
+            nombre_sustituto: subName,
+            etiqueta_dinamica: String(alt.etiqueta_dinamica || alt.etiqueta_tipo || 'Alternativa').trim(),
+            categoria_icono: ['vegetal', 'proteina', 'lacteo', 'cereal', 'despensa', 'general'].includes(alt.categoria_icono)
+              ? alt.categoria_icono
+              : 'general',
+            cantidad_sugerida: String(alt.cantidad_sugerida || '1:1').trim(),
+            cantidad_ajustada: normalized.cantidad,
+            unidad_ajustada: normalized.unidad,
+            rol_culinario_ajustado: normalized.rol_culinario,
+            razon_culinaria: String(alt.razon_culinaria || '').trim(),
+            beneficio_nutricional: String(alt.beneficio_nutricional || '').trim(),
+            modo_uso: String(alt.modo_uso || '').trim(),
+            tipo: alt.categoria_icono || alt.tipo || 'general',
+          };
+        });
 
         // Blindaje defensivo: asegurar exactamente 3 alternativas
         const finalAlternativas: SubstituteOption[] = alternativas.slice(0, 3);
         while (finalAlternativas.length < 3) {
           const indexNum = finalAlternativas.length + 1;
+          const fallbackName = `${nombreIngrediente} (${idioma === 'en' ? 'Option' : 'Opción'} ${indexNum})`;
+          const normalized = normalizeSubstituteQuantityAndUnit(
+            nombreIngrediente,
+            fallbackName,
+            Number(cantidad) || 1,
+            unidad || 'unidad'
+          );
+
           finalAlternativas.push({
-            nombre_sustituto: `${nombreIngrediente} (${idioma === 'en' ? 'Option' : 'Opción'} ${indexNum})`,
+            nombre_sustituto: fallbackName,
             etiqueta_dinamica: idioma === 'en' ? 'Alternative' : 'Alternativa',
             categoria_icono: 'general',
             cantidad_sugerida: '1:1',
+            cantidad_ajustada: normalized.cantidad,
+            unidad_ajustada: normalized.unidad,
+            rol_culinario_ajustado: normalized.rol_culinario,
             razon_culinaria: idioma === 'en' ? 'Functional culinary replacement' : 'Sustitución culinaria funcional',
             beneficio_nutricional: idioma === 'en' ? 'Adapted nutritional profile' : 'Perfil nutricional adaptado',
             modo_uso: idioma === 'en' ? 'Use identically' : 'Incorporar de manera idéntica',

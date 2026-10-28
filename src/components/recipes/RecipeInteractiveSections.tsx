@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Layers,
@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Clock,
   Thermometer,
+  Flame,
 } from 'lucide-react';
 import { RecetaIngrediente, Paso } from '@/types/recipe';
 import { scaleIngredientsWithCulinaryHeuristics, scaleCookingTime } from '@/lib/culinary/scaler';
@@ -17,6 +18,54 @@ import { ServingsScaler } from './ServingsScaler';
 import { ShoppingListMode } from './ShoppingListMode';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { SubstituteOption } from '@/app/actions/suggestSubstitute';
+
+/**
+ * Normaliza la temperatura de cocción técnica según el método (horno vs fuego directo en sartén/olla/plancha)
+ */
+function formatStepHeat(
+  tempCelsius: number,
+  instructionText: string,
+  lang: 'es' | 'en' = 'es'
+): { label: string; isBaking: boolean } {
+  const norm = instructionText.toLowerCase();
+
+  // Conservar grados (°C) con Thermometer solo si el paso incluye explícitamente términos de horneado o freidora de aire
+  const isBaking =
+    /\b(horno|hornear|hornea|hornealo|horneala|horneados|horneadas|precalentar|precalienta|oven|bake|baking|baked|airfryer|air\s*fryer|freidora\s+de\s+aire)\b/i.test(
+      norm
+    );
+
+  if (isBaking) {
+    return {
+      label: `${tempCelsius}°C`,
+      isBaking: true,
+    };
+  }
+
+  // Mapear temperaturas de fuego directo según idioma (ES / EN):
+  if (tempCelsius >= 190) {
+    return {
+      label: lang === 'en' ? 'High heat' : 'Fuego alto',
+      isBaking: false,
+    };
+  } else if (tempCelsius >= 170) {
+    return {
+      label: lang === 'en' ? 'Medium-high heat' : 'Fuego medio-alto',
+      isBaking: false,
+    };
+  } else if (tempCelsius >= 130) {
+    return {
+      label: lang === 'en' ? 'Medium heat' : 'Fuego medio',
+      isBaking: false,
+    };
+  } else {
+    return {
+      label: lang === 'en' ? 'Low heat' : 'Fuego suave / lento',
+      isBaking: false,
+    };
+  }
+}
 
 interface RecipeInteractiveSectionsProps {
   recetaId: string;
@@ -29,7 +78,8 @@ interface RecipeInteractiveSectionsProps {
   onSubstitutePersist?: (
     currentTarget: string,
     newName: string | null,
-    adaptedBaseName?: string
+    adaptedBaseName?: string,
+    substituteOption?: SubstituteOption | null
   ) => void;
   isAdapted?: boolean;
   userProfile?: any;
@@ -64,15 +114,26 @@ export function RecipeInteractiveSections({
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
   const [isStepsOpen, setIsStepsOpen] = useState(false);
   const [substitutions, setSubstitutions] = useState<Record<string, string>>({});
+  const prevRecetaIdRef = useRef(recetaId);
 
-  // Sincronizar comensales: solo se adopta el valor de URL si proviene contextualmente del planificador (?from=planner&servings=X)
+  // Sincronizar comensales: preservar la selección activa del usuario al cambiar de modo (adaptado vs original)
   useEffect(() => {
+    // Si cambió la receta (navegación a otro plato), reiniciar comensales al nuevo plato
+    if (prevRecetaIdRef.current !== recetaId) {
+      prevRecetaIdRef.current = recetaId;
+      if (isFromPlanner && plannerServings && plannerServings > 0) {
+        setServings(plannerServings);
+      } else if (isFromPlanner && defaultServings && defaultServings > 0) {
+        setServings(defaultServings);
+      } else {
+        setServings(basePorciones || 2);
+      }
+      return;
+    }
+
+    // Misma receta: solo actualizar si la URL del planificador cambia explícitamente comensales
     if (isFromPlanner && plannerServings && plannerServings > 0) {
       setServings(plannerServings);
-    } else if (isFromPlanner && defaultServings && defaultServings > 0) {
-      setServings(defaultServings);
-    } else {
-      setServings(basePorciones || 2);
     }
   }, [recetaId, basePorciones, isFromPlanner, plannerServings, defaultServings]);
 
@@ -84,7 +145,8 @@ export function RecipeInteractiveSections({
   const handleSubstituteChange = (
     currentTarget: string,
     newName: string | null,
-    adaptedBaseName?: string
+    adaptedBaseName?: string,
+    substituteOption?: SubstituteOption | null
   ) => {
     const cleanTarget = String(currentTarget || '').replace(/<\/?[^>]+(>|$)/g, '').trim();
     const cleanNew = newName ? String(newName).replace(/<\/?[^>]+(>|$)/g, '').trim() : null;
@@ -101,7 +163,7 @@ export function RecipeInteractiveSections({
       return next;
     });
 
-    onSubstitutePersist?.(cleanTarget, cleanNew, baseKey);
+    onSubstitutePersist?.(cleanTarget, cleanNew, baseKey, substituteOption);
   };
 
   const safePasos = Array.isArray(pasos) ? pasos : [];
@@ -126,16 +188,17 @@ export function RecipeInteractiveSections({
   // Reactividad dinámica: escalado métrico culinario y sustitución de ingredientes en el relato
   const reactivePasos = useMemo(() => {
     const activeSubs = Object.entries(substitutions).filter(([_, newName]) => Boolean(newName));
+    const usageTracker = new Map<string, number>();
 
     return safePasos.map((paso) => {
       let instruccion = String(paso?.instruccion || '');
       let consejo = paso?.consejo_pro ? String(paso.consejo_pro) : undefined;
 
-      // 1. Escalar cantidades numéricas integradas en el texto si ratio !== 1
-      if (ratio !== 1 && scaledIngredientes.length > 0) {
-        instruccion = scaleStepQuantities(instruccion, scaledIngredientes, ratio, language);
+      // 1. Escalar cantidades numéricas integradas en el texto si ratio !== 1 o si es receta adaptada
+      if ((ratio !== 1 || isAdapted) && scaledIngredientes.length > 0) {
+        instruccion = scaleStepQuantities(instruccion, scaledIngredientes, ratio, language, servings, usageTracker);
         if (consejo) {
-          consejo = scaleStepQuantities(consejo, scaledIngredientes, ratio, language);
+          consejo = scaleStepQuantities(consejo, scaledIngredientes, ratio, language, servings, usageTracker);
         }
       }
 
@@ -153,7 +216,7 @@ export function RecipeInteractiveSections({
         consejo_pro: consejo,
       };
     });
-  }, [safePasos, substitutions, ratio, scaledIngredientes, language]);
+  }, [safePasos, substitutions, ratio, scaledIngredientes, language, isAdapted, servings]);
 
   return (
     <div className="space-y-8 pt-2">
@@ -284,12 +347,23 @@ export function RecipeInteractiveSections({
                           </span>
                         )}
 
-                        {paso.temperatura_celsius && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-700 font-medium">
-                            <Thermometer className="w-3.5 h-3.5 text-[#c27835]" />
-                            {paso.temperatura_celsius}°C
-                          </span>
-                        )}
+                        {paso.temperatura_celsius && (() => {
+                          const heat = formatStepHeat(
+                            paso.temperatura_celsius,
+                            paso.instruccion,
+                            (language as 'es' | 'en') || 'es'
+                          );
+                          return (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-700 font-medium">
+                              {heat.isBaking ? (
+                                <Thermometer className="w-3.5 h-3.5 text-[#c27835]" />
+                              ) : (
+                                <Flame className="w-3.5 h-3.5 text-[#e05d26]" />
+                              )}
+                              {heat.label}
+                            </span>
+                          );
+                        })()}
 
                         {paso.consejo_pro && (
                           <div className="w-full mt-2 p-3.5 rounded-2xl border border-[#e7dfd5] bg-[#faf7f2] text-stone-700 text-xs sm:text-sm font-light">

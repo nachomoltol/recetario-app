@@ -36,6 +36,8 @@ import { createClient } from '@/lib/supabase/client';
 import { compressImageClient } from '@/lib/utils/imageCompress';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { cleanIngredientName } from '@/lib/nutrition/formatQuantity';
+import { SubstituteOption } from '@/app/actions/suggestSubstitute';
+import { normalizeSubstituteQuantityAndUnit } from '@/lib/culinary/scaler';
 
 interface EditableIngredient {
   id: string;
@@ -55,6 +57,7 @@ interface RecipeDetailViewProps {
   recipeDataForAdapt: any;
   diarioEntries: DiarioCocinados[];
   initialServings?: number;
+  isNewRecipe?: boolean;
 }
 
 export function RecipeDetailView({
@@ -65,6 +68,7 @@ export function RecipeDetailView({
   recipeDataForAdapt,
   diarioEntries,
   initialServings,
+  isNewRecipe,
 }: RecipeDetailViewProps) {
   const router = useRouter();
   const t = useLanguageStore((s) => s.t);
@@ -110,7 +114,19 @@ export function RecipeDetailView({
   const [currentEsFavoritoMenu, setCurrentEsFavoritoMenu] = useState<boolean>(
     () => Boolean(receta?.es_favorito_menu)
   );
-  const [isCategorizeDrawerOpen, setIsCategorizeDrawerOpen] = useState(false);
+  const [isCategorizeDrawerOpen, setIsCategorizeDrawerOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      if (isNewRecipe) return true;
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('isNew') === 'true') return true;
+      try {
+        if (receta?.id && localStorage.getItem('receta_recien_creada_id') === receta.id) {
+          return true;
+        }
+      } catch {}
+    }
+    return false;
+  });
 
   // Temporizador para ocultar el toast
   useEffect(() => {
@@ -211,6 +227,7 @@ export function RecipeDetailView({
         notas: ai?.notas || orig?.notas || null,
         es_opcional: orig?.es_opcional || false,
         orden: index + 1,
+        rol_culinario: ai?.rol_culinario || orig?.rol_culinario || null,
         created_at: orig?.created_at || new Date().toISOString(),
       };
     });
@@ -258,6 +275,7 @@ export function RecipeDetailView({
             pasillo_supermercado: i.pasillo_supermercado,
             notas: i.notas,
             orden: idx + 1,
+            rol_culinario: (i as any).rol_culinario || null,
           })),
           pasos: adaptedP.map((p, idx) => ({
             id: p.id,
@@ -315,7 +333,8 @@ export function RecipeDetailView({
   const handleSubstitutePersist = async (
     currentTarget: string,
     newName: string | null,
-    adaptedBaseName?: string
+    adaptedBaseName?: string,
+    substituteOption?: SubstituteOption | null
   ) => {
     try {
       const cleanTarget = String(currentTarget || '').replace(/<\/?[^>]+(>|$)/g, '').trim();
@@ -329,10 +348,37 @@ export function RecipeDetailView({
         const rawName = ing?.nombre_limpio || ing?.nombre_crudo || '';
         const ingClean = String(rawName).replace(/<\/?[^>]+(>|$)/g, '').trim().toLowerCase();
         if (ingClean === targetLower || ingClean === baseLower) {
+          const isReverting = !cleanNew || cleanNew.toLowerCase() === baseLower;
+          if (isReverting) {
+            return {
+              ...ing,
+              nombre_limpio: cleanBase,
+              notas: null,
+            };
+          }
+
+          // Aplicar sustitución estructurada con normalización de densidad sensorial
+          const rawQty = substituteOption?.cantidad_ajustada !== undefined && substituteOption.cantidad_ajustada > 0
+            ? substituteOption.cantidad_ajustada
+            : ing.cantidad;
+          const rawUnit = substituteOption?.unidad_ajustada || ing.unidad;
+          const rawRol = substituteOption?.rol_culinario_ajustado || (ing as any).rol_culinario;
+
+          const normalized = normalizeSubstituteQuantityAndUnit(
+            ingClean,
+            cleanNew,
+            rawQty,
+            rawUnit,
+            rawRol
+          );
+
           return {
             ...ing,
-            nombre_limpio: cleanNew || cleanBase,
-            notas: cleanNew && cleanNew.toLowerCase() !== baseLower ? `Sustituido por ${cleanNew}` : null,
+            nombre_limpio: cleanNew,
+            cantidad: normalized.cantidad,
+            unidad: normalized.unidad,
+            rol_culinario: normalized.rol_culinario,
+            notas: `Sustituido por ${cleanNew}`,
           };
         }
         return ing;
@@ -363,6 +409,7 @@ export function RecipeDetailView({
           pasillo_supermercado: i.pasillo_supermercado,
           notas: i.notas,
           orden: idx + 1,
+          rol_culinario: (i as any).rol_culinario || null,
         })),
         pasos: updatedPasos.map((p, idx) => ({
           id: p.id,
@@ -989,6 +1036,7 @@ export function RecipeDetailView({
       <RecipeCategorizeDrawer
         isOpen={isCategorizeDrawerOpen}
         onOpenChange={setIsCategorizeDrawerOpen}
+        isNew={isNewRecipe}
         receta={{
           id: receta?.id || '',
           titulo: currentTitulo,

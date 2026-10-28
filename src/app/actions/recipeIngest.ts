@@ -8,6 +8,7 @@ import { ExtractedIngredient } from '@/lib/gemini/schema';
 import { calcularGramos } from '@/lib/nutrition/converter';
 import { IngredienteMaestro } from '@/types/recipe';
 import { FuenteTipoReceta } from '@/types/database';
+import { MAX_SPOON_MAGNITUDE } from '@/lib/nutrition/formatQuantity';
 
 export interface IngestRecipeResult {
   success?: boolean;
@@ -244,9 +245,19 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     const prepMin = Math.max(0, Number(extracted.tiempo_preparacion_min) || 0);
     const coccMin = Math.max(0, Number(extracted.tiempo_coccion_min) || 0);
     const tiempoTotal = Math.max(1, prepMin + coccMin);
-    // Guardar las porciones originales nativas de la receta según la extracción,
-    // desacoplándolas de las preferencias globales del perfil de usuario
-    const porcionesNum = Math.max(1, Number(extracted.porciones) || 2);
+    // Guardar las porciones originales nativas de la receta según la extracción.
+    // PRINCIPIO DEL ANCLA CULINARIA: Si la receta no especifica raciones, calibrar a partir del ingrediente ancla
+    let porcionesNum = Number(extracted.porciones);
+    if (!porcionesNum || isNaN(porcionesNum) || porcionesNum <= 0) {
+      const anchorIng = (extracted.ingredientes || []).find((i) => (i as any).rol_culinario === 'principal');
+      const anchorGrams = Number(anchorIng?.gramos_estimados) || Number(anchorIng?.cantidad) || 0;
+      if (anchorGrams > 0) {
+        // Estándar biológico de plato principal (~180 g de proteína o carbohidrato base)
+        porcionesNum = Math.max(1, Math.round(anchorGrams / 180));
+      } else {
+        porcionesNum = 2;
+      }
+    }
     const factorEscalado = 1;
 
     // 4. Inserción en 'recetas'
@@ -302,7 +313,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         ? ing.cantidad
         : parseFloat(String(ing.cantidad)) || 1;
 
-      const rawCantidad = factorEscalado !== 1
+      let rawCantidad = factorEscalado !== 1
         ? Math.round(baseCantidad * factorEscalado * 10) / 10
         : baseCantidad;
 
@@ -328,6 +339,21 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         else if (uLower === 'cucharadita' || uLower === 'cucharaditas') rawUnidad = 'tsp';
         else if (uLower === 'gramo' || uLower === 'gramos') rawUnidad = 'g';
         else if (uLower === 'mililitro' || uLower === 'mililitros') rawUnidad = 'ml';
+      }
+
+      // LEY UNIVERSAL DE MAGNITUD DE UNIDADES CULINARIAS (BARRERA <= 60):
+      // Las unidades de cuchara quedan restringidas EXCLUSIVAMENTE a magnitud <= 60.
+      // Cualquier ingrediente con cantidad/magnitud > 60 queda terminantemente bloqueado para cuchara.
+      const isSpoonIngest = /^(cucharada|cucharadas|cucharadita|cucharaditas|tbsp|tsp|cda|cdas|cdita|cditas)$/i.test(uLower);
+      if (isSpoonIngest) {
+        const isTspIngest = /^(cucharadita|cucharaditas|tsp|cdita|cditas)$/i.test(uLower);
+        const spoonMagnitude = rawCantidad * (isTspIngest ? 5 : 15);
+        if (rawCantidad > MAX_SPOON_MAGNITUDE || spoonMagnitude > MAX_SPOON_MAGNITUDE) {
+          if (rawCantidad <= MAX_SPOON_MAGNITUDE) {
+            rawCantidad = spoonMagnitude;
+          }
+          rawUnidad = uLower.includes('ml') ? 'ml' : 'g';
+        }
       }
 
       const conv = calcularGramos({
@@ -370,12 +396,27 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         notas: notasCombinadas || null,
         es_opcional: Boolean(ing.es_opcional),
         orden: idx + 1, // Secuencial estricto
+        rol_culinario: (ing as any).rol_culinario || null,
+        seccion: (ing as any).seccion || null,
       };
     });
 
-    const { error: errIngredientes } = await supabase
+    let { error: errIngredientes } = await supabase
       .from('receta_ingredientes')
       .insert(ingredientesPayload);
+
+    // Tolerancia a fallos: Si la columna 'seccion' aún no está en el schema cache de PostgREST, reintentar sin 'seccion'
+    if (errIngredientes && /seccion/i.test(errIngredientes.message || '')) {
+      console.warn(
+        "Advertencia: Columna 'seccion' no disponible en schema cache de PostgREST. Reintentando inserción sin 'seccion':",
+        errIngredientes.message
+      );
+      const fallbackPayload = ingredientesPayload.map(({ seccion, ...rest }) => rest);
+      const retryResult = await supabase
+        .from('receta_ingredientes')
+        .insert(fallbackPayload as any);
+      errIngredientes = retryResult.error;
+    }
 
     if (errIngredientes) {
       console.error('Error insertando ingredientes, ejecutando rollback:', errIngredientes);

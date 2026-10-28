@@ -18,6 +18,13 @@ export type FuenteTipoReceta =
   | 'web';
 export type RolPlato = 'completo' | 'primero' | 'segundo' | 'desayuno_snack' | 'postre';
 export type MomentoDia = 'desayuno' | 'almuerzo' | 'cena' | 'snack' | 'postre';
+export type RolCulinario =
+  | 'principal'
+  | 'sofrito_base'
+  | 'guarnicion'
+  | 'grasa_coccion'
+  | 'condimento'
+  | 'invariable';
 
 export interface Database {
   public: {
@@ -285,6 +292,8 @@ export interface Database {
           notas: string | null;
           es_opcional: boolean;
           orden: number;
+          rol_culinario?: RolCulinario | string | null;
+          seccion?: string | null;
           created_at: string;
         };
         Insert: {
@@ -300,6 +309,8 @@ export interface Database {
           notas?: string | null;
           es_opcional?: boolean;
           orden?: number;
+          rol_culinario?: RolCulinario | string | null;
+          seccion?: string | null;
           created_at?: string;
         };
         Update: {
@@ -315,6 +326,8 @@ export interface Database {
           notas?: string | null;
           es_opcional?: boolean;
           orden?: number;
+          rol_culinario?: RolCulinario | string | null;
+          seccion?: string | null;
           created_at?: string;
         };
         Relationships: [

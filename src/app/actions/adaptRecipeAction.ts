@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '@/lib/gemini/client';
 import { getClinicalExclusions } from '@/lib/clinicalDictionary';
-import { cleanIngredientName } from '@/lib/nutrition/formatQuantity';
+import { cleanIngredientName, formatCulinaryAmount } from '@/lib/nutrition/formatQuantity';
 import { Type } from '@google/genai';
 
 export interface AdaptedIngredient {
@@ -12,6 +12,7 @@ export interface AdaptedIngredient {
   unidad: string;
   pasillo_supermercado?: string;
   notas?: string | null;
+  rol_culinario?: string | null;
 }
 
 export interface AdaptedStep {
@@ -51,6 +52,7 @@ export interface AdaptRecipeInput {
     cantidad: number;
     unidad: string;
     pasillo_supermercado?: string;
+    rol_culinario?: string | null;
   }[];
   pasos: {
     orden: number;
@@ -88,7 +90,8 @@ const adaptRecipeSchema = {
           },
           unidad: {
             type: Type.STRING,
-            description: 'Unidad métrica estandarizada (g, ml, unidad, unidades).',
+            description:
+              'Unidad culinaria normalizada coherente con la lista original (g, ml, cucharada, cucharadas, cucharadita, cucharaditas, taza, tazas, pizca, al gusto, unidad, unidades). Mantener cucharadas o pizcas si la receta original las usa.',
           },
           pasillo_supermercado: {
             type: Type.STRING,
@@ -97,6 +100,11 @@ const adaptRecipeSchema = {
           notas: {
             type: Type.STRING,
             description: 'Notas técnicas del ingrediente adaptado.',
+          },
+          rol_culinario: {
+            type: Type.STRING,
+            description: 'Rol culinario funcional: principal, sofrito_base, guarnicion, grasa_coccion, condimento, invariable.',
+            enum: ['principal', 'sofrito_base', 'guarnicion', 'grasa_coccion', 'condimento', 'invariable'],
           },
         },
         required: ['nombre_limpio', 'cantidad', 'unidad'],
@@ -155,14 +163,124 @@ DIRECTIVAS ESTRICTAS DE ADAPTACIÓN:
    - En ingredientes: si el ingrediente fue sustituido o cambiado, envuélvelo en <mark> (ejemplo: "<mark>Bebida de avena</mark>", "<mark>Harina de almendras</mark>").
    - Si un ingrediente o paso no requirió cambios porque ya es 100% apto y perfecto para su nivel, mantenlo tal cual sin <mark>.
 
-3. INYECCIÓN DE CANTIDADES EN PROSA CULINARIA NATURAL EN LOS PASOS:
-   - Inyecta siempre la cantidad exacta en los pasos con prosa natural y fluida (ej: "Añade <mark>los 200 ml de leche de avena</mark>", "Incorpora <mark>media cebolla picada</mark>"). Está estrictamente prohibido usar decimales de laboratorio fríos (NO escribir "0.5 unidades de cebolla").
+3. FIDELIDAD ESTRICTA A UNIDADES Y CANTIDADES DE LA LISTA EN LOS PASOS:
+   - Cuando menciones un ingrediente en la instrucción de un paso, DEBES UTILIZAR ESTRICTAMENTE LA MISMA UNIDAD Y CANTIDAD que figura en la lista de ingredientes adaptados.
+   - PROHIBICIÓN DE GRAMAJES EN CUCHARAS/TAZAS: Si un ingrediente está medido en cucharadas, cucharaditas, tazas o vasos (ej: "1 ½ cucharadas Polvo de curry"), está TERMINANTEMENTE PROHIBIDO convertirlo a gramos fríos de báscula (NUNCA escribir "25 g de curry"); redacta exactamente con la unidad de la lista: "Añade <mark>1 ½ cucharadas de polvo de curry</mark>".
+   - PROHIBICIÓN TOTAL DE GRAMAJES EN INVARIABLES, PIZCAS Y AL GUSTO: Si un ingrediente tiene unidad "pizca", "al gusto", "to taste" o rol culinario "invariable" (ej: perejil fresco, cilantro, especias decorativas, sal al gusto), queda TERMINANTEMENTE PROHIBIDO inventar gramos de báscula (NUNCA escribir "8 g de perejil", ni "5 g de sal"). Redacta siempre en prosa cualitativa natural: "una pizca de perejil fresco picado", "perejil fresco al gusto" o "decora con <mark>perejil fresco picado al gusto</mark>".
+   - PROHIBIDO DECIMALES DE LABORATORIO: Inyecta cantidades con prosa natural y fluida (ej: "Añade <mark>los 200 ml de leche de avena</mark>", "Incorpora <mark>media cebolla picada</mark>"). NO escribir decimales fríos de laboratorio (NO escribir "0.5 unidades de cebolla").
 
 4. NOMBRE CANÓNICO LIMPIO EN INGREDIENTES (CRÍTICO):
    - El campo 'nombre_limpio' DEBE contener EXCLUSIVAMENTE el nombre culinario limpio del ingrediente (ej: "Tofu firme prensado", "Tomate cherry", "<mark>Bebida de avena</mark>").
    - Queda TERMINANTEMENTE PROHIBIDO incluir cantidades numéricas o unidades métricas dentro de 'nombre_limpio' (NUNCA escribir "600 g de tofu", ni "300 g de Tomate cherry", ni "40 g de cebollino", ni "10 ml de aceite"). Las cantidades se informan única y exclusivamente en el campo 'cantidad' y las unidades en 'unidad'.
 `.trim();
 
+
+const STOP_WORDS_MIN = new Set([
+  'fresco', 'fresca', 'frescos', 'frescas', 'fresh',
+  'picado', 'picada', 'picados', 'picadas', 'chopped', 'diced',
+  'molido', 'molida', 'ground', 'polvo', 'powder',
+]);
+
+/**
+ * Sanitiza defensivamente la prosa de los pasos adaptados generados por Gemini:
+ * 1. Si un ingrediente tiene unidad 'pizca', 'al gusto' o rol 'invariable', erradica cualquier
+ *    gramaje o mililitro inventado (ej. "los 8 g de perejil fresco picado" -> "una pizca de perejil fresco picado").
+ * 2. Si un ingrediente tiene unidad de cuchara o taza ('cucharadas', 'cucharaditas', 'taza'), erradica
+ *    gramajes fríos inventados y restaura la unidad de cuchara/taza de la lista (ej. "los 25 g de curry" -> "1 ½ cucharadas de polvo de curry").
+ */
+function sanitizeAdaptedStepsProse(
+  pasos: AdaptedStep[],
+  ingredientes: AdaptedIngredient[],
+  lang: 'es' | 'en' = 'es'
+): AdaptedStep[] {
+  if (!pasos || pasos.length === 0 || !ingredientes || ingredientes.length === 0) {
+    return pasos || [];
+  }
+
+  return pasos.map((paso) => {
+    let instruccion = paso.instruccion || '';
+    let consejo = paso.consejo_pro || null;
+
+    for (const ing of ingredientes) {
+      const rawName = (ing.nombre_limpio || '').replace(/<\/?[^>]+(>|$)/g, '').trim();
+      if (!rawName || rawName.length < 3) continue;
+
+      const isPinch = /^(pizca|pizcas|pinch|pinches)$/i.test((ing.unidad || '').trim());
+      const isToTaste = /^(al gusto|a gusto|to taste|c\/n|c\.n\.|cn)$/i.test((ing.unidad || '').trim());
+      const isInvariable = ing.rol_culinario === 'invariable' || isPinch || isToTaste;
+
+      const isSpoonOrCup = /^(cucharada|cucharadas|cucharadita|cucharaditas|tbsp|tsp|taza|tazas|cup|cups)$/i.test(
+        (ing.unidad || '').trim()
+      );
+
+      if (!isInvariable && !isSpoonOrCup) continue;
+
+      // Variantes del ingrediente (nombre completo y sustantivos significativos de longitud >= 4)
+      const nameParts = rawName
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length >= 4 && !STOP_WORDS_MIN.has(w));
+      const searchNames = [rawName.toLowerCase(), ...nameParts];
+      const uniqueNames = Array.from(new Set(searchNames)).sort((a, b) => b.length - a.length);
+      const escapedAlts = uniqueNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+
+      const patternSpuriousMetric = new RegExp(
+        `(^|\\s+|(?<=[^\\p{L}\\p{N}@]))` +
+        `(?:(<mark>)\\s*)?` +
+        `(?:(los|las|el|la|unos|unas|the|a|an)\\s+)?` +
+        `(?:(<mark>)\\s*)?` +
+        `(\\d+(?:[.,]\\d+)?|[½¼¾⅓⅔⅛]|\\d+\\/\\d+)\\s*` +
+        `(g|gr|grs|gramos?|grams?|ml|mls|mililitros?|milliliters?|kg|kgs|kilos?|l|lt|litros?)\\s+` +
+        `(?:(?:de|of)\\s+)?` +
+        `(<mark>)?(${escapedAlts})` +
+        `(<\\/mark>)?`,
+        'gui'
+      );
+
+      const replaceFn = (
+        _m: string,
+        pSpace?: string,
+        openMPre?: string,
+        art?: string,
+        openMNum?: string,
+        _num?: string,
+        _u?: string,
+        openMIng?: string,
+        ingWord?: string,
+        closeM?: string
+      ) => {
+        const space = pSpace || '';
+        const oM = (openMPre || openMNum || openMIng) ? '<mark>' : '';
+        const cM = closeM ? '</mark>' : '';
+        const matchedWord = ingWord || rawName;
+
+        if (isInvariable) {
+          const naturalPhrase = isToTaste
+            ? (lang === 'en' ? `${matchedWord} to taste` : `${matchedWord} al gusto`)
+            : (lang === 'en' ? `a pinch of ${matchedWord}` : `una pizca de ${matchedWord}`);
+          return `${space}${oM}${naturalPhrase}${cM}`;
+        }
+
+        // isSpoonOrCup
+        const formattedAmountAndUnit = formatCulinaryAmount(ing.cantidad, ing.unidad, lang, rawName);
+        const isFem = /^(cucharada|cucharadas|cucharadita|cucharaditas|taza|tazas)$/i.test(ing.unidad || '');
+        const artWord = art ? (ing.cantidad > 1 ? (isFem ? 'las ' : 'los ') : (isFem ? 'la ' : 'el ')) : '';
+        return `${space}${artWord}${oM}${formattedAmountAndUnit} de ${matchedWord}${cM}`;
+      };
+
+      instruccion = instruccion.replace(patternSpuriousMetric, replaceFn);
+      if (consejo) {
+        consejo = consejo.replace(patternSpuriousMetric, replaceFn);
+      }
+    }
+
+    return {
+      ...paso,
+      instruccion,
+      consejo_pro: consejo,
+    };
+  });
+}
 
 /**
  * Server Action Culinario de Adaptación In-Line:
@@ -296,6 +414,8 @@ INSTRUCCIONES CLAVE:
 Reescribe el JSON de esta receta. Adapta los ingredientes y los pasos de preparación basándote estrictamente en el nivel culinario y las intolerancias del usuario.
 - PROHIBIDO PREFIJOS EN INGREDIENTES: El campo 'nombre_limpio' de cada ingrediente debe contener ÚNICAMENTE el nombre culinario limpio (ej: "<mark>Tofu firme prensado</mark>", "<mark>Parte verde de cebollino picado</mark>", "Tomate cherry"). NUNCA incluyas la cantidad ni la unidad métrica dentro de 'nombre_limpio' (NO "600 g de tofu", NO "300 g de tomate").
 - RENDIMIENTO BASE: Todas las cantidades numéricas adaptadas deben calcularse para las ${receta.porciones} porciones base de la receta.
+- FIDELIDAD A UNIDADES DE LA LISTA: Si un ingrediente usa cucharadas o tazas (ej: "1 ½ cucharadas de Polvo de curry"), NO lo conviertas a gramos ("25 g"). Mantén la unidad de cuchara en los pasos y en los ingredientes.
+- PROHIBIDO GRAMOS EN PIZCAS/AL GUSTO: Para ingredientes con unidad "pizca", "al gusto" o rol "invariable" (ej: perejil fresco), NUNCA inventes gramos ("8 g de perejil"). Escribe "una pizca de..." o "...al gusto".
 - ETIQUETADO <mark>: Cuando modifiques un ingrediente o cambies un paso para hacerlo más fácil o apto, envuelve esa palabra o frase modificada en una etiqueta <mark> (ejemplo: 'Añade <mark>la leche de avena</mark>').
 `.trim();
 
@@ -323,9 +443,11 @@ Reescribe el JSON de esta receta. Adapta los ingredientes y los pasos de prepara
 
         const parsedData: AdaptacionCulinaria = JSON.parse(response.text);
 
-        const sanitizedIngredientes = (parsedData.ingredientes || []).map((ing) => {
+        const sanitizedIngredientes = (parsedData.ingredientes || []).map((ing, idx) => {
           let u = (ing.unidad || '').trim();
           const uLower = u.toLowerCase();
+          const origIng = (receta.ingredientes || [])[idx];
+
           if (
             uLower === 'unidad' ||
             uLower === 'unidades' ||
@@ -342,15 +464,33 @@ Reescribe el JSON de esta receta. Adapta los ingredientes y los pasos de prepara
             else if (uLower === 'mililitro' || uLower === 'mililitros') u = 'ml';
           }
 
+          // Si el ingrediente original usaba cucharadas, cucharaditas o pizca y no fue sustituido radicalmente,
+          // preservar la unidad original en lugar de permitir la degradación a gramos fríos
+          const isOrigSpoonOrPinch = /^(cucharada|cucharadas|cucharadita|cucharaditas|tbsp|tsp|taza|tazas|cup|cups|pizca|pizcas|pinch|al gusto|to taste)$/i.test(
+            origIng?.unidad || ''
+          );
+          if (isOrigSpoonOrPinch && (uLower === 'g' || uLower === 'gramos' || uLower === 'ml')) {
+            u = origIng.unidad;
+          }
+
           // Saneado defensivo del nombre para erradicar cualquier cantidad métrica residual
           const cleanNombre = cleanIngredientName(ing.nombre_limpio);
+          const rolCulinario = ing.rol_culinario || origIng?.rol_culinario || null;
 
           return {
             ...ing,
             nombre_limpio: cleanNombre,
             unidad: u,
+            rol_culinario: rolCulinario,
           };
         });
+
+        // Saneado defensivo del texto de los pasos para erradicar cualquier gramo artificial en cucharas o pizcas
+        const sanitizedPasos = sanitizeAdaptedStepsProse(
+          parsedData.pasos || [],
+          sanitizedIngredientes,
+          idioma
+        );
 
         return {
           success: true,
@@ -358,7 +498,7 @@ Reescribe el JSON de esta receta. Adapta los ingredientes y los pasos de prepara
             resumen_adaptacion: parsedData.resumen_adaptacion || (idioma === 'en' ? 'Recipe adapted to your profile.' : 'Receta adaptada a tu perfil.'),
             titulo: parsedData.titulo,
             ingredientes: sanitizedIngredientes,
-            pasos: parsedData.pasos || [],
+            pasos: sanitizedPasos,
           },
           perfilAplicado: {
             nivel_culinario: nivelCulinario,
