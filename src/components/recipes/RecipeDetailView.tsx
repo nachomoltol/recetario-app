@@ -29,6 +29,7 @@ import { FormattedText } from '@/components/ui/FormattedText';
 import { RecipeNutritionAccordion } from './RecipeNutritionAccordion';
 import { RecipeInteractiveSections } from './RecipeInteractiveSections';
 import { CookingDiarySection } from './CookingDiarySection';
+import { PhotoCropModal } from './PhotoCropModal';
 import { updateRecipeAction, updateRecipePhotoAction } from '@/app/actions/recipeUpdate';
 import { saveRecipeAdaptationAction, revertRecipeAdaptationAction } from '@/app/actions/saveRecipeAdaptationAction';
 import { replaceIngredientInText } from '@/lib/culinary/textReplacer';
@@ -98,6 +99,8 @@ export function RecipeDetailView({
     receta?.foto_url || receta?.imagen_portada_url || null
   );
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -471,18 +474,35 @@ export function RecipeDetailView({
     }
   };
 
-  // Captura y subida de fotografía del plato
-  const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Captura y apertura de modal de encuadre interactivo
+  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+    }
+    const tempUrl = URL.createObjectURL(file);
+    setCropImageSrc(tempUrl);
+    setCropModalOpen(true);
+
+    e.target.value = '';
+  };
+
+  const handleCloseCropModal = () => {
+    setCropModalOpen(false);
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+      setCropImageSrc(null);
+    }
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
     setIsUploadingPhoto(true);
 
     try {
-      // 1. Comprimir/redimensionar en cliente
-      const compressedBlob = await compressImageClient(file, 1600, 1600, 0.82);
-
-      // 2. Obtener usuario actual para nombre único (userId-timestamp.jpg)
       const supabase = createClient();
       const {
         data: { user },
@@ -493,10 +513,10 @@ export function RecipeDetailView({
       const fileName = `${userId}-${timestamp}.jpg`;
       const filePath = `${fileName}`;
 
-      // 3. Subir imagen usando supabase.storage.from('recetas_fotos').upload(path, file)
+      // 1. Subir imagen recortada y optimizada al Storage
       const { error: uploadError } = await supabase.storage
         .from('recetas_fotos')
-        .upload(filePath, compressedBlob, {
+        .upload(filePath, croppedBlob, {
           contentType: 'image/jpeg',
           upsert: true,
         });
@@ -504,16 +524,15 @@ export function RecipeDetailView({
       if (uploadError) {
         console.error('Error subiendo imagen a recetas_fotos:', uploadError);
         setToast({ message: `Error al subir la imagen: ${uploadError.message}`, type: 'error' });
-        setIsUploadingPhoto(false);
         return;
       }
 
-      // 4. Obtener URL pública con getPublicUrl()
+      // 2. Obtener URL pública con getPublicUrl()
       const {
         data: { publicUrl },
       } = supabase.storage.from('recetas_fotos').getPublicUrl(filePath);
 
-      // 5. Guardar URL en recetas.foto_url
+      // 3. Guardar URL en recetas.foto_url
       if (!receta?.id) return;
       const resUpdate = await updateRecipePhotoAction({
         recetaId: receta.id,
@@ -522,11 +541,10 @@ export function RecipeDetailView({
 
       if (resUpdate.error) {
         setToast({ message: resUpdate.error, type: 'error' });
-        setIsUploadingPhoto(false);
         return;
       }
 
-      // 6. Actualizar vista local, coronar la receta y mostrar toast
+      // 4. Actualizar vista local, coronar la receta y mostrar toast
       setCurrentFotoUrl(publicUrl);
       setToast({ message: t('recipe_photo_success'), type: 'success' });
       router.refresh();
@@ -535,12 +553,7 @@ export function RecipeDetailView({
       setToast({ message: t('recipe_photo_error'), type: 'error' });
     } finally {
       setIsUploadingPhoto(false);
-      if (cameraInputRef.current) {
-        cameraInputRef.current.value = '';
-      }
-      if (galleryInputRef.current) {
-        galleryInputRef.current.value = '';
-      }
+      handleCloseCropModal();
     }
   };
 
@@ -1095,6 +1108,19 @@ export function RecipeDetailView({
         }}
         ingredientes={currentIngredientes}
         onSave={handleSaveClassification}
+      />
+
+      {/* Modal de Encuadre Interactivo de Fotografía */}
+      <PhotoCropModal
+        isOpen={cropModalOpen}
+        imageSrc={cropImageSrc}
+        onClose={handleCloseCropModal}
+        onCropComplete={handleCropComplete}
+        aspectRatio={16 / 9}
+        outputWidth={1600}
+        outputHeight={900}
+        title="Encuadra tu plato"
+        subtitle="Arrastra con el dedo y usa el zoom para centrar tu creación"
       />
     </>
   );

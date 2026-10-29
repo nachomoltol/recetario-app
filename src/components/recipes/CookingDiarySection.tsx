@@ -22,6 +22,7 @@ import {
   updateDiaryEntryAction,
 } from '@/app/actions/diary';
 import { DiarioCocinados } from '@/types/recipe';
+import { PhotoCropModal } from './PhotoCropModal';
 
 interface CookingDiarySectionProps {
   recetaId: string;
@@ -46,6 +47,8 @@ export function CookingDiarySection({
   const [notas, setNotas] = useState<string>('');
   const [modificaciones, setModificaciones] = useState<string>('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -68,18 +71,40 @@ export function CookingDiarySection({
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFile = e.target.files?.[0];
-    if (!rawFile) {
-      setSelectedImageFile(null);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-      return;
+    if (!rawFile) return;
+
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
     }
+    const tempUrl = URL.createObjectURL(rawFile);
+    setCropImageSrc(tempUrl);
+    setCropModalOpen(true);
 
     e.target.value = '';
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    const url = URL.createObjectURL(rawFile);
-    setSelectedImageFile(rawFile);
-    setPreviewUrl(url);
+  };
+
+  const handleCloseCropModal = () => {
+    setCropModalOpen(false);
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+      setCropImageSrc(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCropComplete = (croppedBlob: Blob) => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    const croppedUrl = URL.createObjectURL(croppedBlob);
+    const croppedFile = new File([croppedBlob], `cocinado_${Date.now()}.jpg`, {
+      type: 'image/jpeg',
+    });
+    setSelectedImageFile(croppedFile);
+    setPreviewUrl(croppedUrl);
+    handleCloseCropModal();
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -564,6 +589,18 @@ export function CookingDiarySection({
           </div>
         </div>
       )}
+      {/* Modal de Encuadre Interactivo de Fotografía del Diario */}
+      <PhotoCropModal
+        isOpen={cropModalOpen}
+        imageSrc={cropImageSrc}
+        onClose={handleCloseCropModal}
+        onCropComplete={handleCropComplete}
+        aspectRatio={16 / 9}
+        outputWidth={1600}
+        outputHeight={900}
+        title="Encuadra tu cocinado"
+        subtitle="Ajusta y centra la foto del plato para tu diario"
+      />
     </section>
   );
 }
