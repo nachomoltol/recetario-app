@@ -26,7 +26,12 @@ import { ServingsScaler } from './ServingsScaler';
 import { ShoppingListMode } from './ShoppingListMode';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { FeatureInfoTrigger } from '@/components/ui/FeatureInfoTrigger';
-import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
+import dynamic from 'next/dynamic';
+
+const ProSubscriptionModal = dynamic(
+  () => import('@/components/subscription/ProSubscriptionModal').then((m) => m.ProSubscriptionModal),
+  { ssr: false }
+);
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { SubstituteOption } from '@/app/actions/suggestSubstitute';
@@ -790,8 +795,8 @@ export function RecipeInteractiveSections({
   ]);
 
   // Renderizado unificado de pasos interactivos
-  const renderStepsList = (isMobile: boolean) => (
-    <ol className={isMobile ? 'space-y-5 pt-1' : 'space-y-7'}>
+  const renderStepsList = () => (
+    <ol className="space-y-5 md:space-y-7 pt-1 md:pt-0">
       {reactivePasos.map((paso, idx) => {
         const heat = formatStepHeat(
           paso.temperatura_celsius,
@@ -925,435 +930,427 @@ export function RecipeInteractiveSections({
   );
 
   return (
-    <div className="pt-2">
+    <div className="pt-2 space-y-6 md:space-y-8">
       {/* ============================================================== */}
       {/* VISTA MÓVIL (< 768px): PESTAÑAS DIRECTAS TIPO APP NATIVA       */}
       {/* ============================================================== */}
-      <div className="block md:hidden space-y-4">
-        {/* Barra superior de pestañas tipo app nativa */}
-        <div className="sticky top-2 z-20 bg-stone-100/95 backdrop-blur-md p-1.5 rounded-2xl border border-[#e7dfd5] shadow-xs flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setMobileTab('ingredients')}
-            className={`flex-1 py-2.5 px-3 rounded-xl font-serif-recipe text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+      <div className="md:hidden sticky top-2 z-20 bg-stone-100/95 backdrop-blur-md p-1.5 rounded-2xl border border-[#e7dfd5] shadow-xs flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setMobileTab('ingredients')}
+          className={`flex-1 py-2.5 px-3 rounded-xl font-serif-recipe text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            mobileTab === 'ingredients'
+              ? 'bg-[#a86224] text-white shadow-xs'
+              : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
+          }`}
+        >
+          <span>🛒</span>
+          <span>{t('recipe_section_ingredients')}</span>
+          <span
+            className={`text-[10px] px-1.5 py-0.2 rounded-full font-sans font-semibold ${
               mobileTab === 'ingredients'
-                ? 'bg-[#a86224] text-white shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
+                ? 'bg-white/20 text-white'
+                : 'bg-stone-200 text-stone-700'
             }`}
           >
-            <span>🛒</span>
-            <span>{t('recipe_section_ingredients')}</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-sans font-semibold ${
-                mobileTab === 'ingredients'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-stone-200 text-stone-700'
-              }`}
-            >
-              {safeIngredientes.length}
-            </span>
-          </button>
+            {safeIngredientes.length}
+          </span>
+        </button>
 
-          <button
-            type="button"
-            onClick={() => setMobileTab('steps')}
-            className={`flex-1 py-2.5 px-3 rounded-xl font-serif-recipe text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+        <button
+          type="button"
+          onClick={() => setMobileTab('steps')}
+          className={`flex-1 py-2.5 px-3 rounded-xl font-serif-recipe text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            mobileTab === 'steps'
+              ? 'bg-[#a86224] text-white shadow-xs'
+              : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
+          }`}
+        >
+          <span>🍳</span>
+          <span>{t('recipe_section_prep')}</span>
+          <span
+            className={`text-[10px] px-1.5 py-0.2 rounded-full font-sans font-semibold ${
               mobileTab === 'steps'
-                ? 'bg-[#a86224] text-white shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
+                ? 'bg-white/20 text-white'
+                : 'bg-stone-200 text-stone-700'
             }`}
           >
-            <span>🍳</span>
-            <span>{t('recipe_section_prep')}</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-sans font-semibold ${
-                mobileTab === 'steps'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-stone-200 text-stone-700'
+            {safePasos.length}
+          </span>
+        </button>
+      </div>
+
+      {/* ============================================================== */}
+      {/* SECCIÓN 1: INGREDIENTES CON ESCALADO Y MODO COMPRA             */}
+      {/* ============================================================== */}
+      <section
+        className={`rounded-3xl bg-white border border-[#e7dfd5] shadow-xs overflow-hidden transition-all ${
+          mobileTab !== 'ingredients' ? 'hidden md:block' : 'block'
+        }`}
+      >
+        {/* Cabecera de Acordeón para Escritorio (>= 768px) */}
+        <button
+          type="button"
+          onClick={() => setIsIngredientsOpen(!isIngredientsOpen)}
+          aria-expanded={isIngredientsOpen}
+          className="hidden md:flex w-full min-h-[58px] p-5 sm:p-6 items-center justify-between gap-4 text-left hover:bg-[#faf7f2] transition-colors cursor-pointer select-none"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] flex items-center justify-center shrink-0">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 leading-none">
+                {t('recipe_section_ingredients')}
+              </h2>
+              <span className="text-xs text-stone-500 font-medium mt-1 block">
+                {servings}{' '}
+                {servings === 1 ? t('recipe_serving_single') : t('recipe_servings_plural')} ·{' '}
+                {safeIngredientes.length} {t('recipe_items')}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
+              {isIngredientsOpen ? t('recipe_collapse') : t('recipe_expand')}
+            </span>
+            <div
+              className={`w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center transition-transform duration-200 ${
+                isIngredientsOpen ? 'rotate-180 text-[#a86224]' : ''
               }`}
             >
-              {safePasos.length}
-            </span>
-          </button>
-        </div>
+              <ChevronDown className="w-4 h-4" />
+            </div>
+          </div>
+        </button>
 
-        {/* Pestaña Móvil 1: Ingredientes (visible de inmediato en la parte superior) */}
-        {mobileTab === 'ingredients' && (
-          <section className="rounded-3xl bg-white border border-[#e7dfd5] p-4 shadow-xs space-y-4 animate-fade-in">
+        {/* Contenido Unificado de Ingredientes */}
+        <div
+          className={`p-4 sm:p-6 md:pt-0 ${
+            !isIngredientsOpen ? 'block md:hidden' : 'block'
+          } space-y-4 md:space-y-5 animate-fade-in ${
+            isIngredientsOpen ? 'md:border-t md:border-[#f4efe6]' : ''
+          }`}
+        >
+          <div className="md:pt-4">
             <ServingsScaler
               baseServings={basePorciones || 2}
               currentServings={servings}
               onServingsChange={setServings}
             />
+          </div>
 
-            <ShoppingListMode
-              recetaId={recetaId}
-              tituloReceta={tituloReceta}
-              ingredientes={scaledIngredientes}
-              onSubstituteChange={handleSubstituteChange}
-              userProfile={userProfile}
-            />
-          </section>
-        )}
-
-        {/* Pestaña Móvil 2: Preparación (visible de inmediato con microcontrol ultra-compacto y botón '?') */}
-        {mobileTab === 'steps' && (
-          <section className="rounded-3xl bg-white border border-[#e7dfd5] p-4 shadow-xs space-y-4 animate-fade-in">
-            {/* Cabecera compacta de preparación con microcontrol 🌱 | 🍳 | 👨‍🍳 y botón (?) de 24px */}
-            <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#f4efe6]">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <h2 className="text-base font-bold font-serif-recipe text-stone-900 leading-none truncate">
-                    {t('recipe_section_prep')}
-                  </h2>
-                  <FeatureInfoTrigger {...levelInfoProps} align="left" />
-                </div>
-                <span className="text-[11px] text-stone-500 font-medium mt-1 block truncate">
-                  {safePasos.length} {t('recipe_steps_count')}
-                  {scaledTiempoCoccion
-                    ? ` · ~${scaledTiempoCoccion} ${t('recipe_min_cooking')}`
-                    : ''}
-                </span>
-              </div>
-
-              {/* Microcontrol segmentado [ 🌱 | 🍳 | 👨‍🍳 ]: LAS 3 OPCIONES bloqueadas con candado PRO para usuarios Free */}
-              <div className="inline-flex items-center p-0.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] shrink-0 shadow-2xs">
-                {/* Principiante (100% PRO) */}
-                <button
-                  type="button"
-                  onClick={() => handleLevelSelect('Principiante')}
-                  className={`relative w-9 h-8 rounded-lg flex items-center justify-center text-sm transition-all cursor-pointer ${
-                    effectiveActiveLevel === 'Principiante'
-                      ? 'bg-[#a86224] text-white shadow-xs'
-                      : !isPro
-                      ? 'text-stone-400 opacity-75 hover:opacity-100 hover:bg-amber-50/70'
-                      : 'text-stone-500 hover:text-stone-900 hover:bg-white/60'
-                  }`}
-                  title={
-                    !isPro
-                      ? 'Principiante (Exclusivo Miga Pro): Guía sensorial paso a paso'
-                      : 'Principiante: Relato guiado paso a paso y pistas sensoriales'
-                  }
-                >
-                  <span>🌱</span>
-                  {!isPro && (
-                    <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 border border-amber-300 text-[#a86224] text-[7px] font-extrabold leading-none flex items-center gap-0.5 shadow-2xs">
-                      <Lock className="w-2 h-2 stroke-[2.5]" />
-                    </span>
-                  )}
-                </button>
-
-                {/* Intermedio (100% PRO) */}
-                <button
-                  type="button"
-                  onClick={() => handleLevelSelect('Intermedio')}
-                  className={`relative w-9 h-8 rounded-lg flex items-center justify-center text-sm transition-all cursor-pointer ${
-                    effectiveActiveLevel === 'Intermedio'
-                      ? 'bg-[#a86224] text-white shadow-xs'
-                      : !isPro
-                      ? 'text-stone-400 opacity-75 hover:opacity-100 hover:bg-amber-50/70'
-                      : 'text-stone-500 hover:text-stone-900 hover:bg-white/60'
-                  }`}
-                  title={
-                    !isPro
-                      ? 'Intermedio (Exclusivo Miga Pro): Técnica equilibrada'
-                      : 'Intermedio: Versión técnica equilibrada estándar'
-                  }
-                >
-                  <span>🍳</span>
-                  {!isPro && (
-                    <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 border border-amber-300 text-[#a86224] text-[7px] font-extrabold leading-none flex items-center gap-0.5 shadow-2xs">
-                      <Lock className="w-2 h-2 stroke-[2.5]" />
-                    </span>
-                  )}
-                </button>
-
-                {/* Avanzado (100% PRO) */}
-                <button
-                  type="button"
-                  onClick={() => handleLevelSelect('Avanzado')}
-                  className={`relative w-9 h-8 rounded-lg flex items-center justify-center text-sm transition-all cursor-pointer ${
-                    effectiveActiveLevel === 'Avanzado'
-                      ? 'bg-[#a86224] text-white shadow-xs'
-                      : !isPro
-                      ? 'text-stone-400 opacity-75 hover:opacity-100 hover:bg-amber-50/70'
-                      : 'text-stone-500 hover:text-stone-900 hover:bg-white/60'
-                  }`}
-                  title={
-                    !isPro
-                      ? 'Avanzado (Exclusivo Miga Pro): Técnicas de restaurante'
-                      : 'Avanzado: Prosa técnica, sintética y profesional'
-                  }
-                >
-                  <span>👨‍🍳</span>
-                  {!isPro && (
-                    <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 border border-amber-300 text-[#a86224] text-[7px] font-extrabold leading-none flex items-center gap-0.5 shadow-2xs">
-                      <Lock className="w-2 h-2 stroke-[2.5]" />
-                    </span>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {renderStepsList(true)}
-          </section>
-        )}
-      </div>
+          <ShoppingListMode
+            recetaId={recetaId}
+            tituloReceta={tituloReceta}
+            ingredientes={scaledIngredientes}
+            onSubstituteChange={handleSubstituteChange}
+            userProfile={userProfile}
+          />
+        </div>
+      </section>
 
       {/* ============================================================== */}
-      {/* VISTA ESCRITORIO / TABLET (>= 768px): DISTRIBUCIÓN AMPLIA       */}
+      {/* SECCIÓN 2: PREPARACIÓN Y PASOS EN MODO COCINA                  */}
       {/* ============================================================== */}
-      <div className="hidden md:block space-y-8">
-        {/* ACORDEÓN 1: INGREDIENTES CON ESCALADO CULINARIO Y MODO COMPRA */}
-        <section className="rounded-3xl bg-white border border-[#e7dfd5] shadow-xs overflow-hidden transition-all">
-          <button
-            type="button"
-            onClick={() => setIsIngredientsOpen(!isIngredientsOpen)}
-            aria-expanded={isIngredientsOpen}
-            className="w-full min-h-[58px] p-5 sm:p-6 flex items-center justify-between gap-4 text-left hover:bg-[#faf7f2] transition-colors cursor-pointer select-none"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] flex items-center justify-center shrink-0">
-                <Layers className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 leading-none">
-                  {t('recipe_section_ingredients')}
-                </h2>
-                <span className="text-xs text-stone-500 font-medium mt-1 block">
-                  {servings}{' '}
-                  {servings === 1 ? t('recipe_serving_single') : t('recipe_servings_plural')} ·{' '}
-                  {safeIngredientes.length} {t('recipe_items')}
+      <section
+        className={`rounded-3xl bg-white border border-[#e7dfd5] shadow-xs overflow-hidden transition-all ${
+          mobileTab !== 'steps' ? 'hidden md:block' : 'block'
+        }`}
+      >
+        {/* Cabecera Móvil (< 768px): Compacta con microcontrol [ 🌱 | 🍳 | 👨‍🍳 ] y botón (?) */}
+        <div className="flex md:hidden items-center justify-between gap-2 p-4 pb-3 border-b border-[#f4efe6]">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-base font-bold font-serif-recipe text-stone-900 leading-none truncate">
+                {t('recipe_section_prep')}
+              </h2>
+              <FeatureInfoTrigger {...levelInfoProps} align="left" />
+            </div>
+            <span className="text-[11px] text-stone-500 font-medium mt-1 block truncate">
+              {safePasos.length} {t('recipe_steps_count')}
+              {scaledTiempoCoccion
+                ? ` · ~${scaledTiempoCoccion} ${t('recipe_min_cooking')}`
+                : ''}
+            </span>
+          </div>
+
+          {/* Microcontrol segmentado [ 🌱 | 🍳 | 👨‍🍳 ] */}
+          <div className="inline-flex items-center p-0.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] shrink-0 shadow-2xs">
+            {/* Principiante */}
+            <button
+              type="button"
+              onClick={() => handleLevelSelect('Principiante')}
+              className={`relative w-9 h-8 rounded-lg flex items-center justify-center text-sm transition-all cursor-pointer ${
+                effectiveActiveLevel === 'Principiante'
+                  ? 'bg-[#a86224] text-white shadow-xs'
+                  : !isPro
+                  ? 'text-stone-400 opacity-75 hover:opacity-100 hover:bg-amber-50/70'
+                  : 'text-stone-500 hover:text-stone-900 hover:bg-white/60'
+              }`}
+              title={
+                !isPro
+                  ? 'Principiante (Exclusivo Miga Pro): Guía sensorial paso a paso'
+                  : 'Principiante: Relato guiado paso a paso y pistas sensoriales'
+              }
+            >
+              <span>🌱</span>
+              {!isPro && (
+                <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 border border-amber-300 text-[#a86224] text-[7px] font-extrabold leading-none flex items-center gap-0.5 shadow-2xs">
+                  <Lock className="w-2 h-2 stroke-[2.5]" />
                 </span>
-              </div>
-            </div>
+              )}
+            </button>
 
-            <div className="flex items-center gap-3">
-              <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
-                {isIngredientsOpen ? t('recipe_collapse') : t('recipe_expand')}
-              </span>
-              <div
-                className={`w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center transition-transform duration-200 ${
-                  isIngredientsOpen ? 'rotate-180 text-[#a86224]' : ''
-                }`}
-              >
-                <ChevronDown className="w-4 h-4" />
-              </div>
-            </div>
-          </button>
-
-          {isIngredientsOpen && (
-            <div className="p-5 sm:p-6 pt-0 border-t border-[#f4efe6] space-y-5 animate-fade-in">
-              <div className="pt-4">
-                <ServingsScaler
-                  baseServings={basePorciones || 2}
-                  currentServings={servings}
-                  onServingsChange={setServings}
-                />
-              </div>
-
-              <ShoppingListMode
-                recetaId={recetaId}
-                tituloReceta={tituloReceta}
-                ingredientes={scaledIngredientes}
-                onSubstituteChange={handleSubstituteChange}
-                userProfile={userProfile}
-              />
-            </div>
-          )}
-        </section>
-
-        {/* ACORDEÓN 2: PREPARACIÓN Y PASOS EN MODO COCINA */}
-        <section className="rounded-3xl bg-white border border-[#e7dfd5] shadow-xs overflow-hidden transition-all">
-          <button
-            type="button"
-            onClick={() => setIsStepsOpen(!isStepsOpen)}
-            aria-expanded={isStepsOpen}
-            className="w-full min-h-[58px] p-5 sm:p-6 flex items-center justify-between gap-4 text-left hover:bg-[#faf7f2] transition-colors cursor-pointer select-none"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 leading-none">
-                  {t('recipe_section_prep')}
-                </h2>
-                <span className="text-xs text-stone-500 font-medium mt-1 block">
-                  {safePasos.length} {t('recipe_steps_count')}
-                  {scaledTiempoCoccion
-                    ? ` · ~${scaledTiempoCoccion} ${t('recipe_min_cooking')}`
-                    : ''}
+            {/* Intermedio */}
+            <button
+              type="button"
+              onClick={() => handleLevelSelect('Intermedio')}
+              className={`relative w-9 h-8 rounded-lg flex items-center justify-center text-sm transition-all cursor-pointer ${
+                effectiveActiveLevel === 'Intermedio'
+                  ? 'bg-[#a86224] text-white shadow-xs'
+                  : !isPro
+                  ? 'text-stone-400 opacity-75 hover:opacity-100 hover:bg-amber-50/70'
+                  : 'text-stone-500 hover:text-stone-900 hover:bg-white/60'
+              }`}
+              title={
+                !isPro
+                  ? 'Intermedio (Exclusivo Miga Pro): Técnica equilibrada'
+                  : 'Intermedio: Versión técnica equilibrada estándar'
+              }
+            >
+              <span>🍳</span>
+              {!isPro && (
+                <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 border border-amber-300 text-[#a86224] text-[7px] font-extrabold leading-none flex items-center gap-0.5 shadow-2xs">
+                  <Lock className="w-2 h-2 stroke-[2.5]" />
                 </span>
-              </div>
-            </div>
+              )}
+            </button>
 
-            <div className="flex items-center gap-3">
-              <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
-                {isStepsOpen ? t('recipe_collapse') : t('recipe_expand')}
+            {/* Avanzado */}
+            <button
+              type="button"
+              onClick={() => handleLevelSelect('Avanzado')}
+              className={`relative w-9 h-8 rounded-lg flex items-center justify-center text-sm transition-all cursor-pointer ${
+                effectiveActiveLevel === 'Avanzado'
+                  ? 'bg-[#a86224] text-white shadow-xs'
+                  : !isPro
+                  ? 'text-stone-400 opacity-75 hover:opacity-100 hover:bg-amber-50/70'
+                  : 'text-stone-500 hover:text-stone-900 hover:bg-white/60'
+              }`}
+              title={
+                !isPro
+                  ? 'Avanzado (Exclusivo Miga Pro): Técnicas de restaurante'
+                  : 'Avanzado: Prosa técnica, sintética y profesional'
+              }
+            >
+              <span>👨‍🍳</span>
+              {!isPro && (
+                <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 border border-amber-300 text-[#a86224] text-[7px] font-extrabold leading-none flex items-center gap-0.5 shadow-2xs">
+                  <Lock className="w-2 h-2 stroke-[2.5]" />
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Cabecera de Acordeón para Escritorio (>= 768px) */}
+        <button
+          type="button"
+          onClick={() => setIsStepsOpen(!isStepsOpen)}
+          aria-expanded={isStepsOpen}
+          className="hidden md:flex w-full min-h-[58px] p-5 sm:p-6 items-center justify-between gap-4 text-left hover:bg-[#faf7f2] transition-colors cursor-pointer select-none"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 leading-none">
+                {t('recipe_section_prep')}
+              </h2>
+              <span className="text-xs text-stone-500 font-medium mt-1 block">
+                {safePasos.length} {t('recipe_steps_count')}
+                {scaledTiempoCoccion
+                  ? ` · ~${scaledTiempoCoccion} ${t('recipe_min_cooking')}`
+                  : ''}
               </span>
-              <div
-                className={`w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center transition-transform duration-200 ${
-                  isStepsOpen ? 'rotate-180 text-[#a86224]' : ''
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
+              {isStepsOpen ? t('recipe_collapse') : t('recipe_expand')}
+            </span>
+            <div
+              className={`w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center transition-transform duration-200 ${
+                isStepsOpen ? 'rotate-180 text-[#a86224]' : ''
+              }`}
+            >
+              <ChevronDown className="w-4 h-4" />
+            </div>
+          </div>
+        </button>
+
+        {/* Contenido Unificado de Preparación */}
+        <div
+          className={`p-4 sm:p-6 md:pt-4 ${
+            !isStepsOpen ? 'block md:hidden' : 'block'
+          } space-y-4 md:space-y-6 animate-fade-in ${
+            isStepsOpen ? 'md:border-t md:border-[#f4efe6]' : ''
+          }`}
+        >
+          {/* Selector de Nivel Culinario Reactivo en Escritorio con Tooltip flotante (?) */}
+          <div className="hidden md:flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5]">
+            <div className="flex items-center gap-2 flex-wrap">
+              <ChefHat className="w-4 h-4 text-[#a86224] shrink-0" />
+              <span className="text-xs sm:text-sm font-semibold font-serif-recipe text-stone-900">
+                {language === 'en' ? 'Culinary Level' : 'Nivel de Cocinado'}
+              </span>
+              <FeatureInfoTrigger {...levelInfoProps} align="left" />
+              <span className="text-[11px] text-stone-500 hidden lg:inline">
+                {!isPro
+                  ? language === 'en'
+                    ? '· Base video extraction (Unlock levels with Miga Pro)'
+                    : '· Extracción base del vídeo (Desbloquea los 3 niveles con Miga Pro)'
+                  : effectiveActiveLevel === 'Principiante'
+                  ? language === 'en'
+                    ? '· Expanded step-by-step guide & sensory cues'
+                    : '· Relato expandido paso a paso, guía sensorial y seguridad térmica'
+                  : effectiveActiveLevel === 'Intermedio'
+                  ? language === 'en'
+                    ? '· Standard balanced technical prose'
+                    : '· Versión técnica equilibrada estándar'
+                  : language === 'en'
+                  ? '· Synthetic restaurant-grade phrasing'
+                  : '· Versión sintética y técnica de restaurante'}
+              </span>
+            </div>
+
+            {/* Segmented Control de escritorio: LAS 3 OPCIONES bloqueadas con candado PRO para usuarios Free */}
+            <div className="inline-flex items-center p-1 rounded-xl bg-white border border-[#e7dfd5] shadow-2xs self-start sm:self-auto">
+              {/* Principiante (100% PRO) */}
+              <button
+                type="button"
+                onClick={() => handleLevelSelect('Principiante')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                  effectiveActiveLevel === 'Principiante'
+                    ? 'bg-[#a86224] text-white shadow-xs font-semibold'
+                    : !isPro
+                    ? 'text-stone-400 opacity-80 hover:opacity-100 hover:bg-amber-50/60'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-[#faf7f2]'
                 }`}
+                title={
+                  !isPro
+                    ? language === 'en'
+                      ? 'Beginner (Miga Pro): Step-by-step sensory guide'
+                      : 'Principiante (Miga Pro): Guía sensorial paso a paso'
+                    : language === 'en'
+                    ? 'Beginner: Expanded step-by-step guide and sensory cues'
+                    : 'Principiante: Relato expandido paso a paso y guía sensorial'
+                }
               >
-                <ChevronDown className="w-4 h-4" />
-              </div>
-            </div>
-          </button>
-
-          {isStepsOpen && (
-            <div className="p-5 sm:p-6 pt-4 border-t border-[#f4efe6] animate-fade-in space-y-6">
-              {/* Selector de Nivel Culinario Reactivo en Escritorio con Tooltip flotante (?) */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5]">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <ChefHat className="w-4 h-4 text-[#a86224] shrink-0" />
-                  <span className="text-xs sm:text-sm font-semibold font-serif-recipe text-stone-900">
-                    {language === 'en' ? 'Culinary Level' : 'Nivel de Cocinado'}
+                <span>🌱</span>
+                <span>{language === 'en' ? 'Beginner' : 'Principiante'}</span>
+                {!isPro && (
+                  <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-[#a86224] border border-amber-300/80 text-[9px] font-extrabold uppercase">
+                    <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
+                    <span>PRO</span>
                   </span>
-                  <FeatureInfoTrigger {...levelInfoProps} align="left" />
-                  <span className="text-[11px] text-stone-500 hidden lg:inline">
-                    {!isPro
-                      ? language === 'en'
-                        ? '· Base video extraction (Unlock levels with Miga Pro)'
-                        : '· Extracción base del vídeo (Desbloquea los 3 niveles con Miga Pro)'
-                      : effectiveActiveLevel === 'Principiante'
-                      ? language === 'en'
-                        ? '· Expanded step-by-step guide & sensory cues'
-                        : '· Relato expandido paso a paso, guía sensorial y seguridad térmica'
-                      : effectiveActiveLevel === 'Intermedio'
-                      ? language === 'en'
-                        ? '· Standard balanced technical prose'
-                        : '· Versión técnica equilibrada estándar'
-                      : language === 'en'
-                      ? '· Synthetic restaurant-grade phrasing'
-                      : '· Versión sintética y técnica de restaurante'}
+                )}
+              </button>
+
+              {/* Intermedio (100% PRO) */}
+              <button
+                type="button"
+                onClick={() => handleLevelSelect('Intermedio')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                  effectiveActiveLevel === 'Intermedio'
+                    ? 'bg-[#a86224] text-white shadow-xs font-semibold'
+                    : !isPro
+                    ? 'text-stone-400 opacity-80 hover:opacity-100 hover:bg-amber-50/60'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-[#faf7f2]'
+                }`}
+                title={
+                  !isPro
+                    ? language === 'en'
+                      ? 'Intermediate (Miga Pro): Balanced technical prose'
+                      : 'Intermedio (Miga Pro): Versión técnica equilibrada'
+                    : language === 'en'
+                    ? 'Intermediate: Balanced standard technical version'
+                    : 'Intermedio: Versión técnica equilibrada estándar'
+                }
+              >
+                <span>🍳</span>
+                <span>{language === 'en' ? 'Medium' : 'Intermedio'}</span>
+                {!isPro && (
+                  <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-[#a86224] border border-amber-300/80 text-[9px] font-extrabold uppercase">
+                    <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
+                    <span>PRO</span>
                   </span>
-                </div>
+                )}
+              </button>
 
-                {/* Segmented Control de escritorio: LAS 3 OPCIONES bloqueadas con candado PRO para usuarios Free */}
-                <div className="inline-flex items-center p-1 rounded-xl bg-white border border-[#e7dfd5] shadow-2xs self-start sm:self-auto">
-                  {/* Principiante (100% PRO) */}
-                  <button
-                    type="button"
-                    onClick={() => handleLevelSelect('Principiante')}
-                    className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
-                      effectiveActiveLevel === 'Principiante'
-                        ? 'bg-[#a86224] text-white shadow-xs font-semibold'
-                        : !isPro
-                        ? 'text-stone-400 opacity-80 hover:opacity-100 hover:bg-amber-50/60'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-[#faf7f2]'
-                    }`}
-                    title={
-                      !isPro
-                        ? language === 'en'
-                          ? 'Beginner (Miga Pro): Step-by-step sensory guide'
-                          : 'Principiante (Miga Pro): Guía sensorial paso a paso'
-                        : language === 'en'
-                        ? 'Beginner: Expanded step-by-step guide and sensory cues'
-                        : 'Principiante: Relato expandido paso a paso y guía sensorial'
-                    }
-                  >
-                    <span>🌱</span>
-                    <span>{language === 'en' ? 'Beginner' : 'Principiante'}</span>
-                    {!isPro && (
-                      <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-[#a86224] border border-amber-300/80 text-[9px] font-extrabold uppercase">
-                        <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
-                        <span>PRO</span>
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Intermedio (100% PRO) */}
-                  <button
-                    type="button"
-                    onClick={() => handleLevelSelect('Intermedio')}
-                    className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
-                      effectiveActiveLevel === 'Intermedio'
-                        ? 'bg-[#a86224] text-white shadow-xs font-semibold'
-                        : !isPro
-                        ? 'text-stone-400 opacity-80 hover:opacity-100 hover:bg-amber-50/60'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-[#faf7f2]'
-                    }`}
-                    title={
-                      !isPro
-                        ? language === 'en'
-                          ? 'Intermediate (Miga Pro): Balanced technical prose'
-                          : 'Intermedio (Miga Pro): Versión técnica equilibrada'
-                        : language === 'en'
-                        ? 'Intermediate: Balanced standard technical version'
-                        : 'Intermedio: Versión técnica equilibrada estándar'
-                    }
-                  >
-                    <span>🍳</span>
-                    <span>{language === 'en' ? 'Medium' : 'Intermedio'}</span>
-                    {!isPro && (
-                      <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-[#a86224] border border-amber-300/80 text-[9px] font-extrabold uppercase">
-                        <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
-                        <span>PRO</span>
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Avanzado (100% PRO) */}
-                  <button
-                    type="button"
-                    onClick={() => handleLevelSelect('Avanzado')}
-                    className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
-                      effectiveActiveLevel === 'Avanzado'
-                        ? 'bg-[#a86224] text-white shadow-xs font-semibold'
-                        : !isPro
-                        ? 'text-stone-400 opacity-80 hover:opacity-100 hover:bg-amber-50/60'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-[#faf7f2]'
-                    }`}
-                    title={
-                      !isPro
-                        ? language === 'en'
-                          ? 'Advanced (Miga Pro): Restaurant culinary techniques'
-                          : 'Avanzado (Miga Pro): Técnicas de restaurante'
-                        : language === 'en'
-                        ? 'Advanced: Concise high culinary phrasing'
-                        : 'Avanzado: Prosa sintética y alta cocina'
-                    }
-                  >
-                    <span>👨‍🍳</span>
-                    <span>{language === 'en' ? 'Advanced' : 'Avanzado'}</span>
-                    {!isPro && (
-                      <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-[#a86224] border border-amber-300/80 text-[9px] font-extrabold uppercase">
-                        <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
-                        <span>PRO</span>
-                      </span>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {renderStepsList(false)}
+              {/* Avanzado (100% PRO) */}
+              <button
+                type="button"
+                onClick={() => handleLevelSelect('Avanzado')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                  effectiveActiveLevel === 'Avanzado'
+                    ? 'bg-[#a86224] text-white shadow-xs font-semibold'
+                    : !isPro
+                    ? 'text-stone-400 opacity-80 hover:opacity-100 hover:bg-amber-50/60'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-[#faf7f2]'
+                }`}
+                title={
+                  !isPro
+                    ? language === 'en'
+                      ? 'Advanced (Miga Pro): Restaurant culinary techniques'
+                      : 'Avanzado (Miga Pro): Técnicas de restaurante'
+                    : language === 'en'
+                    ? 'Advanced: Concise high culinary phrasing'
+                    : 'Avanzado: Prosa sintética y alta cocina'
+                }
+              >
+                <span>👨‍🍳</span>
+                <span>{language === 'en' ? 'Advanced' : 'Avanzado'}</span>
+                {!isPro && (
+                  <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-[#a86224] border border-amber-300/80 text-[9px] font-extrabold uppercase">
+                    <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
+                    <span>PRO</span>
+                  </span>
+                )}
+              </button>
             </div>
-          )}
-        </section>
-      </div>
+          </div>
+
+          {renderStepsList()}
+        </div>
+      </section>
 
       {/* Modal de Suscripción Miga Pro al pulsar cualquiera de los 3 niveles bloqueados */}
-      <ProSubscriptionModal
-        isOpen={showProLevelModal}
-        onClose={() => setShowProLevelModal(false)}
-        context="feature_locked"
-        highlightCulinaryLevels={true}
-        title={
-          language === 'en'
-            ? 'Unlock All 3 Culinary Levels with Miga Pro'
-            : 'Desbloquea los 3 Niveles Culinarios con Miga Pro'
-        }
-        description={
-          language === 'en'
-            ? 'Subscribe to Miga Pro to switch in 0 ms between Beginner (expanded step-by-step sensory guide & thermal safety), Intermediate (balanced technique), and Advanced (restaurant-grade prose).'
-            : 'Suscríbete a Miga Pro para conmutar en 0 ms entre Principiante (relato guiado paso a paso, guía sensorial y alertas térmicas), Intermedio (técnica equilibrada) y Avanzado (técnicas ejecutivas de restaurante).'
-        }
-        onVipSuccess={() => {
-          setShowProLevelModal(false);
-        }}
-      />
+      {showProLevelModal && (
+        <ProSubscriptionModal
+          isOpen={showProLevelModal}
+          onClose={() => setShowProLevelModal(false)}
+          context="feature_locked"
+          highlightCulinaryLevels={true}
+          title={
+            language === 'en'
+              ? 'Unlock All 3 Culinary Levels with Miga Pro'
+              : 'Desbloquea los 3 Niveles Culinarios con Miga Pro'
+          }
+          description={
+            language === 'en'
+              ? 'Subscribe to Miga Pro to switch in 0 ms between Beginner (expanded step-by-step sensory guide & thermal safety), Intermediate (balanced technique), and Advanced (restaurant-grade prose).'
+              : 'Suscríbete a Miga Pro para conmutar en 0 ms entre Principiante (relato guiado paso a paso, guía sensorial y alertas térmicas), Intermedio (técnica equilibrada) y Avanzado (técnicas ejecutivas de restaurante).'
+          }
+          onVipSuccess={() => {
+            setShowProLevelModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

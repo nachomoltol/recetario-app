@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
   Camera,
@@ -22,7 +23,10 @@ import {
   updateDiaryEntryAction,
 } from '@/app/actions/diary';
 import { DiarioCocinados } from '@/types/recipe';
-import { PhotoCropModal } from './PhotoCropModal';
+const PhotoCropModal = dynamic(
+  () => import('./PhotoCropModal').then((m) => m.PhotoCropModal),
+  { ssr: false }
+);
 
 interface CookingDiarySectionProps {
   recetaId: string;
@@ -590,17 +594,19 @@ export function CookingDiarySection({
         </div>
       )}
       {/* Modal de Encuadre Interactivo de Fotografía del Diario */}
-      <PhotoCropModal
-        isOpen={cropModalOpen}
-        imageSrc={cropImageSrc}
-        onClose={handleCloseCropModal}
-        onCropComplete={handleCropComplete}
-        aspectRatio={16 / 9}
-        outputWidth={1600}
-        outputHeight={900}
-        title="Encuadra tu cocinado"
-        subtitle="Ajusta y centra la foto del plato para tu diario"
-      />
+      {cropModalOpen && cropImageSrc && (
+        <PhotoCropModal
+          isOpen={cropModalOpen}
+          imageSrc={cropImageSrc}
+          onClose={handleCloseCropModal}
+          onCropComplete={handleCropComplete}
+          aspectRatio={16 / 9}
+          outputWidth={1600}
+          outputHeight={900}
+          title="Encuadra tu cocinado"
+          subtitle="Ajusta y centra la foto del plato para tu diario"
+        />
+      )}
     </section>
   );
 }

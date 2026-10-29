@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
   Pencil,
@@ -20,16 +21,25 @@ import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe
 import { MomentoDia, RolPlato } from '@/types/database';
 import { RecipeWakeLock } from './RecipeWakeLock';
 import { RecipeRatingHeader } from './RecipeRatingHeader';
-import { RecipeCategorizeDrawer } from './RecipeCategorizeDrawer';
+const RecipeCategorizeDrawer = dynamic(
+  () => import('./RecipeCategorizeDrawer').then((m) => m.RecipeCategorizeDrawer),
+  { ssr: false }
+);
 import { RecipeClassificationRow } from './RecipeClassificationRow';
 import { updateRecipeClassificationAction } from '@/app/actions/recipeClassification';
-import { RecipeAdaptationSection } from './RecipeAdaptationSection';
+const RecipeAdaptationSection = dynamic(
+  () => import('./RecipeAdaptationSection').then((m) => m.RecipeAdaptationSection),
+  { ssr: false }
+);
 import { AdaptacionCulinaria } from '@/app/actions/adaptRecipeAction';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { RecipeNutritionAccordion } from './RecipeNutritionAccordion';
 import { RecipeInteractiveSections } from './RecipeInteractiveSections';
 import { CookingDiarySection } from './CookingDiarySection';
-import { PhotoCropModal } from './PhotoCropModal';
+const PhotoCropModal = dynamic(
+  () => import('./PhotoCropModal').then((m) => m.PhotoCropModal),
+  { ssr: false }
+);
 import { updateRecipeAction, updateRecipePhotoAction } from '@/app/actions/recipeUpdate';
 import { saveRecipeAdaptationAction, revertRecipeAdaptationAction } from '@/app/actions/saveRecipeAdaptationAction';
 import { replaceIngredientInText } from '@/lib/culinary/textReplacer';
@@ -1111,17 +1121,19 @@ export function RecipeDetailView({
       />
 
       {/* Modal de Encuadre Interactivo de Fotografía */}
-      <PhotoCropModal
-        isOpen={cropModalOpen}
-        imageSrc={cropImageSrc}
-        onClose={handleCloseCropModal}
-        onCropComplete={handleCropComplete}
-        aspectRatio={16 / 9}
-        outputWidth={1600}
-        outputHeight={900}
-        title="Encuadra tu plato"
-        subtitle="Arrastra con el dedo y usa el zoom para centrar tu creación"
-      />
+      {cropModalOpen && cropImageSrc && (
+        <PhotoCropModal
+          isOpen={cropModalOpen}
+          imageSrc={cropImageSrc}
+          onClose={handleCloseCropModal}
+          onCropComplete={handleCropComplete}
+          aspectRatio={16 / 9}
+          outputWidth={1600}
+          outputHeight={900}
+          title="Encuadra tu plato"
+          subtitle="Arrastra con el dedo y usa el zoom para centrar tu creación"
+        />
+      )}
     </>
   );
 }

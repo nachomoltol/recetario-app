@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Check,
   RotateCcw,
@@ -18,6 +19,11 @@ import { formatCulinaryAmount, pluralizeCulinaryNoun } from '@/lib/nutrition/for
 import { useLanguageStore } from '@/stores/useLanguageStore';
 
 import { SubstituteOption } from '@/app/actions/suggestSubstitute';
+
+const ProSubscriptionModal = dynamic(
+  () => import('@/components/subscription/ProSubscriptionModal').then((m) => m.ProSubscriptionModal),
+  { ssr: false }
+);
 
 export type ExtendedIngredient = RecetaIngrediente & {
   cantidad_escalada?: number;
@@ -50,6 +56,7 @@ export function ShoppingListMode({
   const [isShoppingMode, setIsShoppingMode] = useState(false);
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
+  const [showProModal, setShowProModal] = useState(false);
 
   // Clave de persistencia en localStorage para sobrevivir a apagados de pantalla
   const storageKey = `recetario_checklist_${recetaId}`;
@@ -246,6 +253,7 @@ export function ShoppingListMode({
                           scaledGramos={ing.gramos_escalados}
                           onSubstituteChange={onSubstituteChange}
                           userProfile={userProfile}
+                          onRequirePro={() => setShowProModal(true)}
                         />
                       ))}
                     </div>
@@ -265,6 +273,7 @@ export function ShoppingListMode({
                     scaledGramos={ing.gramos_escalados}
                     onSubstituteChange={onSubstituteChange}
                     userProfile={userProfile}
+                    onRequirePro={() => setShowProModal(true)}
                   />
                 ))}
               </div>
@@ -407,6 +416,20 @@ export function ShoppingListMode({
             })}
           </div>
         </div>
+      )}
+
+      {/* Modal centralizado de suscripción PRO para sustituciones */}
+      {showProModal && (
+        <ProSubscriptionModal
+          isOpen={showProModal}
+          onClose={() => setShowProModal(false)}
+          title={language === 'en' ? 'Smart Substitutions PRO' : 'Sustituciones Inteligentes PRO'}
+          description={
+            language === 'en'
+              ? 'Unlock Miga PRO to substitute ingredients with clinical alternatives tailored to your health profile'
+              : 'Desbloquea Miga PRO para sustituir ingredientes con alternativas clínicas adaptadas a tu perfil de salud'
+          }
+        />
       )}
     </div>
   );

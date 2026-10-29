@@ -22,7 +22,6 @@ import { RecetaIngrediente } from '@/types/recipe';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { formatCulinaryAmount, pluralizeCulinaryNoun, cleanIngredientName } from '@/lib/nutrition/formatQuantity';
-import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
 import { useProfileStore } from '@/stores/useProfileStore';
 
 interface IngredientRowProps {
@@ -40,6 +39,7 @@ interface IngredientRowProps {
     adaptedBaseName?: string,
     substituteOption?: SubstituteOption | null
   ) => void;
+  onRequirePro?: () => void;
 }
 
 export function IngredientRow({
@@ -49,12 +49,12 @@ export function IngredientRow({
   scaledGramos,
   userProfile,
   onSubstituteChange,
+  onRequirePro,
 }: IngredientRowProps) {
   const [options, setOptions] = useState<SubstituteOption[] | null>(null);
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
   const [appliedOption, setAppliedOption] = useState<SubstituteOption | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [showProModal, setShowProModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const technicalCardRef = useRef<HTMLDivElement>(null);
@@ -111,7 +111,7 @@ export function IngredientRow({
 
   const handleOpenDrawer = () => {
     if (!isPro) {
-      setShowProModal(true);
+      onRequirePro?.();
       return;
     }
 
@@ -466,14 +466,6 @@ export function IngredientRow({
       </Drawer.Root>
 
       {/* Modal de suscripción PRO al hacer clic en sustitución individual siendo Free */}
-      {showProModal && (
-        <ProSubscriptionModal
-          isOpen={showProModal}
-          onClose={() => setShowProModal(false)}
-          title="Sustituciones Inteligentes PRO"
-          description="Desbloquea Miga PRO para sustituir ingredientes con alternativas clínicas adaptadas a tu perfil de salud"
-        />
-      )}
     </div>
   );
 }
