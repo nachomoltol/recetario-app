@@ -419,19 +419,7 @@ export function RecipeInteractiveSections({
   const [isStepsOpen, setIsStepsOpen] = useState(true);
   const [substitutions, setSubstitutions] = useState<Record<string, string>>({});
   const [showProLevelModal, setShowProLevelModal] = useState(false);
-  const [isVipUpgraded, setIsVipUpgraded] = useState(false);
   const prevRecetaIdRef = useRef(recetaId);
-
-  // Detectar si el usuario activó código VIP en cliente (localStorage)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        if (localStorage.getItem('recetario_vip_active') === 'true') {
-          setIsVipUpgraded(true);
-        }
-      } catch {}
-    }
-  }, []);
 
   // Sincronizar comensales: preservar la selección activa del usuario al cambiar de modo (adaptado vs original)
   useEffect(() => {
@@ -512,11 +500,14 @@ export function RecipeInteractiveSections({
   // MONETIZACIÓN Y COMPORTAMIENTO POR NIVEL CULINARIO (100% PRO)
   // ==============================================================
   const profileFromStore = useProfileStore((s) => s.profile);
-  const propIsPro =
-    (userProfile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
-  const storeIsPro =
-    (profileFromStore?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
-  const isPro = propIsPro || storeIsPro || isVipUpgraded;
+  const resolvedPlan = (
+    profileFromStore?.plan_suscripcion ||
+    userProfile?.plan_suscripcion ||
+    'gratis'
+  )
+    .trim()
+    .toLowerCase();
+  const isPro = resolvedPlan === 'pro';
 
   // Usuario PRO: El microselector arranca seleccionado en el nivel guardado en su perfil.
   // Usuario FREE: Los 3 niveles están bloqueados (effectiveActiveLevel = null) y lee el texto base neutro de extracción.
@@ -1304,7 +1295,6 @@ export function RecipeInteractiveSections({
             : 'Suscríbete a Miga Pro para conmutar en 0 ms entre Principiante (relato guiado paso a paso, guía sensorial y alertas térmicas), Intermedio (técnica equilibrada) y Avanzado (técnicas ejecutivas de restaurante).'
         }
         onVipSuccess={() => {
-          setIsVipUpgraded(true);
           setShowProLevelModal(false);
         }}
       />

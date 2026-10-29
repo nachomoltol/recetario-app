@@ -89,25 +89,18 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
 
-  const [isVipUpgraded, setIsVipUpgraded] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
   const [isClinicalDrawerOpen, setIsClinicalDrawerOpen] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        if (localStorage.getItem('recetario_vip_active') === 'true') {
-          setIsVipUpgraded(true);
-        }
-      } catch {}
-    }
-  }, []);
-
-  const isPro =
-    (initialProfile.plan_suscripcion || '').trim().toLowerCase() === 'pro' ||
-    (currentStoreProfile?.plan_suscripcion || '').trim().toLowerCase() === 'pro' ||
-    isVipUpgraded;
+  const resolvedPlan = (
+    currentStoreProfile?.plan_suscripcion ||
+    initialProfile.plan_suscripcion ||
+    'gratis'
+  )
+    .trim()
+    .toLowerCase();
+  const isPro = resolvedPlan === 'pro';
 
   const [nombre, setNombre] = useState(
     initialProfile.nombre || currentStoreProfile?.nombre || ''
@@ -1092,7 +1085,6 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
         context="feature_locked"
         highlightCulinaryLevels={true}
         onVipSuccess={() => {
-          setIsVipUpgraded(true);
           setShowProModal(false);
         }}
       />

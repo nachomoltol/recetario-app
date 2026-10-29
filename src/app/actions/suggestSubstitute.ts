@@ -157,39 +157,50 @@ export async function suggestSubstituteAction({
       data: { user },
     } = await supabase.auth.getUser();
 
-    let clinicalContext = '';
-    if (user) {
-      const { data: perfil } = await supabase
-        .from('usuarios')
-        .select('alergenos, preferencias_dieteticas, nivel_culinario')
-        .eq('id', user.id)
-        .single();
+    if (!user) {
+      return {
+        success: false,
+        error: 'PRO_SUBSCRIPTION_REQUIRED',
+      };
+    }
 
-      if (perfil) {
-        const alergenosStr =
-          perfil.alergenos && perfil.alergenos.length > 0
-            ? perfil.alergenos.join(', ')
-            : '';
-        const preferencias = perfil.preferencias_dieteticas || [];
-        const alergenos = perfil.alergenos || [];
-        const nivelStr = perfil.nivel_culinario || 'medio';
+    const { data: perfil, error: errPerfil } = await supabase
+      .from('usuarios')
+      .select('plan_suscripcion, alergenos, preferencias_dieteticas, nivel_culinario')
+      .eq('id', user.id)
+      .single();
 
-        const clinicalProfile = getDetailedClinicalProfile({
-          preferencias,
-          alergenos,
-          idioma,
-        });
+    if (errPerfil || !perfil || (perfil?.plan_suscripcion || '').trim().toLowerCase() !== 'pro') {
+      return {
+        success: false,
+        error: 'PRO_SUBSCRIPTION_REQUIRED',
+      };
+    }
 
-        const firewallPrompt = buildClinicalFirewallPrompt(
-          clinicalProfile.exclusionesTotales,
-          idioma,
-          {
-            severidadMaxima: clinicalProfile.severidadMaxima,
-            reglasAvanzadasTexto: clinicalProfile.reglasAvanzadasTexto,
-          }
-        );
+    const alergenosStr =
+      perfil.alergenos && perfil.alergenos.length > 0
+        ? perfil.alergenos.join(', ')
+        : '';
+    const preferencias = perfil.preferencias_dieteticas || [];
+    const alergenos = perfil.alergenos || [];
+    const nivelStr = perfil.nivel_culinario || 'medio';
 
-        clinicalContext = `
+    const clinicalProfile = getDetailedClinicalProfile({
+      preferencias,
+      alergenos,
+      idioma,
+    });
+
+    const firewallPrompt = buildClinicalFirewallPrompt(
+      clinicalProfile.exclusionesTotales,
+      idioma,
+      {
+        severidadMaxima: clinicalProfile.severidadMaxima,
+        reglasAvanzadasTexto: clinicalProfile.reglasAvanzadasTexto,
+      }
+    );
+
+    const clinicalContext = `
 PERFIL CLÍNICO E INTOLERANCIAS DEL USUARIO:
 - Alérgenos e intolerancias médicas estrictas: ${alergenosStr || (idioma === 'en' ? 'None declared' : 'Ninguno declarado')}
 - Preferencias dietéticas / estilo de vida: ${preferencias.length > 0 ? preferencias.join(', ') : (idioma === 'en' ? 'None declared' : 'Ninguna declarada')}
@@ -197,8 +208,6 @@ PERFIL CLÍNICO E INTOLERANCIAS DEL USUARIO:
 ${firewallPrompt ? `\n${firewallPrompt}` : ''}
 
 PROHIBICIÓN ESTRICTA: La IA tiene TERMINANTEMENTE PROHIBIDO sugerir cualquier ingrediente o alternativa que contenga, derive o active las intolerancias, alergias o restricciones del usuario (${clinicalProfile.exclusionesTotales.join(', ')}). Todas las alternativas sugeridas deben ser 100% aptas y seguras para este perfil clínico.`;
-      }
-    }
 
     const ai = getGeminiClient();
     const langName = idioma === 'en' ? 'English' : 'Spanish';

@@ -77,5 +77,12 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     }
   },
 
-  clearProfile: () => set({ profile: null, error: null, isLoading: false }),
+  clearProfile: () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('recetario_vip_active');
+      } catch {}
+    }
+    set({ profile: null, error: null, isLoading: false });
+  },
 }));

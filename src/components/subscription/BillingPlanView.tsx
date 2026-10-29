@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { redeemVipCodeAction, claimRewardCreditAction } from '@/app/actions/subscription';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { useProfileStore } from '@/stores/useProfileStore';
 import { isNativePlatform, showRewardVideoAdFlow } from '@/lib/admob/admobService';
 
 export function BillingHeaderTitle() {
@@ -45,6 +46,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
   const searchParams = useSearchParams();
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
+  const profileFromStore = useProfileStore((s) => s.profile);
 
   // Detección de límite mensual alcanzado (por prop o por query param ?limit=reached)
   const isLimitReached = initialLimitReached || searchParams.get('limit') === 'reached';
@@ -56,7 +58,9 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
   // Estados de checkout y VIP
   const [vipCode, setVipCode] = useState('');
   const [isVipValidating, setIsVipValidating] = useState(false);
-  const [vipSuccess, setVipSuccess] = useState(false);
+  const [vipSuccess, setVipSuccess] = useState(
+    (profileFromStore?.plan_suscripcion || '').trim().toLowerCase() === 'pro'
+  );
   const [vipError, setVipError] = useState<string | null>(null);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -69,15 +73,13 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
 
   useEffect(() => {
     setIsNative(isNativePlatform());
-
-    // Leer estado VIP inicial de localStorage si existiese
-    if (typeof window !== 'undefined') {
-      const storedVip = localStorage.getItem('recetario_vip_active');
-      if (storedVip === 'true') {
-        setVipSuccess(true);
-      }
-    }
   }, []);
+
+  useEffect(() => {
+    setVipSuccess(
+      (profileFromStore?.plan_suscripcion || '').trim().toLowerCase() === 'pro'
+    );
+  }, [profileFromStore?.plan_suscripcion]);
 
   const handleRedeemVip = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,15 +101,18 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
         const isReset = cleanCode === 'RESETFREE' || cleanCode === 'FREE' || cleanCode === 'FREE5' || cleanCode === 'RESET0';
         if (isReset) {
           setVipSuccess(false);
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('recetario_vip_active');
+          const curr = useProfileStore.getState().profile;
+          if (curr) {
+            useProfileStore.getState().setProfile({ ...curr, plan_suscripcion: 'gratis' });
           }
           router.refresh();
         } else {
           setVipSuccess(true);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('recetario_vip_active', 'true');
+          const curr = useProfileStore.getState().profile;
+          if (curr) {
+            useProfileStore.getState().setProfile({ ...curr, plan_suscripcion: 'pro' });
           }
+          router.refresh();
         }
       } else {
         setVipError(

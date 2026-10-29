@@ -59,6 +59,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       await supabase.auth.signOut();
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('recetario_vip_active');
+        } catch {}
+      }
       set({ user: null, session: null, isLoading: false });
     } catch (error) {
       console.error('Error en signOut:', error);

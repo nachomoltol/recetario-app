@@ -48,11 +48,14 @@ export function ProSubscriptionModal({
   const router = useRouter();
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
+  const profileFromStore = useProfileStore((s) => s.profile);
 
   const [isNative, setIsNative] = useState(false);
   const [vipCode, setVipCode] = useState('');
   const [isVipValidating, setIsVipValidating] = useState(false);
-  const [vipSuccess, setVipSuccess] = useState(false);
+  const [vipSuccess, setVipSuccess] = useState(
+    (profileFromStore?.plan_suscripcion || '').trim().toLowerCase() === 'pro'
+  );
   const [vipError, setVipError] = useState<string | null>(null);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -65,14 +68,13 @@ export function ProSubscriptionModal({
 
   useEffect(() => {
     setIsNative(isNativePlatform());
-
-    if (typeof window !== 'undefined') {
-      const storedVip = localStorage.getItem('recetario_vip_active');
-      if (storedVip === 'true') {
-        setVipSuccess(true);
-      }
-    }
   }, []);
+
+  useEffect(() => {
+    setVipSuccess(
+      (profileFromStore?.plan_suscripcion || '').trim().toLowerCase() === 'pro'
+    );
+  }, [profileFromStore?.plan_suscripcion]);
 
   // Manejar tecla Escape para cerrar
   useEffect(() => {
@@ -111,9 +113,6 @@ export function ProSubscriptionModal({
         const isReset = cleanCode === 'RESETFREE' || cleanCode === 'FREE' || cleanCode === 'FREE5' || cleanCode === 'RESET0';
         if (isReset) {
           setVipSuccess(false);
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('recetario_vip_active');
-          }
           const curr = useProfileStore.getState().profile;
           if (curr) {
             useProfileStore.getState().setProfile({ ...curr, plan_suscripcion: 'gratis' });
@@ -121,9 +120,6 @@ export function ProSubscriptionModal({
           router.refresh();
         } else {
           setVipSuccess(true);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('recetario_vip_active', 'true');
-          }
           const curr = useProfileStore.getState().profile;
           if (curr) {
             useProfileStore.getState().setProfile({ ...curr, plan_suscripcion: 'pro' });

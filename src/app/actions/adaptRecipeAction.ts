@@ -305,14 +305,14 @@ export async function adaptRecipeAction(
     if (!user) {
       return {
         success: false,
-        error: 'Debes iniciar sesión para adaptar recetas a tu perfil.',
+        error: 'PRO_SUBSCRIPTION_REQUIRED',
       };
     }
 
-    // 1. Consultar el perfil culinario del usuario desde Supabase
+    // 1. Consultar el perfil culinario y plan de suscripción del usuario desde Supabase
     const { data: profile, error: errProfile } = await supabase
       .from('usuarios')
-      .select('nivel_culinario, preferencias_dieteticas, alergenos')
+      .select('plan_suscripcion, nivel_culinario, preferencias_dieteticas, alergenos')
       .eq('id', user.id)
       .single();
 
@@ -320,6 +320,13 @@ export async function adaptRecipeAction(
       return {
         success: false,
         error: 'No se pudo cargar el perfil del usuario para personalizar la receta.',
+      };
+    }
+
+    if ((profile?.plan_suscripcion || '').trim().toLowerCase() !== 'pro') {
+      return {
+        success: false,
+        error: 'PRO_SUBSCRIPTION_REQUIRED',
       };
     }
 
