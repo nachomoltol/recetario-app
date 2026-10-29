@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient, getAdminClient } from '@/lib/supabase/server';
 import { extractRecipeWithGemini, detectFuenteTipo, sanitizeRecipeUrl } from '@/lib/gemini/extractor';
+import { resolveCanonicalVideoSource, computeSourceUrlHash, repairBrokenTikTokUrl } from '@/lib/culinary/urlCanonicalizer';
 import { getClinicalExclusions } from '@/lib/clinicalDictionary';
 import { ExtractedIngredient, normalizarIngredientesExtraidos } from '@/lib/gemini/schema';
 import { calcularGramos } from '@/lib/nutrition/converter';
@@ -19,7 +20,10 @@ export interface IngestRecipeResult {
 export async function ingestRecipeAction(formData: FormData): Promise<IngestRecipeResult> {
   try {
     const rawUrl = (formData.get('url') as string)?.trim() || undefined;
-    const url = sanitizeRecipeUrl(rawUrl);
+    const canonicalSource = rawUrl ? await resolveCanonicalVideoSource(rawUrl) : undefined;
+    // fuente_url conserva la URL funcional; el hash usa solo la clave abstracta de plataforma
+    const url = canonicalSource?.url || sanitizeRecipeUrl(rawUrl);
+    const sourceUrlHash = canonicalSource ? computeSourceUrlHash(canonicalSource.key) : undefined;
     const texto = (formData.get('texto') as string)?.trim() || undefined;
     const rawIdioma = (formData.get('idioma') as string)?.trim().toLowerCase();
     const idioma: 'es' | 'en' = rawIdioma === 'en' ? 'en' : 'es';
@@ -184,6 +188,185 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     alergenos: perfilUsuario?.alergenos || [],
   });
 
+  // 2.5 Caché Semántica de Vídeos Virales (P2)
+  // Búsqueda cruzada por hash SHA-256 canónico en la base de datos antes de invocar a Gemini
+  if (sourceUrlHash) {
+    try {
+      const { data: cachedRecipe, error: cachedError } = await db
+        .from('recetas')
+        .select('*, receta_ingredientes(*), pasos(*)')
+        .eq('source_url_hash', sourceUrlHash)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (!cachedError && cachedRecipe) {
+        // Escenario A: La receta ya pertenece al usuario actual (idempotencia instantánea)
+        if (cachedRecipe.usuario_id === user.id) {
+          console.log(`[recipeIngest] Cache Hit (propietario): Receta ${cachedRecipe.id} ya pertenece al usuario ${user.id}. Retornando inmediatamente.`);
+          revalidatePath('/recipes', 'page');
+          revalidatePath('/recipes/collection', 'page');
+          revalidatePath(`/recipes/${cachedRecipe.id}`, 'page');
+          return { success: true, recetaId: cachedRecipe.id };
+        }
+
+        // Escenario B: La receta existe en Supabase extraída previamente por otro usuario -> Clonación instantánea en lote
+        console.log(`[recipeIngest] Cache Hit Semántico: Vídeo viral detectado con hash ${sourceUrlHash}. Clonando plantilla ${cachedRecipe.id} para usuario ${user.id}...`);
+
+        const recetaClonadaPayload = {
+          usuario_id: user.id,
+          titulo: cachedRecipe.titulo,
+          descripcion: cachedRecipe.descripcion,
+          tiempo_preparacion_min: cachedRecipe.tiempo_preparacion_min,
+          tiempo_coccion_min: cachedRecipe.tiempo_coccion_min,
+          porciones: cachedRecipe.porciones,
+          dificultad: cachedRecipe.dificultad,
+          fuente_tipo: cachedRecipe.fuente_tipo,
+          fuente_url: repairBrokenTikTokUrl(cachedRecipe.fuente_url) ?? url ?? null,
+          imagen_portada_url: cachedRecipe.imagen_portada_url,
+          foto_url: cachedRecipe.foto_url,
+          calorias_por_porcion: cachedRecipe.calorias_por_porcion,
+          proteinas_por_porcion: cachedRecipe.proteinas_por_porcion,
+          carbohidratos_por_porcion: cachedRecipe.carbohidratos_por_porcion,
+          grasas_por_porcion: cachedRecipe.grasas_por_porcion,
+          fibra_por_porcion: cachedRecipe.fibra_por_porcion,
+          etiquetas: cachedRecipe.etiquetas || [],
+          momentos_dia: cachedRecipe.momentos_dia || [],
+          rol_plato: cachedRecipe.rol_plato || 'completo',
+          receta_original: cachedRecipe.receta_original,
+          source_url_hash: sourceUrlHash,
+        };
+
+        let { data: nuevaRecetaClonada, error: errClone } = await supabase
+          .from('recetas')
+          .insert(recetaClonadaPayload)
+          .select()
+          .single();
+
+        if (errClone && /source_url_hash/i.test(errClone.message || '')) {
+          console.warn("Advertencia: Columna 'source_url_hash' no disponible en schema cache de PostgREST al clonar receta. Reintentando sin ella:", errClone.message);
+          const { source_url_hash: _, ...fallbackPayload } = recetaClonadaPayload;
+          const retryResult = await supabase
+            .from('recetas')
+            .insert(fallbackPayload as any)
+            .select()
+            .single();
+          nuevaRecetaClonada = retryResult.data;
+          errClone = retryResult.error;
+        }
+
+        if (!errClone && nuevaRecetaClonada) {
+          // Clonar ingredientes respetando orden y rol culinario
+          const sortedIngs = ((cachedRecipe.receta_ingredientes as any[]) || []).slice().sort((a, b) => (a.orden || 0) - (b.orden || 0));
+          if (sortedIngs.length > 0) {
+            const clonedIngsPayload = sortedIngs.map((i, idx) => ({
+              receta_id: nuevaRecetaClonada.id,
+              ingrediente_maestro_id: i.ingrediente_maestro_id || null,
+              nombre_crudo: i.nombre_crudo || 'Ingrediente',
+              nombre_limpio: i.nombre_limpio || 'Ingrediente',
+              cantidad: i.cantidad ?? 1,
+              unidad: i.unidad || 'unidad',
+              gramos_calculados: i.gramos_calculados ?? 0,
+              pasillo_supermercado: i.pasillo_supermercado || 'Despensa y Especias',
+              notas: i.notas || null,
+              es_opcional: Boolean(i.es_opcional),
+              orden: idx + 1,
+              rol_culinario: i.rol_culinario || null,
+              seccion: i.seccion || null,
+            }));
+
+            let { error: errClonedIngs } = await supabase
+              .from('receta_ingredientes')
+              .insert(clonedIngsPayload);
+
+            if (errClonedIngs && /seccion/i.test(errClonedIngs.message || '')) {
+              console.warn("Advertencia: Columna 'seccion' no disponible al clonar ingredientes. Reintentando sin ella.");
+              const fallbackIngs = clonedIngsPayload.map(({ seccion, ...rest }) => rest);
+              await supabase.from('receta_ingredientes').insert(fallbackIngs as any);
+            }
+          }
+
+          // Clonar pasos con los 3 niveles pedagógicos
+          const sortedPasos = ((cachedRecipe.pasos as any[]) || []).slice().sort((a, b) => (a.orden || 0) - (b.orden || 0));
+          if (sortedPasos.length > 0) {
+            const clonedPasosPayload = sortedPasos.map((p, idx) => ({
+              receta_id: nuevaRecetaClonada.id,
+              orden: idx + 1,
+              instruccion: p.instruccion || 'Preparación según indicaciones del vídeo.',
+              instruccion_principiante: p.instruccion_principiante || null,
+              instruccion_avanzada: p.instruccion_avanzada || null,
+              descriptor_sensorial: p.descriptor_sensorial || null,
+              potencia_fuego: p.potencia_fuego || null,
+              tiempo_estimado_min: typeof p.tiempo_estimado_min === 'number' && p.tiempo_estimado_min > 0 ? p.tiempo_estimado_min : null,
+              temperatura_celsius: typeof p.temperatura_celsius === 'number' && p.temperatura_celsius > 0 ? p.temperatura_celsius : null,
+              consejo_pro: p.consejo_pro || null,
+              utensilios_sugeridos: p.utensilios_sugeridos || [],
+              imagen_paso_url: p.imagen_paso_url || null,
+            }));
+
+            let { error: errClonedPasos } = await supabase.from('pasos').insert(clonedPasosPayload);
+
+            if (errClonedPasos && /instruccion_principiante/i.test(errClonedPasos.message || '')) {
+              const withoutPrincipiante = clonedPasosPayload.map(({ instruccion_principiante, ...rest }: any) => rest);
+              const retryRes1 = await supabase.from('pasos').insert(withoutPrincipiante as any);
+              errClonedPasos = retryRes1.error;
+            }
+            if (errClonedPasos && /instruccion_avanzada|descriptor_sensorial|potencia_fuego/i.test(errClonedPasos.message || '')) {
+              const fallbackPasos = clonedPasosPayload.map(({ instruccion_principiante, instruccion_avanzada, descriptor_sensorial, potencia_fuego, ...rest }: any) => rest);
+              await supabase.from('pasos').insert(fallbackPasos as any);
+            }
+          }
+
+          // Incrementar cuota mensual de generación (+1) tanto para usuario como para dispositivo
+          const { data: usuarioFresco } = await db
+            .from('usuarios')
+            .select('capturas_mes_actual')
+            .eq('id', user.id)
+            .single();
+
+          const conteoBase = Number(usuarioFresco?.capturas_mes_actual) || capturasMesActual;
+          const nuevoConteo = conteoBase + 1;
+
+          await db
+            .from('usuarios')
+            .update({
+              capturas_mes_actual: nuevoConteo,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', user.id);
+
+          if (isValidoDeviceId) {
+            const { data: dispFresco } = await db
+              .from('dispositivos_cuotas')
+              .select('capturas_mes_actual')
+              .eq('device_id', rawDeviceId)
+              .maybeSingle();
+
+            const conteoBaseDisp = Number(dispFresco?.capturas_mes_actual) || capturasDispositivo;
+            await db
+              .from('dispositivos_cuotas')
+              .update({
+                capturas_mes_actual: conteoBaseDisp + 1,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('device_id', rawDeviceId);
+          }
+
+          // Revalidación exhaustiva de Next.js
+          revalidatePath('/recipes', 'page');
+          revalidatePath('/recipes/collection', 'page');
+          revalidatePath(`/recipes/${nuevaRecetaClonada.id}`, 'page');
+          revalidatePath('/', 'layout');
+
+          console.log(`[recipeIngest] Cache Hit Semántico (<150ms): Receta clonada exitosamente para ${user.id} desde plantilla ${cachedRecipe.id} (${nuevaRecetaClonada.id}) sin consumo de tokens de Gemini.`);
+          return { success: true, recetaId: nuevaRecetaClonada.id };
+        }
+      }
+    } catch (cacheLookupErr) {
+      console.warn('[recipeIngest] Excepción en búsqueda de caché semántica, procediendo con extracción habitual:', cacheLookupErr);
+    }
+  }
+
   // 3. Extracción multimodal autónoma con Gemini (fidelidad 100% al contenido original del vídeo/fuente)
   const extracted = await extractRecipeWithGemini({
     url,
@@ -261,27 +444,42 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     const factorEscalado = 1;
 
     // 4. Inserción en 'recetas'
-    const { data: nuevaReceta, error: errReceta } = await supabase
+    const recetaPayload = {
+      usuario_id: user.id,
+      titulo: (extracted.titulo || 'Receta sin título').trim(),
+      descripcion: extracted.descripcion || null,
+      tiempo_preparacion_min: prepMin,
+      tiempo_coccion_min: coccMin,
+      porciones: porcionesNum,
+      dificultad: dificultadReceta,
+      fuente_tipo: fuenteTipo,
+      fuente_url: fuenteUrl,
+      calorias_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.calorias) || 0),
+      proteinas_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.proteinas) || 0),
+      carbohidratos_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.carbohidratos) || 0),
+      grasas_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.grasas) || 0),
+      fibra_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.fibra) || 0),
+      etiquetas: etiquetasCombinadas,
+      source_url_hash: sourceUrlHash || null,
+    };
+
+    let { data: nuevaReceta, error: errReceta } = await supabase
       .from('recetas')
-      .insert({
-        usuario_id: user.id,
-        titulo: (extracted.titulo || 'Receta sin título').trim(),
-        descripcion: extracted.descripcion || null,
-        tiempo_preparacion_min: prepMin,
-        tiempo_coccion_min: coccMin,
-        porciones: porcionesNum,
-        dificultad: dificultadReceta,
-        fuente_tipo: fuenteTipo,
-        fuente_url: fuenteUrl,
-        calorias_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.calorias) || 0),
-        proteinas_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.proteinas) || 0),
-        carbohidratos_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.carbohidratos) || 0),
-        grasas_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.grasas) || 0),
-        fibra_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.fibra) || 0),
-        etiquetas: etiquetasCombinadas,
-      })
+      .insert(recetaPayload)
       .select()
       .single();
+
+    if (errReceta && /source_url_hash/i.test(errReceta.message || '')) {
+      console.warn("Advertencia: Columna 'source_url_hash' no disponible en schema cache de PostgREST al insertar receta. Reintentando sin ella:", errReceta.message);
+      const { source_url_hash: _, ...fallbackPayload } = recetaPayload;
+      const retryResult = await supabase
+        .from('recetas')
+        .insert(fallbackPayload as any)
+        .select()
+        .single();
+      nuevaReceta = retryResult.data;
+      errReceta = retryResult.error;
+    }
 
     if (errReceta || !nuevaReceta) {
       console.error('Error insertando receta cabecera:', errReceta);

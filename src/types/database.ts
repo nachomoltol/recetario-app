@@ -207,6 +207,7 @@ export interface Database {
           rol_plato: RolPlato;
           es_favorito_menu: boolean;
           receta_original?: Record<string, any> | null;
+          source_url_hash?: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -236,6 +237,7 @@ export interface Database {
           rol_plato?: RolPlato;
           es_favorito_menu?: boolean;
           receta_original?: Record<string, any> | null;
+          source_url_hash?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -265,6 +267,7 @@ export interface Database {
           rol_plato?: RolPlato;
           es_favorito_menu?: boolean;
           receta_original?: Record<string, any> | null;
+          source_url_hash?: string | null;
           created_at?: string;
           updated_at?: string;
         };
