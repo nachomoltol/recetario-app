@@ -74,6 +74,42 @@ export async function updateUserProfileAction(payload: {
       return { error: 'Sesión no iniciada' };
     }
 
+    // Consultar plan_suscripcion actual en Supabase para blindar el Muro de Pago en servidor (Fase 2.1)
+    const { data: currentDbUser } = await supabase
+      .from('usuarios')
+      .select('plan_suscripcion')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isProServer =
+      (currentDbUser?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
+
+    // Normalizar preferencias dietéticas combinando objetivos clínicos y patrón si se pasan por separado
+    const combinedPrefsCheck = [
+      ...(payload.preferencias_dieteticas || []),
+      ...(payload.objetivos_clinicos || []),
+      ...(payload.patron_alimentario ? [payload.patron_alimentario] : []),
+    ]
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    const hasProLevelAttempt =
+      payload.nivel_culinario !== undefined &&
+      payload.nivel_culinario !== null &&
+      payload.nivel_culinario.trim() !== '';
+
+    const hasProClinicalAttempt = combinedPrefsCheck.some(
+      (pref) =>
+        pref.toLowerCase() !== 'general' && pref.toLowerCase() !== 'omnívora' && pref.toLowerCase() !== 'omnivora'
+    );
+
+    if (!isProServer && (hasProLevelAttempt || hasProClinicalAttempt)) {
+      return {
+        success: false,
+        error: 'PRO_SUBSCRIPTION_REQUIRED',
+      };
+    }
+
     const updates: UsuarioUpdate = {
       updated_at: new Date().toISOString(),
     };

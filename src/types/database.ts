@@ -353,6 +353,10 @@ export interface Database {
           receta_id: string;
           orden: number;
           instruccion: string;
+          instruccion_principiante?: string | null;
+          instruccion_avanzada?: string | null;
+          descriptor_sensorial?: string | null;
+          potencia_fuego?: 'suave' | 'medio' | 'medio-alto' | 'alto' | 'horno' | string | null;
           tiempo_estimado_min: number | null;
           temperatura_celsius: number | null;
           utensilios_sugeridos: string[];
@@ -365,6 +369,10 @@ export interface Database {
           receta_id: string;
           orden: number;
           instruccion: string;
+          instruccion_principiante?: string | null;
+          instruccion_avanzada?: string | null;
+          descriptor_sensorial?: string | null;
+          potencia_fuego?: 'suave' | 'medio' | 'medio-alto' | 'alto' | 'horno' | string | null;
           tiempo_estimado_min?: number | null;
           temperatura_celsius?: number | null;
           utensilios_sugeridos?: string[];
@@ -377,6 +385,10 @@ export interface Database {
           receta_id?: string;
           orden?: number;
           instruccion?: string;
+          instruccion_principiante?: string | null;
+          instruccion_avanzada?: string | null;
+          descriptor_sensorial?: string | null;
+          potencia_fuego?: 'suave' | 'medio' | 'medio-alto' | 'alto' | 'horno' | string | null;
           tiempo_estimado_min?: number | null;
           temperatura_celsius?: number | null;
           utensilios_sugeridos?: string[];

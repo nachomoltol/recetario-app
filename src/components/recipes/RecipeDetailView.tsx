@@ -712,40 +712,41 @@ export function RecipeDetailView({
 
       {/* Cabecera Editorial Limpia */}
       <section className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#a86224]">
-            <ChefHat className="w-4 h-4" />
-            <span>{t('recipe_card_header')}</span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#a86224]">
+            <ChefHat className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t('recipe_card_header')}</span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+          {/* Barra compacta de acciones secundarias (36px / h-9) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Botón de Modo Edición */}
             {isEditing ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={handleCancelEdit}
                   disabled={isSaving}
-                  className="min-h-[40px] px-3.5 py-1.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  className="h-9 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
                 >
                   <X className="w-3.5 h-3.5" />
-                  <span>{t('recipe_cancel_btn')}</span>
+                  <span className="hidden sm:inline">{t('recipe_cancel_btn')}</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveEdit}
                   disabled={isSaving}
-                  className="min-h-[40px] px-4 py-1.5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                  className="h-9 px-3.5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
                 >
                   {isSaving ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>{t('recipe_saving_btn')}</span>
+                      <span className="hidden sm:inline">{t('recipe_saving_btn')}</span>
                     </>
                   ) : (
                     <>
                       <Save className="w-3.5 h-3.5" />
-                      <span>{t('recipe_save_btn')}</span>
+                      <span className="hidden sm:inline">{t('recipe_save_btn')}</span>
                     </>
                   )}
                 </button>
@@ -754,17 +755,18 @@ export function RecipeDetailView({
               <button
                 type="button"
                 onClick={handleStartEdit}
-                className="min-h-[40px] px-3.5 py-1.5 rounded-2xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-[#a86224] text-xs font-semibold text-stone-700 hover:text-[#a86224] transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                title={t('recipe_edit_btn')}
+                className="h-9 px-2.5 sm:px-3 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-[#a86224] text-xs font-semibold text-stone-700 hover:text-[#a86224] transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
               >
                 <Pencil className="w-3.5 h-3.5 text-[#a86224]" />
-                <span>{t('recipe_edit_btn')}</span>
+                <span className="hidden sm:inline">{t('recipe_edit_btn')}</span>
               </button>
             )}
 
             {/* Modo Manos en la Masa: Wake Lock para que no se apague la pantalla */}
             <RecipeWakeLock />
 
-            {/* Sistema de Valoración y Favoritos Interactivo */}
+            {/* Sistema de Valoración y Favoritos Interactivo (h-9) */}
             <RecipeRatingHeader
               recetaId={receta?.id || ''}
               initialFavorite={receta?.es_favorita || false}
@@ -773,7 +775,7 @@ export function RecipeDetailView({
           </div>
         </div>
 
-        {/* Título: Editable en modo edición o Título editorial H1 */}
+        {/* Título: Editable en modo edición o Título editorial H1 con badge clínico */}
         {isEditing ? (
           <div className="space-y-1.5 pt-1 animate-fade-in">
             <label className="block text-xs font-bold uppercase tracking-wider text-[#a86224]">
@@ -789,9 +791,31 @@ export function RecipeDetailView({
             />
           </div>
         ) : (
-          <h1 className="text-xl sm:text-2xl font-bold font-serif-recipe tracking-tight text-stone-900 leading-tight">
-            {currentTitulo}
-          </h1>
+          <div className="space-y-2">
+            <h1 className="text-xl sm:text-2xl font-bold font-serif-recipe tracking-tight text-stone-900 leading-tight">
+              {currentTitulo}
+            </h1>
+
+            {/* Motor de Adaptación Culinaria In-Line: Badge minimalista de una sola línea */}
+            <RecipeAdaptationSection
+              recipe={{
+                ...recipeDataForAdapt,
+                titulo: currentTitulo,
+                porciones: Number(receta?.porciones) || 2,
+                ingredientes: (currentIngredientes || []).map((i) => ({
+                  nombre_limpio: i?.nombre_limpio || i?.nombre_crudo || '',
+                  cantidad: Number(i?.cantidad) || 1,
+                  unidad: i?.unidad || 'unidad',
+                  pasillo_supermercado: i?.pasillo_supermercado || 'Despensa y Especias',
+                })),
+              }}
+              userProfile={userProfile}
+              isAdapted={isAdapted}
+              adaptationSummary={adaptationSummary}
+              onApplyAdaptation={handleApplyAdaptation}
+              onRevertAdaptation={handleRevertAdaptation}
+            />
+          </div>
         )}
 
         {receta?.descripcion && (
@@ -816,26 +840,6 @@ export function RecipeDetailView({
             )}
           </div>
         )}
-
-        {/* Motor de Adaptación Culinaria In-Line (Capa Clínica y de Nivel) */}
-        <RecipeAdaptationSection
-          recipe={{
-            ...recipeDataForAdapt,
-            titulo: currentTitulo,
-            porciones: Number(receta?.porciones) || 2,
-            ingredientes: (currentIngredientes || []).map((i) => ({
-              nombre_limpio: i?.nombre_limpio || i?.nombre_crudo || '',
-              cantidad: Number(i?.cantidad) || 1,
-              unidad: i?.unidad || 'unidad',
-              pasillo_supermercado: i?.pasillo_supermercado || 'Despensa y Especias',
-            })),
-          }}
-          userProfile={userProfile}
-          isAdapted={isAdapted}
-          adaptationSummary={adaptationSummary}
-          onApplyAdaptation={handleApplyAdaptation}
-          onRevertAdaptation={handleRevertAdaptation}
-        />
 
         {/* Franja de metadatos fluida y 100% contenida (Tiempo, Porciones, Nivel) */}
         <div className="grid grid-cols-3 w-full gap-1 py-3 px-2 border-t border-[#e7dfd5] text-stone-600 text-center">

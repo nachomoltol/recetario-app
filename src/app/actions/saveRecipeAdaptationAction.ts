@@ -127,6 +127,10 @@ export async function saveRecipeAdaptationAction({
           id: p.id,
           orden: p.orden,
           instruccion: p.instruccion,
+          instruccion_principiante: (p as any).instruccion_principiante || null,
+          instruccion_avanzada: (p as any).instruccion_avanzada || null,
+          descriptor_sensorial: (p as any).descriptor_sensorial || null,
+          potencia_fuego: (p as any).potencia_fuego || null,
           tiempo_estimado_min: p.tiempo_estimado_min,
           temperatura_celsius: p.temperatura_celsius,
           consejo_pro: p.consejo_pro,
@@ -204,15 +208,26 @@ export async function saveRecipeAdaptationAction({
       receta_id: recetaId,
       orden: typeof p.orden === 'number' ? p.orden : idx + 1,
       instruccion: p.instruccion.trim(),
+      instruccion_principiante: (p as any).instruccion_principiante ? (p as any).instruccion_principiante.trim() : null,
+      instruccion_avanzada: (p as any).instruccion_avanzada ? (p as any).instruccion_avanzada.trim() : null,
+      descriptor_sensorial: (p as any).descriptor_sensorial ? (p as any).descriptor_sensorial.trim() : null,
+      potencia_fuego: (p as any).potencia_fuego ? (p as any).potencia_fuego.trim() : null,
       tiempo_estimado_min: typeof p.tiempo_estimado_min === 'number' && p.tiempo_estimado_min > 0 ? p.tiempo_estimado_min : null,
       temperatura_celsius: typeof p.temperatura_celsius === 'number' && p.temperatura_celsius > 0 ? p.temperatura_celsius : null,
       consejo_pro: p.consejo_pro ? p.consejo_pro.trim() : null,
       utensilios_sugeridos: [],
     }));
 
-    const { error: errInsertPasos } = await supabase
+    let { error: errInsertPasos } = await supabase
       .from('pasos')
       .insert(pasosPayload);
+
+    if (errInsertPasos && /instruccion_principiante|instruccion_avanzada|descriptor_sensorial|potencia_fuego/i.test(errInsertPasos.message || '')) {
+      console.warn('Advertencia: Columnas de nivel culinario no disponibles en pasos al guardar adaptación, reintentando:', errInsertPasos.message);
+      const fallbackPasos = pasosPayload.map(({ instruccion_principiante, instruccion_avanzada, descriptor_sensorial, potencia_fuego, ...rest }: any) => rest);
+      const retryResult = await supabase.from('pasos').insert(fallbackPasos as any);
+      errInsertPasos = retryResult.error;
+    }
 
     if (errInsertPasos) {
       console.error('Error insertando pasos adaptados:', errInsertPasos);
@@ -318,13 +333,21 @@ export async function revertRecipeAdaptationAction(recetaId: string): Promise<Re
         receta_id: recetaId,
         orden: typeof p.orden === 'number' ? p.orden : idx + 1,
         instruccion: p.instruccion.trim(),
+        instruccion_principiante: p.instruccion_principiante ? p.instruccion_principiante.trim() : null,
+        instruccion_avanzada: p.instruccion_avanzada ? p.instruccion_avanzada.trim() : null,
+        descriptor_sensorial: p.descriptor_sensorial ? p.descriptor_sensorial.trim() : null,
+        potencia_fuego: p.potencia_fuego ? p.potencia_fuego.trim() : null,
         tiempo_estimado_min: typeof p.tiempo_estimado_min === 'number' && p.tiempo_estimado_min > 0 ? p.tiempo_estimado_min : null,
         temperatura_celsius: typeof p.temperatura_celsius === 'number' && p.temperatura_celsius > 0 ? p.temperatura_celsius : null,
         consejo_pro: p.consejo_pro ? p.consejo_pro.trim() : null,
         utensilios_sugeridos: [],
       }));
 
-      await supabase.from('pasos').insert(pasosPayload);
+      let { error: errRestorePasos } = await supabase.from('pasos').insert(pasosPayload);
+      if (errRestorePasos && /instruccion_principiante|instruccion_avanzada|descriptor_sensorial|potencia_fuego/i.test(errRestorePasos.message || '')) {
+        const fallbackPasos = pasosPayload.map(({ instruccion_principiante, instruccion_avanzada, descriptor_sensorial, potencia_fuego, ...rest }: any) => rest);
+        await supabase.from('pasos').insert(fallbackPasos as any);
+      }
     }
 
     // 5. Revalidar rutas

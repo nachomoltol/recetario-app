@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { redeemVipCodeAction, claimRewardCreditAction } from '@/app/actions/subscription';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { useProfileStore } from '@/stores/useProfileStore';
 import { isNativePlatform, showRewardVideoAdFlow } from '@/lib/admob/admobService';
 
 export interface ProSubscriptionModalProps {
@@ -30,6 +31,7 @@ export interface ProSubscriptionModalProps {
   pendingUrl?: string;
   title?: string;
   description?: string;
+  highlightCulinaryLevels?: boolean;
 }
 
 export function ProSubscriptionModal({
@@ -41,6 +43,7 @@ export function ProSubscriptionModal({
   pendingUrl = '',
   title,
   description,
+  highlightCulinaryLevels = false,
 }: ProSubscriptionModalProps) {
   const router = useRouter();
   const language = useLanguageStore((s) => s.language);
@@ -111,12 +114,21 @@ export function ProSubscriptionModal({
           if (typeof window !== 'undefined') {
             localStorage.removeItem('recetario_vip_active');
           }
+          const curr = useProfileStore.getState().profile;
+          if (curr) {
+            useProfileStore.getState().setProfile({ ...curr, plan_suscripcion: 'gratis' });
+          }
           router.refresh();
         } else {
           setVipSuccess(true);
           if (typeof window !== 'undefined') {
             localStorage.setItem('recetario_vip_active', 'true');
           }
+          const curr = useProfileStore.getState().profile;
+          if (curr) {
+            useProfileStore.getState().setProfile({ ...curr, plan_suscripcion: 'pro' });
+          }
+          router.refresh();
         }
         if (onVipSuccess) {
           onVipSuccess();
@@ -287,6 +299,52 @@ export function ProSubscriptionModal({
             <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
               {description || t('pro_modal_feature_desc')}
             </p>
+
+            {highlightCulinaryLevels && (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-left pt-2">
+                <div className="p-3 rounded-2xl bg-amber-50/90 border border-amber-200/90 space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">🌱</span>
+                    <span className="text-xs font-bold font-serif-recipe text-stone-900">
+                      {language === 'en' ? 'Beginner (PRO)' : 'Principiante (PRO)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-700 leading-snug font-light">
+                    {language === 'en'
+                      ? 'Expanded step-by-step guide, sensory cards (color, texture & aroma) and thermal safety.'
+                      : 'Relato guiado paso a paso, tarjetas sensoriales (color, textura y aroma) y seguridad térmica.'}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-white border border-[#e7dfd5] space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">🍳</span>
+                    <span className="text-xs font-bold font-serif-recipe text-stone-900">
+                      {language === 'en' ? 'Intermediate (PRO)' : 'Intermedio (PRO)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-700 leading-snug font-light">
+                    {language === 'en'
+                      ? 'Balanced standard technical prose for agile home cooking.'
+                      : 'Versión técnica equilibrada y estructurada para cocina diaria ágil.'}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-white border border-[#e7dfd5] space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">👨‍🍳</span>
+                    <span className="text-xs font-bold font-serif-recipe text-stone-900">
+                      {language === 'en' ? 'Advanced (PRO)' : 'Avanzado (PRO)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-700 leading-snug font-light">
+                    {language === 'en'
+                      ? 'Synthetic, executive restaurant-grade phrasing (sear, deglaze, emulsify).'
+                      : 'Prosa sintética y técnica de restaurante (marcar, desglasar, emulsionar).'}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -112,212 +112,149 @@ export function RecipeAdaptationSection({
   const isCritical = compatibilityReport.severidadMaxima === 'critica';
 
   return (
-    <div className="space-y-3">
+    <div className="inline-block">
       {/* ============================================================== */}
-      {/* 1. RECETA YA ADAPTADA: Banner de éxito y reversión            */}
+      {/* 1. RECETA YA ADAPTADA: Badge minimalista e In-Line             */}
       {/* ============================================================== */}
       {isAdapted ? (
-        <div className="p-4 sm:p-5 rounded-3xl border border-emerald-300 bg-gradient-to-r from-emerald-50/90 via-[#f8fdf9] to-emerald-50/70 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
-              <CheckCircle2 className="w-5 h-5 text-emerald-700" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs sm:text-sm font-bold text-stone-900 font-serif-recipe">
-                  {t('recipe_adapted_badge')}
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#a86224] text-white">
-                  In-Line
-                </span>
-              </div>
-              <p className="text-xs text-stone-600 mt-0.5 leading-relaxed font-light">
-                {adaptationSummary || t('recipe_adapt_summary_fallback')}
-              </p>
-            </div>
+        <div className="inline-flex items-center gap-2 flex-wrap animate-fade-in">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-medium shadow-2xs">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="font-semibold font-serif-recipe">{t('recipe_adapted_badge')}</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-md font-bold bg-[#a86224] text-white">
+              In-Line
+            </span>
           </div>
 
           <button
             type="button"
             onClick={onRevertAdaptation}
-            className="min-h-[40px] px-3.5 py-2 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-[#a86224] text-xs font-semibold text-stone-700 hover:text-[#a86224] transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-2xs self-start sm:self-auto"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-stone-600 hover:text-[#a86224] hover:bg-[#faf7f2] border border-transparent hover:border-[#e7dfd5] transition cursor-pointer"
             title={t('recipe_adapt_revert_tooltip')}
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3 h-3" />
             <span>{t('recipe_view_original')}</span>
           </button>
         </div>
       ) : (
         /* ============================================================== */
-        /* 2. RECETA NO ADAPTADA: Tarjeta Semáforo de Diagnóstico Clínico  */
+        /* 2. RECETA NO ADAPTADA: Badge Semáforo Minimalista              */
         /* ============================================================== */
-        <div className="space-y-2">
+        <div className="inline-flex flex-col gap-1.5">
           {hasConflicts ? (
-            /* SEMÁFORO ADVERTENCIA: Hay ingredientes en conflicto - Barra delgada y colapsable */
-            <div
-              className={`rounded-2xl sm:rounded-3xl border shadow-xs transition-all overflow-hidden ${
-                isCritical
-                  ? 'bg-gradient-to-r from-rose-50/90 via-[#fff8f8] to-rose-50/70 border-rose-300'
-                  : 'bg-gradient-to-r from-amber-50/90 via-[#fffbf6] to-amber-50/70 border-amber-300'
-              }`}
-            >
-              {/* Barra delgada colapsable interactiva (estado por defecto compacto) */}
-              <button
-                type="button"
-                onClick={() => setIsAlertExpanded(!isAlertExpanded)}
-                className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-3 text-left cursor-pointer hover:bg-black/5 transition-colors"
-                aria-expanded={isAlertExpanded}
+            /* SEMÁFORO ADVERTENCIA: Badge ultra-compacto con botón de adaptar */
+            <div className="inline-flex items-center gap-2 flex-wrap">
+              <div
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border shadow-2xs ${
+                  isCritical
+                    ? 'bg-rose-50 border-rose-300 text-rose-900'
+                    : 'bg-amber-50 border-amber-300 text-amber-900'
+                }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border ${
-                      isCritical
-                        ? 'bg-rose-100 text-rose-700 border-rose-200'
-                        : 'bg-amber-100 text-amber-800 border-amber-200'
-                    }`}
-                  >
-                    {isCritical ? (
-                      <ShieldAlert className="w-4 h-4 text-rose-700 animate-pulse" />
-                    ) : (
-                      <AlertTriangle className="w-4 h-4 text-amber-700 animate-pulse" />
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-stone-900 font-serif-recipe truncate">
-                      {isCritical
-                        ? language === 'en'
-                          ? 'Critical Allergen Conflict'
-                          : 'Alerta de Incompatibilidad Clínica'
-                        : language === 'en'
-                        ? 'Ingredients not compatible with your profile'
-                        : 'Ingredientes no compatibles con tu perfil'}
-                    </span>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
-                        isCritical
-                          ? 'bg-rose-600 text-white'
-                          : 'bg-amber-600 text-white'
-                      }`}
-                    >
-                      {isCritical ? 'Crítico' : 'Moderado'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0 text-stone-500">
+                {isCritical ? (
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0 animate-pulse" />
+                ) : (
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                )}
+                <span className="font-bold">
+                  {compatibilityReport.conflicts.length}{' '}
+                  {compatibilityReport.conflicts.length === 1 ? 'conflicto' : 'conflictos'}
+                </span>
+                <span className="text-[10px] opacity-75 font-semibold uppercase">
+                  ({isCritical ? 'Crítico' : 'Ajustable'})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsAlertExpanded(!isAlertExpanded)}
+                  className="ml-1 text-[11px] font-bold underline hover:opacity-80 cursor-pointer flex items-center gap-0.5"
+                >
+                  <span>{isAlertExpanded ? 'Ocultar' : 'Ver'}</span>
                   <ChevronDown
-                    className={`w-4 h-4 transition-transform duration-200 ${
-                      isAlertExpanded ? 'rotate-180' : ''
-                    }`}
+                    className={`w-3 h-3 transition-transform ${isAlertExpanded ? 'rotate-180' : ''}`}
                   />
-                </div>
-              </button>
-
-              {/* Contenido detallado desplegado */}
-              {isAlertExpanded && (
-                <div className="px-3.5 sm:px-5 pb-4 pt-1 sm:pt-2 border-t border-black/5 space-y-3 animate-fade-in">
-                  <p className="text-xs text-stone-600 leading-relaxed font-light">
-                    {isCritical
-                      ? language === 'en'
-                        ? 'This recipe contains ingredients that trigger strict exclusions for your health profile:'
-                        : 'Esta receta contiene ingredientes que suponen una exclusión crítica para tu salud:'
-                      : language === 'en'
-                      ? 'This recipe uses ingredients that do not match your active dietary profile:'
-                      : 'Esta receta incluye ingredientes que no se ajustan a tus patologías o preferencias activas:'}
-                  </p>
-
-                  {/* Chips de ingredientes en conflicto */}
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {compatibilityReport.conflicts.map((c, idx) => (
-                      <span
-                        key={`${c.ingredienteOriginal}-${idx}`}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-semibold border flex items-center gap-1 ${
-                          c.severidad === 'critica'
-                            ? 'bg-rose-100/80 text-rose-900 border-rose-200'
-                            : 'bg-amber-100/80 text-amber-900 border-amber-200'
-                        }`}
-                      >
-                        <span className="capitalize">{c.ingredienteOriginal}</span>
-                        <span className="text-[10px] opacity-75 font-normal">({c.patologia})</span>
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Botón Adaptar a mi perfil */}
-                  <div className="pt-2 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleAdaptClick}
-                      disabled={isPending}
-                      className={`w-full sm:w-auto min-h-[42px] px-5 py-2.5 rounded-2xl font-bold text-xs sm:text-sm text-white shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 ${
-                        isCritical
-                          ? 'bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800'
-                          : 'bg-gradient-to-r from-[#a86224] to-[#c47732] hover:from-[#8e511c] hover:to-[#a86224]'
-                      }`}
-                    >
-                      {isPending ? (
-                        <>
-                          <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                          <span>{t('recipe_adapting_btn')}</span>
-                        </>
-                      ) : (
-                        <>
-                          {!isPro ? (
-                            <>
-                              <Lock className="w-4 h-4 text-white/90" />
-                              <span>Adaptar a mi perfil (PRO)</span>
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-4 h-4" />
-                              <span>Adaptar a mi perfil</span>
-                            </>
-                          )}
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* SEMÁFORO COMPATIBLE: No hay conflictos */
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200/90 text-emerald-900 animate-fade-in shadow-2xs">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-4 h-4 text-emerald-700" />
-                </div>
-                <div className="text-xs sm:text-sm">
-                  <span className="font-bold">
-                    {language === 'en'
-                      ? '100% Compatible with your profile'
-                      : 'Receta compatible con tu perfil clínico'}
-                  </span>
-                  {compatibilityReport.patologiasEvaluadas.length > 0 && (
-                    <span className="text-emerald-700 text-xs ml-1.5 hidden sm:inline font-light">
-                      ({compatibilityReport.patologiasEvaluadas.slice(0, 3).join(', ')})
-                    </span>
-                  )}
-                </div>
+                </button>
               </div>
 
-              {/* Si tiene nivel culinario particular, permite adaptar técnicas si desea */}
+              {/* Botón de acción rápida: Adaptar a mi perfil */}
+              <button
+                type="button"
+                onClick={handleAdaptClick}
+                disabled={isPending}
+                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold text-white shadow-2xs transition cursor-pointer active:scale-95 disabled:opacity-50 ${
+                  isCritical
+                    ? 'bg-rose-600 hover:bg-rose-700'
+                    : 'bg-[#a86224] hover:bg-[#8e511c]'
+                }`}
+              >
+                {isPending ? (
+                  <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    {!isPro ? (
+                      <Lock className="w-3 h-3 text-white/90" />
+                    ) : (
+                      <Sparkles className="w-3 h-3" />
+                    )}
+                  </>
+                )}
+                <span>
+                  {isPending
+                    ? t('recipe_adapting_btn')
+                    : isPro
+                    ? 'Adaptar'
+                    : 'Adaptar (PRO)'}
+                </span>
+              </button>
+            </div>
+          ) : (
+            /* SEMÁFORO COMPATIBLE: Badge verde de una sola línea */
+            <div className="inline-flex items-center gap-2 flex-wrap">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-medium shadow-2xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="font-semibold">
+                  {language === 'en'
+                    ? '100% Compatible'
+                    : '100% compatible con tu perfil'}
+                </span>
+                {compatibilityReport.patologiasEvaluadas.length > 0 && (
+                  <span className="text-[10px] text-emerald-700 opacity-80 hidden sm:inline">
+                    ({compatibilityReport.patologiasEvaluadas.slice(0, 2).join(', ')})
+                  </span>
+                )}
+              </div>
+
               {tieneNivelEspecifico && (
                 <button
                   type="button"
                   onClick={handleAdaptClick}
                   disabled={isPending}
-                  className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-white hover:bg-emerald-100/50 border border-emerald-300 text-xs font-semibold text-emerald-900 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] text-xs font-semibold text-stone-700 hover:text-[#a86224] transition shadow-2xs cursor-pointer"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-[#a86224]" />
+                  <Sparkles className="w-3 h-3 text-[#a86224]" />
                   <span>
-                    {isPending
-                      ? t('recipe_adapting_btn')
-                      : `${t('recipe_adapt_btn')} (${nivel})`}
+                    {isPending ? t('recipe_adapting_btn') : `Adaptar a ${nivel}`}
                   </span>
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Chips expandibles de conflictos clínicos */}
+          {hasConflicts && isAlertExpanded && (
+            <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-[11px] animate-fade-in mt-1">
+              {compatibilityReport.conflicts.map((c, idx) => (
+                <span
+                  key={`${c.ingredienteOriginal}-${idx}`}
+                  className={`px-2 py-0.5 rounded-lg border font-medium ${
+                    c.severidad === 'critica'
+                      ? 'bg-rose-100/90 text-rose-900 border-rose-200'
+                      : 'bg-amber-100/90 text-amber-900 border-amber-200'
+                  }`}
+                >
+                  <span className="capitalize">{c.ingredienteOriginal}</span>
+                  <span className="opacity-75 ml-1">({c.patologia})</span>
+                </span>
+              ))}
             </div>
           )}
         </div>
@@ -325,9 +262,9 @@ export function RecipeAdaptationSection({
 
       {/* Mensaje de error si falla la inferencia */}
       {errorMessage && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-3 animate-fade-in">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+        <div className="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-2 animate-fade-in">
+          <div className="flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
             <span>{errorMessage}</span>
           </div>
           <button
@@ -335,7 +272,7 @@ export function RecipeAdaptationSection({
             onClick={() => setErrorMessage(null)}
             className="text-rose-600 hover:text-rose-900 font-bold"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}

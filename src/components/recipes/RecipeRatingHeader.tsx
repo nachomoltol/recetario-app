@@ -41,23 +41,31 @@ export function RecipeRatingHeader({
     });
   };
 
+  const handleCycleRatingMobile = () => {
+    const nextRating = rating >= 5 ? 0 : rating + 1;
+    setRating(nextRating);
+    startTransition(async () => {
+      await updateRatingAction(recetaId, nextRating);
+    });
+  };
+
   const currentDisplayRating = hoverRating !== null ? hoverRating : rating;
 
   return (
-    <div className="flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-2xl border border-[#e7dfd5] shadow-2xs">
+    <div className="h-9 flex items-center gap-1.5 sm:gap-2.5 bg-white px-1.5 sm:px-3 rounded-xl border border-[#e7dfd5] shadow-2xs">
       {/* Botón de Favorito (Corazón) */}
       <button
         type="button"
         onClick={handleFavoriteClick}
         title={isFavorite ? t('recipe_favorite_remove') : t('recipe_favorite_add')}
-        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
+        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
           isFavorite
             ? 'bg-rose-50 text-rose-600 border border-rose-200 shadow-2xs'
             : 'bg-[#faf7f2] text-stone-400 hover:text-stone-700 hover:bg-[#f4efe6]'
         }`}
       >
         <Heart
-          className={`w-4 h-4 transition-transform ${
+          className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform ${
             isFavorite ? 'fill-rose-500 scale-110' : ''
           }`}
         />
@@ -65,8 +73,25 @@ export function RecipeRatingHeader({
 
       <span className="h-4 w-px bg-[#e7dfd5]" />
 
-      {/* 5 Estrellas Interactivas (0-5) */}
-      <div className="flex items-center gap-1" onMouseLeave={() => setHoverRating(null)}>
+      {/* Vista Móvil (< sm): Microbadge táctil de valoración */}
+      <button
+        type="button"
+        onClick={handleCycleRatingMobile}
+        className="flex sm:hidden items-center gap-1 px-1.5 py-0.5 rounded-lg hover:bg-[#faf7f2] transition cursor-pointer"
+        title="Toca para valorar (1-5)"
+      >
+        <Star
+          className={`w-3.5 h-3.5 ${
+            rating > 0 ? 'text-amber-500 fill-amber-400' : 'text-stone-300'
+          }`}
+        />
+        <span className="text-xs font-bold text-stone-700 font-serif-recipe">
+          {rating > 0 ? `${rating}.0` : '·'}
+        </span>
+      </button>
+
+      {/* Vista Escritorio (>= sm): 5 Estrellas Interactivas (0-5) */}
+      <div className="hidden sm:flex items-center gap-0.5" onMouseLeave={() => setHoverRating(null)}>
         {[1, 2, 3, 4, 5].map((star) => {
           const isFilled = star <= currentDisplayRating;
           return (
@@ -76,10 +101,10 @@ export function RecipeRatingHeader({
               onClick={() => handleStarClick(star)}
               onMouseEnter={() => setHoverRating(star)}
               title={`${t('recipe_rate_stars')} ${star} ${t('recipe_of_5_stars')}`}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#faf7f2] transition-colors cursor-pointer active:scale-95"
+              className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-[#faf7f2] transition-colors cursor-pointer active:scale-95"
             >
               <Star
-                className={`w-4 h-4 transition-all ${
+                className={`w-3.5 h-3.5 transition-all ${
                   isFilled
                     ? 'text-amber-500 fill-amber-400 scale-105'
                     : 'text-stone-300 hover:text-amber-300'
@@ -88,13 +113,13 @@ export function RecipeRatingHeader({
             </button>
           );
         })}
-      </div>
 
-      {rating > 0 && (
-        <span className="text-xs font-bold text-stone-700 tabular-nums font-serif-recipe pl-0.5">
-          {rating}.0
-        </span>
-      )}
+        {rating > 0 && (
+          <span className="text-xs font-bold text-stone-700 tabular-nums font-serif-recipe pl-1">
+            {rating}.0
+          </span>
+        )}
+      </div>
     </div>
   );
 }

@@ -145,7 +145,28 @@ export const recipeExtractionSchema = {
           instruccion: {
             type: Type.STRING,
             description:
-              'Instrucción técnica clara, detallada y en prosa culinaria natural profesional. OBLIGATORIO: integra las cantidades exactas en prosa culinaria fluida (ej: "Añade media cebolla picada finamente", "Vierte una cucharada de aceite (15 ml)", "Incorpora los 200 g de pechuga de pollo cortada en dados"). Está TERMINANTEMENTE PROHIBIDO redactar números con decimales de laboratorio fríos o antinaturales (NO escribir "añade 0.5 unidades de cebolla" ni "vierte 15ml de aceite"). Las cantidades inyectadas deben coincidir con las porciones escaladas de la receta.',
+              'Nivel Intermedio (Estándar / Free): Prosa limpia, directa y funcional extraída del vídeo, sin adornos excesivos ni advertencias elementales. OBLIGATORIO: integra las cantidades exactas en prosa culinaria fluida (ej: "Añade media cebolla picada finamente", "Vierte una cucharada de aceite (15 ml)", "Incorpora los 200 g de pechuga de pollo cortada en dados"). Está TERMINANTEMENTE PROHIBIDO redactar números con decimales de laboratorio fríos o antinaturales (NO escribir "añade 0.5 unidades de cebolla" ni "vierte 15ml de aceite"). Las cantidades inyectadas deben coincidir con las porciones escaladas de la receta.',
+          },
+          instruccion_principiante: {
+            type: Type.STRING,
+            description:
+              'Nivel Principiante (PRO): OBLIGATORIO. Redacción pedagógica paso a paso que NO puede ser idéntica a "instruccion" (Intermedio). Explica con claridad didáctica cómo realizar el paso sin dar nada por sentado, e incluye advertencias explícitas de seguridad térmica (control de salpicaduras, vapor, calor de sartén/horno) y precauciones claras para no quemar ni dejar crudo el alimento. Integra también las cantidades exactas en prosa culinaria natural.',
+          },
+          instruccion_avanzada: {
+            type: Type.STRING,
+            description:
+              'Versión sintética, profesional y técnica para nivel Avanzado. Emplea terminología culinaria precisa (marcar, reducir, desglasar, emulsionar, pochar) omitiendo explicaciones elementales u obvias.',
+          },
+          descriptor_sensorial: {
+            type: Type.STRING,
+            description:
+              'OBLIGATORIO para Nivel Principiante (PRO): Tarjeta sensorial detallada con los cambios de color, texturas y aromas clave para saber exactamente cuándo pasar al siguiente paso sin miedo a quemar o dejar crudo el alimento (ej: "La cebolla pasará de blanco opaco a transparente brillante y desprenderá un aroma dulce; retira antes de que los bordes oscurezcan").',
+          },
+          potencia_fuego: {
+            type: Type.STRING,
+            enum: ['suave', 'medio', 'medio-alto', 'alto', 'horno'],
+            description:
+              'Nivel o potencia del fuego/calor requerido para este paso: "suave", "medio", "medio-alto", "alto", o "horno".',
           },
           tiempo_estimado_min: {
             type: Type.INTEGER,
@@ -160,7 +181,7 @@ export const recipeExtractionSchema = {
             description: 'Consejo gastronómico o secreto de técnica culinaria.',
           },
         },
-        required: ['orden', 'instruccion'],
+        required: ['orden', 'instruccion', 'instruccion_principiante', 'instruccion_avanzada', 'descriptor_sensorial'],
       },
     },
     macros_estimados_por_porcion: {
@@ -385,7 +406,13 @@ export function buildRecipeSystemInstruction(options?: {
      * BREAKFASTS AND SINGLE-PORTION BAKING:
        - Mug cakes / cup cakes / individual pancakes: batter summing between 90 – 140 g corresponds to exactly 1 serving.
      * MANDATORY CONSEQUENCE: Calculate servings by dividing the weight of the base ingredient by its reference unit weight and round to the nearest whole integer (e.g. 400 g cooked chickpeas with greens = 2 servings; 500 g chicken breast = 3 servings; 160 g dry pasta = 2 servings).
-   - Faithfully extract the recipe's native base servings into the 'porciones' field. Ingredient quantities integrated into the steps narrative must correspond accurately to those base servings.`
+   - Faithfully extract the recipe's native base servings into the 'porciones' field. Ingredient quantities integrated into the steps narrative must correspond accurately to those base servings.
+   - CULINARY LEVEL REACTIVITY AND STEP DESCRIPTORS:
+     * 'instruccion': Clean, direct, and functional prose extracted from the video for Intermediate (Standard/Free) level, without excessive embellishments or elementary warnings.
+     * 'instruccion_principiante': MANDATORY pedagogical step-by-step prose for Beginner (PRO) level. MUST NOT be identical to 'instruccion'. Includes explicit thermal safety warnings and clear precautions to avoid burning or undercooking.
+     * 'instruccion_avanzada': Synthetic, professional and technical version for Advanced level (concise phrasing, omitting obvious basic warnings, using professional culinary verbs: sear, deglaze, emulsify, reduce).
+     * 'descriptor_sensorial': Visual, aroma, or texture cues designed for a Beginner to know when to pull off or reduce heat without relying solely on a timer (e.g., "until the onion is translucent and fragrant", "until evenly golden with a toasted aroma").
+     * 'potencia_fuego': Strictly classify fire intensity: 'suave', 'medio', 'medio-alto', 'alto', or 'horno'.`
       : `8. REDACCIÓN EN PROSA CULINARIA NATURAL, TABLA MAESTRA DE GRAMAJES E INFERENCIA DE RACIONES:
    - En el array de 'pasos' o 'preparación', integra siempre las cantidades exactas de los ingredientes de forma fluida, profesional y natural.
    - PROHIBICIÓN ESTRICTA DE DECIMALES DE LABORATORIO: Queda TERMINANTEMENTE PROHIBIDO redactar expresiones frías, artificiales o de laboratorio como "añade 0.5 unidades de cebolla", "vierte 0.25 cucharadas" o "agrega 15ml de aceite".
@@ -437,7 +464,13 @@ export function buildRecipeSystemInstruction(options?: {
      * DESAYUNOS Y REPOSTERÍA MONOPORCIÓN:
        - Mug cakes / bizcochos en taza / tortitas individuales: masas que sumen entre 90 – 140 g totales corresponden exactamente a 1 ración.
      * CONSECUENCIA OBLIGATORIA: Calcula las raciones dividiendo el peso del ingrediente base entre su gramaje unitario de referencia y redondea al entero más próximo (ej: 400 g de garbanzos cocidos con hojas verdes = 2 raciones; 500 g de pechuga de pollo = 3 raciones; 160 g de pasta seca = 2 raciones).
-   - Extrae con total fidelidad las porciones o raciones base originales de la elaboración y refléjalas en el campo 'porciones'. Las cantidades integradas en los pasos deben corresponderse exactamente con dichas porciones base.`;
+   - Extrae con total fidelidad las porciones o raciones base originales de la elaboración y refléjalas en el campo 'porciones'. Las cantidades integradas en los pasos deben corresponderse exactamente con dichas porciones base.
+   - SISTEMA DE NIVELES CULINARIOS Y DESCRIPTORES EN PASOS:
+     * 'instruccion': Nivel Intermedio (Estándar / Free). Prosa limpia, directa y funcional extraída del vídeo, sin adornos excesivos ni advertencias elementales.
+     * 'instruccion_principiante': Nivel Principiante (PRO). OBLIGATORIO: La redacción NO puede ser idéntica al nivel intermedio. Redacción didáctica paso a paso con advertencias de seguridad térmica y precauciones claras para no quemar ni dejar crudo el alimento.
+     * 'instruccion_avanzada': Versión sintética, profesional y técnica para nivel Avanzado (omitiendo explicaciones elementales u obvias, con prosa concisa y profesional: marcar, reducir, desglasar, emulsionar).
+     * 'descriptor_sensorial': Pistas visuales, de aroma o textura pensadas para que un cocinero Principiante sepa cuándo retirar o bajar el fuego sin depender solo del reloj (ej: "hasta que la cebolla quede transparente", "hasta que adquiera un tono dorado uniforme y aroma tostado").
+     * 'potencia_fuego': Clasifica obligatoriamente la intensidad del fuego: 'suave', 'medio', 'medio-alto', 'alto' u 'horno'.`;
 
   return `
 Eres un Chef Ejecutivo y Nutricionista Clínico de élite especializado en estandarización culinaria, análisis audiovisual y salud sostenible.
@@ -527,9 +560,13 @@ export interface ExtractedIngredient {
 export interface ExtractedStep {
   orden: number;
   instruccion: string;
-  tiempo_estimado_min?: number;
-  temperatura_celsius?: number;
-  consejo_pro?: string;
+  instruccion_principiante?: string | null;
+  instruccion_avanzada?: string | null;
+  descriptor_sensorial?: string | null;
+  potencia_fuego?: 'suave' | 'medio' | 'medio-alto' | 'alto' | 'horno' | string | null;
+  tiempo_estimado_min?: number | null;
+  temperatura_celsius?: number | null;
+  consejo_pro?: string | null;
 }
 
 export interface ExtractedMacros {

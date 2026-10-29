@@ -436,13 +436,30 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       receta_id: nuevaReceta.id,
       orden: idx + 1, // CRÍTICO: idx + 1 garantiza que no haya duplicados ni valores <= 0
       instruccion: (p.instruccion || 'Preparación según indicaciones del vídeo.').trim(),
+      instruccion_principiante: p.instruccion_principiante ? p.instruccion_principiante.trim() : null,
+      instruccion_avanzada: p.instruccion_avanzada ? p.instruccion_avanzada.trim() : null,
+      descriptor_sensorial: p.descriptor_sensorial ? p.descriptor_sensorial.trim() : null,
+      potencia_fuego: p.potencia_fuego ? p.potencia_fuego.trim() : null,
       tiempo_estimado_min: typeof p.tiempo_estimado_min === 'number' && p.tiempo_estimado_min > 0 ? p.tiempo_estimado_min : null,
       temperatura_celsius: typeof p.temperatura_celsius === 'number' && p.temperatura_celsius > 0 ? p.temperatura_celsius : null,
       consejo_pro: p.consejo_pro ? p.consejo_pro.trim() : null,
       utensilios_sugeridos: [],
     }));
 
-    const { error: errPasos } = await supabase.from('pasos').insert(pasosPayload);
+    let { error: errPasos } = await supabase.from('pasos').insert(pasosPayload);
+
+    // Tolerancia a fallos: Si alguna de las columnas nuevas de nivel culinario no estuviese disponible en el schema cache de PostgREST, reintentar sin ellas
+    if (errPasos && /instruccion_principiante/i.test(errPasos.message || '')) {
+      const withoutPrincipiante = pasosPayload.map(({ instruccion_principiante, ...rest }: any) => rest);
+      const retryRes1 = await supabase.from('pasos').insert(withoutPrincipiante as any);
+      errPasos = retryRes1.error;
+    }
+    if (errPasos && /instruccion_avanzada|descriptor_sensorial|potencia_fuego/i.test(errPasos.message || '')) {
+      console.warn('Advertencia: Columnas de nivel culinario no disponibles en schema cache de pasos, reintentando inserción básica:', errPasos.message);
+      const fallbackPasos = pasosPayload.map(({ instruccion_principiante, instruccion_avanzada, descriptor_sensorial, potencia_fuego, ...rest }: any) => rest);
+      const retryResult = await supabase.from('pasos').insert(fallbackPasos as any);
+      errPasos = retryResult.error;
+    }
 
     if (errPasos) {
       console.error('Error insertando pasos, ejecutando rollback:', errPasos);

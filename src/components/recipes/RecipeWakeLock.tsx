@@ -96,10 +96,10 @@ export function RecipeWakeLock() {
     <button
       type="button"
       onClick={toggleManualWakeLock}
-      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all shadow-2xs cursor-pointer border ${
+      className={`h-9 inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 rounded-xl text-xs font-medium transition-all shadow-2xs cursor-pointer border ${
         isLocked
           ? 'bg-amber-50 text-[#a86224] border-amber-200 hover:bg-amber-100/70'
-          : 'bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200/60'
+          : 'bg-white text-stone-600 border-[#e7dfd5] hover:bg-[#faf7f2]'
       }`}
       title={
         isLocked
@@ -108,20 +108,17 @@ export function RecipeWakeLock() {
       }
     >
       <span
-        className={`w-2 h-2 rounded-full transition-colors ${
+        className={`w-2 h-2 rounded-full transition-colors shrink-0 ${
           isLocked ? 'bg-amber-500 animate-pulse' : 'bg-stone-400'
         }`}
       />
       <span className="hidden sm:inline">
         {isLocked ? t('wakelock_label_active') : t('wakelock_label_normal')}
       </span>
-      <span className="sm:hidden">
-        {isLocked ? t('wakelock_label_mobile_active') : t('wakelock_label_mobile_normal')}
-      </span>
       {isLocked ? (
-        <Eye className="w-3.5 h-3.5 opacity-80" />
+        <Eye className="w-3.5 h-3.5 opacity-80 shrink-0" />
       ) : (
-        <EyeOff className="w-3.5 h-3.5 opacity-70" />
+        <EyeOff className="w-3.5 h-3.5 opacity-70 shrink-0" />
       )}
     </button>
   );
