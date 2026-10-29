@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient, getAdminClient } from '@/lib/supabase/server';
 import { extractRecipeWithGemini, detectFuenteTipo, sanitizeRecipeUrl } from '@/lib/gemini/extractor';
 import { getClinicalExclusions } from '@/lib/clinicalDictionary';
-import { ExtractedIngredient } from '@/lib/gemini/schema';
+import { ExtractedIngredient, normalizarIngredientesExtraidos } from '@/lib/gemini/schema';
 import { calcularGramos } from '@/lib/nutrition/converter';
 import { IngredienteMaestro } from '@/types/recipe';
 import { FuenteTipoReceta } from '@/types/database';
@@ -290,7 +290,14 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
 
     // 5. Preparar e insertar en 'receta_ingredientes' de forma blindada
     const rawIngredientes: ExtractedIngredient[] = extracted.ingredientes && extracted.ingredientes.length > 0
-      ? extracted.ingredientes
+      ? normalizarIngredientesExtraidos(extracted.ingredientes, {
+          idioma,
+          rolPlato: extracted.rol_plato,
+          titulo: extracted.titulo,
+          categorias: extracted.categorias_gastronomicas,
+          momentos: extracted.momentos_consumo,
+          etiquetas: extracted.etiquetas,
+        })
       : [{
           nombre_crudo: 'Ingredientes principales según vídeo',
           nombre_limpio: 'Ingredientes según vídeo',

@@ -175,11 +175,22 @@ export function IngredientRow({
     : adaptedBaseName;
   const nombreMostrado = cleanIngredientName(rawNombreMostrado);
 
-  const cantidadMostrada = appliedOption
+  const rawCantidadMostrada = appliedOption
     ? (appliedOption.cantidad_ajustada && appliedOption.unidad_ajustada
         ? formatCulinaryAmount(appliedOption.cantidad_ajustada, appliedOption.unidad_ajustada, language, nombreMostrado)
         : appliedOption.cantidad_sugerida)
     : formatCulinaryAmount(baseCantidadNum, ingrediente?.unidad, language, nombreMostrado);
+
+  // Si ing.unidad === 'al gusto' (o 'to taste'), renderizar únicamente "al gusto" sin anteponer ningún número (1)
+  const effectiveUnitLower = (appliedOption?.unidad_ajustada || ingrediente?.unidad || '').toLowerCase().trim();
+  const isToTasteUnit =
+    effectiveUnitLower === 'al gusto' ||
+    effectiveUnitLower === 'a gusto' ||
+    effectiveUnitLower === 'to taste' ||
+    /^(1\s+)?(al\s+gusto|a\s+gusto|to\s+taste)$/i.test(String(rawCantidadMostrada || '').trim());
+  const cantidadMostrada = isToTasteUnit
+    ? (language === 'en' ? 'to taste' : 'al gusto')
+    : String(rawCantidadMostrada || '').replace(/^\s*1\s+(?=(al\s+gusto|to\s+taste)\b)/i, '');
 
   // Naturalización armónica y pluralización culinaria del nombre:
   // - "3 dientes" + "Ajo" -> "3 dientes de ajo" (o "3 cloves of garlic")

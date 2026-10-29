@@ -20,6 +20,10 @@ export interface AdaptedStepPayload {
   id?: string;
   orden: number;
   instruccion: string;
+  instruccion_principiante?: string | null;
+  instruccion_avanzada?: string | null;
+  descriptor_sensorial?: string | null;
+  potencia_fuego?: string | null;
   tiempo_estimado_min?: number | null;
   temperatura_celsius?: number | null;
   consejo_pro?: string | null;
@@ -32,6 +36,8 @@ export interface SaveRecipeAdaptationParams {
   ingredientes: AdaptedIngredientPayload[];
   pasos: AdaptedStepPayload[];
 }
+
+export type SaveAdaptationInput = SaveRecipeAdaptationParams;
 
 export interface SaveAdaptationResult {
   success: boolean;
@@ -208,10 +214,10 @@ export async function saveRecipeAdaptationAction({
       receta_id: recetaId,
       orden: typeof p.orden === 'number' ? p.orden : idx + 1,
       instruccion: p.instruccion.trim(),
-      instruccion_principiante: (p as any).instruccion_principiante ? (p as any).instruccion_principiante.trim() : null,
-      instruccion_avanzada: (p as any).instruccion_avanzada ? (p as any).instruccion_avanzada.trim() : null,
-      descriptor_sensorial: (p as any).descriptor_sensorial ? (p as any).descriptor_sensorial.trim() : null,
-      potencia_fuego: (p as any).potencia_fuego ? (p as any).potencia_fuego.trim() : null,
+      instruccion_principiante: p.instruccion_principiante ? p.instruccion_principiante.trim() : null,
+      instruccion_avanzada: p.instruccion_avanzada ? p.instruccion_avanzada.trim() : null,
+      descriptor_sensorial: p.descriptor_sensorial ? p.descriptor_sensorial.trim() : null,
+      potencia_fuego: p.potencia_fuego ? p.potencia_fuego.trim() : null,
       tiempo_estimado_min: typeof p.tiempo_estimado_min === 'number' && p.tiempo_estimado_min > 0 ? p.tiempo_estimado_min : null,
       temperatura_celsius: typeof p.temperatura_celsius === 'number' && p.temperatura_celsius > 0 ? p.temperatura_celsius : null,
       consejo_pro: p.consejo_pro ? p.consejo_pro.trim() : null,

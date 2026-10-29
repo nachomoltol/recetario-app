@@ -13,6 +13,7 @@ import {
   SYSTEM_INSTRUCTION_RECIPES,
   buildRecipeSystemInstruction,
   ExtractedRecipe,
+  normalizarIngredientesExtraidos,
 } from './schema';
 import { FuenteTipoReceta } from '@/types/database';
 
@@ -1649,6 +1650,15 @@ ${contextPrompt.trim()}
             'No se identificaron ingredientes ni pasos de cocinado suficientes en el contenido analizado.'
           );
         }
+
+        parsed.ingredientes = normalizarIngredientesExtraidos(parsed.ingredientes, {
+          idioma,
+          rolPlato: parsed.rol_plato,
+          titulo: parsed.titulo,
+          categorias: parsed.categorias_gastronomicas,
+          momentos: parsed.momentos_consumo,
+          etiquetas: parsed.etiquetas,
+        });
 
         return parsed;
       } catch (err) {

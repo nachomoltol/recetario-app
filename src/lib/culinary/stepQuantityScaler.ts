@@ -313,7 +313,21 @@ export function scaleStepQuantities(
     const isPinchOrToTaste = /^(pizca|pizcas|pinch|pinches|al gusto|a gusto|to taste|c\/n|c\.n\.|cn)$/i.test(
       (ing.unidad || '').trim()
     );
-    const isInvariable = ing.rol_culinario === 'invariable' || isPinchOrToTaste;
+    const hasDefinedMetricQuantity =
+      Boolean(ing.unidad) &&
+      !isPinchOrToTaste &&
+      /^(g|gr|grs|gramos?|grams?|ml|mls|mililitros?|milliliters?|kg|kgs|kilos?|l|lt|litros?|tbsp|tsp|cucharadas?|cucharaditas?|taza|tazas|cup|cups)$/i.test(
+        (ing.unidad || '').trim()
+      );
+    const isStructuralSweetOrDough = /\b(azucar|azúcar|sugar|panela|miel|honey|sirope|syrup|harina|flour)\b/i.test(
+      ingKey
+    );
+
+    // Si tiene cantidad métrica real o es un ingrediente estructural dulce con cantidad, NO debe tratarse como invariable
+    const isInvariable =
+      !hasDefinedMetricQuantity &&
+      !isStructuralSweetOrDough &&
+      (ing.rol_culinario === 'invariable' || isPinchOrToTaste);
 
     if (isInvariable) {
       const patternInvariableMetric = new RegExp(

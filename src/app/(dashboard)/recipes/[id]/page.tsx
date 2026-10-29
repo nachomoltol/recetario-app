@@ -95,6 +95,12 @@ export default async function RecipeDetailPage({ params, searchParams }: PagePro
     pasos: (pasos || []).map((p, idx) => ({
       orden: p?.orden || idx + 1,
       instruccion: p?.instruccion || '',
+      instruccion_principiante: p?.instruccion_principiante || null,
+      instruccion_avanzada: p?.instruccion_avanzada || null,
+      descriptor_sensorial: p?.descriptor_sensorial || null,
+      potencia_fuego: p?.potencia_fuego || null,
+      tiempo_estimado_min: p?.tiempo_estimado_min || null,
+      temperatura_celsius: p?.temperatura_celsius || null,
       consejo_pro: p?.consejo_pro || null,
     })),
   };

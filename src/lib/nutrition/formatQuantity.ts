@@ -185,7 +185,7 @@ export function formatCulinaryAmount(
     u === 'c.n.' ||
     u === 'cn'
   ) {
-    return lang === 'en' ? 'To taste' : 'Al gusto';
+    return lang === 'en' ? 'to taste' : 'al gusto';
   }
 
   // BARRERA: Pizcas

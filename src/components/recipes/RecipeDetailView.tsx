@@ -239,6 +239,22 @@ export function RecipeDetailView({
         receta_id: receta?.id || '',
         orden: ap?.orden || index + 1,
         instruccion: ap?.instruccion || '',
+        instruccion_principiante:
+          ap?.instruccion_principiante !== undefined
+            ? ap.instruccion_principiante
+            : orig?.instruccion_principiante || null,
+        instruccion_avanzada:
+          ap?.instruccion_avanzada !== undefined
+            ? ap.instruccion_avanzada
+            : orig?.instruccion_avanzada || null,
+        descriptor_sensorial:
+          ap?.descriptor_sensorial !== undefined
+            ? ap.descriptor_sensorial
+            : orig?.descriptor_sensorial || null,
+        potencia_fuego:
+          ap?.potencia_fuego !== undefined
+            ? ap.potencia_fuego
+            : orig?.potencia_fuego || null,
         tiempo_estimado_min:
           ap?.tiempo_estimado_min !== undefined ? ap.tiempo_estimado_min : orig?.tiempo_estimado_min || null,
         temperatura_celsius:
@@ -281,6 +297,10 @@ export function RecipeDetailView({
             id: p.id,
             orden: p.orden || idx + 1,
             instruccion: p.instruccion,
+            instruccion_principiante: p.instruccion_principiante || null,
+            instruccion_avanzada: p.instruccion_avanzada || null,
+            descriptor_sensorial: p.descriptor_sensorial || null,
+            potencia_fuego: p.potencia_fuego || null,
             tiempo_estimado_min: p.tiempo_estimado_min,
             temperatura_celsius: p.temperatura_celsius,
             consejo_pro: p.consejo_pro,
@@ -369,7 +389,9 @@ export function RecipeDetailView({
             cleanNew,
             rawQty,
             rawUnit,
-            rawRol
+            rawRol,
+            ing.unidad,
+            ing.cantidad
           );
 
           return {
@@ -389,6 +411,16 @@ export function RecipeDetailView({
         return {
           ...paso,
           instruccion: replaceIngredientInText(paso.instruccion, currentTarget, replacement),
+          instruccion_principiante: paso.instruccion_principiante
+            ? replaceIngredientInText(paso.instruccion_principiante, currentTarget, replacement)
+            : null,
+          instruccion_avanzada: paso.instruccion_avanzada
+            ? replaceIngredientInText(paso.instruccion_avanzada, currentTarget, replacement)
+            : null,
+          descriptor_sensorial: paso.descriptor_sensorial
+            ? replaceIngredientInText(paso.descriptor_sensorial, currentTarget, replacement)
+            : null,
+          potencia_fuego: paso.potencia_fuego || null,
           consejo_pro: paso.consejo_pro
             ? replaceIngredientInText(paso.consejo_pro, currentTarget, replacement)
             : null,
@@ -415,6 +447,10 @@ export function RecipeDetailView({
           id: p.id,
           orden: p.orden || idx + 1,
           instruccion: p.instruccion,
+          instruccion_principiante: p.instruccion_principiante || null,
+          instruccion_avanzada: p.instruccion_avanzada || null,
+          descriptor_sensorial: p.descriptor_sensorial || null,
+          potencia_fuego: p.potencia_fuego || null,
           tiempo_estimado_min: p.tiempo_estimado_min,
           temperatura_celsius: p.temperatura_celsius,
           consejo_pro: p.consejo_pro,
@@ -1022,6 +1058,12 @@ export function RecipeDetailView({
           pasos={currentPasos || []}
           defaultServings={initialServings}
           onSubstitutePersist={handleSubstitutePersist}
+          rolPlato={receta?.rol_plato}
+          categoriasGastronomicas={
+            (receta as any)?.categorias_gastronomicas ||
+            (receta?.receta_original as any)?.categorias_gastronomicas ||
+            receta?.etiquetas
+          }
           isAdapted={isAdapted}
           userProfile={userProfile}
         />

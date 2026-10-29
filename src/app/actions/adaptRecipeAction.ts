@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '@/lib/gemini/client';
 import { getClinicalExclusions } from '@/lib/clinicalDictionary';
 import { cleanIngredientName, formatCulinaryAmount } from '@/lib/nutrition/formatQuantity';
+import { normalizeSubstituteQuantityAndUnit } from '@/lib/culinary/scaler';
 import { Type } from '@google/genai';
 
 export interface AdaptedIngredient {
@@ -17,7 +18,11 @@ export interface AdaptedIngredient {
 
 export interface AdaptedStep {
   orden: number;
+  instruccion_principiante?: string | null;
   instruccion: string;
+  instruccion_avanzada?: string | null;
+  descriptor_sensorial?: string | null;
+  potencia_fuego?: 'suave' | 'medio' | 'medio-alto' | 'alto' | 'horno' | string | null;
   consejo_pro?: string | null;
   tiempo_estimado_min?: number | null;
   temperatura_celsius?: number | null;
@@ -57,6 +62,12 @@ export interface AdaptRecipeInput {
   pasos: {
     orden: number;
     instruccion: string;
+    instruccion_principiante?: string | null;
+    instruccion_avanzada?: string | null;
+    descriptor_sensorial?: string | null;
+    potencia_fuego?: string | null;
+    tiempo_estimado_min?: number | null;
+    temperatura_celsius?: number | null;
     consejo_pro?: string | null;
   }[];
   idioma?: 'es' | 'en';
@@ -91,7 +102,7 @@ const adaptRecipeSchema = {
           unidad: {
             type: Type.STRING,
             description:
-              'Unidad culinaria normalizada coherente con la lista original (g, ml, cucharada, cucharadas, cucharadita, cucharaditas, taza, tazas, pizca, al gusto, unidad, unidades). Mantener cucharadas o pizcas si la receta original las usa.',
+              'Unidad culinaria normalizada coherente con la lista original (g, ml, cucharada, cucharadas, cucharadita, cucharaditas, taza, tazas, pizca, al gusto, unidad, unidades). Si cambias de unidad entre cucharas/tazas y ml/g, aplica la conversión matemática real (1 cda = 15 ml, 1 cdita = 5 ml, 1 taza = 240 ml) respetando MAX_SPOON_MAGNITUDE <= 60.',
           },
           pasillo_supermercado: {
             type: Type.STRING,
@@ -112,7 +123,7 @@ const adaptRecipeSchema = {
     },
     pasos: {
       type: Type.ARRAY,
-      description: 'Lista completa de pasos de preparación reescritos y adaptados. Cuando modifiques un paso para hacerlo apto o más fácil, envuelve el cambio en <mark>...</mark>.',
+      description: 'Lista completa de pasos de preparación reescritos y adaptados preservando los 3 niveles pedagógicos. Cuando modifiques un paso para hacerlo apto o más fácil, envuelve el cambio en <mark>...</mark>.',
       items: {
         type: Type.OBJECT,
         properties: {
@@ -120,9 +131,30 @@ const adaptRecipeSchema = {
             type: Type.INTEGER,
             description: 'Orden cronológico del paso.',
           },
+          instruccion_principiante: {
+            type: Type.STRING,
+            description:
+              'Nivel Principiante (PRO): Relato pedagógico paso a paso adaptado al perfil clínico (NO idéntico a instruccion). Incluye explicaciones guiadas y advertencias de seguridad térmica. Envuelve ingredientes sustituidos en <mark>...</mark>.',
+          },
           instruccion: {
             type: Type.STRING,
-            description: 'Instrucción adaptada. OBLIGATORIO: Cuando menciones un ingrediente sustituido o técnica adaptada, envuélvelo en <mark> (ej: "Añade <mark>la leche de avena</mark>").',
+            description:
+              'Nivel Intermedio: Instrucción adaptada equilibrada y directa. OBLIGATORIO: Cuando menciones un ingrediente sustituido o técnica adaptada, envuélvelo en <mark> (ej: "Añade <mark>la leche de avena</mark>").',
+          },
+          instruccion_avanzada: {
+            type: Type.STRING,
+            description:
+              'Nivel Avanzado (PRO): Versión sintética, ejecutiva y técnica de restaurante adaptada al perfil clínico (verbos técnicos: marcar, desglasar, emulsionar, reducir). Envuelve ingredientes sustituidos en <mark>...</mark>.',
+          },
+          descriptor_sensorial: {
+            type: Type.STRING,
+            description:
+              'Tarjeta sensorial adaptada (cambios de color, textura y aroma clave para saber cuándo avanzar al siguiente paso sin quemar ni dejar crudo el alimento).',
+          },
+          potencia_fuego: {
+            type: Type.STRING,
+            enum: ['suave', 'medio', 'medio-alto', 'alto', 'horno'],
+            description: 'Potencia del fuego o calor requerida en el paso: suave, medio, medio-alto, alto u horno.',
           },
           consejo_pro: {
             type: Type.STRING,
@@ -137,7 +169,17 @@ const adaptRecipeSchema = {
             description: 'Temperatura en grados centígrados.',
           },
         },
-        required: ['orden', 'instruccion'],
+        required: [
+          'orden',
+          'instruccion_principiante',
+          'instruccion',
+          'instruccion_avanzada',
+          'descriptor_sensorial',
+          'potencia_fuego',
+          'consejo_pro',
+          'tiempo_estimado_min',
+          'temperatura_celsius',
+        ],
       },
     },
   },
@@ -191,7 +233,9 @@ const STOP_WORDS_MIN = new Set([
 function sanitizeAdaptedStepsProse(
   pasos: AdaptedStep[],
   ingredientes: AdaptedIngredient[],
-  lang: 'es' | 'en' = 'es'
+  lang: 'es' | 'en' = 'es',
+  originalIngredientes?: { nombre_limpio: string; cantidad: number; unidad: string }[],
+  exclusionesClinicas?: string[]
 ): AdaptedStep[] {
   if (!pasos || pasos.length === 0 || !ingredientes || ingredientes.length === 0) {
     return pasos || [];
@@ -199,7 +243,44 @@ function sanitizeAdaptedStepsProse(
 
   return pasos.map((paso) => {
     let instruccion = paso.instruccion || '';
+    let instruccionPrincipiante = paso.instruccion_principiante || null;
+    let instruccionAvanzada = paso.instruccion_avanzada || null;
+    let descriptorSensorial = paso.descriptor_sensorial || null;
     let consejo = paso.consejo_pro || null;
+
+    // 0. Si hubo sustitución de un ingrediente excluido clínicamente, asegurar limpieza también en instruccion_principiante, instruccion_avanzada y descriptor_sensorial
+    if (originalIngredientes && originalIngredientes.length > 0) {
+      originalIngredientes.forEach((origIng, idx) => {
+        const adaptedIng = ingredientes[idx];
+        if (!origIng || !adaptedIng) return;
+        const origClean = (origIng.nombre_limpio || '').replace(/<\/?[^>]+(>|$)/g, '').trim();
+        const adaptedClean = (adaptedIng.nombre_limpio || '').replace(/<\/?[^>]+(>|$)/g, '').trim();
+        if (!origClean || !adaptedClean || origClean.toLowerCase() === adaptedClean.toLowerCase()) return;
+
+        const isExcluded =
+          !exclusionesClinicas ||
+          exclusionesClinicas.length === 0 ||
+          exclusionesClinicas.some(
+            (ex) =>
+              origClean.toLowerCase().includes(ex.toLowerCase()) ||
+              ex.toLowerCase().includes(origClean.toLowerCase())
+          );
+
+        if (isExcluded && origClean.length >= 3) {
+          const escapedOrig = origClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const exRegex = new RegExp(`\\b${escapedOrig}\\b`, 'gi');
+          if (instruccionPrincipiante) {
+            instruccionPrincipiante = instruccionPrincipiante.replace(exRegex, `<mark>${adaptedClean}</mark>`);
+          }
+          if (instruccionAvanzada) {
+            instruccionAvanzada = instruccionAvanzada.replace(exRegex, `<mark>${adaptedClean}</mark>`);
+          }
+          if (descriptorSensorial) {
+            descriptorSensorial = descriptorSensorial.replace(exRegex, adaptedClean);
+          }
+        }
+      });
+    }
 
     for (const ing of ingredientes) {
       const rawName = (ing.nombre_limpio || '').replace(/<\/?[^>]+(>|$)/g, '').trim();
@@ -207,7 +288,16 @@ function sanitizeAdaptedStepsProse(
 
       const isPinch = /^(pizca|pizcas|pinch|pinches)$/i.test((ing.unidad || '').trim());
       const isToTaste = /^(al gusto|a gusto|to taste|c\/n|c\.n\.|cn)$/i.test((ing.unidad || '').trim());
-      const isInvariable = ing.rol_culinario === 'invariable' || isPinch || isToTaste;
+      const isStructuralSweetOrDough = /\b(azucar|azúcar|sugar|panela|miel|honey|sirope|syrup|harina|flour)\b/i.test(rawName);
+      const hasRealMetric =
+        !isPinch &&
+        !isToTaste &&
+        Boolean(ing.unidad) &&
+        /^(g|gr|grs|gramos?|grams?|ml|mls|mililitros?|milliliters?|kg|kgs|kilos?|l|lt|litros?|tbsp|tsp|cucharadas?|cucharaditas?|taza|tazas|cup|cups)$/i.test(
+          (ing.unidad || '').trim()
+        );
+
+      const isInvariable = !hasRealMetric && !isStructuralSweetOrDough && (ing.rol_culinario === 'invariable' || isPinch || isToTaste);
 
       const isSpoonOrCup = /^(cucharada|cucharadas|cucharadita|cucharaditas|tbsp|tsp|taza|tazas|cup|cups)$/i.test(
         (ing.unidad || '').trim()
@@ -269,6 +359,15 @@ function sanitizeAdaptedStepsProse(
       };
 
       instruccion = instruccion.replace(patternSpuriousMetric, replaceFn);
+      if (instruccionPrincipiante) {
+        instruccionPrincipiante = instruccionPrincipiante.replace(patternSpuriousMetric, replaceFn);
+      }
+      if (instruccionAvanzada) {
+        instruccionAvanzada = instruccionAvanzada.replace(patternSpuriousMetric, replaceFn);
+      }
+      if (descriptorSensorial) {
+        descriptorSensorial = descriptorSensorial.replace(patternSpuriousMetric, replaceFn);
+      }
       if (consejo) {
         consejo = consejo.replace(patternSpuriousMetric, replaceFn);
       }
@@ -276,7 +375,10 @@ function sanitizeAdaptedStepsProse(
 
     return {
       ...paso,
+      instruccion_principiante: instruccionPrincipiante,
       instruccion,
+      instruccion_avanzada: instruccionAvanzada,
+      descriptor_sensorial: descriptorSensorial,
       consejo_pro: consejo,
     };
   });
@@ -440,7 +542,7 @@ Reescribe el JSON de esta receta. Adapta los ingredientes y los pasos de prepara
             systemInstruction: SYSTEM_INSTRUCTION_ADAPT,
             responseMimeType: 'application/json',
             responseJsonSchema: adaptRecipeSchema,
-            maxOutputTokens: 3500,
+            maxOutputTokens: 8192,
           },
         });
 
@@ -471,32 +573,37 @@ Reescribe el JSON de esta receta. Adapta los ingredientes y los pasos de prepara
             else if (uLower === 'mililitro' || uLower === 'mililitros') u = 'ml';
           }
 
-          // Si el ingrediente original usaba cucharadas, cucharaditas o pizca y no fue sustituido radicalmente,
-          // preservar la unidad original en lugar de permitir la degradación a gramos fríos
-          const isOrigSpoonOrPinch = /^(cucharada|cucharadas|cucharadita|cucharaditas|tbsp|tsp|taza|tazas|cup|cups|pizca|pizcas|pinch|al gusto|to taste)$/i.test(
-            origIng?.unidad || ''
-          );
-          if (isOrigSpoonOrPinch && (uLower === 'g' || uLower === 'gramos' || uLower === 'ml')) {
-            u = origIng.unidad;
-          }
-
           // Saneado defensivo del nombre para erradicar cualquier cantidad métrica residual
           const cleanNombre = cleanIngredientName(ing.nombre_limpio);
-          const rolCulinario = ing.rol_culinario || origIng?.rol_culinario || null;
+          const rawRolCulinario = ing.rol_culinario || origIng?.rol_culinario || null;
+
+          // Conversión volumétrica real entre cucharas/tazas y ml/g (1 cda = 15 ml, 1 cdita = 5 ml, 1 taza = 240 ml, MAX_SPOON_MAGNITUDE <= 60)
+          const normalized = normalizeSubstituteQuantityAndUnit(
+            origIng?.nombre_limpio || cleanNombre,
+            cleanNombre.replace(/<\/?[^>]+(>|$)/g, ''),
+            Number(ing.cantidad) || 1,
+            u,
+            rawRolCulinario,
+            origIng?.unidad || null,
+            origIng?.cantidad ?? null
+          );
 
           return {
             ...ing,
             nombre_limpio: cleanNombre,
-            unidad: u,
-            rol_culinario: rolCulinario,
+            cantidad: normalized.cantidad,
+            unidad: normalized.unidad,
+            rol_culinario: normalized.rol_culinario || rawRolCulinario,
           };
         });
 
-        // Saneado defensivo del texto de los pasos para erradicar cualquier gramo artificial en cucharas o pizcas
+        // Saneado defensivo del texto de los pasos (incluidos los 3 niveles pedagógicos y descriptor sensorial)
         const sanitizedPasos = sanitizeAdaptedStepsProse(
           parsedData.pasos || [],
           sanitizedIngredientes,
-          idioma
+          idioma,
+          receta.ingredientes,
+          exclusionesClinicas
         );
 
         return {

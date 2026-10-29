@@ -63,7 +63,7 @@ export const recipeExtractionSchema = {
           unidad: {
             type: Type.STRING,
             description:
-              'Unidad del ingrediente. PRINCIPIO DE FIDELIDAD A LA UNIDAD DE ENTRADA: Si la fuente original declara explícitamente unidades domésticas tradicionales ("cucharada", "cucharadita", "tbsp", "tsp", "pizca", "al gusto") para ingredientes cuya magnitud cuantitativa sea <= 60, DEBES conservar fielmente dicha unidad original (está estrictamente prohibido degradarlas proactivamente a gramos o ml). Para ingredientes masivos a granel o recipientes ambiguos ("taza", "vaso", "puñado"), convierte a estándar métrico ("g" para sólidos/pastas o "ml" para líquidos). BARRERA DE MAGNITUD (MAX_SPOON_MAGNITUDE = 60): Cualquier ingrediente con cantidad > 60 queda terminantemente bloqueado para unidades de cuchara y debe usar "g" o "ml". REGLA LÓGICA DE PLURALIZACIÓN: si la cantidad es > 1 y la unidad es de piezas enteras, el texto de salida en unidad debe ser estrictamente plural ("units" en inglés, "unidades" en español); si es 1, singular ("unit" en inglés, "unidad" en español). EXCEPCIÓN CULINARIA PARA EL AJO: Para ajo desgranado, la unidad obligatoria DEBE ser "diente" o "dientes" ("clove" o "cloves" en inglés); está PROHIBIDO usar "unidad", "unidades" o "cabeza" a menos que la receta use la cabeza entera asada.',
+              'Unidad del ingrediente. PRINCIPIO DE FIDELIDAD A LA UNIDAD DE ENTRADA: Si la fuente original declara explícitamente unidades domésticas tradicionales ("cucharada", "cucharadita", "tbsp", "tsp", "pizca", "al gusto") para ingredientes cuya magnitud cuantitativa sea <= 60, DEBES conservar fielmente dicha unidad original (está estrictamente prohibido degradarlas proactivamente a gramos o ml). REGLA CANÓNICA DE ESPECIAS (SALADO VS REPOSTERÍA): En platos salados (entrantes, principales, guarniciones, salsas, guisos), toda especia, hierba aromática seca, sal y pimienta debe normalizarse obligatoriamente como cantidad: 1, unidad: "al gusto" ("to taste" en inglés) y rol_culinario: "invariable". EXCEPCIÓN DE REPOSTERÍA Y POSTRES: En postres o masas dulces/pastelería, NO fuerces las especias o aromatizantes (canela, vainilla, cardamomo, nuez moscada, jengibre en polvo, clavo, ralladura de cítricos) a "al gusto"; respeta sus medidas exactas (cucharaditas, gramos) del creador o deducidas proporcionalmente a la masa/harina con rol_culinario: "condimento". Para ingredientes masivos a granel o recipientes ambiguos ("taza", "vaso", "puñado"), convierte a estándar métrico ("g" para sólidos/pastas o "ml" para líquidos). BARRERA DE MAGNITUD (MAX_SPOON_MAGNITUDE = 60): Cualquier ingrediente con cantidad > 60 queda terminantemente bloqueado para unidades de cuchara y debe usar "g" o "ml". REGLA LÓGICA DE PLURALIZACIÓN: si la cantidad es > 1 y la unidad es de piezas enteras, el texto de salida en unidad debe ser estrictamente plural ("units" en inglés, "unidades" en español); si es 1, singular ("unit" en inglés, "unidad" en español). EXCEPCIÓN CULINARIA PARA EL AJO: Para ajo desgranado, la unidad obligatoria DEBE ser "diente" o "dientes" ("clove" o "cloves" en inglés); está PROHIBIDO usar "unidad", "unidades" o "cabeza" a menos que la receta use la cabeza entera asada.',
           },
           gramos_estimados: {
             type: Type.NUMBER,
@@ -332,7 +332,8 @@ export function buildRecipeSystemInstruction(options?: {
        - 'grasa_coccion': Cooking oil, butter for sautéing/searing.
        - 'condimento': Dry/powdered spices, herbs, salt, pepper, oregano, thyme, cumin, paprika, mustard powder, cinnamon, as well as viscous seasonings, fermented pastes, and concentrated sweeteners (Gochujang, miso paste, honey, tahini, tomato paste, dijon mustard, maple syrup, oyster sauce) when used as seasonings or dressing.
          **UNIVERSAL MAGNITUDE LAW FOR DOMESTIC SPOON UNITS:** Domestic spoon units ('tsp', 'tbsp') are strictly restricted to quantities/magnitudes <= 60 (g or ml). Any ingredient whose quantity is > 60 is strictly blocked from spoon units and MUST be specified in standard metric units ('g', 'ml', 'kg', 'l').
-       - 'invariable': Fixed non-scaling elements (e.g. "to taste", decorative pinch).`
+       - 'invariable': Fixed non-scaling elements (e.g. "to taste", decorative pinch).
+    - CANONICAL SPICE RULE (SAVORY DISHES VS PASTRY/DESSERTS): In savory dishes (starters, main dishes, sides, sauces, stews), every dry spice, dried aromatic herb, salt, and pepper MUST be normalized as cantidad: 1, unidad: 'to taste', rol_culinario: 'invariable'. PASTRY & DESSERT EXCEPTION (rol_plato === 'postre' or sweet dough/baking context): DO NOT force spices or flavorings (cinnamon, vanilla, cardamom, nutmeg, ginger powder, clove, citrus zest) to 'to taste'; respect exact measures (teaspoons, grams) from the creator or deduced proportionally to the flour/batter mass with rol_culinario: 'condimento'.`
       : `4. CONVERSIÓN MÉTRICA, FIDELIDAD A LA UNIDAD DE ENTRADA Y REGLA DE PLURALIZACIÓN:
    - PRINCIPIO DE FIDELIDAD A LA UNIDAD DE ENTRADA: Si la fuente original declara explícitamente unidades domésticas tradicionales ('cucharada', 'cucharadita', 'pizca', 'al gusto') para ingredientes de baja magnitud (<= 60):
      * Queda TERMINANTEMENTE PROHIBIDO convertirlos proactivamente a gramos métricos ('g') o mililitros ('ml').
@@ -352,7 +353,8 @@ export function buildRecipeSystemInstruction(options?: {
        - 'grasa_coccion': Aceite para freír/sofreír, mantequilla de cocinado en sartén.
        - 'condimento': Especias secas o en polvo, hierbas, sal, pimienta, pimentón, comino, orégano, mostaza en polvo, canela, así como condimentos viscosos, pastas fermentadas y endulzantes concentrados (Gochujang, pasta de miso, miel, tahini, pasta de tomate, mostaza Dijon, sirope, salsa de ostras) cuando actúan como aderezo o sazonador.
          **LEY UNIVERSAL DE MAGNITUD PARA UNIDADES DE CUCHARA:** Las unidades domésticas ('cucharadita', 'cucharada', 'tbsp', 'tsp') quedan restringidas EXCLUSIVAMENTE a magnitudes cuantitativas <= 60 (g o ml). Cualquier ingrediente cuya cantidad sea > 60 queda terminantemente bloqueado para unidades de cuchara y DEBE especificarse en unidades métricas estándar ('g', 'ml', 'kg', 'l').
-       - 'invariable': Cantidades fijas no escalables (ej. "al gusto", "to taste", "pizca de sal al gusto", toques decorativos).`;
+       - 'invariable': Cantidades fijas no escalables (ej. "al gusto", "to taste", "pizca de sal al gusto", toques decorativos).
+   - REGLA CANÓNICA DE ESPECIAS (SALADO VS REPOSTERÍA): En platos salados (entrantes, principales, guarniciones, salsas, guisos), toda especia, hierba aromática seca, sal y pimienta debe normalizarse obligatoriamente como cantidad: 1, unidad: 'al gusto' y rol_culinario: 'invariable'. EXCEPCIÓN DE REPOSTERÍA Y POSTRES (rol_plato === 'postre' o contexto de masas dulces/pastelería): NO fuerces las especias o aromatizantes (canela, vainilla, cardamomo, nuez moscada, jengibre en polvo, clavo, ralladura de cítricos) a "al gusto"; respeta las medidas exactas (cucharaditas, gramos) del creador o deducidas proporcionalmente a la masa/harina con su unidad métrica/doméstica real y rol_culinario: 'condimento'.`;
   const rule8Quantities =
     idioma === 'en'
       ? `8. NATURAL CULINARY PROSE, MASTER GRAMMAGE REFERENCE, AND BASE SERVINGS INFERENCE:
@@ -365,7 +367,7 @@ export function buildRecipeSystemInstruction(options?: {
      * Instead of "Add 2 units of egg", write: "Add the 2 beaten eggs".
    - PRINCIPLE OF THE CULINARY ANCHOR AND PROPORTIONAL EQUILIBRIUM INFERENCE:
      * Every dish has an "anchor ingredient" (classified under the 'principal' role: structural protein or base volumetric carbohydrate/legume).
-     * If a recipe does not specify servings, or if secondary quantities are visibly unbalanced:
+     * When the creator specifies exact grams or measures in the description/video, respect them with 100% fidelity. When the creator does NOT specify exact grams or measures in the description/video, use the quantity of the main anchor ingredient(s) ('principal') as the proportional reference anchor to calculate realistic and balanced quantities for the rest of the ingredients:
        1. Biological servings calibration: Calibrate base servings ('porciones') from the weight of the anchor ingredient, applying biological standards for main dish individual servings according to the Master Reference Table.
        2. Proportional capacity of cooking fluids and stocks: Volumes of cooking liquids and broths/stocks must maintain a proportional capacity relationship relative to the volume of the anchor ingredient, correcting unjustified source excesses to prevent drowning or flooding the dish.
        3. Thermodynamic range of initial cooking fats: Initial cooking fats ('grasa_coccion') must calibrate to the thermodynamic ranges required to coat the standard pan cooking surface per serving (typically 10-15 ml per diner), without inheriting excessive pours or splashes from the video.
@@ -423,7 +425,7 @@ export function buildRecipeSystemInstruction(options?: {
      * En lugar de "Agrega 2 unidades de huevo", escribe: "Agrega los 2 huevos batidos".
    - PRINCIPIO DEL ANCLA CULINARIA E INFERENCIA PROPORCIONAL DE EQUILIBRIO:
      * Todo plato cuenta con un "ingrediente ancla" (clasificado bajo el rol 'principal': proteína estructural o carbohidrato/legumbre volumétrica base).
-     * Si una receta no especifica comensales, o si las cantidades secundarias están visiblemente descompensadas:
+     * Cuando el creador especifique gramos o medidas exactas en la descripción/vídeo, respétalas con total fidelidad. Cuando el creador NO especifique gramos o medidas exactas en la descripción/vídeo, utiliza como ancla y referencia proporcional la cantidad del ingrediente o ingredientes principales ('principal') para calcular cantidades realistas y balanceadas del resto de ingredientes:
        1. Calibración biológica de raciones: El modelo DEBE calibrar las raciones base ('porciones') a partir del peso del ingrediente ancla, aplicando los estándares biológicos de ración individual de plato principal según la Tabla Maestra.
        2. Proporcionalidad física de líquidos y fondos: Los volúmenes de líquidos de cocción y fondos deben guardar una relación proporcional de capacidad respecto al volumen del ingrediente ancla, corrigiendo excesos injustificados de origen para evitar que el plato quede aguado o inundado en líquido.
        3. Rango termodinámico de grasas de inicio: Las grasas de cocción de inicio (rol 'grasa_coccion') deben calibrarse a los rangos termodinámicos necesarios para cubrir la superficie de cocción estándar por ración (típicamente 10-15 ml por comensal), sin heredar vertidos desmedidos o descuidos del vídeo.
@@ -594,4 +596,151 @@ export interface ExtractedRecipe {
   momentos_consumo?: string[];
   etiquetas: string[];
   alertas_compatibilidad?: string[];
+  rol_plato?: string;
+}
+
+/**
+ * Detecta si la receta o sección pertenece al contexto de repostería, pastelería, masas dulces o postres.
+ */
+export function isPastryOrDessertContext(options?: {
+  rolPlato?: string | null;
+  titulo?: string | null;
+  categorias?: string[] | null;
+  momentos?: string[] | null;
+  etiquetas?: string[] | null;
+  seccion?: string | null;
+}): boolean {
+  if (!options) return false;
+  if ((options.rolPlato || '').trim().toLowerCase() === 'postre') {
+    return true;
+  }
+
+  const combinedText = [
+    options.titulo || '',
+    ...(options.categorias || []),
+    ...(options.momentos || []),
+    ...(options.etiquetas || []),
+    options.seccion || '',
+  ]
+    .join(' ')
+    .toLowerCase();
+
+  return /\b(postre|postres|dulce|dulces|reposter[ií]a|pasteler[ií]a|tarta|pastel|bizcocho|galleta|galletas|cookie|cookies|brownie|muffin|cupcake|magdalena|magdalenas|flan|natillas|pudding|crepe|gofre|tortita|tortitas|pancake|pancakes|mug\s*cake|rosc[oó]n|torrija|torrijas|churro|churros|croissant|brioche|hojaldre\s+dulce|helado|mousse|tiramis[uú]|cheesecake|carrot\s*cake|cinnamon\s*roll|glaseado|frosting|merengue|alm[ií]bar|ganache|dessert|pastry|baking|cake|sweet)\b/i.test(
+    combinedText
+  );
+}
+
+/**
+ * Determina si un ingrediente es una especia seca, hierba aromática seca, sal o pimienta.
+ */
+export function isCanonicalSpiceHerbSaltOrPepper(
+  nombreLimpio?: string | null,
+  nombreCrudo?: string | null
+): boolean {
+  const clean = `${nombreLimpio || ''} ${nombreCrudo || ''}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+  if (!clean) return false;
+
+  // Excluir pastas húmedas, salsas líquidas, caldos, dientes de ajo frescos o manojos frescos a granel
+  if (
+    /\b(salsa|pasta\s+de|crema\s+de|caldo|fondo|aceite|vinagre|mostaza\s+dijon|mostaza\s+antigua|miel|sirope|diente|dientes|clove|cloves|cabeza\s+de\s+ajo|manojo|ramillete|fresco|fresca|fresh)\b/i.test(
+      clean
+    )
+  ) {
+    return false;
+  }
+
+  // Sal, pimienta, especias en polvo/grano y hierbas aromáticas secas
+  return /\b(sal|sal\s+fina|sal\s+marina|sal\s+gorda|sal\s+gruesa|sal\s+maldon|sal\s+en\s+escamas|sal\s+rosa|salt|sea\s+salt|kosher\s+salt|pimienta|pimienta\s+negra|pimienta\s+blanca|pimienta\s+molida|pimienta\s+en\s+grano|pimienta\s+cayena|cayena|black\s+pepper|white\s+pepper|cayenne|oregano|tomillo|thyme|romero|rosemary|laurel|bay\s+leaf|bay\s+leaves|comino|cumin|pimenton|paprika|curcuma|turmeric|curry\s+en\s+polvo|curry\s+powder|polvo\s+de\s+curry|garam\s+masala|ras\s+el\s+hanout|ajo\s+en\s+polvo|garlic\s+powder|ajo\s+granulado|cebolla\s+en\s+polvo|onion\s+powder|jengibre\s+en\s+polvo|ginger\s+powder|jengibre\s+molido|mostaza\s+en\s+polvo|mustard\s+powder|nuez\s+moscada|nutmeg|clavo|clavo\s+de\s+olor|cloves?\s+spice|cardamomo|cardamom|canela|cinnamon|coriandro|semillas\s+de\s+cilantro|estragon|tarragon|mejorana|marjoram|salvia|sage|azafran|saffron|chile\s+en\s+polvo|chili\s+powder|copos\s+de\s+chile|chili\s+flakes|albahaca\s+seca|dried\s+basil|perejil\s+seco|dried\s+parsley|eneldo\s+seco|dried\s+dill|cilantro\s+seco|hierbas\s+provenzales|finas\s+hierbas|especias)\b/i.test(
+    clean
+  );
+}
+
+/**
+ * Regla Canónica de Especias (Salado vs Repostería):
+ * - Platos salados (entrantes, principales, guarniciones, salsas, guisos):
+ *   Toda especia, hierba aromática seca, sal y pimienta se normaliza obligatoriamente como:
+ *   cantidad: 1, unidad: 'al gusto' (o 'to taste' en EN) y rol_culinario: 'invariable'.
+ * - Excepción de Repostería y Postres (rol_plato === 'postre' o contexto de masas dulces/pastelería):
+ *   NO se fuerzan las especias o aromatizantes (canela, vainilla, cardamomo, nuez moscada,
+ *   jengibre en polvo, clavo, ralladura de cítricos) a 'al gusto', respetando sus medidas exactas
+ *   (cucharaditas, gramos) y su rol culinario adecuado ('condimento').
+ */
+export function normalizarIngredientesExtraidos(
+  ingredientes: ExtractedIngredient[],
+  options?: {
+    idioma?: 'es' | 'en';
+    rolPlato?: string | null;
+    titulo?: string | null;
+    categorias?: string[] | null;
+    momentos?: string[] | null;
+    etiquetas?: string[] | null;
+  }
+): ExtractedIngredient[] {
+  if (!Array.isArray(ingredientes) || ingredientes.length === 0) {
+    return [];
+  }
+
+  const idioma = options?.idioma === 'en' ? 'en' : 'es';
+  const toTasteLabel = idioma === 'en' ? 'to taste' : 'al gusto';
+
+  const recipeIsPastry = isPastryOrDessertContext({
+    rolPlato: options?.rolPlato,
+    titulo: options?.titulo,
+    categorias: options?.categorias,
+    momentos: options?.momentos,
+    etiquetas: options?.etiquetas,
+  });
+
+  return ingredientes.map((ing) => {
+    const sectionIsPastry = isPastryOrDessertContext({ seccion: ing.seccion });
+    const isPastry = recipeIsPastry || sectionIsPastry;
+
+    const uLower = (ing.unidad || '').trim().toLowerCase();
+    const isAlreadyToTaste = /^(al\s+gusto|a\s+gusto|to\s+taste|c\/n|c\.n\.|cn)$/i.test(uLower);
+
+    if (isAlreadyToTaste) {
+      return {
+        ...ing,
+        cantidad: 1,
+        unidad: toTasteLabel,
+        rol_culinario: 'invariable',
+      };
+    }
+
+    if (isPastry) {
+      // EXCEPCIÓN DE REPOSTERÍA Y POSTRES:
+      // Respetar las medidas exactas (cucharaditas, gramos) de canela, vainilla, cardamomo,
+      // nuez moscada, jengibre en polvo, clavo, ralladura de cítricos, etc.
+      const cleanText = `${ing.nombre_limpio || ''} ${ing.nombre_crudo || ''}`.toLowerCase();
+      const isBakingAromatic =
+        /\b(canela|cinnamon|vainilla|vanilla|cardamomo|cardamom|nuez\s+moscada|nutmeg|jengibre|ginger|clavo|clove|an[ií]s|anise|ralladura|zest|azahar|tonka)\b/i.test(
+          cleanText
+        );
+      if (isBakingAromatic && (!ing.rol_culinario || ing.rol_culinario === 'invariable')) {
+        return {
+          ...ing,
+          rol_culinario: 'condimento',
+        };
+      }
+      return ing;
+    }
+
+    // PLATOS SALADOS: toda especia, hierba aromática seca, sal y pimienta -> cantidad: 1, unidad: 'al gusto', rol_culinario: 'invariable'
+    if (isCanonicalSpiceHerbSaltOrPepper(ing.nombre_limpio, ing.nombre_crudo)) {
+      return {
+        ...ing,
+        cantidad: 1,
+        unidad: toTasteLabel,
+        rol_culinario: 'invariable',
+      };
+    }
+
+    return ing;
+  });
+
 }

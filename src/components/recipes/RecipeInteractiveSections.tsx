@@ -15,7 +15,11 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { RecetaIngrediente, Paso } from '@/types/recipe';
-import { scaleIngredientsWithCulinaryHeuristics, scaleCookingTime } from '@/lib/culinary/scaler';
+import {
+  scaleIngredientsWithCulinaryHeuristics,
+  scaleCookingTime,
+  isBakingOrPastryContext,
+} from '@/lib/culinary/scaler';
 import { replaceIngredientInText } from '@/lib/culinary/textReplacer';
 import { scaleStepQuantities } from '@/lib/culinary/stepQuantityScaler';
 import { ServingsScaler } from './ServingsScaler';
@@ -382,6 +386,8 @@ interface RecipeInteractiveSectionsProps {
   ) => void;
   isAdapted?: boolean;
   userProfile?: any;
+  rolPlato?: string | null;
+  categoriasGastronomicas?: string[] | null;
 }
 
 export function RecipeInteractiveSections({
@@ -395,6 +401,8 @@ export function RecipeInteractiveSections({
   onSubstitutePersist,
   isAdapted,
   userProfile,
+  rolPlato,
+  categoriasGastronomicas,
 }: RecipeInteractiveSectionsProps) {
   const t = useLanguageStore((s) => s.t);
   const searchParams = useSearchParams();
@@ -483,17 +491,49 @@ export function RecipeInteractiveSections({
   const language = useLanguageStore((s) => s.language);
   const ratio = servings / (basePorciones || 2);
 
-  // Escalado inteligente con conciencia culinaria
+  const isBaking = useMemo(() => {
+    return isBakingOrPastryContext({
+      rol_plato: rolPlato,
+      titulo: tituloReceta,
+      categorias: categoriasGastronomicas,
+      ingredientes: safeIngredientes,
+    });
+  }, [rolPlato, tituloReceta, categoriasGastronomicas, safeIngredientes]);
+
+  // Escalado inteligente con conciencia culinaria (respetando 'al gusto' / 'to taste' como invariable sin número 1 previo)
   const scaledIngredientes = useMemo(() => {
-    return scaleIngredientsWithCulinaryHeuristics(
+    const rawScaled = scaleIngredientsWithCulinaryHeuristics(
       safeIngredientes,
       basePorciones || 2,
-      servings
+      servings,
+      {
+        rol_plato: rolPlato,
+        titulo: tituloReceta,
+        categorias: categoriasGastronomicas,
+        isBaking,
+      }
     );
-  }, [safeIngredientes, basePorciones, servings]);
+    return rawScaled.map((ing) => {
+      const cleanU = (ing.unidad || '').replace(/^\s*1\s+(?=(al\s+gusto|to\s+taste)\b)/i, '').trim();
+      if (/^(al\s+gusto|a\s+gusto|to\s+taste|c\/n|c\.n\.|cn)$/i.test(cleanU)) {
+        return {
+          ...ing,
+          cantidad: 1,
+          cantidad_escalada: 1,
+          unidad: language === 'en' ? 'to taste' : 'al gusto',
+          rol_culinario: 'invariable',
+        };
+      }
+      return ing;
+    });
+  }, [safeIngredientes, basePorciones, servings, language, rolPlato, tituloReceta, categoriasGastronomicas, isBaking]);
 
   const scaledTiempoCoccion = tiempoCoccionMin
-    ? scaleCookingTime(tiempoCoccionMin, ratio)
+    ? scaleCookingTime(tiempoCoccionMin, basePorciones || 2, servings, {
+        titulo: tituloReceta,
+        isBaking,
+        pasos,
+      })
     : null;
 
   // ==============================================================
@@ -626,6 +666,19 @@ export function RecipeInteractiveSections({
         ? String((paso as any).descriptor_sensorial).trim()
         : undefined;
 
+      const stepScaledTime = paso.tiempo_estimado_min
+        ? scaleCookingTime(
+            paso.tiempo_estimado_min,
+            basePorciones || 2,
+            servings,
+            {
+              instruccion: baseInstruction,
+              potencia_fuego: (paso as any)?.potencia_fuego,
+              isBaking,
+            }
+          )
+        : null;
+
       let instruccion = baseInstruction;
       let descriptorSensorial: string | undefined = undefined;
       let precaucionTermica: string | undefined = undefined;
@@ -641,7 +694,7 @@ export function RecipeInteractiveSections({
           rawSensory,
           (paso as any)?.potencia_fuego,
           paso?.temperatura_celsius,
-          paso?.tiempo_estimado_min,
+          stepScaledTime ?? paso?.tiempo_estimado_min,
           currentLang
         );
         instruccion = calibrated.beginnerInstruction;
@@ -654,7 +707,7 @@ export function RecipeInteractiveSections({
           rawAdvanced,
           (paso as any)?.potencia_fuego,
           paso?.temperatura_celsius,
-          paso?.tiempo_estimado_min,
+          stepScaledTime ?? paso?.tiempo_estimado_min,
           currentLang
         );
       } else {
@@ -718,6 +771,7 @@ export function RecipeInteractiveSections({
         descriptor_sensorial: descriptorSensorial,
         precaucion_termica: precaucionTermica,
         potencia_fuego: (paso as any)?.potencia_fuego || null,
+        tiempo_estimado_min: stepScaledTime ?? paso.tiempo_estimado_min,
         consejo_pro: consejo,
       };
     });
@@ -731,6 +785,8 @@ export function RecipeInteractiveSections({
     servings,
     effectiveActiveLevel,
     isPro,
+    basePorciones,
+    isBaking,
   ]);
 
   // Renderizado unificado de pasos interactivos

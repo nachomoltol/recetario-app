@@ -644,7 +644,13 @@ export function generateShoppingListFromPlans(
     const scaledList = scaleIngredientsWithCulinaryHeuristics(
       recipeIngs,
       basePorciones,
-      targetServings
+      targetServings,
+      {
+        titulo,
+        categorias: (p.recetas as any)?.categorias_gastronomicas,
+        etiquetas: (p.recetas as any)?.etiquetas,
+        rol_plato: (p.recetas as any)?.rol_plato,
+      }
     );
 
     for (const item of scaledList) {
@@ -697,7 +703,7 @@ export function generateShoppingListFromPlans(
       let gramos = Number(item.gramos_escalados) || 0;
 
       // 1. Especias y condimentos: no mostrar en gramos mínimos ("2 g", "3 g") -> marcar como despensa
-      if (isPantrySpice(canon.key)) {
+      if (isPantrySpice(canon.key) || /^(al\s+gusto|a\s+gusto|to\s+taste|c\/n|c\.n\.|cn)$/i.test(uRaw)) {
         canonicalUnitKey = 'despensa';
         cant = 0;
         gramos = 0;
