@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
@@ -129,14 +129,45 @@ export function RecipeDetailView({
   );
   const [isCategorizeDrawerOpen, setIsCategorizeDrawerOpen] = useState(() => {
     if (typeof window !== 'undefined') {
-      if (isNewRecipe) return true;
+      const recetaId = receta?.id;
+      // 1. Si ya se descartó o guardó en esta sesión, bajo ningún concepto volver a abrir
+      if (recetaId) {
+        try {
+          if (sessionStorage.getItem(`categorize_dismissed_${recetaId}`) === 'true') {
+            return false;
+          }
+        } catch {}
+      }
+
+      let shouldAutoOpen = Boolean(isNewRecipe);
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('isNew') === 'true') return true;
+      if (urlParams.get('isNew') === 'true') {
+        shouldAutoOpen = true;
+      }
       try {
-        if (receta?.id && localStorage.getItem('receta_recien_creada_id') === receta.id) {
-          return true;
+        if (recetaId && localStorage.getItem('receta_recien_creada_id') === recetaId) {
+          shouldAutoOpen = true;
         }
       } catch {}
+
+      if (shouldAutoOpen) {
+        // Bloquear inmediatamente para que ningún re-render/revalidación futuro pueda volver a abrirlo
+        if (recetaId) {
+          try {
+            sessionStorage.setItem(`categorize_dismissed_${recetaId}`, 'true');
+            localStorage.removeItem('receta_recien_creada_id');
+          } catch {}
+        }
+        try {
+          if (urlParams.has('isNew')) {
+            urlParams.delete('isNew');
+            const searchStr = urlParams.toString();
+            const cleanUrl = window.location.pathname + (searchStr ? `?${searchStr}` : '') + window.location.hash;
+            window.history.replaceState({}, '', cleanUrl);
+          }
+        } catch {}
+        return true;
+      }
     }
     return false;
   });
@@ -180,11 +211,43 @@ export function RecipeDetailView({
     receta?.es_favorito_menu,
   ]);
 
+  // Limpieza estricta de estado para evitar re-aperturas del drawer de categorización
+  const markCategorizationDismissed = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const recetaId = receta?.id;
+    if (recetaId) {
+      try {
+        sessionStorage.setItem(`categorize_dismissed_${recetaId}`, 'true');
+        localStorage.removeItem('receta_recien_creada_id');
+      } catch {}
+    }
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('isNew')) {
+        urlParams.delete('isNew');
+        const searchStr = urlParams.toString();
+        const cleanUrl = window.location.pathname + (searchStr ? `?${searchStr}` : '') + window.location.hash;
+        window.history.replaceState({}, '', cleanUrl);
+      }
+    } catch {}
+  }, [receta?.id]);
+
+  const handleOpenChangeCategorizeDrawer = useCallback((open: boolean) => {
+    setIsCategorizeDrawerOpen(open);
+    if (!open) {
+      markCategorizationDismissed();
+    }
+  }, [markCategorizationDismissed]);
+
   const handleSaveClassification = async (data: {
     momentos_dia: MomentoDia[];
     rol_plato: RolPlato;
     es_favorito_menu: boolean;
   }) => {
+    // 1. Cierre inmediato y descarte garantizado
+    setIsCategorizeDrawerOpen(false);
+    markCategorizationDismissed();
+
     const prevMomentos = currentMomentosDia;
     const prevRol = currentRolPlato;
     const prevFav = currentEsFavoritoMenu;
@@ -1104,8 +1167,8 @@ export function RecipeDetailView({
       {/* Drawer de Categorización de Menú y Momentos (Vaul) */}
       <RecipeCategorizeDrawer
         isOpen={isCategorizeDrawerOpen}
-        onOpenChange={setIsCategorizeDrawerOpen}
-        isNew={isNewRecipe}
+        onOpenChange={handleOpenChangeCategorizeDrawer}
+        isNew={false}
         receta={{
           id: receta?.id || '',
           titulo: currentTitulo,
