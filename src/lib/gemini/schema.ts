@@ -63,7 +63,7 @@ export const recipeExtractionSchema = {
           unidad: {
             type: Type.STRING,
             description:
-              'Unidad del ingrediente. PRINCIPIO DE FIDELIDAD A LA UNIDAD DE ENTRADA: Si la fuente original declara explícitamente unidades domésticas tradicionales ("cucharada", "cucharadita", "tbsp", "tsp", "pizca", "al gusto") para ingredientes cuya magnitud cuantitativa sea <= 60, DEBES conservar fielmente dicha unidad original (está estrictamente prohibido degradarlas proactivamente a gramos o ml). REGLA CANÓNICA DE ESPECIAS (SALADO VS REPOSTERÍA): En platos salados (entrantes, principales, guarniciones, salsas, guisos), toda especia, hierba aromática seca, sal y pimienta debe normalizarse obligatoriamente como cantidad: 1, unidad: "al gusto" ("to taste" en inglés) y rol_culinario: "invariable". EXCEPCIÓN DE REPOSTERÍA Y POSTRES: En postres o masas dulces/pastelería, NO fuerces las especias o aromatizantes (canela, vainilla, cardamomo, nuez moscada, jengibre en polvo, clavo, ralladura de cítricos) a "al gusto"; respeta sus medidas exactas (cucharaditas, gramos) del creador o deducidas proporcionalmente a la masa/harina con rol_culinario: "condimento". Para ingredientes masivos a granel o recipientes ambiguos ("taza", "vaso", "puñado"), convierte a estándar métrico ("g" para sólidos/pastas o "ml" para líquidos). BARRERA DE MAGNITUD (MAX_SPOON_MAGNITUDE = 60): Cualquier ingrediente con cantidad > 60 queda terminantemente bloqueado para unidades de cuchara y debe usar "g" o "ml". REGLA LÓGICA DE PLURALIZACIÓN: si la cantidad es > 1 y la unidad es de piezas enteras, el texto de salida en unidad debe ser estrictamente plural ("units" en inglés, "unidades" en español); si es 1, singular ("unit" en inglés, "unidad" en español). EXCEPCIÓN CULINARIA PARA EL AJO: Para ajo desgranado, la unidad obligatoria DEBE ser "diente" o "dientes" ("clove" o "cloves" en inglés); está PROHIBIDO usar "unidad", "unidades" o "cabeza" a menos que la receta use la cabeza entera asada.',
+              'Unidad del ingrediente. PRINCIPIO DE FIDELIDAD A LA UNIDAD DE ENTRADA: Si la fuente original declara explícitamente unidades domésticas tradicionales ("cucharada", "cucharadita", "tbsp", "tsp", "pizca", "al gusto") para ingredientes cuya magnitud cuantitativa sea <= 60, DEBES conservar fielmente dicha unidad original (está estrictamente prohibido degradarlas proactivamente a gramos o ml). PRINCIPIO DE NÚCLEO RECTOR VS MODIFICADOR: La clasificación de un ingrediente evalúa exclusivamente su sustantivo núcleo base (ej. \"mantequilla\" en \"mantequilla sin sal\", \"pollo\" en \"pollo con sal\"). Las grasas de cocción, proteínas o hidratos NUNCA transmutan a condimento ni a \"al gusto\" por llevar modificadores como \"sin sal\" o \"con sal\". INVARIANZA DE MASA DECLARADA: Si un ingrediente tiene masa física o volumen definido (ej: 50 g de mantequilla sin sal) y rol estructural (\"grasa_coccion\", \"principal\", \"base_liquida\", \"sofrito_base\"), NUNCA debe sobreescribirse a \"al gusto\" ni a \"invariable\". REGLA CANÓNICA DE ESPECIAS (SALADO VS REPOSTERÍA): En platos salados (entrantes, principales, guarniciones, salsas, guisos), toda especia, hierba aromática seca, sal y pimienta pura debe normalizarse obligatoriamente como cantidad: 1, unidad: "al gusto" ("to taste" en inglés) y rol_culinario: "invariable". EXCEPCIÓN DE REPOSTERÍA Y POSTRES: En postres o masas dulces/pastelería, NO fuerces las especias o aromatizantes (canela, vainilla, cardamomo, nuez moscada, jengibre en polvo, clavo, ralladura de cítricos) a "al gusto"; respeta sus medidas exactas (cucharaditas, gramos) del creador o deducidas proporcionalmente a la masa/harina con rol_culinario: "condimento". Para ingredientes masivos a granel o recipientes ambiguos ("taza", "vaso", "puñado"), convierte a estándar métrico ("g" para sólidos/pastas o "ml" para líquidos). BARRERA DE MAGNITUD (MAX_SPOON_MAGNITUDE = 60): Cualquier ingrediente con cantidad > 60 queda terminantemente bloqueado para unidades de cuchara y debe usar "g" o "ml". REGLA LÓGICA DE PLURALIZACIÓN: si la cantidad es > 1 y la unidad es de piezas enteras, el texto de salida en unidad debe ser estrictamente plural ("units" en inglés, "unidades" en español); si es 1, singular ("unit" en inglés, "unidad" en español). EXCEPCIÓN CULINARIA PARA EL AJO: Para ajo desgranado, la unidad obligatoria DEBE ser "diente" o "dientes" ("clove" o "cloves" en inglés); está PROHIBIDO usar "unidad", "unidades" o "cabeza" a menos que la receta use la cabeza entera asada.',
           },
           gramos_estimados: {
             type: Type.NUMBER,
@@ -631,39 +631,202 @@ export function isPastryOrDessertContext(options?: {
 }
 
 /**
- * Determina si un ingrediente es una especia seca, hierba aromática seca, sal o pimienta.
+ * Extrae el núcleo semántico rector de un ingrediente culinario,
+ * eliminando cláusulas adjetivales, privativas, estados físicos y formas de procesado.
+ *
+ * Ejemplos:
+ * - "mantequilla sin sal" -> "mantequilla"
+ * - "mantequilla con sal" -> "mantequilla"
+ * - "50gr de mantequilla sin sal" -> "mantequilla"
+ * - "tomate triturado sin sal" -> "tomate"
+ * - "pechuga de pollo en dados" -> "pechuga de pollo"
+ * - "leche desnatada" -> "leche"
+ * - "sal fina marina" -> "sal"
+ * - "pimienta negra molida" -> "pimienta negra"
+ */
+export function extractCulinarySemanticCore(text?: string | null): string {
+  if (!text || typeof text !== 'string') return '';
+
+  let str = text
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // Quitar tildes
+    .toLowerCase()
+    .trim();
+
+  // 1. Quitar cantidades numéricas y unidades iniciales si vienen en el texto (ej. "50 g de", "50gr de", "2 cdas de")
+  str = str.replace(
+    /^\s*\d+([.,]\d+)?\s*(gramos?|grams?|grs?|g|kilogramos?|kilos?|kgs?|mg|mililitros?|milliliters?|mls?|ml|litros?|liters?|lts?|lt|l|cucharaditas?|cucharadas?|tbsp|tsp|cditas?|cdas?|tazas?|cups?|vasos?|pizcas?|pinch|unidades?|units?|piezas?|pieces?|dientes?|cloves?|rebanadas?|slices?|latas?|cans?|botes?)\s*(de\s+|del\s+)?/i,
+    ''
+  );
+
+  // 2. Eliminar cláusulas privativas / calificativas preposicionales
+  str = str.replace(/\b(sin|without|no|free\s+of)\s+(sal|salt|sodio|sodium|azucar|sugar|grasa|fat|gluten|lactosa|lactose|aceite|oil)\b/gi, '');
+  str = str.replace(/\b(con|with)\s+(sal|salt|azucar|sugar|gluten|lactosa|lactose)\b/gi, '');
+  str = str.replace(/\b(bajo|baja|reducido|reducida|low|reduced)\s+en\s+(sal|salt|sodio|sodium|grasa|fat|azucar|sugar)\b/gi, '');
+  str = str.replace(/\b(unsalted|salted|fat-free|sugar-free|gluten-free|lactose-free)\b/gi, '');
+
+  // 3. Eliminar modificadores de estado físico, corte, textura y preparación estructural
+  str = str.replace(/\b(en\s+dados|en\s+tiras|en\s+cubos|en\s+rodajas|en\s+juliana|en\s+trozos|a\s+trozos)\b/gi, '');
+  str = str.replace(/\b(picad[oa]s?|triturad[oa]s?|trocead[oa]s?|cortad[oa]s?|desnatad[oa]s?|semidesnatad[oa]s?|entero|entera|rallad[oa]s?|lavad[oa]s?|limpi[oa]s?|asado|asada|cocido|cocida|frito|frita|crudo|cruda|congelad[oa]s?|fresco|fresca)\b/gi, '');
+  str = str.replace(/\b(diced|chopped|minced|sliced|crushed|shredded|skimmed|semi-skimmed|whole|fresh|frozen|roasted|cooked|fried|raw)\b/gi, '');
+
+  // 4. Limpiar preposiciones residuales en bordes y normalizar espacios
+  str = str.replace(/^(de|del|en|para)\s+/i, '');
+  str = str.replace(/\s+(de|del|en|para)$/i, '');
+  str = str.replace(/\s+/g, ' ').trim();
+
+  return str;
+}
+
+/**
+ * Determina si el ingrediente llega con una masa física o volumen declarado
+ * (gramos, mililitros, cucharadas/cucharaditas o conteo discreto),
+ * distinguiéndolo de medidas puramente cualitativas ("al gusto", "pizca", "c/n").
+ */
+export function hasDeclaredPhysicalMassOrVolume(
+  cantidad?: number | string | null,
+  unidad?: string | null
+): boolean {
+  const cant = Number(cantidad);
+  if (!cant || isNaN(cant) || cant <= 0) return false;
+
+  const u = (unidad || '').toLowerCase().trim();
+  if (!u) return false;
+
+  // Si la unidad es cualitativa o "al gusto", no es masa declarada fija
+  if (/^(al\s+gusto|a\s+gusto|to\s+taste|pizca|pizcas|pinch|c\/n|c\.n\.|cn)$/i.test(u)) {
+    return false;
+  }
+
+  // Comprueba si es una unidad física (peso, volumen o conteo discreto)
+  return /^(g|gr|grs|gramos?|grams?|kg|kgs?|kilos?|kilogramos?|mg|ml|mls?|mililitros?|milliliters?|l|lt|lts?|litros?|liters?|tazas?|cups?|vasos?|cucharadas?|cucharaditas?|tbsp|tsp|cdas?|cditas?|unidades?|units?|piezas?|pieces?|dientes?|cloves?|rebanadas?|slices?|latas?|cans?|botes?)$/i.test(
+    u
+  );
+}
+
+/**
+ * Determina si un ingrediente pertenece a un rol estructural (grasa de cocción,
+ * principal, base de sofrito o base líquida), tanto por su rol declarado
+ * como por la naturaleza intrínseca de su núcleo semántico.
+ */
+export function isStructuralCulinaryRole(
+  rolCulinario?: string | null,
+  nombreLimpio?: string | null,
+  nombreCrudo?: string | null
+): boolean {
+  if (rolCulinario) {
+    const r = rolCulinario.toLowerCase().trim();
+    if (
+      r === 'grasa_coccion' ||
+      r === 'principal' ||
+      r === 'sofrito_base' ||
+      r === 'guarnicion' ||
+      r === 'base_liquida'
+    ) {
+      return true;
+    }
+  }
+
+  const core = extractCulinarySemanticCore(nombreLimpio || nombreCrudo || '');
+  if (!core) return false;
+
+  // Grasas de cocción y emulsiones
+  if (/\b(mantequilla|butter|aceite|oil|aove|manteca|lard|ghee)\b/i.test(core)) {
+    return true;
+  }
+  // Proteínas, carbohidratos base y legumbres
+  if (
+    /\b(pollo|chicken|pavo|turkey|carne|beef|meat|cerdo|pork|ternera|cordero|lamb|conejo|rabbit|pescado|fish|salmon|atun|tuna|merluza|bacalao|tofu|huevo|eggs?|harina|flour|arroz|rice|pasta|fideos|noodles|patata|potato|legumbre|garbanzos?|lentejas?|alubias?|avena|oats?|pan|bread)\b/i.test(
+      core
+    )
+  ) {
+    return true;
+  }
+  // Sofrito y bases aromáticas volumétricas
+  if (
+    /\b(cebolla|onion|ajo|garlic|puerro|leek|chalota|shallot|zanahoria|carrot|pimiento|pepper|bell\s+pepper)\b/i.test(
+      core
+    )
+  ) {
+    return true;
+  }
+  // Bases líquidas / fluidos
+  if (
+    /\b(leche|milk|nata|cream|caldo|broth|stock|agua|water|tomate|tomato|vino|wine|cerveza|beer)\b/i.test(
+      core
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Determina si un ingrediente es un sazonador puro (especia seca, hierba aromática seca, sal o pimienta).
+ *
+ * LEY UNIVERSAL DE NÚCLEO RECTOR:
+ * - Evalúa exclusivamente el sustantivo núcleo rector del ingrediente, ignorando cláusulas
+ *   adjetivales privativas ("sin sal", "con sal") o preparaciones de corte/estado.
+ * - Si el ingrediente contiene un macronutriente o alimento estructural (mantequilla, aceite,
+ *   pollo, carne, patata, tomate, etc.), NUNCA es un condimento puro.
+ * - Las expresiones de sal o condimento sólo aplican cuando son el componente rector del ingrediente.
  */
 export function isCanonicalSpiceHerbSaltOrPepper(
   nombreLimpio?: string | null,
   nombreCrudo?: string | null
 ): boolean {
-  const clean = `${nombreLimpio || ''} ${nombreCrudo || ''}`
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
+  const coreLimpio = extractCulinarySemanticCore(nombreLimpio);
+  const coreCrudo = extractCulinarySemanticCore(nombreCrudo);
+  const core = coreLimpio || coreCrudo;
 
-  if (!clean) return false;
+  if (!core) return false;
 
-  // Excluir pastas húmedas, salsas líquidas, caldos, dientes de ajo frescos o manojos frescos a granel
+  // 1. Exclusión categórica si el núcleo rector contiene alimentos estructurales o macronutrientes
   if (
-    /\b(salsa|pasta\s+de|crema\s+de|caldo|fondo|aceite|vinagre|mostaza\s+dijon|mostaza\s+antigua|miel|sirope|diente|dientes|clove|cloves|cabeza\s+de\s+ajo|manojo|ramillete|fresco|fresca|fresh)\b/i.test(
-      clean
+    /\b(mantequilla|butter|aceite|oil|aove|manteca|ghee|pollo|chicken|carne|beef|meat|cerdo|pork|ternera|pescado|fish|salmon|atun|tuna|merluza|bacalao|arroz|rice|pasta|patata|potato|tomate|tomato|harina|flour|leche|milk|nata|cream|queso|cheese|huevo|eggs?|pan|bread|caldo|broth|legumbre|garbanzos?|lentejas?|alubias?|salsa|pasta\s+de|crema\s+de|fondo|miel|sirope)\b/i.test(
+      core
     )
   ) {
     return false;
   }
 
-  // Sal, pimienta, especias en polvo/grano y hierbas aromáticas secas
-  return /\b(sal|sal\s+fina|sal\s+marina|sal\s+gorda|sal\s+gruesa|sal\s+maldon|sal\s+en\s+escamas|sal\s+rosa|salt|sea\s+salt|kosher\s+salt|pimienta|pimienta\s+negra|pimienta\s+blanca|pimienta\s+molida|pimienta\s+en\s+grano|pimienta\s+cayena|cayena|black\s+pepper|white\s+pepper|cayenne|oregano|tomillo|thyme|romero|rosemary|laurel|bay\s+leaf|bay\s+leaves|comino|cumin|pimenton|paprika|curcuma|turmeric|curry\s+en\s+polvo|curry\s+powder|polvo\s+de\s+curry|garam\s+masala|ras\s+el\s+hanout|ajo\s+en\s+polvo|garlic\s+powder|ajo\s+granulado|cebolla\s+en\s+polvo|onion\s+powder|jengibre\s+en\s+polvo|ginger\s+powder|jengibre\s+molido|mostaza\s+en\s+polvo|mustard\s+powder|nuez\s+moscada|nutmeg|clavo|clavo\s+de\s+olor|cloves?\s+spice|cardamomo|cardamom|canela|cinnamon|coriandro|semillas\s+de\s+cilantro|estragon|tarragon|mejorana|marjoram|salvia|sage|azafran|saffron|chile\s+en\s+polvo|chili\s+powder|copos\s+de\s+chile|chili\s+flakes|albahaca\s+seca|dried\s+basil|perejil\s+seco|dried\s+parsley|eneldo\s+seco|dried\s+dill|cilantro\s+seco|hierbas\s+provenzales|finas\s+hierbas|especias)\b/i.test(
-    clean
+  // 2. Exclusión de vegetales frescos enteros o formatos de corte (dientes de ajo frescos, manojos)
+  if (/\b(diente|dientes|clove|cloves|cabeza\s+de\s+ajo|manojo|ramillete)\b/i.test(core)) {
+    return false;
+  }
+
+  // 3. Sal pura como componente rector
+  const isSaltRector =
+    /^(sal|salt)\b/i.test(core) ||
+    /\b(flor\s+de\s+sal|sal\s+y\s+pimienta|salt\s+(and|&)\s+pepper|sea\s+salt|kosher\s+salt|pink\s+salt|table\s+salt)\b/i.test(core);
+
+  if (isSaltRector) {
+    return true;
+  }
+
+  // 4. Pimienta pura como componente rector
+  const isPepperRector =
+    /^(pimienta|pepper|black\s+pepper|white\s+pepper|cayenne|cayena)\b/i.test(core) ||
+    /\b(pimienta\s+negra|pimienta\s+blanca|pimienta\s+molida|pimienta\s+en\s+grano|pimienta\s+verde|pimienta\s+rosa|black\s+pepper|white\s+pepper|cayenne\s+pepper)\b/i.test(core);
+
+  if (isPepperRector) {
+    return true;
+  }
+
+  // 5. Especias secas y hierbas aromáticas secas puras
+  return /\b(oregano|tomillo|thyme|romero|rosemary|laurel|bay\s+leaf|bay\s+leaves|comino|cumin|pimenton|paprika|curcuma|turmeric|curry\s+en\s+polvo|curry\s+powder|polvo\s+de\s+curry|garam\s+masala|ras\s+el\s+hanout|ajo\s+en\s+polvo|garlic\s+powder|ajo\s+granulado|cebolla\s+en\s+polvo|onion\s+powder|jengibre\s+en\s+polvo|ginger\s+powder|jengibre\s+molido|mostaza\s+en\s+polvo|mustard\s+powder|nuez\s+moscada|nutmeg|clavo|clavo\s+de\s+olor|cloves?\s+spice|cardamomo|cardamom|canela|cinnamon|coriandro|semillas\s+de\s+cilantro|estragon|tarragon|mejorana|marjoram|salvia|sage|azafran|saffron|chile\s+en\s+polvo|chili\s+powder|copos\s+de\s+chile|chili\s+flakes|albahaca\s+seca|dried\s+basil|perejil\s+seco|dried\s+parsley|eneldo\s+seco|dried\s+dill|cilantro\s+seco|hierbas\s+provenzales|finas\s+hierbas|especias)\b/i.test(
+    core
   );
 }
 
 /**
- * Regla Canónica de Especias (Salado vs Repostería):
+ * Regla Canónica de Especias (Salado vs Repostería) e Invarianza de Masa:
+ * - INVARIANZA DE MASA DECLARADA: Todo ingrediente estructural (grasa_coccion, principal, base_liquida)
+ *   con masa o volumen definido (50 g de mantequilla, 200 g de pollo, 1 cda de aceite) queda categóricamente protegido:
+ *   NUNCA se sobreescribe a 'al gusto' ni a 'invariable'.
  * - Platos salados (entrantes, principales, guarniciones, salsas, guisos):
- *   Toda especia, hierba aromática seca, sal y pimienta se normaliza obligatoriamente como:
+ *   Toda especia pura, hierba aromática seca, sal y pimienta sin masa estructural se normaliza como:
  *   cantidad: 1, unidad: 'al gusto' (o 'to taste' en EN) y rol_culinario: 'invariable'.
  * - Excepción de Repostería y Postres (rol_plato === 'postre' o contexto de masas dulces/pastelería):
  *   NO se fuerzan las especias o aromatizantes (canela, vainilla, cardamomo, nuez moscada,
@@ -700,6 +863,33 @@ export function normalizarIngredientesExtraidos(
     const sectionIsPastry = isPastryOrDessertContext({ seccion: ing.seccion });
     const isPastry = recipeIsPastry || sectionIsPastry;
 
+    // 1. INVARIANZA DE MASA DECLARADA:
+    // Si un ingrediente llega con una masa física o volumen definido (gramos, mililitros, unidades enteras)
+    // y pertenece a un rol estructural (grasa_coccion, principal, base_liquida, sofrito_base),
+    // queda CATEGÓRICAMENTE PROTEGIDO: NUNCA se sobreescribe a unidad 'al gusto' ni a rol 'invariable'.
+    const hasPhysicalMass = hasDeclaredPhysicalMassOrVolume(ing.cantidad, ing.unidad);
+    const isStructural = isStructuralCulinaryRole(ing.rol_culinario, ing.nombre_limpio, ing.nombre_crudo);
+
+    if (hasPhysicalMass && isStructural) {
+      let rolFinal = ing.rol_culinario;
+      if (!rolFinal || rolFinal === 'invariable' || rolFinal === 'condimento') {
+        const core = extractCulinarySemanticCore(ing.nombre_limpio || ing.nombre_crudo || '');
+        if (/\b(mantequilla|butter|aceite|oil|aove|manteca|ghee)\b/i.test(core)) {
+          rolFinal = 'grasa_coccion';
+        } else if (/\b(cebolla|onion|ajo|garlic|puerro|leek|chalota|shallot)\b/i.test(core)) {
+          rolFinal = 'sofrito_base';
+        } else {
+          rolFinal = 'principal';
+        }
+      }
+
+      return {
+        ...ing,
+        rol_culinario: rolFinal,
+      };
+    }
+
+    // 2. Si la unidad declarada ya es explícitamente "al gusto" o "pizca", normalizar a invariable
     const uLower = (ing.unidad || '').trim().toLowerCase();
     const isAlreadyToTaste = /^(al\s+gusto|a\s+gusto|to\s+taste|c\/n|c\.n\.|cn)$/i.test(uLower);
 
@@ -712,10 +902,9 @@ export function normalizarIngredientesExtraidos(
       };
     }
 
+    // 3. EXCEPCIÓN DE REPOSTERÍA Y POSTRES:
+    // Respetar las medidas exactas (cucharaditas, gramos) de aromatizantes y especias en repostería
     if (isPastry) {
-      // EXCEPCIÓN DE REPOSTERÍA Y POSTRES:
-      // Respetar las medidas exactas (cucharaditas, gramos) de canela, vainilla, cardamomo,
-      // nuez moscada, jengibre en polvo, clavo, ralladura de cítricos, etc.
       const cleanText = `${ing.nombre_limpio || ''} ${ing.nombre_crudo || ''}`.toLowerCase();
       const isBakingAromatic =
         /\b(canela|cinnamon|vainilla|vanilla|cardamomo|cardamom|nuez\s+moscada|nutmeg|jengibre|ginger|clavo|clove|an[ií]s|anise|ralladura|zest|azahar|tonka)\b/i.test(
@@ -730,7 +919,8 @@ export function normalizarIngredientesExtraidos(
       return ing;
     }
 
-    // PLATOS SALADOS: toda especia, hierba aromática seca, sal y pimienta -> cantidad: 1, unidad: 'al gusto', rol_culinario: 'invariable'
+    // 4. PLATOS SALADOS: toda especia pura, hierba aromática seca, sal y pimienta que NO tenga masa estructural
+    // se normaliza obligatoriamente como cantidad: 1, unidad: 'al gusto', rol_culinario: 'invariable'
     if (isCanonicalSpiceHerbSaltOrPepper(ing.nombre_limpio, ing.nombre_crudo)) {
       return {
         ...ing,
@@ -742,5 +932,4 @@ export function normalizarIngredientesExtraidos(
 
     return ing;
   });
-
 }

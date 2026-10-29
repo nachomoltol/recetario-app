@@ -1,4 +1,5 @@
 import { RecetaIngrediente, RolCulinario } from '@/types/recipe';
+import { extractCulinarySemanticCore, isStructuralCulinaryRole } from '@/lib/gemini/schema';
 import { MAX_SPOON_MAGNITUDE } from '@/lib/nutrition/formatQuantity';
 
 export type { RolCulinario };
@@ -142,10 +143,11 @@ export function inferRolCulinario(
   const u = String(unidad || '').toLowerCase().trim();
   const n = String(nombre || '').toLowerCase().trim();
   const cant = Number(cantidad) || 0;
+  const core = extractCulinarySemanticCore(nombre || '');
 
   // Fallback de compatibilidad para recetas previas en BD:
-  // 1. unidad/nombre 'al gusto'/'pizca'/'to taste'/'c/n' -> 'invariable'
-  if (
+  // 1. unidad/nombre 'al gusto'/'pizca'/'to taste'/'c/n' -> 'invariable' (solo si NO es estructural con masa)
+  const isQualitativeUnit =
     u.includes('al gusto') ||
     u.includes('a gusto') ||
     u.includes('to taste') ||
@@ -155,26 +157,28 @@ export function inferRolCulinario(
     u === 'cn' ||
     u === 'c.n.' ||
     n.includes('al gusto') ||
-    n.includes('to taste')
-  ) {
+    n.includes('to taste');
+
+  if (isQualitativeUnit && !isStructuralCulinaryRole(null, nombre, null)) {
     return 'invariable';
   }
 
-  // 2. Grasas de cocción (aceites, mantequillas)
-  if (/\b(aceite|oil|mantequilla|butter|manteca|ghee)\b/i.test(n)) {
+  // 2. Grasas de cocción (aceites, mantequillas): se evalúa sobre el núcleo rector
+  if (/\b(aceite|oil|mantequilla|butter|manteca|ghee)\b/i.test(core)) {
     return 'grasa_coccion';
   }
 
-  // 3. Aromáticos y base de sofrito (cebolla, ajo, puerro, chalota)
-  if (/\b(cebolla|onion|ajo|garlic|puerro|leek|cebolleta|scallion|chalota|shallot)\b/i.test(n)) {
+  // 3. Aromáticos y base de sofrito (cebolla, ajo, puerro, chalota): se evalúa sobre el núcleo rector
+  if (/\b(cebolla|onion|ajo|garlic|puerro|leek|cebolleta|scallion|chalota|shallot)\b/i.test(core)) {
     return 'sofrito_base';
   }
 
-  // 4. Especias y condimentos (pequeñas cantidades o unidades de cuchara)
+  // 4. Especias y condimentos: se evalúa sobre el núcleo rector libre de modificadores ("sin sal", "con sal", etc.)
   if (
-    (/^(g|gr|grs|gramo|gramos|gram|grams)$/i.test(u) && cant <= 20) ||
-    /^(cucharadita|cucharaditas|tsp|cdta|cdtas)$/i.test(u) ||
-    /\b(pimienta|pepper|sal|salt|comino|cumin|oregano|orégano|pimenton|pimentón|canela|cinnamon|jengibre|ginger|soja|soy sauce|vinagre|vinegar|sesamo|sésamo|gochujang|miso|mostaza|mustard|ralladura|zest)\b/i.test(n)
+    !isStructuralCulinaryRole(null, nombre, null) &&
+    ((/^(g|gr|grs|gramo|gramos|gram|grams)$/i.test(u) && cant <= 20) ||
+      /^(cucharadita|cucharaditas|tsp|cdta|cdtas)$/i.test(u) ||
+      /\b(pimienta|pepper|sal|salt|comino|cumin|oregano|orégano|pimenton|pimentón|canela|cinnamon|jengibre|ginger|soja|soy sauce|vinagre|vinegar|sesamo|sésamo|gochujang|miso|mostaza|mustard|ralladura|zest)\b/i.test(core))
   ) {
     return 'condimento';
   }
