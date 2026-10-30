@@ -345,9 +345,12 @@ function buildBeginnerPedagogicalCalibration(
 }
 
 /**
- * Calibración técnica para Nivel Avanzado (PRO):
- * Garantiza que si una receta antigua en BD no tiene `instruccion_avanzada` o es idéntica a `instruccion`,
- * se transforme en prosa ejecutiva, sintética y profesional de restaurante.
+ * Calibración pedagógica técnica para Nivel Avanzado (PRO):
+ * Bloques de ejecución simultánea y fundamentos físico-químicos reales:
+ * - Extracción y renderizado de grasa
+ * - Control de almidones para ligazón y mantecatura
+ * - Caramelización de azúcares y reacción de Maillard
+ * - Emulsiones mecánicas fuera del fuego directo
  */
 function buildAdvancedTechnicalCalibration(
   baseInstruction: string,
@@ -360,42 +363,69 @@ function buildAdvancedTechnicalCalibration(
   const cleanBase = baseInstruction.trim();
   const explicitClean = (explicitAdvancedInstruction || '').trim();
 
+  // Si existe una instrucción avanzada explícita en BD y no es un mero clon con reemplazo léxico
   if (
     explicitClean &&
-    explicitClean.toLowerCase() !== cleanBase.toLowerCase()
+    explicitClean.toLowerCase() !== cleanBase.toLowerCase() &&
+    !explicitClean.toLowerCase().includes('brunoise') &&
+    !explicitClean.toLowerCase().includes('mirepoix')
   ) {
     return explicitClean;
   }
 
-  // Transformación léxica a terminología profesional de restaurante
-  let technical = cleanBase
-    .replace(/\bcortar en trozos pequeños\b/gi, 'picar en brunoise')
-    .replace(/\bcorta en trozos pequeños\b/gi, 'pica en brunoise')
-    .replace(/\bcortar en tiras finas\b/gi, 'cortar en juliana fina')
-    .replace(/\bcorta en tiras finas\b/gi, 'corta en juliana fina')
-    .replace(/\bcortar en dados\b/gi, 'cortar en mirepoix / dados regulares')
-    .replace(/\bcorta en dados\b/gi, 'corta en mirepoix regular')
-    .replace(/\bcocinar a fuego lento\b/gi, 'rehogar a fuego suave')
-    .replace(/\bcocina a fuego lento\b/gi, 'rehoga a fuego suave')
-    .replace(/\bdorar por ambos lados\b/gi, 'sellar y nacarar por ambas caras (reacción de Maillard)')
-    .replace(/\bdora por ambos lados\b/gi, 'sella por ambas caras hasta reacción de Maillard')
-    .replace(/\bmezclar bien hasta que se integre\b/gi, 'emulsionar hasta homogeneizar')
-    .replace(/\bmezcla bien hasta que se integre\b/gi, 'emulsiona hasta ligar la mezcla')
-    .replace(/\bmezclar todos los ingredientes\b/gi, 'integrar la mise en place y emulsionar')
-    .replace(/\bmezcla todos los ingredientes\b/gi, 'integra la mise en place y emulsiona');
+  const isEn = lang === 'en';
+  const lower = cleanBase.toLowerCase();
+
+  // Detección de fundamentos físico-químicos clave
+  const isFatRendering = /\b(guanciale|panceta|bacon|tocino|grasa|chorizo|sofrito|rehogar|dorar|aceite|mantequilla)\b/i.test(lower);
+  const isBaking = /\b(horno|hornear|asado|asar|220|200|180|gratinar|airfryer|bake|roast|oven)\b/i.test(lower);
+  const isStarchEmulsion = /\b(pasta|arroz|mantecar|mantecatura|ligar|crema|emulsion|almidon|caldo|agua de cocci[oó]n)\b/i.test(lower);
+  const isOffHeatEmulsion = /\b(queso|parmesano|pecorino|yema|huevo|nata|fuera del fuego|apagar el fuego|retirar del fuego)\b/i.test(lower);
+  const isSearing = /\b(sellar|dorar|marcar|carne|pechuga|pescado|filete|solomillo)\b/i.test(lower);
 
   const specs: string[] = [];
   if (tempCelsius && tempCelsius > 0) specs.push(`${tempCelsius}°C`);
-  if (potenciaFuego) specs.push(lang === 'en' ? `heat: ${potenciaFuego}` : `fuego ${potenciaFuego}`);
-  if (tiempoMin && tiempoMin > 0) specs.push(`${tiempoMin}'`);
+  if (potenciaFuego) specs.push(isEn ? `heat: ${potenciaFuego}` : `fuego ${potenciaFuego}`);
+  if (tiempoMin && tiempoMin > 0) specs.push(`${tiempoMin} min`);
+  const specText = specs.length > 0 ? ` [${specs.join(' · ')}]` : '';
 
-  const specSuffix = specs.length > 0 ? ` [${specs.join(' · ')}]` : '';
-
-  if (lang === 'en') {
-    return `Executive technique${specSuffix}: ${technical.replace(/\.+$/, '')}. Verify doneness and texture before plating.`;
+  if (isEn) {
+    if (isBaking) {
+      return `Technical concurrency block${specText}: Execute high-temperature roasting (${tempCelsius || 220}°C) to maximize sugar caramelization and surface Maillard reaction. Concurrently, advance the mise en place and base prep on the stovetop to streamline workflow.`;
+    }
+    if (isFatRendering) {
+      return `Lipid extraction & temperature control${specText}: Render fat slowly on gentle heat without scorching milk solids or burning lipids. Reserve the rendered liquid fat as the primary hydrophobic flavor carrier.`;
+    }
+    if (isOffHeatEmulsion) {
+      return `Off-heat mechanical emulsion${specText}: Remove pan entirely from direct heat before incorporating fats/cheeses. Emulsify mechanically with starch-rich cooking water below 65°C to prevent protein coagulation and lipid splitting.`;
+    }
+    if (isStarchEmulsion) {
+      return `Starch suspension & mantecatura${specText}: Agitate vigorously while adding starchy cooking water in stages. Starch amylose binds free fats into a glossy, velvety emulsion without excess dairy.`;
+    }
+    if (isSearing) {
+      return `Thermal searing & osmoregulation${specText}: Sear over intense heat to trigger Maillard browning instantly without boiling core moisture. Rest the protein post-searing to allow internal juices to redistribute evenly.`;
+    }
+    return `Executive execution block${specText}: ${cleanBase.replace(/\.+$/, '')}. Synchronize parallel components and calibrate seasoning and reduction density for final plating.`;
   }
 
-  return `Técnica ejecutiva${specSuffix}: ${technical.replace(/\.+$/, '')}. Ajustar punto de sazón y textura de pase.`;
+  // Español
+  if (isBaking) {
+    return `Bloque de ejecución simultánea${specText}: Inicia el asado a alta temperatura (${tempCelsius || 220}°C) para activar la caramelización de azúcares y Maillard superficial. En paralelo y sin tiempos muertos, avanza la mise en place y la preparación de sartén en los fuegos.`;
+  }
+  if (isFatRendering) {
+    return `Extracción lipídica y control térmico${specText}: Extrae la grasa lentamente a fuego moderado sin quemar los sólidos. Aprovecha la grasa fundida como vehículo hidrofóbico conductor de aroma y reserva los trozos crocantes para texturizar al pase.`;
+  }
+  if (isOffHeatEmulsion) {
+    return `Emulsión mecánica fuera del fuego${specText}: Retira el recipiente de la fuente directa de calor antes de incorporar lácteos o yemas. Bate con agua de cocción almidonada (<65°C) para ligar la crema sin que las proteínas coagulen ni se separe la grasa.`;
+  }
+  if (isStarchEmulsion) {
+    return `Control de almidones y mantecatura${specText}: Manteca con movimiento circular constante agregando agua de cocción rica en almidón por tandas. La amilosa emulsionará las grasas en una suspensión coloidal brillante y aterciopelada.`;
+  }
+  if (isSearing) {
+    return `Sellado térmico y redistribución osmótica${specText}: Marca a fuego vivo para provocar caramelización rápida de superficie sin cocer el interior en sus propios jugos. Deja reposar la pieza antes de trinchar para que la presión osmótica retenga los jugos.`;
+  }
+
+  return `Bloque técnico ejecutivo${specText}: ${cleanBase.replace(/\.+$/, '')}. Coordina las elaboraciones en paralelo y ajusta punto de salinidad y densidad de ligazón al pase.`;
 }
 
 interface RecipeInteractiveSectionsProps {

@@ -144,7 +144,7 @@ const adaptRecipeSchema = {
           instruccion_avanzada: {
             type: Type.STRING,
             description:
-              'Nivel Avanzado (PRO): Versión sintética, ejecutiva y técnica de restaurante adaptada al perfil clínico (verbos técnicos: marcar, desglasar, emulsionar, reducir). Envuelve ingredientes sustituidos en <mark>...</mark>.',
+              'Nivel Avanzado (PRO): TERMINANTEMENTE PROHIBIDO clonar los pasos del nivel intermedio con sinónimos cosméticos. Agrupa acciones en bloques de ejecución técnica simultánea y aplica fundamentos físico-químicos (extracción de grasa, control de almidones para ligazón/mantecatura, reacción de Maillard y emulsiones mecánicas fuera del fuego). Envuelve ingredientes sustituidos en <mark>...</mark>.',
           },
           descriptor_sensorial: {
             type: Type.STRING,
@@ -197,8 +197,9 @@ DIRECTIVAS ESTRICTAS DE ADAPTACIÓN:
    - Si el usuario tiene celiaquía o intolerancia al gluten, sustituye cualquier harina, salsa o pasta con gluten por una alternativa adecuada (ej. harina de avena sin gluten, tamari, pasta de maíz o arroz).
    - Si no tolera la lactosa, sustituye leche, natas o mantequillas por bebidas vegetales o versiones sin lactosa.
    - Si es vegetariano/vegano, sustituye carnes o pescados por legumbres, tofu o proteínas vegetales coherentes con la receta.
-   - Si su nivel es "Principiante", simplifica los pasos técnicos complejos, añade precauciones sobre control de fuego y tiempos.
-   - Si su nivel es "Avanzado", optimiza las técnicas, añade matices y consejos pro de alta cocina.
+   - Si su nivel es "Principiante", redacción pedagógica paso a paso con el "por qué" de la técnica, advertencias de seguridad física y señales sensoriales explícitas.
+   - Si su nivel es "Intermedio", guía estándar paso a paso para cocina doméstica eficiente con tiempos y temperaturas claras.
+   - Si su nivel es "Avanzado", PROHIBIDO clonar pasos intermedios con meros sinónimos ("trocear" -> "brunoise", "aceite" -> "EVOO"). Agrupa en bloques de ejecución simultánea (mise en place en paralelo) y fundamenta en principios físico-químicos (renderizado de grasa, control de almidones para mantecatura, caramelización de azúcares y emulsiones fuera del fuego).
 
 2. ETIQUETADO OBLIGATORIO CON <mark>:
    - IMPORTANTE: Cuando modifiques un ingrediente o cambies un paso para hacerlo más fácil o apto, envuelve esa palabra o frase modificada en una etiqueta <mark> (ejemplo: 'Añade <mark>la leche de avena</mark>').

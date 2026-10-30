@@ -145,7 +145,7 @@ export const recipeExtractionSchema = {
           instruccion: {
             type: Type.STRING,
             description:
-              'Nivel Intermedio (Estándar / Free): Flujo limpio, directo y funcional de cocina doméstica eficiente. Agrupa acciones coordinadas de manera natural para mantener dinamismo sin lecciones básicas ni jerga pretenciosa. OBLIGATORIO: integra las cantidades exactas en prosa culinaria fluida (ej: "Añade media cebolla picada finamente", "Vierte una cucharada de aceite (15 ml)", "Incorpora los 200 g de pechuga de pollo cortada en dados"). Está TERMINANTEMENTE PROHIBIDO redactar números con decimales de laboratorio fríos o antinaturales (NO escribir "añade 0.5 unidades de cebolla" ni "vierte 15ml de aceite"). Las cantidades inyectadas deben coincidir con las porciones escaladas de la receta.',
+              'Nivel Intermedio (Estándar / Free): Guía estándar paso a paso para cocina doméstica eficiente. Instrucciones claras, secuenciales y ordenadas con tiempos y temperaturas precisos. OBLIGATORIO: integra las cantidades exactas en prosa culinaria fluida (ej: "Añade media cebolla picada finamente", "Vierte una cucharada de aceite (15 ml)", "Incorpora los 200 g de pechuga de pollo cortada en dados"). TERMINANTEMENTE PROHIBIDO redactar números con decimales de laboratorio fríos o antinaturales (NO escribir "añade 0.5 unidades de cebolla" ni "vierte 15ml de aceite"). Las cantidades inyectadas deben coincidir con las porciones escaladas de la receta.',
           },
           instruccion_principiante: {
             type: Type.STRING,
@@ -155,7 +155,7 @@ export const recipeExtractionSchema = {
           instruccion_avanzada: {
             type: Type.STRING,
             description:
-              'Nivel Avanzado (PRO): Redacción concisa, técnica y de alta exigencia orientada a mise en place, control térmico específico, paralelismo y ejecución concurrente entre fuegos/horno y fundamentos físico-químicos (emulsión mecánica, reacción de Maillard, desglasado con vino para recuperar sucs caramelizados, reducción y redistribución interna de jugos). Omite por completo advertencias elementales u obvias.',
+              'Nivel Avanzado (PRO): TERMINANTEMENTE PROHIBIDO clonar los pasos del nivel intermedio o sustituir meras palabras sueltas por jerga cosmética ("trocear" -> "brunoise", "aceite" -> "EVOO"). Agrupa las acciones en bloques de ejecución técnica y simultánea (condensando acciones paralelas: ej. extracción de grasa y mise en place mientras avanza el asado). Exige fundamentos físico-químicos reales: puntos de extracción de grasa, control de almidones para ligazón/mantecatura, caramelización de azúcares y emulsiones mecánicas fuera del fuego.',
           },
           descriptor_sensorial: {
             type: Type.STRING,
@@ -419,13 +419,18 @@ export function buildRecipeSystemInstruction(options?: {
         - Explicit Sensory Signals: Non-ambiguous visual, tactile, and audible cues (e.g. "until a knife slides in effortlessly like butter", "hazelnut golden but not dark brown", "the sizzle settles into a gentle bubbling").
 
       * 'instruccion': INTERMEDIATE LEVEL (Efficient Domestic Standard).
-        - Archetype: Everyday cook seeking fluid, functional execution without patronizing warnings or chef pretensions.
-        - Approach: Clean, direct, and agile flow. Naturally chains coordinated actions without clutter.
+        - Archetype: Everyday cook seeking sequential order, clarity, and agile workflow without elementary warnings.
+        - Approach: Standard step-by-step guidance for efficient home cooking. Clear, sequential instructions with precise timings, temperatures, and fluid prose quantities.
 
-      * 'instruccion_avanzada': ADVANCED LEVEL (Professional Technique, Thermal Precision & Physical-Chemical Principles).
-        - Archetype: Experienced cook or professional line brigade focused on mise en place, thermal control, and multi-pan concurrency.
-        - Approach: High-density, professional terminology (Maillard reaction, deglazing caramelized sucs, mechanical starch emulsion, internal resting).
-        - Parallelism: Highlights concurrent tasks across pans/oven. Omits all elementary guidance.
+      * 'instruccion_avanzada': ADVANCED LEVEL (Professional Technique, Concurrency & Physical-Chemical Principles).
+        - Archetype: Experienced chef or line brigade focused on mise en place, thermal precision, and multi-pan concurrency.
+        - STRICT FORBIDDANCE: It is STRICTLY FORBIDDEN to clone intermediate steps or swap words with cosmetic jargon (e.g. NEVER just replace "chop" with "brunoise" or "oil" with "EVOO").
+        - Technical Concurrency Blocks: Condense parallel tasks to streamline execution (e.g. advance mise en place and slow fat rendering while roasting or stock reduction progresses).
+        - Mandatory Physical-Chemical Principles:
+          * Gentle fat rendering points without scorching milk solids or degrading lipids.
+          * Starch suspension control for mantecatura/emulsion using amylose-rich cooking water.
+          * Sugar caramelization and Maillard browning with pan deglazing to capture caramelized sucs.
+          * Off-heat mechanical emulsions to protect protein structures and prevent fat splitting.
 
       * 'descriptor_sensorial': Empirical visual, textural, and aromatic cues confirming the exact cooking milestone.
       * 'potencia_fuego': Strictly classify fire intensity: 'suave', 'medio', 'medio-alto', 'alto', or 'horno'.`
@@ -492,15 +497,18 @@ export function buildRecipeSystemInstruction(options?: {
         - Paso a paso desgranado: No des nada por sabido.
 
       * 'instruccion': NIVEL INTERMEDIO (Estándar de Cocina Doméstica Eficiente).
-        - Arquetipo: Cocinero habitual que busca agilidad, fluidez y efectividad sin lecciones básicas ni jerga pretenciosa.
-        - Enfoque: Flujo limpio, directo y funcional. Agrupa acciones coordinadas de manera natural para mantener dinamismo (ej: "Pica la cebolla y póchala en la sartén a fuego medio hasta que transparente").
-        - Sin lecciones infantiles ni advertencias obvias de quemarse o cortar.
+        - Arquetipo: Cocinero habitual que busca orden secuencial, fluidez y efectividad sin advertencias elementales ni jerga pretenciosa.
+        - Enfoque: Guía estándar paso a paso para cocina doméstica eficiente. Instrucciones claras y ordenadas con tiempos, temperaturas y cantidades integradas en prosa fluida.
 
-      * 'instruccion_avanzada': NIVEL AVANZADO (Técnica, Precisión y Rendimiento Profesional).
+      * 'instruccion_avanzada': NIVEL AVANZADO (Técnica Profesional, Simultaneidad y Fundamentos Físico-Químicos).
         - Arquetipo: Cocinero experto o brigada culinaria orientado a mise en place, precisión térmica y ejecución paralela.
-        - Enfoque: Redacción sintética, técnica y de alta densidad. Emplea terminología culinaria canónica y fundamentos físico-químicos (reacción de Maillard, desglasado con vino para recuperar sucs caramelizados, emulsión mecánica con almidón, control termodinámico exacto).
-        - Paralelismo y Organización: Enfatiza la simultaneidad de elaboraciones (ej: "Mientras reduce el fondo, marca la pieza a fuego vivo 2 min por cara y reserva para redistribución interna de jugos").
-        - Cero advertencias elementales.
+        - PROHIBICIÓN ESTRICTA: Queda TERMINANTEMENTE PROHIBIDO clonar los pasos del nivel intermedio o limitarse a sustituir palabras sueltas por jerga cosmética ("trocear" -> "brunoise", "aceite" -> "EVOO").
+        - Bloques de Ejecución Técnica Simultánea: Agrupa y condensa acciones paralelas para optimizar tiempos (ej: sincronizar mise en place y renderizado lento de grasa mientras avanza el asado u horneado).
+        - Fundamentos Físico-Químicos Obligatorios:
+          * Extracción y renderizado lipídico a fuego suave para desgrasar sin quemar sólidos ni degradar lípidos.
+          * Control coloidal de almidones para ligazón y mantecatura mediante agitación con agua de cocción rica en amilosa.
+          * Caramelización de azúcares y reacción de Maillard con desglasado para recuperar sucs adheridos.
+          * Emulsiones mecánicas fuera del fuego directo para evitar desnaturalización proteica y separación de fases.
 
       * 'descriptor_sensorial': Pistas empíricas obligatorias (aroma, color, textura, sonido) que validan el punto exacto de cocción.
       * 'potencia_fuego': Clasificación obligatoria de calor: 'suave', 'medio', 'medio-alto', 'alto' u 'horno'.`;
