@@ -6,6 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Plus,
   Trash2,
   ShoppingCart,
@@ -304,6 +306,7 @@ export function MealPlannerView({
     end.setDate(end.getDate() + 6);
     return formatLocalDate(end);
   });
+  const [isRangeConfigOpen, setIsRangeConfigOpen] = useState(false);
 
   // Auto-apertura si proviene de /smart-menu con openShopping=true
   useEffect(() => {
@@ -770,12 +773,34 @@ export function MealPlannerView({
           ? `${rangeStartDate} — ${rangeEndDate}`
           : `${startDateStr} — ${endDateStr}`;
 
+      // Obtener planes completos para el rango de días a exportar
+      let plansToExport = plans;
+      if (
+        shoppingScopeMode === 'range' ||
+        (daysInfo.length > 0 &&
+          (daysInfo[0].dateStr !== startDateStr ||
+            daysInfo[daysInfo.length - 1].dateStr !== endDateStr))
+      ) {
+        const firstDate = daysInfo[0].dateStr;
+        const lastDate = daysInfo[daysInfo.length - 1].dateStr;
+        const minDate = firstDate <= lastDate ? firstDate : lastDate;
+        const maxDate = firstDate <= lastDate ? lastDate : firstDate;
+        try {
+          const plansRes = await getWeeklyPlanAction(minDate, maxDate);
+          if (plansRes.success && plansRes.data) {
+            plansToExport = plansRes.data;
+          }
+        } catch (e) {
+          console.warn('Fallback a planes locales para PDF:', e);
+        }
+      }
+
       const { exportMealPlanToPdf } = await import('@/lib/pdf/exportMealPlanToPdf');
 
       await exportMealPlanToPdf({
         dateRangeLabel,
         days: daysInfo,
-        plans,
+        plans: plansToExport,
         shoppingItems: itemsToExport || [],
         defaultServings: defaultDiners,
         language,
@@ -1679,7 +1704,7 @@ export function MealPlannerView({
       {/* ============================================================== */}
       {shoppingModal && (
         <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-xl rounded-3xl bg-white border border-[#e7dfd5] shadow-2xl p-5 sm:p-6 space-y-4 max-h-[88vh] flex flex-col">
+          <div className="w-full max-w-xl rounded-3xl bg-white border border-[#e7dfd5] shadow-2xl p-4 sm:p-6 space-y-3 sm:space-y-4 max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-[#e7dfd5] pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center">
@@ -1794,72 +1819,108 @@ export function MealPlannerView({
                 </div>
               ) : (
                 /* Controles de Rango Continuo */
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
-                    <span className="text-stone-600 text-[11px]">
-                      {t('planner_range_continuous_desc')}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[11px] text-stone-500 font-medium mr-1">Presets:</span>
-                      {[
-                        { days: 3, labelKey: 'planner_preset_3_days' as const },
-                        { days: 5, labelKey: 'planner_preset_5_days' as const },
-                        { days: 7, labelKey: 'planner_preset_7_days' as const },
-                      ].map(({ days, labelKey }) => (
-                        <button
-                          key={days}
-                          type="button"
-                          onClick={() => handleApplyPresetDays(days)}
-                          className="px-2 py-0.5 rounded-lg bg-white border border-[#e7dfd5] hover:border-[#a86224] text-[#a86224] text-[11px] font-semibold transition cursor-pointer shadow-2xs"
-                        >
-                          {t(labelKey)}
-                        </button>
-                      ))}
+                !isRangeConfigOpen ? (
+                  /* Píldora Resumen Compacta en Móvil/Desktop */
+                  <div className="flex items-center justify-between bg-white border border-[#e7dfd5] px-3 py-2 rounded-xl text-xs shadow-2xs">
+                    <div className="flex items-center gap-2 text-stone-700 min-w-0">
+                      <Calendar className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+                      <span className="font-semibold truncate">
+                        {rangeStartDate} — {rangeEndDate}
+                      </span>
+                      <span className="text-[11px] text-stone-500 shrink-0">
+                        ({getDateStringsBetween(rangeStartDate, rangeEndDate).length} {t('planner_days_short')})
+                      </span>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center gap-1.5 bg-white border border-[#e7dfd5] px-2.5 py-1.5 rounded-xl text-xs">
-                      <span className="text-stone-500 text-[11px] font-medium">{t('planner_date_from')}:</span>
-                      <input
-                        type="date"
-                        value={rangeStartDate}
-                        onChange={(e) => setRangeStartDate(e.target.value)}
-                        className="bg-transparent text-stone-800 font-medium focus:outline-none text-xs cursor-pointer"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-1.5 bg-white border border-[#e7dfd5] px-2.5 py-1.5 rounded-xl text-xs">
-                      <span className="text-stone-500 text-[11px] font-medium">{t('planner_date_to')}:</span>
-                      <input
-                        type="date"
-                        value={rangeEndDate}
-                        onChange={(e) => setRangeEndDate(e.target.value)}
-                        className="bg-transparent text-stone-800 font-medium focus:outline-none text-xs cursor-pointer"
-                      />
-                    </div>
-
                     <button
                       type="button"
-                      disabled={isShoppingPending}
-                      onClick={() =>
-                        handleGenerateShoppingList(undefined, {
-                          mode: 'range',
-                          start: rangeStartDate,
-                          end: rangeEndDate,
-                        })
-                      }
-                      className="px-3 py-1.5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                      onClick={() => setIsRangeConfigOpen(true)}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-[#a86224] hover:text-[#8e511c] ml-2 shrink-0 cursor-pointer"
                     >
-                      {isShoppingPending ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Search className="w-3.5 h-3.5" />
-                      )}
-                      <span>{t('planner_update_list')}</span>
+                      <span>{t('planner_adjust_dates')}</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                </div>
+                ) : (
+                  /* Panel Extendido de Configuración de Fechas */
+                  <div className="space-y-2.5 pt-1">
+                    <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+                      <span className="text-stone-600 text-[11px]">
+                        {t('planner_range_continuous_desc')}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] text-stone-500 font-medium mr-0.5">Presets:</span>
+                        {[
+                          { days: 3, labelKey: 'planner_preset_3_days' as const },
+                          { days: 5, labelKey: 'planner_preset_5_days' as const },
+                          { days: 7, labelKey: 'planner_preset_7_days' as const },
+                        ].map(({ days, labelKey }) => (
+                          <button
+                            key={days}
+                            type="button"
+                            onClick={() => handleApplyPresetDays(days)}
+                            className="px-2 py-0.5 rounded-lg bg-white border border-[#e7dfd5] hover:border-[#a86224] text-[#a86224] text-[11px] font-semibold transition cursor-pointer shadow-2xs"
+                          >
+                            {t(labelKey)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 bg-white border border-[#e7dfd5] px-2.5 py-1.5 rounded-xl text-xs flex-1 sm:flex-initial">
+                        <span className="text-stone-500 text-[11px] font-medium">{t('planner_date_from')}:</span>
+                        <input
+                          type="date"
+                          value={rangeStartDate}
+                          onChange={(e) => setRangeStartDate(e.target.value)}
+                          className="bg-transparent text-stone-800 font-medium focus:outline-none text-xs cursor-pointer w-full"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5 bg-white border border-[#e7dfd5] px-2.5 py-1.5 rounded-xl text-xs flex-1 sm:flex-initial">
+                        <span className="text-stone-500 text-[11px] font-medium">{t('planner_date_to')}:</span>
+                        <input
+                          type="date"
+                          value={rangeEndDate}
+                          onChange={(e) => setRangeEndDate(e.target.value)}
+                          className="bg-transparent text-stone-800 font-medium focus:outline-none text-xs cursor-pointer w-full"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5 w-full sm:w-auto mt-1 sm:mt-0">
+                        <button
+                          type="button"
+                          disabled={isShoppingPending}
+                          onClick={() => {
+                            setIsRangeConfigOpen(false);
+                            handleGenerateShoppingList(undefined, {
+                              mode: 'range',
+                              start: rangeStartDate,
+                              end: rangeEndDate,
+                            });
+                          }}
+                          className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                        >
+                          {isShoppingPending ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Search className="w-3.5 h-3.5" />
+                          )}
+                          <span>{t('planner_update_list')}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setIsRangeConfigOpen(false)}
+                          className="px-2.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+                        >
+                          <span>{t('planner_collapse_dates')}</span>
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
               )}
             </div>
 
@@ -1871,39 +1932,35 @@ export function MealPlannerView({
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="text-stone-500">
-                    {t('planner_organized_by_aisle')}
-                  </span>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={handleExportPdf}
-                      disabled={isExportingPdf}
-                      className="min-h-[36px] px-3.5 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] font-semibold text-stone-800 transition flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
-                    >
-                      {isExportingPdf ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#a86224]" />
-                      ) : (
-                        <Download className="w-3.5 h-3.5 text-[#a86224]" />
-                      )}
-                      <span>{t('planner_export_pdf')}</span>
-                      <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-md">
-                        PRO
-                      </span>
-                    </button>
+                <div className="flex flex-row items-center gap-2 w-full">
+                  <button
+                    type="button"
+                    onClick={handleExportPdf}
+                    disabled={isExportingPdf}
+                    className="flex-1 min-h-[36px] py-2 px-2.5 sm:px-3 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] font-medium text-xs sm:text-sm text-stone-800 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+                  >
+                    {isExportingPdf ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#a86224] shrink-0" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+                    )}
+                    <span className="truncate">{t('planner_export_pdf')}</span>
+                    <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-md shrink-0">
+                      PRO
+                    </span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleCopyShoppingList}
-                    className="min-h-[36px] px-3.5 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] font-semibold text-stone-800 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    className="flex-1 min-h-[36px] py-2 px-2.5 sm:px-3 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] font-medium text-xs sm:text-sm text-stone-800 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                   >
-                    <Copy className="w-3.5 h-3.5 text-[#a86224]" />
-                    <span>{isCopied ? t('planner_copied') : t('planner_copy_by_aisle')}</span>
+                    <Copy className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+                    <span className="truncate">{isCopied ? t('planner_copied') : t('planner_copy_by_aisle')}</span>
                   </button>
-                  </div>
                 </div>
 
-                <div className="overflow-y-auto space-y-5 pr-1 flex-1">
+                <div className="overflow-y-auto space-y-4 sm:space-y-5 pr-1 flex-1 min-h-0">
                   {groupedShoppingAisles.map((group) => {
                     const groupTotal = group.items.length;
                     const groupCompleted = group.items.filter((i) =>
@@ -1953,9 +2010,9 @@ export function MealPlannerView({
                                     : 'bg-[#faf7f2] hover:bg-white border-[#e7dfd5]'
                                 }`}
                               >
-                                <div className="flex items-center gap-3 min-w-0">
+                                <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
                                   <div
-                                    className={`w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 ${
+                                    className={`w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 ${
                                       isChecked
                                         ? 'bg-[#2e6b3e] border-[#2e6b3e] text-white'
                                         : 'border-[#cbbfae] bg-white'
@@ -1964,22 +2021,24 @@ export function MealPlannerView({
                                     {isChecked && <Check className="w-3.5 h-3.5 stroke-3" />}
                                   </div>
 
-                                  <div className="min-w-0">
+                                  <div className="min-w-0 flex-1">
                                     <span
-                                      className={`text-xs sm:text-sm font-semibold block truncate ${
+                                      className={`break-words whitespace-normal text-sm sm:text-base font-medium block leading-snug ${
                                         isChecked ? 'line-through text-stone-400 font-normal' : 'text-stone-900'
                                       }`}
                                     >
                                       {item.nombre}
                                     </span>
-                                    <span className="text-[10px] text-stone-400 block truncate">
-                                      {t('planner_dishes')}: {item.recetasNombres.join(', ')}
-                                    </span>
+                                    {item.recetasNombres && item.recetasNombres.length > 0 && (
+                                      <span className="text-xs text-stone-500 block break-words mt-0.5 leading-tight">
+                                        {t('planner_dishes')}: {item.recetasNombres.join(', ')}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
 
                                 <span
-                                  className={`text-xs sm:text-sm font-bold shrink-0 tabular-nums ${
+                                  className={`text-xs sm:text-sm font-bold shrink-0 text-right tabular-nums ml-2.5 ${
                                     isChecked ? 'line-through text-stone-400' : 'text-[#a86224]'
                                   }`}
                                 >

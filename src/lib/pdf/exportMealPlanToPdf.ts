@@ -22,6 +22,15 @@ export interface ExportMealPlanPdfParams {
  * - Página 1: Matriz del Menú Semanal (Planning Grid)
  * - Páginas 2+: Lista de la Compra Unificada organizada por pasillos con casillas para tachar
  */
+/**
+ * Limpia emojis y simbolos Unicode incompatibles con las fuentes estandar de jsPDF.
+ */
+function cleanPdfText(text: string): string {
+  return text
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
+    .trim();
+}
+
 export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Promise<void> {
   const {
     dateRangeLabel,
@@ -274,7 +283,7 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
     // Fila divisoria de pasillo
     shoppingTableBody.push([
       {
-        content: `📍 ${aisle.toUpperCase()}`,
+        content: cleanPdfText(aisle).toUpperCase(),
         colSpan: 4,
         styles: {
           fillColor: [245, 239, 230],
@@ -306,8 +315,8 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
     shoppingTableBody.push([
       {
         content: isEn
-          ? '🧂 CHECK IN PANTRY (Already in stock or to taste)'
-          : '🧂 REVISAR EN DESPENSA (Básicos, condimentos o al gusto)',
+          ? 'CHECK IN PANTRY (Already in stock or to taste)'
+          : 'REVISAR EN DESPENSA (Básicos, condimentos o al gusto)',
         colSpan: 4,
         styles: {
           fillColor: [240, 235, 225],

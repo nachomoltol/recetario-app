@@ -152,7 +152,8 @@ function buildBeginnerPedagogicalCalibration(
   potenciaFuego: string | undefined | null,
   tempCelsius: number | undefined | null,
   tiempoMin: number | undefined | null,
-  lang: 'es' | 'en' = 'es'
+  lang: 'es' | 'en' = 'es',
+  isFirstBakingStep: boolean = true
 ): {
   beginnerInstruction: string;
   sensoryCue: string;
@@ -193,11 +194,19 @@ function buildBeginnerPedagogicalCalibration(
 
     if (lang === 'en') {
       if (isBaking) {
-        beginnerInstruction = `Step-by-step beginner guide: First, verify that your oven or air fryer is fully preheated${
-          tempCelsius ? ` to ${tempCelsius}°C` : ''
-        } so the food starts cooking evenly right away without drying out. Next, ${lowerFirstBase}. Place the tray in the center rack so heat circulates all around, and check progress${
-          tiempoMin ? ` around the ${tiempoMin}-minute mark` : ' during the final minutes'
-        } to ensure the interior is tender and the outside doesn't over-brown.`;
+        if (isFirstBakingStep) {
+          beginnerInstruction = `Step-by-step beginner guide: First, verify that your oven or air fryer is fully preheated${
+            tempCelsius ? ` to ${tempCelsius}°C` : ''
+          } so the food starts cooking evenly right away without drying out. Next, ${lowerFirstBase}. Place the tray in the center rack so heat circulates all around, and check progress${
+            tiempoMin ? ` around the ${tiempoMin}-minute mark` : ' during the final minutes'
+          } to ensure the interior is tender and the outside doesn't over-brown.`;
+        } else {
+          beginnerInstruction = `Step-by-step beginner guide: With the oven already actively hot${
+            tempCelsius ? ` at ${tempCelsius}°C` : ''
+          }, ${lowerFirstBase}. Keep the oven door closed so heat remains constant, and check progress${
+            tiempoMin ? ` around the ${tiempoMin}-minute mark` : ''
+          } to ensure it cooks through evenly.`;
+        }
       } else if (isSearingOrFrying) {
         beginnerInstruction = `Step-by-step beginner guide: Place your pan over ${
           potenciaFuego ? `${potenciaFuego} heat` : 'medium heat'
@@ -213,11 +222,19 @@ function buildBeginnerPedagogicalCalibration(
       }
     } else {
       if (isBaking) {
-        beginnerInstruction = `Guía paso a paso para principiantes: En primer lugar, comprueba que el horno o freidora de aire haya alcanzado la temperatura adecuada${
-          tempCelsius ? ` (${tempCelsius}°C)` : ''
-        } antes de meter los alimentos para que no queden crudos por dentro. A continuación, ${lowerFirstBase}. Coloca la bandeja a altura media para que el calor envuelva el plato por igual y vigila los últimos minutos${
-          tiempoMin ? ` (de los ${tiempoMin} min estimados)` : ''
-        } para lograr un dorado uniforme sin que se tueste en exceso.`;
+        if (isFirstBakingStep) {
+          beginnerInstruction = `Guía paso a paso para principiantes: En primer lugar, comprueba que el horno o freidora de aire haya alcanzado la temperatura adecuada${
+            tempCelsius ? ` (${tempCelsius}°C)` : ''
+          } antes de meter los alimentos para que no queden crudos por dentro. A continuación, ${lowerFirstBase}. Coloca la bandeja a altura media para que el calor envuelva el plato por igual y vigila los últimos minutos${
+            tiempoMin ? ` (de los ${tiempoMin} min estimados)` : ''
+          } para lograr un dorado uniforme sin que se tueste en exceso.`;
+        } else {
+          beginnerInstruction = `Guía paso a paso para principiantes: Con el horneado ya en marcha a temperatura adecuada${
+            tempCelsius ? ` (${tempCelsius}°C)` : ''
+          }, ${lowerFirstBase}. Mantén la puerta del horno cerrada para no perder calor y vigila el progreso${
+            tiempoMin ? ` durante los ${tiempoMin} min estimados` : ''
+          } para asegurar que se cocine de forma homogénea sin quemarse.`;
+        }
       } else if (isSearingOrFrying) {
         beginnerInstruction = `Guía paso a paso para principiantes: Calienta primero el recipiente a fuego ${
           potenciaFuego || 'medio'
@@ -278,9 +295,13 @@ function buildBeginnerPedagogicalCalibration(
   let thermalSafetyWarning = '';
   if (lang === 'en') {
     if (isBaking) {
-      thermalSafetyWarning = `Thermal safety: Always use dry oven mitts when handling trays${
-        tempCelsius ? ` at ${tempCelsius}°C` : ''
-      } and step back slightly when opening the door to avoid hot steam burns.`;
+      thermalSafetyWarning = isFirstBakingStep
+        ? `Thermal safety: Always use dry oven mitts when handling trays${
+            tempCelsius ? ` at ${tempCelsius}°C` : ''
+          } and step back slightly when opening the door to avoid hot steam burns.`
+        : `Thermal safety: Always use oven mitts when rotating or handling hot baking trays${
+            tempCelsius ? ` at ${tempCelsius}°C` : ''
+          } and avoid leaving the door open to prevent heat loss.`;
     } else if (isSearingOrFrying) {
       thermalSafetyWarning =
         'Thermal safety: Pat wet ingredients dry before adding to hot oil to prevent splatters. If the pan starts smoking, lower the heat immediately so the oil does not burn.';
@@ -296,9 +317,11 @@ function buildBeginnerPedagogicalCalibration(
     }
   } else {
     if (isBaking) {
-      thermalSafetyWarning = `Seguridad térmica: Utiliza siempre manoplas secas al manipular bandejas${
-        tempCelsius ? ` a ${tempCelsius}°C` : ''
-      } y retira ligeramente el rostro al abrir la puerta para evitar el golpe de vapor caliente.`;
+      thermalSafetyWarning = isFirstBakingStep
+        ? `Seguridad térmica: Utiliza siempre manoplas secas al manipular bandejas${
+            tempCelsius ? ` a ${tempCelsius}°C` : ''
+          } y retira ligeramente el rostro al abrir la puerta para evitar el golpe de vapor caliente.`
+        : `Seguridad térmica: Utiliza manoplas térmicas secas al manipular la bandeja o comprobar el asado, evitando abrir la puerta más de lo necesario para no enfriar el horno.`;
     } else if (isSearingOrFrying) {
       thermalSafetyWarning =
         'Seguridad térmica: Seca el exceso de humedad de los alimentos antes de echarlos al aceite caliente para evitar salpicaduras. Si ves humo blanco, baja el fuego de inmediato para no quemar el fondo.';
@@ -658,6 +681,7 @@ export function RecipeInteractiveSections({
     );
     const usageTracker = new Map<string, number>();
     const currentLang = (language as 'es' | 'en') || 'es';
+    let hasEncounteredBaking = false;
 
     return safePasos.map((paso) => {
       const baseInstruction = String(paso?.instruccion || '');
@@ -670,6 +694,16 @@ export function RecipeInteractiveSections({
       const rawSensory = (paso as any)?.descriptor_sensorial
         ? String((paso as any).descriptor_sensorial).trim()
         : undefined;
+
+      const isCurrentStepBaking =
+        (paso as any)?.potencia_fuego === 'horno' ||
+        /\b(horno|hornear|hornea|precalienta|precalentar|airfryer|freidora\s+de\s+aire|oven|bake|roast|gratinar|gratina)\b/i.test(
+          baseInstruction
+        );
+      const isFirstBakingStep = isCurrentStepBaking && !hasEncounteredBaking;
+      if (isCurrentStepBaking) {
+        hasEncounteredBaking = true;
+      }
 
       const stepScaledTime = paso.tiempo_estimado_min
         ? scaleCookingTime(
@@ -700,7 +734,8 @@ export function RecipeInteractiveSections({
           (paso as any)?.potencia_fuego,
           paso?.temperatura_celsius,
           stepScaledTime ?? paso?.tiempo_estimado_min,
-          currentLang
+          currentLang,
+          isFirstBakingStep
         );
         instruccion = calibrated.beginnerInstruction;
         descriptorSensorial = calibrated.sensoryCue;
