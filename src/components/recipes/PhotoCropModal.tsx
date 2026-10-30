@@ -27,11 +27,13 @@ export function PhotoCropModal({
   subtitle = 'Arrastra con el dedo y usa el zoom para centrar tu creación',
 }: PhotoCropModalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isPinching, setIsPinching] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Referencias para seguimiento de arrastre y pinch-to-zoom
@@ -39,6 +41,33 @@ export function PhotoCropModal({
   const initialOffsetRef = useRef({ x: 0, y: 0 });
   const initialPinchDistRef = useRef<number | null>(null);
   const initialZoomRef = useRef(1);
+
+  // Medir contenedor y reaccionar a cambios de pantalla/orientación
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+
+    const el = containerRef.current;
+    const updateSize = () => {
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        setContainerSize({
+          width: rect.width || el.clientWidth,
+          height: rect.height || el.clientHeight,
+        });
+      }
+    };
+
+    updateSize();
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateSize();
+    });
+
+    resizeObserver.observe(el);
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [isOpen]);
 
   // Cargar imagen en memoria cuando cambia imageSrc
   useEffect(() => {
@@ -53,6 +82,13 @@ export function PhotoCropModal({
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setContainerSize({
+          width: rect.width || containerRef.current.clientWidth,
+          height: rect.height || containerRef.current.clientHeight,
+        });
+      }
       setImageElement(img);
       setIsImageLoaded(true);
       setZoom(1);
@@ -61,31 +97,43 @@ export function PhotoCropModal({
     img.src = imageSrc;
   }, [imageSrc, isOpen]);
 
+  // Dimensiones efectivas del contenedor e imagen
+  const effectiveContainerW = containerSize.width || containerRef.current?.clientWidth || 0;
+  const effectiveContainerH = containerSize.height || containerRef.current?.clientHeight || 0;
+  const imgNaturalW = imageElement?.naturalWidth || 1;
+  const imgNaturalH = imageElement?.naturalHeight || 1;
+
+  // Escala base para cubrir el contenedor completo (cover)
+  const baseScale =
+    effectiveContainerW > 0 && effectiveContainerH > 0 && imageElement
+      ? Math.max(effectiveContainerW / imgNaturalW, effectiveContainerH / imgNaturalH)
+      : 1;
+
   // Calcular dimensiones y cotas de la imagen en el visor
   const getBounds = useCallback(() => {
-    if (!containerRef.current || !imageElement) {
-      return { containerW: 0, containerH: 0, scale: 1, maxOffsetX: 0, maxOffsetY: 0 };
+    const curCW = containerRef.current?.clientWidth || containerSize.width;
+    const curCH = containerRef.current?.clientHeight || containerSize.height;
+
+    if (!curCW || !curCH || !imageElement) {
+      return { containerW: 0, containerH: 0, baseScale: 1, scale: 1, maxOffsetX: 0, maxOffsetY: 0 };
     }
 
-    const containerW = containerRef.current.clientWidth;
-    const containerH = containerRef.current.clientHeight;
-
-    const imgW = imageElement.naturalWidth || 1;
-    const imgH = imageElement.naturalHeight || 1;
+    const curImgW = imageElement.naturalWidth || 1;
+    const curImgH = imageElement.naturalHeight || 1;
 
     // Escala base para cubrir el contenedor completo (cover)
-    const baseScale = Math.max(containerW / imgW, containerH / imgH);
-    const currentScale = baseScale * zoom;
+    const bScale = Math.max(curCW / curImgW, curCH / curImgH);
+    const currentScale = bScale * zoom;
 
-    const displayedW = imgW * currentScale;
-    const displayedH = imgH * currentScale;
+    const displayedW = curImgW * currentScale;
+    const displayedH = curImgH * currentScale;
 
     // Límites de arrastre para no dejar huecos negros en los bordes
-    const maxOffsetX = Math.max(0, (displayedW - containerW) / 2);
-    const maxOffsetY = Math.max(0, (displayedH - containerH) / 2);
+    const maxOffsetX = Math.max(0, (displayedW - curCW) / 2);
+    const maxOffsetY = Math.max(0, (displayedH - curCH) / 2);
 
-    return { containerW, containerH, scale: currentScale, maxOffsetX, maxOffsetY };
-  }, [imageElement, zoom]);
+    return { containerW: curCW, containerH: curCH, baseScale: bScale, scale: currentScale, maxOffsetX, maxOffsetY };
+  }, [containerSize.width, containerSize.height, imageElement, zoom]);
 
   // Clampear offset a los límites válidos
   const clampOffset = useCallback(
@@ -127,10 +175,12 @@ export function PhotoCropModal({
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       setIsDragging(true);
+      setIsPinching(false);
       dragStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       initialOffsetRef.current = { ...offset };
     } else if (e.touches.length === 2) {
       setIsDragging(false);
+      setIsPinching(true);
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
@@ -151,13 +201,14 @@ export function PhotoCropModal({
         e.touches[0].clientY - e.touches[1].clientY
       );
       const ratio = dist / initialPinchDistRef.current;
-      const newZoom = Math.max(1, Math.min(3, initialZoomRef.current * ratio));
+      const newZoom = Math.max(1, Math.min(3, Math.round(initialZoomRef.current * ratio * 100) / 100));
       setZoom(newZoom);
     }
   };
 
   const handleTouchEnd = () => {
     setIsDragging(false);
+    setIsPinching(false);
     initialPinchDistRef.current = null;
   };
 
@@ -165,7 +216,7 @@ export function PhotoCropModal({
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = -e.deltaY * 0.0015;
-    setZoom((prev) => Math.max(1, Math.min(3, prev + delta)));
+    setZoom((prev) => Math.max(1, Math.min(3, Math.round((prev + delta) * 100) / 100)));
   };
 
   // Generación final del recorte con Canvas nativo de alta resolución
@@ -178,6 +229,10 @@ export function PhotoCropModal({
       const imgW = imageElement.naturalWidth;
       const imgH = imageElement.naturalHeight;
 
+      if (containerW <= 0 || containerH <= 0 || scale <= 0) {
+        throw new Error('Dimensiones no válidas para recorte.');
+      }
+
       // Cálculo inverso exacto de coordenadas fuente en la imagen original
       const displayedW = imgW * scale;
       const displayedH = imgH * scale;
@@ -189,6 +244,12 @@ export function PhotoCropModal({
       const sy = (0 - imgTopLeftInViewY) / scale;
       const sw = containerW / scale;
       const sh = containerH / scale;
+
+      // Asegurar que las coordenadas de origen estén dentro de los límites físicos de la imagen
+      const safeSx = Math.max(0, Math.min(imgW - 1, sx));
+      const safeSy = Math.max(0, Math.min(imgH - 1, sy));
+      const safeSw = Math.max(1, Math.min(sw, imgW - safeSx));
+      const safeSh = Math.max(1, Math.min(sh, imgH - safeSy));
 
       // Crear canvas off-screen con dimensiones de salida de alta resolución
       const canvas = document.createElement('canvas');
@@ -206,10 +267,10 @@ export function PhotoCropModal({
       // Dibujar porción recortada directamente desde la imagen original
       ctx.drawImage(
         imageElement,
-        Math.max(0, sx),
-        Math.max(0, sy),
-        Math.min(imgW - Math.max(0, sx), sw),
-        Math.min(imgH - Math.max(0, sy), sh),
+        safeSx,
+        safeSy,
+        safeSw,
+        safeSh,
         0,
         0,
         outputWidth,
@@ -294,13 +355,15 @@ export function PhotoCropModal({
                   alt="Encuadre"
                   draggable={false}
                   style={{
-                    transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${zoom})`,
+                    transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${baseScale * zoom})`,
                     transformOrigin: 'center center',
                     willChange: 'transform',
                     maxWidth: 'none',
                     maxHeight: 'none',
                   }}
-                  className="pointer-events-none select-none transition-transform duration-75"
+                  className={`pointer-events-none select-none ${
+                    isDragging || isPinching ? 'transition-none' : 'transition-transform duration-100 ease-out'
+                  }`}
                 />
 
                 {/* Rejilla guía fotográfica (Regla de los Tercios) translúcida */}
@@ -335,7 +398,7 @@ export function PhotoCropModal({
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setZoom((prev) => Math.max(1, prev - 0.2))}
+              onClick={() => setZoom((prev) => Math.max(1, Math.round((prev - 0.2) * 100) / 100))}
               disabled={zoom <= 1 || isProcessing}
               className="w-8 h-8 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40"
               title="Alejar"
@@ -354,7 +417,7 @@ export function PhotoCropModal({
             />
             <button
               type="button"
-              onClick={() => setZoom((prev) => Math.min(3, prev + 0.2))}
+              onClick={() => setZoom((prev) => Math.min(3, Math.round((prev + 0.2) * 100) / 100))}
               disabled={zoom >= 3 || isProcessing}
               className="w-8 h-8 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40"
               title="Acercar"
