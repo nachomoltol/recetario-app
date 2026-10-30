@@ -129,6 +129,20 @@ interface DaySlotItem {
   canAddSecondCourse?: boolean;
 }
 
+function getDateStringsBetween(startStr: string, endStr: string): string[] {
+  if (!startStr || !endStr) return [];
+  const start = startStr <= endStr ? startStr : endStr;
+  const end = startStr <= endStr ? endStr : startStr;
+  const dates: string[] = [];
+  const curr = parseLocalDate(start);
+  const last = parseLocalDate(end);
+  while (curr <= last) {
+    dates.push(formatLocalDate(curr));
+    curr.setDate(curr.getDate() + 1);
+  }
+  return dates;
+}
+
 export function MealPlannerView({
   initialPlans,
   userRecipes,
@@ -153,6 +167,9 @@ export function MealPlannerView({
   }, [userProfile, profileStore]);
 
   const dateParam = searchParams.get('date') || initialTargetDate;
+  const fromParam = searchParams.get('from');
+  const toParam = searchParams.get('to');
+  const openShoppingParam = searchParams.get('openShopping');
 
   const [currentMonday, setCurrentMonday] = useState<Date>(() => {
     if (dateParam) {
@@ -258,6 +275,32 @@ export function MealPlannerView({
       return () => clearTimeout(timer);
     }
   }, [searchParams]);
+
+  // Estados de alcance de compra (semana actual vs rango continuo)
+  const [shoppingScopeMode, setShoppingScopeMode] = useState<'week' | 'range'>(() => {
+    return fromParam && toParam ? 'range' : 'week';
+  });
+  const [rangeStartDate, setRangeStartDate] = useState<string>(() => {
+    return fromParam || formatLocalDate(new Date());
+  });
+  const [rangeEndDate, setRangeEndDate] = useState<string>(() => {
+    if (toParam) return toParam;
+    const end = new Date();
+    end.setDate(end.getDate() + 6);
+    return formatLocalDate(end);
+  });
+
+  // Auto-apertura si proviene de /smart-menu con openShopping=true
+  useEffect(() => {
+    if (openShoppingParam === 'true') {
+      const s = fromParam || startDateStr;
+      const e = toParam || endDateStr;
+      setShoppingScopeMode('range');
+      if (fromParam) setRangeStartDate(fromParam);
+      if (toParam) setRangeEndDate(toParam);
+      handleGenerateShoppingList(undefined, { mode: 'range', start: s, end: e });
+    }
+  }, [openShoppingParam, fromParam, toParam]);
 
   // Estados de filtros interactivos para exportación de compra
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
@@ -545,14 +588,37 @@ export function MealPlannerView({
     }
   };
 
-  // Generar lista de la compra unificada con filtros activos
-  const handleGenerateShoppingList = (datesOverride?: string[]) => {
-    const activeDates =
-      datesOverride && datesOverride.length > 0
-        ? datesOverride
-        : selectedDates.length > 0
-        ? selectedDates
-        : weekDays.map((d) => d.dateStr);
+  // Generar lista de la compra unificada con filtros activos y soporte de rango continuo
+  const handleGenerateShoppingList = (
+    datesOverride?: string[],
+    scopeOverride?: { mode?: 'week' | 'range'; start?: string; end?: string }
+  ) => {
+    const activeMode = scopeOverride?.mode || shoppingScopeMode;
+    let minDate = startDateStr;
+    let maxDate = endDateStr;
+    let activeDates: string[] = [];
+
+    if (activeMode === 'range') {
+      const s = scopeOverride?.start || rangeStartDate;
+      const e = scopeOverride?.end || rangeEndDate;
+      minDate = s <= e ? s : e;
+      maxDate = s <= e ? e : s;
+      activeDates =
+        datesOverride && datesOverride.length > 0
+          ? datesOverride
+          : getDateStringsBetween(minDate, maxDate);
+    } else {
+      activeDates =
+        datesOverride && datesOverride.length > 0
+          ? datesOverride
+          : selectedDates.length > 0
+          ? selectedDates
+          : weekDays.map((d) => d.dateStr);
+
+      const sorted = [...activeDates].sort();
+      minDate = sorted[0] || startDateStr;
+      maxDate = sorted[sorted.length - 1] || endDateStr;
+    }
 
     const activeSlots: MealSlot[] =
       selectedSlots.length > 0
@@ -565,7 +631,7 @@ export function MealPlannerView({
         : (['desayuno', 'almuerzo', 'almuerzo_1', 'almuerzo_2', 'cena', 'snack_postre'] as MealSlot[]);
 
     startShoppingTransition(async () => {
-      const res = await generateUnifiedShoppingListAction(startDateStr, endDateStr, {
+      const res = await generateUnifiedShoppingListAction(minDate, maxDate, {
         selectedDates: activeDates,
         selectedSlots: activeSlots,
       });
@@ -578,7 +644,37 @@ export function MealPlannerView({
 
   const handleUpdateDaysInModal = (newDates: string[]) => {
     setSelectedDates(newDates);
-    handleGenerateShoppingList(newDates);
+    handleGenerateShoppingList(newDates, { mode: 'week' });
+  };
+
+  const handleSwitchScopeMode = (newMode: 'week' | 'range') => {
+    setShoppingScopeMode(newMode);
+    if (newMode === 'week') {
+      const currentWeekDates = selectedDates.length > 0 ? selectedDates : weekDays.map((d) => d.dateStr);
+      handleGenerateShoppingList(currentWeekDates, { mode: 'week' });
+    } else {
+      handleGenerateShoppingList(undefined, {
+        mode: 'range',
+        start: rangeStartDate,
+        end: rangeEndDate,
+      });
+    }
+  };
+
+  const handleApplyPresetDays = (numDays: number) => {
+    const baseDate = parseLocalDate(rangeStartDate || formatLocalDate(new Date()));
+    const endDateObj = new Date(baseDate);
+    endDateObj.setDate(baseDate.getDate() + (numDays - 1));
+    const newStart = formatLocalDate(baseDate);
+    const newEnd = formatLocalDate(endDateObj);
+
+    setRangeStartDate(newStart);
+    setRangeEndDate(newEnd);
+    handleGenerateShoppingList(undefined, {
+      mode: 'range',
+      start: newStart,
+      end: newEnd,
+    });
   };
 
   // Agrupar los ítems del modal por pasillo de supermercado
@@ -1072,18 +1168,42 @@ export function MealPlannerView({
 
       {/* Banner de confirmación cuando llega desde /smart-menu */}
       {showGeneratedBanner && (
-        <div className="p-3.5 sm:p-4 rounded-2xl border bg-emerald-50 border-emerald-200 text-emerald-800 flex items-center justify-between gap-3 text-xs sm:text-sm animate-fade-in shadow-xs">
+        <div className="p-3.5 sm:p-4 rounded-2xl border bg-emerald-50 border-emerald-200 text-emerald-800 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm animate-fade-in shadow-xs">
           <div className="flex items-center gap-2.5">
             <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span className="font-semibold">{t('smart_menu_applied_success')}</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+              <span className="font-semibold">{t('smart_menu_applied_success')}</span>
+              {fromParam && toParam && (
+                <span className="text-[11px] text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-md font-medium">
+                  {fromParam} → {toParam}
+                </span>
+              )}
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowGeneratedBanner(false)}
-            className="text-stone-400 hover:text-stone-600 font-bold px-2 py-1 cursor-pointer"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-2">
+            {fromParam && toParam && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShoppingScopeMode('range');
+                  setRangeStartDate(fromParam);
+                  setRangeEndDate(toParam);
+                  handleGenerateShoppingList(undefined, { mode: 'range', start: fromParam, end: toParam });
+                }}
+                className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-medium text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+              >
+                <ShoppingCart className="w-3.5 h-3.5" />
+                <span>{t('planner_generate_shopping_list')}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowGeneratedBanner(false)}
+              className="text-stone-400 hover:text-stone-600 font-bold px-2 py-1 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 
@@ -1433,8 +1553,10 @@ export function MealPlannerView({
                     {t('planner_shopping_modal_title')}
                   </h3>
                   <p className="text-xs text-stone-500">
-                    {shoppingModal.length} {t('planner_ingredients_count')} · {selectedDates.length}{' '}
-                    {t('planner_days_filtered')}
+                    {shoppingModal.length} {t('planner_ingredients_count')} ·{' '}
+                    {shoppingScopeMode === 'range'
+                      ? `${rangeStartDate} — ${rangeEndDate}`
+                      : `${selectedDates.length || 7} ${t('planner_days_filtered')}`}
                   </p>
                 </div>
               </div>
@@ -1448,67 +1570,160 @@ export function MealPlannerView({
               </button>
             </div>
 
-            {/* Selector de días filtrados dentro del modal */}
-            <div className="p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2 shrink-0">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-stone-700 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-[#a86224]" />
-                  <span>{t('planner_days_to_include')} ({selectedDates.length}/7):</span>
-                </span>
-                <div className="flex items-center gap-1.5 text-[11px] font-medium">
+            {/* Pestañas de Alcance: Semana en pantalla vs Rango continuo */}
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2.5 shrink-0">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-1 p-1 bg-[#ede6dc] rounded-xl text-xs font-semibold">
                   <button
                     type="button"
-                    onClick={() => handleUpdateDaysInModal(weekDays.map((d) => d.dateStr))}
-                    className="text-[#a86224] hover:underline cursor-pointer font-semibold"
+                    onClick={() => handleSwitchScopeMode('week')}
+                    className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                      shoppingScopeMode === 'week'
+                        ? 'bg-white text-stone-900 shadow-2xs font-bold'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
                   >
-                    {t('planner_filter_all')}
+                    {t('planner_scope_week')}
                   </button>
-                  <span>·</span>
                   <button
                     type="button"
-                    onClick={() => handleUpdateDaysInModal(weekDays.slice(0, 5).map((d) => d.dateStr))}
-                    className="text-[#a86224] hover:underline cursor-pointer font-semibold"
+                    onClick={() => handleSwitchScopeMode('range')}
+                    className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                      shoppingScopeMode === 'range'
+                        ? 'bg-white text-stone-900 shadow-2xs font-bold'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
                   >
-                    {t('planner_filter_mon_fri')}
-                  </button>
-                  <span>·</span>
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateDaysInModal(weekDays.slice(0, 4).map((d) => d.dateStr))}
-                    className="text-[#a86224] hover:underline cursor-pointer font-semibold"
-                  >
-                    {t('planner_filter_mon_thu')}
+                    {t('planner_scope_continuous')}
                   </button>
                 </div>
+
+                {shoppingScopeMode === 'week' && (
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-stone-600">
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateDaysInModal(weekDays.map((d) => d.dateStr))}
+                      className="text-[#a86224] hover:underline cursor-pointer font-semibold"
+                    >
+                      {t('planner_filter_all')}
+                    </button>
+                    <span>·</span>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateDaysInModal(weekDays.slice(0, 5).map((d) => d.dateStr))}
+                      className="text-[#a86224] hover:underline cursor-pointer font-semibold"
+                    >
+                      {t('planner_filter_mon_fri')}
+                    </button>
+                    <span>·</span>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateDaysInModal(weekDays.slice(0, 4).map((d) => d.dateStr))}
+                      className="text-[#a86224] hover:underline cursor-pointer font-semibold"
+                    >
+                      {t('planner_filter_mon_thu')}
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Píldoras táctiles horizontales */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-                {weekDays.map((d) => {
-                  const isSelected = selectedDates.includes(d.dateStr);
-                  return (
+              {shoppingScopeMode === 'week' ? (
+                /* Píldoras táctiles horizontales de la semana actual */
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                  {weekDays.map((d) => {
+                    const isSelected = selectedDates.includes(d.dateStr);
+                    return (
+                      <button
+                        key={d.dateStr}
+                        type="button"
+                        onClick={() => {
+                          const nextDates = isSelected
+                            ? selectedDates.filter((date) => date !== d.dateStr)
+                            : [...selectedDates, d.dateStr];
+                          const finalDates = nextDates.length > 0 ? nextDates : [d.dateStr];
+                          handleUpdateDaysInModal(finalDates);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                          isSelected
+                            ? 'bg-[#a86224] text-white shadow-2xs font-bold'
+                            : 'bg-white hover:bg-stone-50 border border-[#e7dfd5] text-stone-600'
+                        }`}
+                      >
+                        <span>{d.shortName}</span>
+                        <span className="text-[10px] opacity-80">{d.dayNum}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Controles de Rango Continuo */
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+                    <span className="text-stone-600 text-[11px]">
+                      {t('planner_range_continuous_desc')}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[11px] text-stone-500 font-medium mr-1">Presets:</span>
+                      {[
+                        { days: 3, labelKey: 'planner_preset_3_days' as const },
+                        { days: 5, labelKey: 'planner_preset_5_days' as const },
+                        { days: 7, labelKey: 'planner_preset_7_days' as const },
+                      ].map(({ days, labelKey }) => (
+                        <button
+                          key={days}
+                          type="button"
+                          onClick={() => handleApplyPresetDays(days)}
+                          className="px-2 py-0.5 rounded-lg bg-white border border-[#e7dfd5] hover:border-[#a86224] text-[#a86224] text-[11px] font-semibold transition cursor-pointer shadow-2xs"
+                        >
+                          {t(labelKey)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 bg-white border border-[#e7dfd5] px-2.5 py-1.5 rounded-xl text-xs">
+                      <span className="text-stone-500 text-[11px] font-medium">{t('planner_date_from')}:</span>
+                      <input
+                        type="date"
+                        value={rangeStartDate}
+                        onChange={(e) => setRangeStartDate(e.target.value)}
+                        className="bg-transparent text-stone-800 font-medium focus:outline-none text-xs cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-1.5 bg-white border border-[#e7dfd5] px-2.5 py-1.5 rounded-xl text-xs">
+                      <span className="text-stone-500 text-[11px] font-medium">{t('planner_date_to')}:</span>
+                      <input
+                        type="date"
+                        value={rangeEndDate}
+                        onChange={(e) => setRangeEndDate(e.target.value)}
+                        className="bg-transparent text-stone-800 font-medium focus:outline-none text-xs cursor-pointer"
+                      />
+                    </div>
+
                     <button
-                      key={d.dateStr}
                       type="button"
-                      onClick={() => {
-                        const nextDates = isSelected
-                          ? selectedDates.filter((date) => date !== d.dateStr)
-                          : [...selectedDates, d.dateStr];
-                        const finalDates = nextDates.length > 0 ? nextDates : [d.dateStr];
-                        handleUpdateDaysInModal(finalDates);
-                      }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1 shrink-0 ${
-                        isSelected
-                          ? 'bg-[#a86224] text-white shadow-2xs font-bold'
-                          : 'bg-white hover:bg-stone-50 border border-[#e7dfd5] text-stone-600'
-                      }`}
+                      disabled={isShoppingPending}
+                      onClick={() =>
+                        handleGenerateShoppingList(undefined, {
+                          mode: 'range',
+                          start: rangeStartDate,
+                          end: rangeEndDate,
+                        })
+                      }
+                      className="px-3 py-1.5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
                     >
-                      <span>{d.shortName}</span>
-                      <span className="text-[10px] opacity-80">{d.dayNum}</span>
+                      {isShoppingPending ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Search className="w-3.5 h-3.5" />
+                      )}
+                      <span>{t('planner_update_list')}</span>
                     </button>
-                  );
-                })}
-              </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {shoppingModal.length === 0 ? (

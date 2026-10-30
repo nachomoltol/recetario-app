@@ -214,7 +214,7 @@ export function SmartMenuWizardView({
       }
 
       // Redirección inmediata a /meal-planner con la fecha de inicio del menú generado y flag de éxito
-      router.push(`/meal-planner?date=${startDate}&generated=true`);
+      router.push(`/meal-planner?date=${startDate}&from=${startDate}&to=${endDate}&openShopping=true&generated=true`);
       router.refresh();
     } catch (err: any) {
       console.error('Error generando menú semanal con IA:', err);
