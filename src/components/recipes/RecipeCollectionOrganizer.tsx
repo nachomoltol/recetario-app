@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
@@ -25,6 +25,8 @@ import {
   Moon,
   Apple,
   Utensils,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Receta } from '@/types/recipe';
 import { MomentoDia, RolPlato } from '@/types/database';
@@ -552,6 +554,51 @@ export function RecipeCollectionOrganizer({
   });
   const [filtroActivo, setFiltroActivo] = useState<string>('Todas');
 
+  // Refs y estados para navegación horizontal con flechas y scroll en PC
+  const categoriesScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeftCat, setCanScrollLeftCat] = useState(false);
+  const [canScrollRightCat, setCanScrollRightCat] = useState(false);
+
+  const checkCategoriesScroll = () => {
+    const el = categoriesScrollRef.current;
+    if (!el) return;
+    setCanScrollLeftCat(el.scrollLeft > 6);
+    setCanScrollRightCat(el.scrollLeft + el.clientWidth < el.scrollWidth - 6);
+  };
+
+  const scrollCategories = (dir: 'left' | 'right') => {
+    if (categoriesScrollRef.current) {
+      categoriesScrollRef.current.scrollBy({
+        left: dir === 'left' ? -220 : 220,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  // Escuchar redimensionamiento y desplazamiento de categorías
+  useEffect(() => {
+    checkCategoriesScroll();
+    const el = categoriesScrollRef.current;
+    if (el) {
+      el.addEventListener('scroll', checkCategoriesScroll, { passive: true });
+    }
+    window.addEventListener('resize', checkCategoriesScroll);
+    return () => {
+      if (el) el.removeEventListener('scroll', checkCategoriesScroll);
+      window.removeEventListener('resize', checkCategoriesScroll);
+    };
+  }, []);
+
+  // Listener para traducir deltaY de la rueda del ratón en desplazamiento horizontal
+  const handleWheelHorizontal = (e: React.WheelEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (!el) return;
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
+      // Traducir scroll vertical a horizontal si no se está usando shift o trackpad horizontal
+      el.scrollLeft += e.deltaY;
+    }
+  };
+
   // Contadores de recetas por momento del día
   const momentoCategoryCounts = useMemo(() => {
     const counts: Record<ContextualMomentoFilter, number> = {
@@ -746,7 +793,10 @@ export function RecipeCollectionOrganizer({
 
           {/* Selector de Chips de Momentos Oficiales */}
           <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+            <div
+              onWheel={handleWheelHorizontal}
+              className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs"
+            >
               {MOMENTO_FILTER_CHIPS.map((chip) => {
                 const isActive = filtroMomento === chip.id;
                 const ChipIcon = chip.icon;
@@ -864,47 +914,77 @@ export function RecipeCollectionOrganizer({
           </div>
         )}
       </div>
-      {/* 2. SELECTOR DE PESTAÑAS (TODAS + CATEGORÍAS) */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pt-1">
-        <button
-          type="button"
-          onClick={() => setFiltroActivo('Todas')}
-          className={`min-h-[42px] px-4 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
-            filtroActivo === 'Todas'
-              ? 'bg-[#a86224] text-white shadow-xs'
-              : 'bg-white hover:bg-[#faf7f2] text-stone-700 border border-[#e7dfd5]'
-          }`}
+      {/* 2. SELECTOR DE PESTAÑAS (TODAS + CATEGORÍAS) CON NAVEGACIÓN PC ERGONÓMICA */}
+      <div className="relative flex items-center group/cat-scroll">
+        {/* Flecha scroll izquierda (visible en PC cuando hay contenido previo) */}
+        {canScrollLeftCat && (
+          <button
+            type="button"
+            onClick={() => scrollCategories('left')}
+            aria-label={t('planner_scroll_left')}
+            className="hidden md:flex absolute -left-3 z-20 w-8 h-8 rounded-full bg-white/95 border border-[#e7dfd5] text-stone-700 hover:text-[#a86224] shadow-md items-center justify-center transition cursor-pointer hover:bg-stone-50 active:scale-95"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
+
+        <div
+          ref={categoriesScrollRef}
+          onWheel={handleWheelHorizontal}
+          className="flex items-center gap-2 overflow-x-auto scroll-smooth w-full pb-2 pt-1 no-scrollbar md:scrollbar-thin md:scrollbar-thumb-stone-300 md:scrollbar-track-stone-100/50"
         >
-          <BookOpen className="w-3.5 h-3.5 shrink-0" />
-          <span>{t('collection_tab_all')} ({filteredRecipes.length})</span>
-          <span className="text-[9px] opacity-75 font-mono ml-0.5">v.2.0</span>
-        </button>
-        {populatedCategories.map(({ category, recetas: groupRecetas }) => {
-          const IconComponent = category.icono;
-          const isSelected = filtroActivo === category.id;
-          return (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => setFiltroActivo(category.id)}
-              className={`min-h-[42px] px-3.5 rounded-xl text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer ${
-                isSelected
-                  ? 'bg-[#a86224] text-white shadow-xs'
-                  : 'bg-white hover:bg-[#faf7f2] text-stone-700 border border-[#e7dfd5]'
-              }`}
-            >
-              <IconComponent className="w-3.5 h-3.5 shrink-0" />
-              <span>{language === 'en' ? category.nombreEn : category.nombre}</span>
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-md ${
-                  isSelected ? 'bg-white/20 text-white' : 'bg-[#faf7f2] text-stone-500'
+          <button
+            type="button"
+            onClick={() => setFiltroActivo('Todas')}
+            className={`min-h-[42px] px-4 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+              filtroActivo === 'Todas'
+                ? 'bg-[#a86224] text-white shadow-xs'
+                : 'bg-white hover:bg-[#faf7f2] text-stone-700 border border-[#e7dfd5]'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 shrink-0" />
+            <span>{t('collection_tab_all')} ({filteredRecipes.length})</span>
+            <span className="text-[9px] opacity-75 font-mono ml-0.5">v.2.0</span>
+          </button>
+          {populatedCategories.map(({ category, recetas: groupRecetas }) => {
+            const IconComponent = category.icono;
+            const isSelected = filtroActivo === category.id;
+            return (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => setFiltroActivo(category.id)}
+                className={`min-h-[42px] px-3.5 rounded-xl text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#a86224] text-white shadow-xs'
+                    : 'bg-white hover:bg-[#faf7f2] text-stone-700 border border-[#e7dfd5]'
                 }`}
               >
-                {groupRecetas.length}
-              </span>
-            </button>
-          );
-        })}
+                <IconComponent className="w-3.5 h-3.5 shrink-0" />
+                <span>{language === 'en' ? category.nombreEn : category.nombre}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-md ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-[#faf7f2] text-stone-500'
+                  }`}
+                >
+                  {groupRecetas.length}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Flecha scroll derecha (visible en PC cuando hay más categorías) */}
+        {canScrollRightCat && (
+          <button
+            type="button"
+            onClick={() => scrollCategories('right')}
+            aria-label={t('planner_scroll_right')}
+            className="hidden md:flex absolute -right-3 z-20 w-8 h-8 rounded-full bg-white/95 border border-[#e7dfd5] text-stone-700 hover:text-[#a86224] shadow-md items-center justify-center transition cursor-pointer hover:bg-stone-50 active:scale-95"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        )}
       </div>
       {/* 3. ESTADO VACÍO CUANDO NO HAY COINCIDENCIAS */}
       {filteredRecipes.length === 0 && (
