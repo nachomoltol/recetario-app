@@ -27,7 +27,14 @@ import {
   Search,
   Clock,
   UtensilsCrossed,
+  Download,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const ProSubscriptionModal = dynamic(
+  () => import('@/components/subscription/ProSubscriptionModal').then((m) => m.ProSubscriptionModal),
+  { ssr: false }
+);
 import { Receta, Usuario } from '@/types/recipe';
 import {
   MealSlot,
@@ -204,6 +211,14 @@ export function MealPlannerView({
   const [shoppingModal, setShoppingModal] = useState<UnifiedShoppingItem[] | null>(null);
   const [checkedShoppingItems, setCheckedShoppingItems] = useState<string[]>([]);
   const [isCopied, setIsCopied] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isProModalOpen, setIsProModalOpen] = useState(false);
+
+  const profileFromStore = useProfileStore((s) => s.profile);
+  const profile = userProfile ?? profileFromStore;
+  const isPaidPlan = ['pro', 'chef', 'premium', 'admin'].includes(
+    (profile?.plan_suscripcion || '').trim().toLowerCase()
+  );
   const [isShoppingPending, startShoppingTransition] = useTransition();
 
   const [showGeneratedBanner, setShowGeneratedBanner] = useState(false);
@@ -683,6 +698,96 @@ export function MealPlannerView({
     return groupItemsByAisle(shoppingModal, (item) => item.pasillo_supermercado);
   }, [shoppingModal]);
 
+  const handleExportPdf = async () => {
+    if (!isPaidPlan) {
+      setIsProModalOpen(true);
+      return;
+    }
+
+    setIsExportingPdf(true);
+    try {
+      let itemsToExport = shoppingModal;
+
+      if (!itemsToExport || itemsToExport.length === 0) {
+        let minDate = startDateStr;
+        let maxDate = endDateStr;
+        let activeDates: string[] = [];
+
+        if (shoppingScopeMode === 'range') {
+          minDate = rangeStartDate <= rangeEndDate ? rangeStartDate : rangeEndDate;
+          maxDate = rangeStartDate <= rangeEndDate ? rangeEndDate : rangeStartDate;
+          activeDates = getDateStringsBetween(minDate, maxDate);
+        } else {
+          activeDates = selectedDates.length > 0 ? selectedDates : weekDays.map((d) => d.dateStr);
+          const sorted = [...activeDates].sort();
+          minDate = sorted[0] || startDateStr;
+          maxDate = sorted[sorted.length - 1] || endDateStr;
+        }
+
+        const activeSlots: MealSlot[] =
+          selectedSlots.length > 0
+            ? [
+                ...selectedSlots,
+                ...(selectedSlots.includes('almuerzo_1') || selectedSlots.includes('almuerzo_2')
+                  ? (['almuerzo'] as MealSlot[])
+                  : []),
+              ]
+            : (['desayuno', 'almuerzo', 'almuerzo_1', 'almuerzo_2', 'cena', 'snack_postre'] as MealSlot[]);
+
+        const res = await generateUnifiedShoppingListAction(minDate, maxDate, {
+          selectedDates: activeDates,
+          selectedSlots: activeSlots,
+        });
+        if (res.success && res.items) {
+          itemsToExport = res.items;
+        } else {
+          itemsToExport = [];
+        }
+      }
+
+      const daysInfo =
+        shoppingScopeMode === 'range'
+          ? getDateStringsBetween(
+              rangeStartDate <= rangeEndDate ? rangeStartDate : rangeEndDate,
+              rangeStartDate <= rangeEndDate ? rangeEndDate : rangeStartDate
+            ).map((dateStr) => {
+              const d = parseLocalDate(dateStr);
+              const locale = language === 'en' ? 'en-US' : 'es-ES';
+              return {
+                dateStr,
+                dayName: d.toLocaleDateString(locale, { weekday: 'short' }),
+                dayNum: d.getDate(),
+              };
+            })
+          : weekDays.map((d) => ({
+              dateStr: d.dateStr,
+              dayName: d.shortName,
+              dayNum: d.dayNum,
+            }));
+
+      const dateRangeLabel =
+        shoppingScopeMode === 'range'
+          ? `${rangeStartDate} — ${rangeEndDate}`
+          : `${startDateStr} — ${endDateStr}`;
+
+      const { exportMealPlanToPdf } = await import('@/lib/pdf/exportMealPlanToPdf');
+
+      await exportMealPlanToPdf({
+        dateRangeLabel,
+        days: daysInfo,
+        plans,
+        shoppingItems: itemsToExport || [],
+        defaultServings: defaultDiners,
+        language,
+      });
+    } catch (err) {
+      console.error('Error exportando PDF:', err);
+      alert(language === 'en' ? 'Error generating PDF' : 'Error al generar el PDF');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const handleCopyShoppingList = () => {
     if (!shoppingModal) return;
 
@@ -1075,6 +1180,20 @@ export function MealPlannerView({
 
           <button
             type="button"
+            onClick={handleExportPdf}
+            disabled={isExportingPdf}
+            className="w-8 h-8 rounded-xl border border-[#e7dfd5] bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-700 flex items-center justify-center transition cursor-pointer shadow-2xs disabled:opacity-50"
+            title={t('planner_export_pdf')}
+          >
+            {isExportingPdf ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#a86224]" />
+            ) : (
+              <Download className="w-3.5 h-3.5 text-[#a86224]" />
+            )}
+          </button>
+
+          <button
+            type="button"
             onClick={() => handleGenerateShoppingList()}
             disabled={isShoppingPending}
             className="h-8 px-2.5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs flex items-center gap-1 shadow-xs transition cursor-pointer disabled:opacity-50"
@@ -1150,6 +1269,24 @@ export function MealPlannerView({
               <Trash2 className="w-4 h-4" />
             )}
             <span>{isClearingWeek ? t('planner_clearing_week') : t('planner_clear_week_btn')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={isExportingPdf}
+            className="min-h-[46px] px-4 py-2.5 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-stone-800 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
+            title={t('planner_export_pdf')}
+          >
+            {isExportingPdf ? (
+              <Loader2 className="w-4 h-4 animate-spin text-[#a86224]" />
+            ) : (
+              <Download className="w-4 h-4 text-[#a86224]" />
+            )}
+            <span>{t('planner_export_pdf')}</span>
+            <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-md ml-0.5">
+              PRO
+            </span>
           </button>
 
           <button
@@ -1738,6 +1875,23 @@ export function MealPlannerView({
                   <span className="text-stone-500">
                     {t('planner_organized_by_aisle')}
                   </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={handleExportPdf}
+                      disabled={isExportingPdf}
+                      className="min-h-[36px] px-3.5 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] font-semibold text-stone-800 transition flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+                    >
+                      {isExportingPdf ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#a86224]" />
+                      ) : (
+                        <Download className="w-3.5 h-3.5 text-[#a86224]" />
+                      )}
+                      <span>{t('planner_export_pdf')}</span>
+                      <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-md">
+                        PRO
+                      </span>
+                    </button>
                   <button
                     type="button"
                     onClick={handleCopyShoppingList}
@@ -1746,6 +1900,7 @@ export function MealPlannerView({
                     <Copy className="w-3.5 h-3.5 text-[#a86224]" />
                     <span>{isCopied ? t('planner_copied') : t('planner_copy_by_aisle')}</span>
                   </button>
+                  </div>
                 </div>
 
                 <div className="overflow-y-auto space-y-5 pr-1 flex-1">
@@ -1843,6 +1998,12 @@ export function MealPlannerView({
           </div>
         </div>
       )}
+
+      {/* Modal Pro para exportación a PDF y funciones avanzadas */}
+      <ProSubscriptionModal
+        isOpen={isProModalOpen}
+        onClose={() => setIsProModalOpen(false)}
+      />
     </div>
   );
 }

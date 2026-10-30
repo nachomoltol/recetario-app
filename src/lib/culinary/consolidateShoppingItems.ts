@@ -161,6 +161,9 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   cleanedOriginal = cleanedOriginal
     .replace(/\b(sin|con)\s+(sal|azucar|gluten|lactosa)\b/gi, '')
     .replace(/\b(en\s+dados|en\s+cubos|en\s+trozos|en\s+tiras|en\s+rodajas|en\s+pomada|punto\s+pomada|pomada|a\s+temperatura\s+ambiente|fundid[oa]s?|derretid[oa]s?|ablandad[oa]s?)\b/gi, '')
+    .replace(/\b(fresc[oa]s?|molid[oa]s?|en\s+polvo|en\s+conserva|de\s+bote|cocid[oa]s?|de\s+abeja)\b/gi, '')
+    .replace(/\b(picad[oa]s?|trocead[oa]s?|cortad[oa]s?|rallad[oa]s?|pelad[oa]s?|triturad[oa]s?|machacad[oa]s?|laminad[oa]s?|desmenuzad[oa]s?)\b/gi, '')
+    .replace(/\s+/g, ' ')
     .trim();
 
   // Normalizar tildes, mayúsculas y caracteres diacríticos
@@ -177,7 +180,7 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   norm = norm
     .replace(/\b(tamano|talla|calibre|clase)\s+(xl|l|m|s)\b/gi, '')
     .replace(/\b(xl|l|m|s)\b/gi, '')
-    .replace(/\b(frescos?|grandes?|medianos?|pequenos?|camperos?|ecologicos?|blancos?|morenos?)\b/gi, '')
+    .replace(/\b(fresc[oa]s?|grandes?|medianos?|pequenos?|camperos?|ecologicos?|blancos?|morenos?|molid[oa]s?|en\s+polvo|en\s+conserva|de\s+bote|cocid[oa]s?|de\s+abeja|picad[oa]s?|trocead[oa]s?|cortad[oa]s?|rallad[oa]s?|pelad[oa]s?|triturad[oa]s?|machacad[oa]s?|laminad[oa]s?|desmenuzad[oa]s?)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -281,6 +284,13 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
 
     'huevo': { key: 'huevo', displayName: 'Huevo' },
     'huevos': { key: 'huevo', displayName: 'Huevo' },
+
+    'perejil': { key: 'perejil', displayName: 'Perejil' },
+    'perejiles': { key: 'perejil', displayName: 'Perejil' },
+    'comino': { key: 'comino', displayName: 'Comino' },
+    'cominos': { key: 'comino', displayName: 'Comino' },
+    'miel': { key: 'miel', displayName: 'Miel' },
+    'mieles': { key: 'miel', displayName: 'Miel' },
   };
 
   if (SYNONYMS[norm]) {
@@ -571,6 +581,71 @@ export function consolidateShoppingItems(
         desglose: [breakdownItem],
         explicaciones: item.explicacion_culinaria ? [item.explicacion_culinaria] : [],
       });
+    }
+  }
+
+  // =========================================================================
+  // Pase de Prevalencia de Materia (Absorción de Despensa):
+  // Si para un mismo canon.key existen entradas con magnitud física real (g, ml, unidad...)
+  // Y además una entrada '___despensa', absorbemos la despensa dentro de la magnitud física
+  // principal (transfiriendo sourceIds, recetas, desglose, notas) y eliminamos la de despensa.
+  // Solo si un ingrediente ÚNICAMENTE tiene apariciones como 'despensa' se mantiene.
+  // =========================================================================
+  const groupsByCanonKey = new Map<string, ConsolidatedAcc[]>();
+  for (const acc of consolidated.values()) {
+    const canonKey = acc.key.split('___')[0];
+    if (!groupsByCanonKey.has(canonKey)) {
+      groupsByCanonKey.set(canonKey, []);
+    }
+    groupsByCanonKey.get(canonKey)!.push(acc);
+  }
+
+  for (const [, group] of groupsByCanonKey.entries()) {
+    const despensaEntry = group.find((item) => item.unidad === 'despensa');
+    const physicalEntries = group.filter((item) => item.unidad !== 'despensa');
+
+    if (despensaEntry && physicalEntries.length > 0) {
+      // Ordenar para elegir la magnitud principal (priorizar gramos, luego unidad, luego mayor cantidad)
+      physicalEntries.sort((a, b) => {
+        if (a.unidad === 'g' && b.unidad !== 'g') return -1;
+        if (b.unidad === 'g' && a.unidad !== 'g') return 1;
+        if (a.unidad === 'unidad' && b.unidad !== 'unidad') return -1;
+        if (b.unidad === 'unidad' && a.unidad !== 'unidad') return 1;
+        return (b.rawGramos || b.rawCantidad) - (a.rawGramos || a.rawCantidad);
+      });
+      const mainEntry = physicalEntries[0];
+
+      // Transferir sourceIds sin duplicados
+      for (const id of despensaEntry.sourceIds) {
+        if (!mainEntry.sourceIds.includes(id)) {
+          mainEntry.sourceIds.push(id);
+        }
+      }
+      // Transferir recetas de procedencia
+      for (const rec of despensaEntry.recetasNombres) {
+        if (!mainEntry.recetasNombres.includes(rec)) {
+          mainEntry.recetasNombres.push(rec);
+        }
+      }
+      // Transferir notas culinarias
+      for (const nota of despensaEntry.notas) {
+        if (!mainEntry.notas.includes(nota)) {
+          mainEntry.notas.push(nota);
+        }
+      }
+      // Transferir explicaciones
+      for (const exp of despensaEntry.explicaciones) {
+        if (!mainEntry.explicaciones.includes(exp)) {
+          mainEntry.explicaciones.push(exp);
+        }
+      }
+      // Transferir desglose por sección
+      for (const brk of despensaEntry.desglose) {
+        mainEntry.desglose.push(brk);
+      }
+
+      // Eliminar la entrada de despensa del Map consolidado
+      consolidated.delete(despensaEntry.key);
     }
   }
 
