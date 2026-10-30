@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import {
   Check,
@@ -8,14 +8,16 @@ import {
   Copy,
   ShoppingCart,
   ChefHat,
-  Sparkles,
   Tag,
 } from 'lucide-react';
 import { RecetaIngrediente } from '@/types/recipe';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { IngredientRow } from './IngredientRow';
-import { groupItemsByAisle, classifyIngredientAisle, getAisleTranslationKey, formatIngredientUnit } from '@/lib/culinary/aisles';
-import { formatCulinaryAmount, pluralizeCulinaryNoun } from '@/lib/nutrition/formatQuantity';
+import { groupItemsByAisle, getAisleTranslationKey } from '@/lib/culinary/aisles';
+import {
+  consolidateShoppingItems,
+  ConsolidatedShoppingItem,
+} from '@/lib/culinary/consolidateShoppingItems';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 
 import { SubstituteOption } from '@/app/actions/suggestSubstitute';
@@ -70,10 +72,35 @@ export function ShoppingListMode({
     } catch {}
   }, [storageKey]);
 
-  const handleToggleItem = (id: string) => {
-    const next = checkedIds.includes(id)
-      ? checkedIds.filter((item) => item !== id)
-      : [...checkedIds, id];
+  const safeIngredientes = Array.isArray(ingredientes) ? ingredientes : [];
+
+  // Consolidación pura de ingredientes para el modo lista de la compra (Single Source of Truth)
+  const consolidatedItems = useMemo<ConsolidatedShoppingItem[]>(() => {
+    if (!isShoppingMode || safeIngredientes.length === 0) return [];
+    return consolidateShoppingItems(safeIngredientes, {
+      defaultRecipeTitle: tituloReceta,
+    });
+  }, [isShoppingMode, safeIngredientes, tituloReceta]);
+
+  const groupedAisles = useMemo(() => {
+    return groupItemsByAisle(consolidatedItems, (i) => i.pasillo_supermercado);
+  }, [consolidatedItems]);
+
+  // Comprueba si un item consolidado está marcado (soporta key y IDs previos de BD)
+  const isItemChecked = (item: ConsolidatedShoppingItem) => {
+    if (checkedIds.includes(item.key)) return true;
+    return item.sourceIds.length > 0 && item.sourceIds.every((id) => checkedIds.includes(id));
+  };
+
+  const handleToggleItem = (item: ConsolidatedShoppingItem) => {
+    const currentlyChecked = isItemChecked(item);
+    let next: string[];
+    if (currentlyChecked) {
+      const idsToRemove = new Set([item.key, ...item.sourceIds]);
+      next = checkedIds.filter((id) => !idsToRemove.has(id));
+    } else {
+      next = Array.from(new Set([...checkedIds, item.key, ...item.sourceIds]));
+    }
     setCheckedIds(next);
     try {
       localStorage.setItem(storageKey, JSON.stringify(next));
@@ -87,19 +114,14 @@ export function ShoppingListMode({
     } catch {}
   };
 
-  const safeIngredientes = Array.isArray(ingredientes) ? ingredientes : [];
-
   const handleSelectAll = () => {
-    const all = safeIngredientes.map((i) => i?.id).filter(Boolean);
-    setCheckedIds(all);
+    const all = consolidatedItems.flatMap((i) => [i.key, ...i.sourceIds]);
+    const unique = Array.from(new Set(all));
+    setCheckedIds(unique);
     try {
-      localStorage.setItem(storageKey, JSON.stringify(all));
+      localStorage.setItem(storageKey, JSON.stringify(unique));
     } catch {}
   };
-
-  const groupedAisles = groupItemsByAisle(safeIngredientes, (i) =>
-    classifyIngredientAisle(i?.nombre_limpio || i?.nombre_crudo || '', i?.pasillo_supermercado)
-  );
 
   const handleCopyList = () => {
     const safeTitle = String(tituloReceta || '').toUpperCase();
@@ -112,33 +134,20 @@ export function ShoppingListMode({
       const aisleTitle = t(getAisleTranslationKey(group.aisle) as any);
       textLines.push(`\n📍 ${aisleTitle.toUpperCase()}`);
       textLines.push('----------------------------------------');
-      for (const ing of group.items) {
-        if (!ing) continue;
-        const isChecked = checkedIds.includes(ing.id);
+      for (const item of group.items) {
+        if (!item) continue;
+        const isChecked = isItemChecked(item);
         const prefix = isChecked ? '✓' : '☐';
-        const qtyNum = ing.cantidad_escalada !== undefined ? ing.cantidad_escalada : ing.cantidad;
-        const name = ing.nombre_limpio || ing.nombre_crudo || '';
-        const qty = formatCulinaryAmount(qtyNum, ing.unidad, language, name);
-        let displayName = name;
-        const uLower = (ing.unidad || '').toLowerCase().trim();
-        const isCountable =
-          uLower === 'unidad' ||
-          uLower === 'unidades' ||
-          uLower === 'unit' ||
-          uLower === 'units' ||
-          uLower === 'pieza' ||
-          uLower === 'piezas' ||
-          uLower === 'piece' ||
-          uLower === 'pieces';
+        const qty = item.unidad === 'Comprobar despensa'
+          ? (language === 'en' ? 'Check pantry' : 'Comprobar despensa')
+          : `${item.cantidadTotal} ${item.unidad}`;
 
-        if (/dientes?|cloves?/i.test(qty) && /^\s*ajos?\s*$/i.test(name.trim())) {
-          displayName = language === 'en' ? 'of garlic' : 'de ajo';
-        } else if (/^(media|medio|half)$/i.test(qty)) {
-          displayName = displayName.charAt(0).toLowerCase() + displayName.slice(1);
-        } else if (isCountable && (qtyNum || 1) > 1) {
-          displayName = pluralizeCulinaryNoun(displayName, language);
-        }
-        textLines.push(`${prefix} ${qty} ${displayName}${ing.notas ? ` (${ing.notas})` : ''}`.replace(/\s+/g, ' '));
+        const notesText = item.notas && item.notas.length > 0 ? ` (${item.notas.join(' · ')})` : '';
+        const desgloseText = item.desglose && item.desglose.length > 1
+          ? ` [${item.desglose.map((d) => `${d.seccion || 'General'}: ${d.cantidad} ${d.unidad}`).join(' · ')}]`
+          : '';
+
+        textLines.push(`${prefix} ${qty} ${item.nombre}${notesText}${desgloseText}`.replace(/\s+/g, ' '));
       }
     }
 
@@ -152,10 +161,8 @@ export function ShoppingListMode({
     } catch {}
   };
 
-  const total = safeIngredientes.length;
-  const completed = checkedIds.filter((id) =>
-    safeIngredientes.some((i) => i?.id === id)
-  ).length;
+  const total = consolidatedItems.length;
+  const completed = consolidatedItems.filter(isItemChecked).length;
   const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
@@ -215,7 +222,7 @@ export function ShoppingListMode({
         )}
       </div>
 
-      {/* Vista A: Modo 'Cocina' (Ingredientes con Sustituciones Inteligentes) */}
+      {/* Vista A: Modo 'Cocina' (Ingredientes con Sustituciones Inteligentes por fases/secciones) */}
       {!isShoppingMode && (
         <div className="space-y-6">
           {(() => {
@@ -264,7 +271,7 @@ export function ShoppingListMode({
 
             return (
               <div className="divide-y divide-[#e7dfd5]">
-                {ingredientes.map((ing) => (
+                {safeIngredientes.map((ing) => (
                   <IngredientRow
                     key={ing.id}
                     ingrediente={ing}
@@ -282,7 +289,7 @@ export function ShoppingListMode({
         </div>
       )}
 
-      {/* Vista B: Modo 'Lista de la Compra' (Checklist Táctil Mobile-First) */}
+      {/* Vista B: Modo 'Lista de la Compra' (Consolidada con Single Source of Truth) */}
       {isShoppingMode && (
         <div className="space-y-3 animate-fade-in">
           {/* Barra de Progreso del Carrito */}
@@ -312,7 +319,7 @@ export function ShoppingListMode({
           <div className="space-y-5">
             {groupedAisles.map((group) => {
               const groupTotal = group.items.length;
-              const groupCompleted = group.items.filter((i) => checkedIds.includes(i.id)).length;
+              const groupCompleted = group.items.filter(isItemChecked).length;
               const isGroupAllChecked = groupTotal > 0 && groupCompleted === groupTotal;
 
               return (
@@ -340,14 +347,15 @@ export function ShoppingListMode({
 
                   {/* Elementos del pasillo */}
                   <div className="space-y-2">
-                    {group.items.map((ing) => {
-                      const isChecked = checkedIds.includes(ing.id);
-                      const qtyNum = ing.cantidad_escalada !== undefined ? ing.cantidad_escalada : ing.cantidad;
+                    {group.items.map((item) => {
+                      const isChecked = isItemChecked(item);
+                      const isDespensa = item.unidad === 'Comprobar despensa';
+                      const hasMultiplePhases = item.desglose && item.desglose.length > 1;
 
                       return (
                         <div
-                          key={ing.id}
-                          onClick={() => handleToggleItem(ing.id)}
+                          key={item.key}
+                          onClick={() => handleToggleItem(item)}
                           className={`min-h-[54px] p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer select-none flex items-center gap-3.5 active:scale-[0.99] ${
                             isChecked
                               ? 'bg-[#f7f5f0] border-[#e2dbce] opacity-75'
@@ -365,9 +373,9 @@ export function ShoppingListMode({
                             {isChecked && <Check className="w-4 h-4 stroke-3" />}
                           </div>
 
-                          {/* Detalle del ingrediente */}
+                          {/* Detalle del ingrediente consolidado */}
                           <div className="flex-1 min-w-0 flex items-baseline justify-between gap-3">
-                            <div className="min-w-0">
+                            <div className="min-w-0 space-y-0.5">
                               <span
                                 className={`text-base font-semibold block truncate ${
                                   isChecked
@@ -375,26 +383,40 @@ export function ShoppingListMode({
                                     : 'text-stone-900'
                                 }`}
                               >
-                                <FormattedText
-                                  text={
-                                    /^(unidad|unidades|unit|units|pieza|piezas|piece|pieces)$/i.test(ing.unidad || '') && (qtyNum || 1) > 1
-                                      ? pluralizeCulinaryNoun(ing.nombre_limpio || ing.nombre_crudo || '', language)
-                                      : (ing.nombre_limpio || ing.nombre_crudo)
-                                  }
-                                />
+                                <FormattedText text={item.nombre} />
                               </span>
-                              {ing.explicacion_culinaria && !isChecked && (
+
+                              {/* Desglose de fases/secciones si el ingrediente aparece en múltiples partes */}
+                              {hasMultiplePhases && (
+                                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                                  {item.desglose.map((d, dIdx) => (
+                                    <span
+                                      key={dIdx}
+                                      className={`text-[11px] font-medium px-2 py-0.5 rounded-md border ${
+                                        isChecked
+                                          ? 'bg-stone-100 text-stone-400 border-stone-200 line-through'
+                                          : 'bg-[#f7f4ee] text-[#8a5220] border-[#e5decb]'
+                                      }`}
+                                    >
+                                      {d.seccion || 'Base'}: <span className="font-semibold">{d.cantidad} {d.unidad}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {item.explicaciones && item.explicaciones.length > 0 && !isChecked && (
                                 <span className="text-[10px] text-[#a86224] block truncate font-medium">
-                                  ✦ <FormattedText text={ing.explicacion_culinaria} />
+                                  ✦ <FormattedText text={item.explicaciones.join(' · ')} />
                                 </span>
                               )}
-                              {ing.notas && (
+
+                              {item.notas && item.notas.length > 0 && (
                                 <span
                                   className={`text-xs block truncate ${
                                     isChecked ? 'line-through text-stone-300' : 'text-stone-500 italic'
                                   }`}
                                 >
-                                  <FormattedText text={ing.notas} />
+                                  <FormattedText text={item.notas.join(' · ')} />
                                 </span>
                               )}
                             </div>
@@ -404,7 +426,13 @@ export function ShoppingListMode({
                                 isChecked ? 'line-through text-stone-400' : 'text-[#a86224]'
                               }`}
                             >
-                              {formatCulinaryAmount(qtyNum, ing.unidad, language, ing.nombre_limpio || ing.nombre_crudo)}
+                              {isDespensa ? (
+                                <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-stone-100 text-stone-600 border border-stone-200">
+                                  {language === 'en' ? 'Check pantry' : 'Comprobar despensa'}
+                                </span>
+                              ) : (
+                                `${item.cantidadTotal} ${item.unidad}`
+                              )}
                             </span>
                           </div>
                         </div>
