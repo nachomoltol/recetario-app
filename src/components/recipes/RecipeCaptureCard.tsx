@@ -392,6 +392,11 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     skipInterstitialRef.current = false;
   }, []);
 
+  const handleSelectProFromInterstitial = useCallback(() => {
+    setShowInterstitialModal(false);
+    setShowProModal(true);
+  }, []);
+
   // Desplazamiento suave al panel de captura si el componente se monta con un parámetro URL (texto/enlace compartido)
   useEffect(() => {
     if (initialUrl || initialText) {
@@ -883,6 +888,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         isOpen={showInterstitialModal}
         onComplete={handleInterstitialComplete}
         onCancel={handleInterstitialCancel}
+        onSelectPro={handleSelectProFromInterstitial}
       />
 
       {/* Modal de Bloqueo Duro por Límite Mensual Alcanzado */}
