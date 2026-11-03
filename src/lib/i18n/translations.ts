@@ -263,13 +263,21 @@ export const TRANSLATIONS = {
     billing_vip_success: '¡Nivel VIP desbloqueado! Generaciones ilimitadas activas.',
     billing_vip_active_banner: 'Suscripción PRO Activa con Código VIP',
     billing_advantages_title: 'Ventajas incluidas en tu membresía PRO',
-    billing_adv_1_title: 'Capturas ilimitadas',
-    billing_adv_1_desc: 'Guarda recetas desde TikTok, Instagram, Facebook, YouTube y Reels sin límites mensuales.',
-    billing_adv_2_title: 'Motor de Adaptación Clínica',
+    billing_adv_1_title: 'Hasta 150 recetas con IA al mes',
+    billing_adv_1_desc:
+      'Procesamiento instantáneo sin esperas ni anuncios desde TikTok, Instagram, YouTube, enlaces web o texto libre.',
+    billing_adv_2_title: 'Planificador Semanal Inteligente y Generador de Menús con IA',
     billing_adv_2_desc:
-      'Función exclusiva. Desbloquea tu perfil de salud, nivel culinario y preferencias alimentarias (alergias/dietas).',
-    billing_adv_3_title: 'Experiencia sin publicidad',
-    billing_adv_3_desc: 'Navegación limpia, cero interrupciones ni anuncios.',
+      'Diseña tu menú semanal balanceado con lista de la compra automática organizada por pasillos.',
+    billing_adv_3_title: 'Paletas y Estilos Visuales Gourmet exclusivos',
+    billing_adv_3_desc:
+      'Personaliza toda la app con temas de autor: Verde Oliva, Azul Pizarra y Borgoña Vino.',
+    billing_adv_4_title: 'Motor de Adaptación Culinaria y Perfil Clínico',
+    billing_adv_4_desc:
+      'Ajuste inteligente de recetas a 3 niveles técnicos, intolerancias y cálculo nutricional.',
+    billing_adv_5_title: 'Exportación Editorial a PDF de Alta Resolución',
+    billing_adv_5_desc:
+      'Descarga e imprime recetas y menús con maquetación de libro gastronómico profesional.',
 
     // Fase 6: Paywall Dual, Límite Mensual y AdMob
     billing_limit_reached_badge: 'Límite mensual alcanzado',
@@ -847,13 +855,21 @@ export const TRANSLATIONS = {
     billing_vip_success: 'VIP unlocked! Unlimited generations active.',
     billing_vip_active_banner: 'PRO Subscription Active with VIP Code',
     billing_advantages_title: 'Benefits included in your PRO membership',
-    billing_adv_1_title: 'Unlimited captures',
-    billing_adv_1_desc: 'Save recipes from TikTok, Instagram, Facebook, YouTube, and Reels with no monthly limits.',
-    billing_adv_2_title: 'Clinical Adaptation Engine',
+    billing_adv_1_title: 'Up to 150 AI recipes per month',
+    billing_adv_1_desc:
+      'Instant processing with zero waiting or ads from TikTok, Instagram, YouTube, web links, or raw text.',
+    billing_adv_2_title: 'Smart Weekly Planner & AI Menu Generator',
     billing_adv_2_desc:
-      'Exclusive feature. Unlocks health profile, culinary level, and dietary preferences (allergies/diets).',
-    billing_adv_3_title: 'Ad-free experience',
-    billing_adv_3_desc: 'Clean navigation, zero interruptions or ads.',
+      'Plan full weekly meals and get automated grocery shopping lists organized by aisles.',
+    billing_adv_3_title: 'Exclusive Gourmet Visual Styles & Color Palettes',
+    billing_adv_3_desc:
+      'Personalize the app with designer themes: Olive Green, Slate Blue, and Burgundy Wine.',
+    billing_adv_4_title: 'Culinary Levels & Dietary Adaptation Engine',
+    billing_adv_4_desc:
+      'Dynamic 3-level adjustments (Beginner, Intermediate, Advanced), allergy filters, and nutrition.',
+    billing_adv_5_title: 'Editorial High-Resolution PDF Export',
+    billing_adv_5_desc:
+      'Download and print recipes formatted as professional culinary cookbooks.',
 
     // Phase 6: Dual Paywall, Monthly Limit & AdMob
     billing_limit_reached_badge: 'Monthly limit reached',

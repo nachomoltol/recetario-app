@@ -1,7 +1,19 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Clock, X, ChefHat, Crown, Play, PlayCircle, Check, Loader2 } from 'lucide-react';
+import {
+  Sparkles,
+  X,
+  ChefHat,
+  Crown,
+  Play,
+  PlayCircle,
+  Check,
+  Loader2,
+  ExternalLink,
+  Mail,
+} from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { isNativePlatform, showRewardVideoAdFlow } from '@/lib/admob/admobService';
 
@@ -12,6 +24,8 @@ export interface AdInterstitialModalProps {
   onSelectPro?: () => void;
 }
 
+type PlatformType = 'android_native' | 'ios' | 'desktop_web';
+
 export function AdInterstitialModal({
   isOpen,
   onComplete,
@@ -20,10 +34,36 @@ export function AdInterstitialModal({
 }: AdInterstitialModalProps) {
   const language = useLanguageStore((s) => s.language);
   const [viewState, setViewState] = useState<'choice' | 'playing'>('choice');
+  const [platform, setPlatform] = useState<PlatformType>('desktop_web');
   const [secondsRemaining, setSecondsRemaining] = useState(5);
   const [isAdMobPlaying, setIsAdMobPlaying] = useState(false);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+
+  // Detección precisa de plataforma: Android Nativo vs iOS vs Desktop Web
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const isNative = Capacitor.isNativePlatform();
+      const capPlatform = Capacitor.getPlatform();
+      const ua = navigator.userAgent || '';
+      const isApple =
+        capPlatform === 'ios' ||
+        /iPad|iPhone|iPod/.test(ua) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+      if (isNative && capPlatform === 'android') {
+        setPlatform('android_native');
+      } else if (isApple) {
+        setPlatform('ios');
+      } else {
+        setPlatform('desktop_web');
+      }
+    } catch {
+      setPlatform('desktop_web');
+    }
+  }, []);
 
   // Al abrir o cerrar el modal, reiniciar estado
   useEffect(() => {
@@ -44,7 +84,7 @@ export function AdInterstitialModal({
       return;
     }
 
-    // 1. Entorno nativo móvil: ejecutar AdMob Rewarded Video
+    // 1. Entorno nativo Android: ejecutar AdMob Rewarded Video
     if (isNativePlatform()) {
       let isMounted = true;
       setIsAdMobPlaying(true);
@@ -66,7 +106,7 @@ export function AdInterstitialModal({
       };
     }
 
-    // 2. Entorno Web / PWA: Temporizador regresivo de 5 segundos
+    // 2. Fallback temporal para otros entornos
     setSecondsRemaining(5);
     const interval = setInterval(() => {
       setSecondsRemaining((prev) => {
@@ -108,7 +148,7 @@ export function AdInterstitialModal({
 
         {viewState === 'choice' ? (
           /* ========================================================================= */
-          /* FASE 1: SELECTOR DUAL (HAZTE PRO VS CONTINUAR CON ANUNCIO)               */
+          /* FASE 1: SELECTOR DUAL (HAZTE PRO VS CONTINUAR CON ANUNCIO SEGMENTADO)     */
           /* ========================================================================= */
           <div className="space-y-5">
             {/* Cabecera Editorial */}
@@ -156,15 +196,15 @@ export function AdInterstitialModal({
                 <li className="flex items-start gap-2">
                   <Check className="w-3.5 h-3.5 text-brand-primary shrink-0 mt-0.5" />
                   <span>
-                    <strong>{isEn ? 'Up to 150 recipes/month' : 'Hasta 150 recetas/mes'}</strong>{' '}
-                    {isEn ? 'and advanced technical calibration.' : 'y calibración técnica avanzada.'}
+                    <strong>{isEn ? 'Up to 150 AI recipes/month' : 'Hasta 150 recetas con IA/mes'}</strong>{' '}
+                    {isEn ? 'and technical culinary calibration.' : 'y calibración técnica avanzada.'}
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="w-3.5 h-3.5 text-brand-primary shrink-0 mt-0.5" />
                   <span>
-                    <strong>{isEn ? 'Export weekly menus to PDF' : 'Exportación de menús a PDF'}</strong>{' '}
-                    {isEn ? 'with official editorial branding.' : 'editorial de alta resolución.'}
+                    <strong>{isEn ? 'Weekly Meal Planner & PDF' : 'Planificador Semanal y PDF'}</strong>{' '}
+                    {isEn ? 'with designer themes and editorial export.' : 'editorial con estilos visuales gourmet.'}
                   </span>
                 </li>
               </ul>
@@ -183,34 +223,93 @@ export function AdInterstitialModal({
               </button>
             </div>
 
-            {/* Tarjeta B: Opción Gratuita con Anuncio */}
-            <div className="p-4 rounded-2xl border border-stone-200 bg-stone-50/80 space-y-3">
+            {/* Tarjeta B: Opción Gratuita según plataforma */}
+            <div className="p-4 sm:p-5 rounded-2xl border border-stone-200 bg-stone-50/80 space-y-3.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <PlayCircle className="w-4 h-4 text-stone-600" />
                   <span className="font-semibold text-xs sm:text-sm text-stone-800">
-                    {isEn ? 'Continue Free' : 'Continuar Gratis'}
+                    {isEn ? 'Free Option' : 'Opción Gratuita'}
                   </span>
                 </div>
                 <span className="text-[11px] text-stone-500 font-medium">
-                  {isEn ? 'Short sponsor ad' : 'Un breve anuncio'}
+                  {platform === 'android_native'
+                    ? (isEn ? 'Short sponsor ad' : 'Vídeo patrocinado')
+                    : platform === 'ios'
+                    ? (isEn ? 'iOS in progress' : 'Próximamente en iOS')
+                    : (isEn ? 'Android App Exclusive' : 'Exclusivo en Android App')}
                 </span>
               </div>
 
-              <p className="text-xs text-stone-600 leading-relaxed">
-                {isEn
-                  ? 'Watch a short video from our sponsors (or wait 5s on web) to process this recipe without charge.'
-                  : 'Visualiza un breve anuncio de nuestros patrocinadores (o espera 5s en web) para procesar esta receta sin coste.'}
-              </p>
+              {/* Caso 1: Android Nativo (Botón sólido para ver anuncio de AdMob) */}
+              {platform === 'android_native' && (
+                <>
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    {isEn
+                      ? 'Watch a short sponsored video from our partners to process this recipe without charge.'
+                      : 'Visualiza un breve anuncio de nuestros patrocinadores para procesar esta receta sin coste.'}
+                  </p>
 
-              <button
-                type="button"
-                onClick={() => setViewState('playing')}
-                className="w-full min-h-[42px] py-2 px-4 rounded-xl bg-white hover:bg-stone-100 border border-stone-300 text-stone-800 font-medium text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-              >
-                <Play className="w-3.5 h-3.5 text-brand-primary fill-current" />
-                <span>{isEn ? 'Watch ad and continue' : 'Ver anuncio y continuar'}</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewState('playing')}
+                    className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Play className="w-3.5 h-3.5 text-white fill-current" />
+                    <span>{isEn ? 'Watch ad and continue' : 'Ver anuncio y continuar'}</span>
+                  </button>
+                </>
+              )}
+
+              {/* Caso 2: PC / Navegador Web de Escritorio */}
+              {platform === 'desktop_web' && (
+                <div className="space-y-3 pt-0.5">
+                  <div className="p-3.5 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-700 leading-relaxed space-y-1 text-left">
+                    <p className="font-medium text-stone-900">
+                      {isEn ? 'Available on Android App' : 'Disponible en la App de Android'}
+                    </p>
+                    <p className="text-stone-600">
+                      {isEn
+                        ? 'Ad-supported free recipe processing is only available on our official Android App. Download MigaApp on Google Play to continue extracting for free, or upgrade to PRO to process without limits from your computer.'
+                        : 'La visualización de anuncios para recetas gratuitas solo está disponible en nuestra App oficial de Android. Descarga MigaApp en Google Play para seguir extrayendo gratis o hazte PRO para procesar sin límites desde tu ordenador.'}
+                    </p>
+                  </div>
+
+                  <a
+                    href="https://play.google.com/store/apps/details?id=com.migaapp.app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4 text-emerald-400" />
+                    <span>{isEn ? 'Get MigaApp on Google Play' : 'Descargar en Google Play'}</span>
+                  </a>
+                </div>
+              )}
+
+              {/* Caso 3: iPhone / iOS (Safari o PWA) */}
+              {platform === 'ios' && (
+                <div className="space-y-3 pt-0.5">
+                  <div className="p-3.5 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-700 leading-relaxed space-y-1 text-left">
+                    <p className="font-medium text-stone-900">
+                      {isEn ? 'Apple iOS' : 'Dispositivos Apple iOS'}
+                    </p>
+                    <p className="text-stone-600">
+                      {isEn
+                        ? 'Rewarded ads are currently only available on the Android App. We are preparing the launch on the Apple App Store.'
+                        : 'Actualmente los anuncios bonificados solo están disponibles en la App de Android. Estamos preparando el lanzamiento en la App Store de Apple.'}
+                    </p>
+                  </div>
+
+                  <a
+                    href="mailto:migarecetasredes@gmail.com?subject=Avisadme%20cuando%20este%20en%20App%20Store"
+                    className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2"
+                  >
+                    <Mail className="w-4 h-4 text-amber-300" />
+                    <span>{isEn ? 'Notify me when available on iPhone' : 'Avísame cuando esté disponible en iPhone'}</span>
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -299,7 +398,7 @@ export function AdInterstitialModal({
             <div className="space-y-2">
               <div className="w-full bg-[#f4efe6] h-2 rounded-full overflow-hidden">
                 <div
-                  className="bg-gradient-to-r from-[#a86224] to-[#c27835] h-full rounded-full transition-all duration-1000 ease-linear"
+                  className="bg-brand-primary h-full rounded-full transition-all duration-1000 ease-linear"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
@@ -319,4 +418,3 @@ export function AdInterstitialModal({
     </div>
   );
 }
-

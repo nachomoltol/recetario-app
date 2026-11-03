@@ -5,21 +5,19 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Sparkles,
   Lock,
-  ShieldCheck,
   HeartPulse,
-  Infinity as InfinityIcon,
   Ticket,
   Loader2,
   CheckCircle2,
   AlertCircle,
   CreditCard,
-  PlayCircle,
-  Gift,
+  CalendarDays,
+  Palette,
+  FileDown,
 } from 'lucide-react';
-import { redeemVipCodeAction, claimRewardCreditAction } from '@/app/actions/subscription';
+import { redeemVipCodeAction } from '@/app/actions/subscription';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
-import { isNativePlatform, showRewardVideoAdFlow } from '@/lib/admob/admobService';
 
 export function BillingHeaderTitle() {
   const t = useLanguageStore((s) => s.t);
@@ -50,10 +48,6 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
 
   // Detección de límite mensual alcanzado (por prop o por query param ?limit=reached)
   const isLimitReached = initialLimitReached || searchParams.get('limit') === 'reached';
-  const pendingUrl = searchParams.get('pendingUrl') || '';
-
-  // Detección de plataforma nativa (iOS/Android) vs Web/PC
-  const [isNative, setIsNative] = useState<boolean>(false);
 
   // Estados de checkout y VIP
   const [vipCode, setVipCode] = useState('');
@@ -64,16 +58,6 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
   const [vipError, setVipError] = useState<string | null>(null);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-
-  // Estados para el flujo de AdMob Rewarded Video
-  const [isAdLoading, setIsAdLoading] = useState(false);
-  const [adLoadingStep, setAdLoadingStep] = useState<'loading' | 'simulating' | 'rewarding'>('loading');
-  const [adSuccess, setAdSuccess] = useState(false);
-  const [adError, setAdError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setIsNative(isNativePlatform());
-  }, []);
 
   useEffect(() => {
     setVipSuccess(
@@ -162,63 +146,8 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
     }
   };
 
-  // Manejador del vídeo bonificado de AdMob (con simulador en Web/PWA)
-  const handleWatchAd = async () => {
-    setIsAdLoading(true);
-    setAdError(null);
-    setAdSuccess(false);
-
-    try {
-      if (isNativePlatform()) {
-        // Entorno nativo (iOS / Android): invocar SDK de AdMob
-        setAdLoadingStep('loading');
-        const adResult = await showRewardVideoAdFlow();
-
-        if (!adResult.rewarded) {
-          setIsAdLoading(false);
-          if (adResult.error && adResult.error !== 'AD_DISMISSED_WITHOUT_REWARD') {
-            setAdError(t('billing_ad_error'));
-          }
-          return;
-        }
-      } else {
-        // Entorno Web / PWA: Simulador de anuncio durante 3 segundos
-        setAdLoadingStep('simulating');
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-      }
-
-      // Vídeo visualizado (o simulado con éxito): reclamar 1 crédito en el servidor
-      setAdLoadingStep('rewarding');
-      const creditRes = await claimRewardCreditAction();
-
-      if (creditRes.success) {
-        setAdSuccess(true);
-        setIsAdLoading(false);
-
-        // Purgar caché del router cliente de Next.js
-        router.refresh();
-
-        // Redirigir de vuelta a la captura con el enlace guardado y orden de arranque
-        setTimeout(() => {
-          if (pendingUrl) {
-            router.push(`/recipes?url=${encodeURIComponent(pendingUrl)}&autoStart=true`);
-          } else {
-            router.push('/recipes');
-          }
-        }, 1400);
-      } else {
-        setIsAdLoading(false);
-        setAdError(creditRes.error || t('billing_ad_error'));
-      }
-    } catch (err) {
-      console.error('[AdMob] Error al ejecutar anuncio:', err);
-      setIsAdLoading(false);
-      setAdError(t('billing_ad_error'));
-    }
-  };
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 sm:space-y-5">
       {/* AVISO CONDICIONAL: LÍMITE MENSUAL ALCANZADO (Solo si el usuario agotó su cuota) */}
       {isLimitReached && (
         <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 border-2 border-brand-primary/30 shadow-xs flex items-center gap-3.5 text-left animate-fade-in">
@@ -239,7 +168,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
         </div>
       )}
 
-      {/* 1º LUGAR (Arriba del todo): TARJETA PLAN PRO MENSUAL (3,50€ / mes) */}
+      {/* 1º LUGAR: TARJETA PRINCIPAL PLAN PRO MENSUAL (3,50€ / mes) */}
       <div className="p-5 sm:p-7 rounded-3xl bg-white border-2 border-brand-primary shadow-md text-center space-y-4 animate-fade-in relative overflow-hidden">
         {/* Glow sutil de fondo */}
         <div className="absolute -top-12 -right-12 w-28 h-28 bg-brand-primary/10 rounded-full blur-2xl pointer-events-none" />
@@ -268,7 +197,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
             type="button"
             onClick={handleSubscribe}
             disabled={isCheckoutLoading}
-            className="w-full min-h-[52px] py-4 px-6 rounded-2xl font-bold text-sm sm:text-base text-white bg-gradient-to-r from-[#a86224] to-[#c27835] hover:from-[#8e511c] hover:to-[#a86224] active:scale-[0.99] shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2.5 disabled:opacity-75 disabled:cursor-not-allowed"
+            className="w-full min-h-[52px] py-4 px-6 rounded-2xl font-bold text-sm sm:text-base text-white bg-brand-primary hover:bg-brand-hover active:scale-[0.99] shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2.5 disabled:opacity-75 disabled:cursor-not-allowed"
           >
             {isCheckoutLoading ? (
               <>
@@ -297,86 +226,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
         </div>
       </div>
 
-      {/* SEPARADOR VISUAL DUAL */}
-      <div className="relative flex items-center justify-center py-0.5">
-        <div className="w-full border-t border-[#e7dfd5]" />
-        <span className="absolute px-3 bg-[#faf7f2] text-[10px] sm:text-xs font-bold uppercase tracking-wider text-stone-400">
-          {t('billing_dual_or')}
-        </span>
-      </div>
-
-      {/* 2º LUGAR: TARJETA DE LA OPCIÓN GRATUITA (AdMob Rewarded Video) */}
-      <div className="p-5 sm:p-7 rounded-3xl bg-white border border-[#e7dfd5] hover:border-brand-primary/50 shadow-xs text-center space-y-3.5 transition">
-        <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#f4efe6] text-brand-primary text-[10px] sm:text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
-          <Gift className="w-3.5 h-3.5" />
-          <span>{t('billing_ad_card_badge')}</span>
-        </div>
-
-        <div className="space-y-1">
-          <h3 className="text-lg sm:text-xl font-bold font-serif-recipe text-stone-900 tracking-tight leading-snug">
-            {t('billing_ad_card_heading')}
-          </h3>
-          <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
-            {t('billing_ad_card_desc')}
-          </p>
-        </div>
-
-        {/* Beneficios de la opción gratuita */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-0.5">
-          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]/80 text-xs text-stone-700">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{t('billing_ad_benefit_1')}</span>
-          </div>
-          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]/80 text-xs text-stone-700">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{t('billing_ad_benefit_2')}</span>
-          </div>
-        </div>
-
-        {/* Botón activo Ver Anuncio */}
-        <div className="space-y-2 pt-1">
-          {adSuccess ? (
-            <div className="w-full py-3.5 px-5 rounded-2xl font-bold text-xs sm:text-sm bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center justify-center gap-2 animate-fade-in">
-              <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-              <span>{t('billing_ad_success')}</span>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={handleWatchAd}
-              disabled={isAdLoading}
-              className="w-full min-h-[48px] py-3 px-5 rounded-2xl font-bold text-xs sm:text-sm text-stone-900 bg-[#f4efe6] hover:bg-[#ebdcc8] active:scale-[0.99] border border-[#e7dfd5] hover:border-brand-primary transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed shadow-2xs"
-            >
-              {isAdLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-brand-primary shrink-0" />
-                  <span>
-                    {adLoadingStep === 'rewarding'
-                      ? t('billing_ad_rewarding')
-                      : adLoadingStep === 'simulating'
-                      ? t('billing_ad_simulating')
-                      : t('billing_ad_loading')}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <PlayCircle className="w-4 h-4 text-brand-primary" />
-                  <span>{t('billing_ad_watch_btn')}</span>
-                </>
-              )}
-            </button>
-          )}
-
-          {adError && (
-            <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 font-medium pt-0.5">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              <span>{adError}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 3º LUGAR: MÓDULO CÓDIGO PROMOCIONAL */}
+      {/* 2º LUGAR: MÓDULO CÓDIGO PROMOCIONAL O VIP */}
       <div className="p-4 sm:p-5 rounded-3xl bg-[#f4efe6] border border-[#e7dfd5]/80 space-y-2.5">
         <div className="flex items-center gap-2">
           <Ticket className="w-4 h-4 text-brand-primary" />
@@ -427,7 +277,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
         )}
       </div>
 
-      {/* 4º LUGAR (Al final): BLOQUE INFORMATIVO DE VENTAJAS DE LA MEMBRESÍA */}
+      {/* 3º LUGAR: BLOQUE INFORMATIVO DE VENTAJAS DE LA MEMBRESÍA PRO */}
       <div className="p-5 sm:p-6 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-3.5">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-brand-primary" />
@@ -437,10 +287,10 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
         </div>
 
         <div className="grid grid-cols-1 gap-2.5">
-          {/* Beneficio 1 */}
+          {/* Ventaja 1: Hasta 150 recetas */}
           <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-brand-primary/40">
             <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-brand-primary flex items-center justify-center shrink-0 mt-0.5">
-              <InfinityIcon className="w-4 h-4" />
+              <Sparkles className="w-4 h-4" />
             </div>
             <div className="space-y-0.5 min-w-0 flex-1">
               <h5 className="text-xs sm:text-sm font-bold text-stone-900">
@@ -452,10 +302,10 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
             </div>
           </div>
 
-          {/* Beneficio 2 */}
+          {/* Ventaja 2: Planificador Semanal y Generador de Menús */}
           <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-brand-primary/40">
             <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-brand-primary flex items-center justify-center shrink-0 mt-0.5">
-              <HeartPulse className="w-4 h-4" />
+              <CalendarDays className="w-4 h-4" />
             </div>
             <div className="space-y-0.5 min-w-0 flex-1">
               <h5 className="text-xs sm:text-sm font-bold text-stone-900">
@@ -467,10 +317,10 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
             </div>
           </div>
 
-          {/* Beneficio 3 */}
+          {/* Ventaja 3: Paletas y Estilos Visuales Gourmet */}
           <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-brand-primary/40">
             <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-brand-primary flex items-center justify-center shrink-0 mt-0.5">
-              <ShieldCheck className="w-4 h-4" />
+              <Palette className="w-4 h-4" />
             </div>
             <div className="space-y-0.5 min-w-0 flex-1">
               <h5 className="text-xs sm:text-sm font-bold text-stone-900">
@@ -478,6 +328,36 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
               </h5>
               <p className="text-xs text-stone-600 leading-relaxed font-light">
                 {t('billing_adv_3_desc')}
+              </p>
+            </div>
+          </div>
+
+          {/* Ventaja 4: Motor de Adaptación Culinaria */}
+          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-brand-primary/40">
+            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-brand-primary flex items-center justify-center shrink-0 mt-0.5">
+              <HeartPulse className="w-4 h-4" />
+            </div>
+            <div className="space-y-0.5 min-w-0 flex-1">
+              <h5 className="text-xs sm:text-sm font-bold text-stone-900">
+                {t('billing_adv_4_title')}
+              </h5>
+              <p className="text-xs text-stone-600 leading-relaxed font-light">
+                {t('billing_adv_4_desc')}
+              </p>
+            </div>
+          </div>
+
+          {/* Ventaja 5: Exportación Editorial a PDF */}
+          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-brand-primary/40">
+            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-brand-primary flex items-center justify-center shrink-0 mt-0.5">
+              <FileDown className="w-4 h-4" />
+            </div>
+            <div className="space-y-0.5 min-w-0 flex-1">
+              <h5 className="text-xs sm:text-sm font-bold text-stone-900">
+                {t('billing_adv_5_title')}
+              </h5>
+              <p className="text-xs text-stone-600 leading-relaxed font-light">
+                {t('billing_adv_5_desc')}
               </p>
             </div>
           </div>
