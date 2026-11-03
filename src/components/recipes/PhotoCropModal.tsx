@@ -381,7 +381,7 @@ export function PhotoCropModal({
 
                 {/* Indicador sutil de arrastre */}
                 <div className="absolute top-2.5 left-2.5 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-xs text-[10px] text-stone-300 font-medium flex items-center gap-1.5 pointer-events-none border border-white/10">
-                  <Move className="w-3 h-3 text-[#c27835]" />
+                  <Move className="w-3 h-3 text-brand-primary" />
                   <span>Arrastra para encuadrar</span>
                 </div>
               </>

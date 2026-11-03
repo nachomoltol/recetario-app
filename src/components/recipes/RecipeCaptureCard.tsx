@@ -578,7 +578,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
       {/* Aviso de captura nativa Web Share Target */}
       {autoStart && (
-        <div className="p-4 rounded-2xl bg-[#f4efe6] border border-[#c27835]/40 text-stone-800 text-xs sm:text-sm flex items-center gap-3 animate-fade-in">
+        <div className="p-4 rounded-2xl bg-[#f4efe6] border border-brand-primary/40 text-stone-800 text-xs sm:text-sm flex items-center gap-3 animate-fade-in">
           <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-brand-primary shrink-0 shadow-2xs">
             <Share2 className="w-4 h-4" />
           </div>
@@ -614,7 +614,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
           {/* Barra de progreso animada */}
           <div className="w-full h-2.5 rounded-full bg-[#e7dfd5] overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-[#c27835] to-[#a86224] rounded-full transition-all duration-700 ease-out"
+              className="h-full bg-gradient-to-r from-brand-primary to-brand-hover rounded-full transition-all duration-700 ease-out"
               style={{ width: `${Math.min(currentStage.percent + (elapsedSeconds % 3) * 2, 98)}%` }}
             />
           </div>
@@ -697,7 +697,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                   }}
                   placeholder={t('capture_placeholder_url_detailed')}
                   disabled={isPending}
-                  className="w-full min-h-[52px] pl-4 pr-12 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition shadow-2xs disabled:opacity-60"
+                  className="w-full min-h-[52px] pl-4 pr-12 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition shadow-2xs disabled:opacity-60"
                 />
                 <LinkIcon className="w-5 h-5 text-stone-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -775,7 +775,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
               rows={4}
               placeholder={t('capture_placeholder_text_detailed')}
               disabled={isPending}
-              className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition resize-none shadow-2xs disabled:opacity-60"
+              className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition resize-none shadow-2xs disabled:opacity-60"
             />
 
             <div className="flex items-center justify-between">
@@ -845,7 +845,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         <button
           type="submit"
           disabled={isPending}
-          className="w-full min-h-[54px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-brand-primary hover:bg-brand-hover active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-sm shadow-[#a86224]/20 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
+          className="w-full min-h-[54px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-brand-primary hover:bg-brand-hover active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-sm shadow-brand-primary/20 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
         >
           {isPending ? (
             <>

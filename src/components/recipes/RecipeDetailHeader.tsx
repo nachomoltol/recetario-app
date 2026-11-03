@@ -93,7 +93,7 @@ export function RecipeDetailHeader({
               title={isVideoSource ? t('recipe_nav_original_video') : t('recipe_nav_original_source')}
             >
               {isVideoSource ? (
-                <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-brand-primary fill-[#a86224] shrink-0" />
+                <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-brand-primary fill-brand-primary shrink-0" />
               ) : (
                 <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-brand-primary shrink-0" />
               )}

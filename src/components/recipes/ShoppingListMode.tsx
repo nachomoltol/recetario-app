@@ -305,7 +305,7 @@ export function ShoppingListMode({
             </div>
             <div className="w-full h-2.5 rounded-full bg-[#f4efe6] overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-[#c27835] to-[#2e6b3e] transition-all duration-300 rounded-full"
+                className="h-full bg-gradient-to-r from-brand-primary to-[#2e6b3e] transition-all duration-300 rounded-full"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>

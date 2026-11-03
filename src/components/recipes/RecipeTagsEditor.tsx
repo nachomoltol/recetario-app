@@ -257,7 +257,7 @@ export function RecipeTagsEditor({ recetaId, initialTags }: RecipeTagsEditorProp
                     onClick={() => (isSelected ? handleRemoveTag(cat) : handleAddTag(cat))}
                     className={`min-h-[32px] px-2.5 py-1 rounded-full text-xs transition cursor-pointer flex items-center gap-1 ${
                       isSelected
-                        ? 'bg-[#c27835] text-white font-semibold'
+                        ? 'bg-brand-primary text-white font-semibold'
                         : 'bg-stone-50 hover:bg-[#f4efe6] text-stone-700 border border-stone-200'
                     }`}
                   >

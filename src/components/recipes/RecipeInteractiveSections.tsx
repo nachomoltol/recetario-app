@@ -971,7 +971,7 @@ export function RecipeInteractiveSections({
                   {heat && (
                     <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-700 font-medium">
                       {heat.isBaking ? (
-                        <Thermometer className="w-3.5 h-3.5 text-[#c27835]" />
+                        <Thermometer className="w-3.5 h-3.5 text-brand-primary" />
                       ) : (
                         <Flame className="w-3.5 h-3.5 text-[#e05d26]" />
                       )}

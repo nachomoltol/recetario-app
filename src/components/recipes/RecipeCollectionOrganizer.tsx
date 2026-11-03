@@ -883,7 +883,7 @@ export function RecipeCollectionOrganizer({
               }
             }}
             placeholder={t('collection_search_placeholder')}
-            className="w-full min-h-[54px] pl-12 pr-12 py-3.5 rounded-2xl bg-white border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] shadow-2xs transition"
+            className="w-full min-h-[54px] pl-12 pr-12 py-3.5 rounded-2xl bg-white border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary shadow-2xs transition"
           />
           {searchQuery && (
             <button

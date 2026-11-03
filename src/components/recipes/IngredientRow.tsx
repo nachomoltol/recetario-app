@@ -227,7 +227,7 @@ export function IngredientRow({
       <div className="flex items-center justify-between gap-3">
         {/* Nombre y Cantidad ocupando el ancho principal */}
         <div className="flex-1 min-w-0 flex items-baseline gap-2 flex-wrap sm:flex-nowrap">
-          <span className="w-2 h-2 rounded-full bg-[#c27835] shrink-0 self-center" />
+          <span className="w-2 h-2 rounded-full bg-brand-primary shrink-0 self-center" />
           <span className="text-base sm:text-lg font-bold text-stone-900 shrink-0 tabular-nums">
             {cantidadMostrada}
           </span>
@@ -357,7 +357,7 @@ export function IngredientRow({
                           ref={isSelected ? technicalCardRef : undefined}
                           className={`w-full rounded-2xl border transition-all duration-200 overflow-hidden ${
                             isSelected
-                              ? 'border-brand-primary bg-white ring-2 ring-[#a86224]/20 shadow-sm'
+                              ? 'border-brand-primary bg-white ring-2 ring-brand-primary/20 shadow-sm'
                               : 'border-[#e7dfd5] bg-white hover:bg-[#faf7f2]/80 shadow-2xs'
                           }`}
                         >
