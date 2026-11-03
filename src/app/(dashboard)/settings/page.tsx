@@ -6,10 +6,7 @@ import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
 import { CookingSettingsForm } from '@/components/settings/CookingSettingsForm';
 import { ThemeSelectorCard } from '@/components/settings/ThemeSelectorCard';
-import {
-  SettingsHeaderTitle,
-  SettingsHeroCard,
-} from '@/components/settings/SettingsHeaderCard';
+import { SettingsHeaderTitle } from '@/components/settings/SettingsHeaderCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +25,8 @@ export default async function SettingsPage() {
     .select('*')
     .eq('id', user.id)
     .single();
+
+  const isPro = (profile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
@@ -53,15 +52,11 @@ export default async function SettingsPage() {
 
       {/* Contenido principal */}
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6">
-        {/* Cabecera de la sección */}
-        <SettingsHeroCard />
+        {/* Selector de Paletas y Temas de Color en cabecera */}
+        <ThemeSelectorCard isPro={isPro} />
 
         {/* Formulario de Preferencias: Raciones por defecto + Modo Manos en la Masa */}
         <CookingSettingsForm initialServings={profile?.raciones_defecto ?? 4} />
-
-        {/* Selector de Paletas y Temas de Color */}
-        <ThemeSelectorCard />
-
 
         {/* Pie de página con enlace legal */}
         <footer className="pt-6 pb-4 text-center text-xs text-stone-400">
