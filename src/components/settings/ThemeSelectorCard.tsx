@@ -200,8 +200,8 @@ export function ThemeSelectorCard({ isPro }: ThemeSelectorCardProps) {
                 </span>
               </div>
 
-              {/* Descripción corta */}
-              <span className="text-[10px] sm:text-[11px] text-stone-500 mt-0.5 leading-tight line-clamp-1">
+              {/* Descripción completa sin truncar */}
+              <span className="whitespace-normal break-words leading-tight text-[11px] sm:text-xs text-stone-500 text-center min-h-[2.25rem] flex items-center justify-center w-full px-1">
                 {isEn ? theme.descEn : theme.descEs}
               </span>
             </button>
