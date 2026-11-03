@@ -111,11 +111,11 @@ export function PwaInstallPrompt() {
 
         {/* Cabecera del aviso */}
         <div className="flex items-start gap-3.5 pr-8">
-          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] flex items-center justify-center shrink-0 shadow-2xs overflow-hidden p-1.5">
+          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary flex items-center justify-center shrink-0 shadow-2xs overflow-hidden p-1.5">
             <img src="/miga-logo.svg" alt="Logo Miga" className="w-full h-full object-contain" />
           </div>
           <div className="space-y-0.5">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-[#a86224] flex items-center gap-1">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-brand-primary flex items-center gap-1">
               <Sparkles className="w-3 h-3" /> Aplicación PWA
             </span>
             <h3 className="text-base font-bold text-stone-900 font-serif-recipe leading-snug">
@@ -136,14 +136,14 @@ export function PwaInstallPrompt() {
               <li className="flex items-center gap-1.5">
                 <span>1. Toca el botón</span>
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-white border border-[#e7dfd5] font-semibold text-stone-800">
-                  <Share2 className="w-3.5 h-3.5 text-[#a86224] mr-1" /> Compartir
+                  <Share2 className="w-3.5 h-3.5 text-brand-primary mr-1" /> Compartir
                 </span>
                 <span>en Safari.</span>
               </li>
               <li className="flex items-center gap-1.5">
                 <span>2. Selecciona</span>
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-white border border-[#e7dfd5] font-semibold text-stone-800">
-                  <PlusSquare className="w-3.5 h-3.5 text-[#a86224] mr-1" /> Añadir a pantalla de inicio
+                  <PlusSquare className="w-3.5 h-3.5 text-brand-primary mr-1" /> Añadir a pantalla de inicio
                 </span>
               </li>
             </ol>
@@ -155,7 +155,7 @@ export function PwaInstallPrompt() {
           <button
             type="button"
             onClick={handleInstallClick}
-            className="flex-1 min-h-[46px] py-2.5 px-4 rounded-2xl font-semibold text-xs sm:text-sm text-white bg-[#a86224] hover:bg-[#8e511c] transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+            className="flex-1 min-h-[46px] py-2.5 px-4 rounded-2xl font-semibold text-xs sm:text-sm text-white bg-brand-primary hover:bg-brand-hover transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>{isIOS ? 'Ver cómo instalar' : 'Instalar en mi móvil'}</span>

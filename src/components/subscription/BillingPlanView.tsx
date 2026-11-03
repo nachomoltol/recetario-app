@@ -221,12 +221,12 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
     <div className="space-y-4">
       {/* AVISO CONDICIONAL: LÍMITE MENSUAL ALCANZADO (Solo si el usuario agotó su cuota) */}
       {isLimitReached && (
-        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 border-2 border-[#a86224]/30 shadow-xs flex items-center gap-3.5 text-left animate-fade-in">
-          <div className="w-10 h-10 rounded-xl bg-[#a86224] text-white flex items-center justify-center shrink-0 shadow-sm">
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 border-2 border-brand-primary/30 shadow-xs flex items-center gap-3.5 text-left animate-fade-in">
+          <div className="w-10 h-10 rounded-xl bg-brand-primary text-white flex items-center justify-center shrink-0 shadow-sm">
             <AlertCircle className="w-5 h-5" />
           </div>
           <div className="space-y-0.5 flex-1 min-w-0">
-            <div className="inline-block px-2 py-0.5 rounded-full bg-[#a86224]/15 text-[#a86224] text-[9px] font-bold tracking-wider uppercase">
+            <div className="inline-block px-2 py-0.5 rounded-full bg-brand-primary/15 text-brand-primary text-[9px] font-bold tracking-wider uppercase">
               {t('billing_limit_reached_badge')}
             </div>
             <h2 className="text-sm sm:text-base font-bold font-serif-recipe text-stone-900 tracking-tight leading-snug">
@@ -240,11 +240,11 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
       )}
 
       {/* 1º LUGAR (Arriba del todo): TARJETA PLAN PRO MENSUAL (3,50€ / mes) */}
-      <div className="p-5 sm:p-7 rounded-3xl bg-white border-2 border-[#a86224] shadow-md text-center space-y-4 animate-fade-in relative overflow-hidden">
+      <div className="p-5 sm:p-7 rounded-3xl bg-white border-2 border-brand-primary shadow-md text-center space-y-4 animate-fade-in relative overflow-hidden">
         {/* Glow sutil de fondo */}
-        <div className="absolute -top-12 -right-12 w-28 h-28 bg-[#a86224]/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -top-12 -right-12 w-28 h-28 bg-brand-primary/10 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f4efe6] text-[#a86224] text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f4efe6] text-brand-primary text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
           <Sparkles className="w-3.5 h-3.5" />
           <span>{t('billing_plan_name')}</span>
         </div>
@@ -306,8 +306,8 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
       </div>
 
       {/* 2º LUGAR: TARJETA DE LA OPCIÓN GRATUITA (AdMob Rewarded Video) */}
-      <div className="p-5 sm:p-7 rounded-3xl bg-white border border-[#e7dfd5] hover:border-[#a86224]/50 shadow-xs text-center space-y-3.5 transition">
-        <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#f4efe6] text-[#a86224] text-[10px] sm:text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
+      <div className="p-5 sm:p-7 rounded-3xl bg-white border border-[#e7dfd5] hover:border-brand-primary/50 shadow-xs text-center space-y-3.5 transition">
+        <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#f4efe6] text-brand-primary text-[10px] sm:text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
           <Gift className="w-3.5 h-3.5" />
           <span>{t('billing_ad_card_badge')}</span>
         </div>
@@ -345,11 +345,11 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
               type="button"
               onClick={handleWatchAd}
               disabled={isAdLoading}
-              className="w-full min-h-[48px] py-3 px-5 rounded-2xl font-bold text-xs sm:text-sm text-stone-900 bg-[#f4efe6] hover:bg-[#ebdcc8] active:scale-[0.99] border border-[#e7dfd5] hover:border-[#a86224] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed shadow-2xs"
+              className="w-full min-h-[48px] py-3 px-5 rounded-2xl font-bold text-xs sm:text-sm text-stone-900 bg-[#f4efe6] hover:bg-[#ebdcc8] active:scale-[0.99] border border-[#e7dfd5] hover:border-brand-primary transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed shadow-2xs"
             >
               {isAdLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-[#a86224] shrink-0" />
+                  <Loader2 className="w-4 h-4 animate-spin text-brand-primary shrink-0" />
                   <span>
                     {adLoadingStep === 'rewarding'
                       ? t('billing_ad_rewarding')
@@ -360,7 +360,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
                 </>
               ) : (
                 <>
-                  <PlayCircle className="w-4 h-4 text-[#a86224]" />
+                  <PlayCircle className="w-4 h-4 text-brand-primary" />
                   <span>{t('billing_ad_watch_btn')}</span>
                 </>
               )}
@@ -379,7 +379,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
       {/* 3º LUGAR: MÓDULO CÓDIGO PROMOCIONAL */}
       <div className="p-4 sm:p-5 rounded-3xl bg-[#f4efe6] border border-[#e7dfd5]/80 space-y-2.5">
         <div className="flex items-center gap-2">
-          <Ticket className="w-4 h-4 text-[#a86224]" />
+          <Ticket className="w-4 h-4 text-brand-primary" />
           <h3 className="text-xs sm:text-sm font-bold text-stone-900">
             {t('billing_vip_question')}
           </h3>
@@ -401,7 +401,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
                   if (vipError) setVipError(null);
                 }}
                 placeholder={t('billing_vip_placeholder')}
-                className="flex-1 min-h-[42px] px-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#a86224]/30 focus:border-[#a86224] uppercase tracking-wider font-mono font-medium transition"
+                className="flex-1 min-h-[42px] px-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary uppercase tracking-wider font-mono font-medium transition"
                 disabled={isVipValidating}
               />
               <button
@@ -430,7 +430,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
       {/* 4º LUGAR (Al final): BLOQUE INFORMATIVO DE VENTAJAS DE LA MEMBRESÍA */}
       <div className="p-5 sm:p-6 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-3.5">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#a86224]" />
+          <Sparkles className="w-4 h-4 text-brand-primary" />
           <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
             {t('billing_advantages_title')}
           </h4>
@@ -438,8 +438,8 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
 
         <div className="grid grid-cols-1 gap-2.5">
           {/* Beneficio 1 */}
-          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-[#a86224]/40">
-            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
+          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-brand-primary/40">
+            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-brand-primary flex items-center justify-center shrink-0 mt-0.5">
               <InfinityIcon className="w-4 h-4" />
             </div>
             <div className="space-y-0.5 min-w-0 flex-1">
@@ -453,8 +453,8 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
           </div>
 
           {/* Beneficio 2 */}
-          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-[#a86224]/40">
-            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
+          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-brand-primary/40">
+            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-brand-primary flex items-center justify-center shrink-0 mt-0.5">
               <HeartPulse className="w-4 h-4" />
             </div>
             <div className="space-y-0.5 min-w-0 flex-1">
@@ -468,8 +468,8 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
           </div>
 
           {/* Beneficio 3 */}
-          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-[#a86224]/40">
-            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
+          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-brand-primary/40">
+            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-brand-primary flex items-center justify-center shrink-0 mt-0.5">
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div className="space-y-0.5 min-w-0 flex-1">

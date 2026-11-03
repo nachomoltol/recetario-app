@@ -224,7 +224,7 @@ export function CookingDiarySection({
                 type="button"
                 onClick={onTriggerCamera}
                 disabled={isUploadingPhoto}
-                className="min-h-[44px] px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-white bg-[#a86224] hover:bg-[#8e511c] shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="min-h-[44px] px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-white bg-brand-primary hover:bg-brand-hover shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {isUploadingPhoto ? (
                   <>
@@ -246,9 +246,9 @@ export function CookingDiarySection({
                 type="button"
                 onClick={onTriggerGallery}
                 disabled={isUploadingPhoto}
-                className="min-h-[44px] px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-stone-700 bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-[#a86224] shadow-2xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="min-h-[44px] px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-stone-700 bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-brand-primary shadow-2xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <ImageIcon className="w-4 h-4 text-[#a86224]" />
+                <ImageIcon className="w-4 h-4 text-brand-primary" />
                 <span>Elegir de galería</span>
               </button>
             )}
@@ -259,7 +259,7 @@ export function CookingDiarySection({
               onClick={() => setIsOpen(!isOpen)}
               className="min-h-[44px] px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-stone-800 bg-[#f4efe6] hover:bg-[#e7dfd5] transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
             >
-              <Plus className="w-4 h-4 text-[#a86224]" />
+              <Plus className="w-4 h-4 text-brand-primary" />
               <span>{isOpen ? 'Cerrar formulario' : 'Añadir valoración / notas'}</span>
             </button>
           </div>
@@ -304,9 +304,9 @@ export function CookingDiarySection({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="min-h-[48px] px-5 py-3 rounded-2xl border border-dashed border-[#d8cbba] hover:border-[#a86224] text-xs sm:text-sm font-medium text-stone-700 bg-[#faf7f2] hover:bg-[#f4efe6] transition flex items-center gap-2.5 cursor-pointer"
+                  className="min-h-[48px] px-5 py-3 rounded-2xl border border-dashed border-[#d8cbba] hover:border-brand-primary text-xs sm:text-sm font-medium text-stone-700 bg-[#faf7f2] hover:bg-[#f4efe6] transition flex items-center gap-2.5 cursor-pointer"
                 >
-                  <Camera className="w-5 h-5 text-[#a86224]" />
+                  <Camera className="w-5 h-5 text-brand-primary" />
                   <span>{previewUrl ? 'Cambiar fotografía' : 'Tomar foto (Cámara trasera) o galería'}</span>
                 </button>
                 <input
@@ -377,7 +377,7 @@ export function CookingDiarySection({
                   placeholder="Ej. 35"
                   value={tiempoEmpleadoMin}
                   onChange={(e) => setTiempoEmpleadoMin(e.target.value)}
-                  className="w-full min-h-[48px] pl-10 pr-4 py-2.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-sm sm:text-base text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none focus:border-[#a86224]"
+                  className="w-full min-h-[48px] pl-10 pr-4 py-2.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-sm sm:text-base text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none focus:border-brand-primary"
                 />
                 <Clock className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -395,7 +395,7 @@ export function CookingDiarySection({
                 placeholder="Ej. Quedó muy jugoso. Para la próxima añadiré un poco más de pimienta..."
                 value={notas}
                 onChange={(e) => setNotas(e.target.value)}
-                className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-sm sm:text-base text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none focus:border-[#a86224] resize-none"
+                className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-sm sm:text-base text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none focus:border-brand-primary resize-none"
               />
             </div>
 
@@ -411,7 +411,7 @@ export function CookingDiarySection({
                 placeholder="Ej. Usé harina de avena en vez de trigo."
                 value={modificaciones}
                 onChange={(e) => setModificaciones(e.target.value)}
-                className="w-full min-h-[48px] px-4 py-2.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-sm sm:text-base text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none focus:border-[#a86224]"
+                className="w-full min-h-[48px] px-4 py-2.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-sm sm:text-base text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none focus:border-brand-primary"
               />
             </div>
 
@@ -419,7 +419,7 @@ export function CookingDiarySection({
             <button
               type="submit"
               disabled={isPending}
-              className="min-h-[50px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] transition flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
+              className="min-h-[50px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-brand-primary hover:bg-brand-hover transition flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
             >
               {isPending ? (
                 <>
@@ -455,7 +455,7 @@ export function CookingDiarySection({
                       type="button"
                       onClick={() => (isEditingThis ? handleCancelEdit() : handleStartEdit(entry))}
                       title={isEditingThis ? 'Cancelar edición' : 'Editar nota y comentarios'}
-                      className="w-8 h-8 rounded-xl bg-white/95 hover:bg-[#faf7f2] text-stone-500 hover:text-[#a86224] border border-[#e7dfd5] shadow-2xs backdrop-blur-xs flex items-center justify-center transition cursor-pointer"
+                      className="w-8 h-8 rounded-xl bg-white/95 hover:bg-[#faf7f2] text-stone-500 hover:text-brand-primary border border-[#e7dfd5] shadow-2xs backdrop-blur-xs flex items-center justify-center transition cursor-pointer"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
@@ -513,7 +513,7 @@ export function CookingDiarySection({
                       {isEditingThis ? (
                         <div className="space-y-3 pt-2 animate-fade-in">
                           <div>
-                            <label className="block text-[11px] font-bold uppercase text-[#a86224] tracking-wider mb-1">
+                            <label className="block text-[11px] font-bold uppercase text-brand-primary tracking-wider mb-1">
                               Editar nota personal
                             </label>
                             <textarea
@@ -521,7 +521,7 @@ export function CookingDiarySection({
                               value={editNotas}
                               onChange={(e) => setEditNotas(e.target.value)}
                               placeholder="Actualiza tu comentario sobre la receta..."
-                              className="w-full p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 focus:bg-white focus:outline-none focus:border-[#a86224] resize-none"
+                              className="w-full p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 focus:bg-white focus:outline-none focus:border-brand-primary resize-none"
                             />
                           </div>
 
@@ -534,7 +534,7 @@ export function CookingDiarySection({
                               value={editModificaciones}
                               onChange={(e) => setEditModificaciones(e.target.value)}
                               placeholder="Ej: Usé harina de avena en vez de trigo"
-                              className="w-full min-h-[38px] px-3 py-1.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-xs text-stone-900 focus:bg-white focus:outline-none focus:border-[#a86224]"
+                              className="w-full min-h-[38px] px-3 py-1.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-xs text-stone-900 focus:bg-white focus:outline-none focus:border-brand-primary"
                             />
                           </div>
 
@@ -543,7 +543,7 @@ export function CookingDiarySection({
                               type="button"
                               onClick={() => handleSaveEdit(entry)}
                               disabled={isEditingPending}
-                              className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
+                              className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-brand-primary hover:bg-brand-hover text-white text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
                             >
                               {isEditingPending ? (
                                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -571,7 +571,7 @@ export function CookingDiarySection({
                           )}
 
                           {entry.modificaciones_realizadas && (
-                            <p className="text-xs text-[#a86224]">
+                            <p className="text-xs text-brand-primary">
                               <span className="font-semibold text-stone-700">Variación:</span>{' '}
                               {entry.modificaciones_realizadas}
                             </p>
@@ -582,7 +582,7 @@ export function CookingDiarySection({
 
                     {entry.tiempo_empleado_min && (
                       <div className="flex items-center gap-1.5 text-xs text-stone-500 pt-2 border-t border-[#f4efe6]">
-                        <Clock className="w-3.5 h-3.5 text-[#a86224]" />
+                        <Clock className="w-3.5 h-3.5 text-brand-primary" />
                         <span>Tiempo empleado: {entry.tiempo_empleado_min} min</span>
                       </div>
                     )}

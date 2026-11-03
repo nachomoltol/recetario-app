@@ -152,7 +152,7 @@ export function GenerateMealPlanModal({
           <div className="px-5 py-3 border-b border-[#e7dfd5] flex items-center justify-between shrink-0 bg-white">
             <div className="min-w-0 pr-3">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-amber-100 text-[#a86224] flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-xl bg-amber-100 text-brand-primary flex items-center justify-center shrink-0">
                   <Sparkles className="w-4 h-4" />
                 </div>
                 <Drawer.Title className="text-sm sm:text-base font-bold font-serif-recipe text-stone-900 leading-tight truncate">
@@ -193,7 +193,7 @@ export function GenerateMealPlanModal({
                     {t('planner_wizard_step_days_desc')}
                   </p>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#f4efe6] text-brand-primary border border-[#e7dfd5]">
                   {selectedDays} {t('planner_wizard_days_unit')}
                 </span>
               </div>
@@ -207,7 +207,7 @@ export function GenerateMealPlanModal({
                     onClick={() => setSelectedDays(num)}
                     className={`flex-1 min-h-[42px] rounded-xl text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer touch-manipulation ${
                       selectedDays === num
-                        ? 'bg-[#a86224] text-white shadow-xs'
+                        ? 'bg-brand-primary text-white shadow-xs'
                         : 'bg-white hover:bg-[#fbf9f5] text-stone-700 border border-[#e7dfd5]'
                     }`}
                   >
@@ -221,7 +221,7 @@ export function GenerateMealPlanModal({
                 <button
                   type="button"
                   onClick={() => setSelectedDays(5)}
-                  className="hover:text-[#a86224] underline cursor-pointer"
+                  className="hover:text-brand-primary underline cursor-pointer"
                 >
                   {language === 'en' ? '5 workdays' : '5 días laborables'}
                 </button>
@@ -229,7 +229,7 @@ export function GenerateMealPlanModal({
                 <button
                   type="button"
                   onClick={() => setSelectedDays(7)}
-                  className="hover:text-[#a86224] underline cursor-pointer"
+                  className="hover:text-brand-primary underline cursor-pointer"
                 >
                   {language === 'en' ? 'Full week (7 days)' : 'Semana completa (7 días)'}
                 </button>
@@ -280,7 +280,7 @@ export function GenerateMealPlanModal({
 
                   <div
                     className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 ease-in-out shrink-0 ${
-                      incluirDesayunos ? 'bg-[#a86224]' : 'bg-stone-200'
+                      incluirDesayunos ? 'bg-brand-primary' : 'bg-stone-200'
                     }`}
                   >
                     <div
@@ -324,7 +324,7 @@ export function GenerateMealPlanModal({
 
                     <div
                       className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 ease-in-out shrink-0 ${
-                        incluirAlmuerzos ? 'bg-[#a86224]' : 'bg-stone-200'
+                        incluirAlmuerzos ? 'bg-brand-primary' : 'bg-stone-200'
                       }`}
                     >
                       <div
@@ -337,20 +337,20 @@ export function GenerateMealPlanModal({
 
                   {/* Toggle Secundario: ¿Intentar 1º y 2º plato? (Solo si almuerzo está activo) */}
                   {incluirAlmuerzos && (
-                    <div className="ml-4 pl-3 border-l-2 border-[#a86224]/30 animate-fade-in">
+                    <div className="ml-4 pl-3 border-l-2 border-brand-primary/30 animate-fade-in">
                       <button
                         type="button"
                         onClick={() => setIntentarPrimeroYSegundo(!intentarPrimeroYSegundo)}
                         className={`w-full p-2.5 rounded-xl border text-left transition-all active:scale-[0.99] flex items-center justify-between gap-2.5 cursor-pointer touch-manipulation ${
                           intentarPrimeroYSegundo
-                            ? 'bg-white border-[#a86224]/60 shadow-2xs'
+                            ? 'bg-white border-brand-primary/60 shadow-2xs'
                             : 'bg-stone-50/80 border-stone-200 text-stone-500'
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <Layers
                             className={`w-4 h-4 shrink-0 ${
-                              intentarPrimeroYSegundo ? 'text-[#a86224]' : 'text-stone-400'
+                              intentarPrimeroYSegundo ? 'text-brand-primary' : 'text-stone-400'
                             }`}
                           />
                           <div className="min-w-0">
@@ -365,7 +365,7 @@ export function GenerateMealPlanModal({
 
                         <div
                           className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 ease-in-out shrink-0 ${
-                            intentarPrimeroYSegundo ? 'bg-[#a86224]' : 'bg-stone-200'
+                            intentarPrimeroYSegundo ? 'bg-brand-primary' : 'bg-stone-200'
                           }`}
                         >
                           <div
@@ -411,7 +411,7 @@ export function GenerateMealPlanModal({
 
                   <div
                     className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 ease-in-out shrink-0 ${
-                      incluirCenas ? 'bg-[#a86224]' : 'bg-stone-200'
+                      incluirCenas ? 'bg-brand-primary' : 'bg-stone-200'
                     }`}
                   >
                     <div
@@ -454,7 +454,7 @@ export function GenerateMealPlanModal({
 
                   <div
                     className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 ease-in-out shrink-0 ${
-                      incluirSnackPostre ? 'bg-[#a86224]' : 'bg-stone-200'
+                      incluirSnackPostre ? 'bg-brand-primary' : 'bg-stone-200'
                     }`}
                   >
                     <div
@@ -480,7 +480,7 @@ export function GenerateMealPlanModal({
               type="button"
               onClick={handleGenerate}
               disabled={!hasAnyMealSelected || isGenerating}
-              className="w-full min-h-[48px] py-3 px-5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] active:scale-95 transition-all text-white text-xs sm:text-sm font-bold shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation select-none"
+              className="w-full min-h-[48px] py-3 px-5 rounded-2xl bg-brand-primary hover:bg-brand-hover active:scale-95 transition-all text-white text-xs sm:text-sm font-bold shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation select-none"
             >
               {isGenerating ? (
                 <>

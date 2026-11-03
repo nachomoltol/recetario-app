@@ -818,12 +818,12 @@ export function RecipeDetailView({
             >
               {isUploadingPhoto ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-[#a86224]" />
+                  <Loader2 className="w-4 h-4 animate-spin text-brand-primary" />
                   <span>{t('recipe_uploading_photo')}</span>
                 </>
               ) : (
                 <>
-                  <Camera className="w-4 h-4 text-[#a86224]" />
+                  <Camera className="w-4 h-4 text-brand-primary" />
                   <span>{t('recipe_change_photo')}</span>
                 </>
               )}
@@ -835,7 +835,7 @@ export function RecipeDetailView({
       {/* Cabecera Editorial Limpia */}
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#a86224]">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-brand-primary">
             <ChefHat className="w-4 h-4 shrink-0" />
             <span className="truncate">{t('recipe_card_header')}</span>
           </div>
@@ -858,7 +858,7 @@ export function RecipeDetailView({
                   type="button"
                   onClick={handleSaveEdit}
                   disabled={isSaving}
-                  className="h-9 px-3.5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                  className="h-9 px-3.5 rounded-xl bg-brand-primary hover:bg-brand-hover text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
                 >
                   {isSaving ? (
                     <>
@@ -878,9 +878,9 @@ export function RecipeDetailView({
                 type="button"
                 onClick={handleStartEdit}
                 title={t('recipe_edit_btn')}
-                className="h-9 px-2.5 sm:px-3 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-[#a86224] text-xs font-semibold text-stone-700 hover:text-[#a86224] transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                className="h-9 px-2.5 sm:px-3 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-brand-primary text-xs font-semibold text-stone-700 hover:text-brand-primary transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
               >
-                <Pencil className="w-3.5 h-3.5 text-[#a86224]" />
+                <Pencil className="w-3.5 h-3.5 text-brand-primary" />
                 <span className="hidden sm:inline">{t('recipe_edit_btn')}</span>
               </button>
             )}
@@ -900,7 +900,7 @@ export function RecipeDetailView({
         {/* Título: Editable en modo edición o Título editorial H1 con badge clínico */}
         {isEditing ? (
           <div className="space-y-1.5 pt-1 animate-fade-in">
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#a86224]">
+            <label className="block text-xs font-bold uppercase tracking-wider text-brand-primary">
               {t('recipe_edit_title_label')}
             </label>
             <input
@@ -909,7 +909,7 @@ export function RecipeDetailView({
               onChange={(e) => setEditTitulo(e.target.value)}
               disabled={isSaving}
               placeholder={t('recipe_edit_title_placeholder')}
-              className="w-full p-3.5 sm:p-4 rounded-2xl bg-white border-2 border-[#a86224] text-stone-900 font-serif-recipe font-bold text-2xl sm:text-4xl focus:outline-none focus:ring-4 focus:ring-[#a86224]/20 shadow-xs transition"
+              className="w-full p-3.5 sm:p-4 rounded-2xl bg-white border-2 border-brand-primary text-stone-900 font-serif-recipe font-bold text-2xl sm:text-4xl focus:outline-none focus:ring-4 focus:ring-brand-primary/20 shadow-xs transition"
             />
           </div>
         ) : (
@@ -949,7 +949,7 @@ export function RecipeDetailView({
               <button
                 type="button"
                 onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                className="mt-1 text-xs font-semibold text-[#a86224] hover:underline cursor-pointer inline-flex items-center gap-0.5"
+                className="mt-1 text-xs font-semibold text-brand-primary hover:underline cursor-pointer inline-flex items-center gap-0.5"
               >
                 {isDescriptionExpanded
                   ? language === 'en'
@@ -967,7 +967,7 @@ export function RecipeDetailView({
         <div className="grid grid-cols-3 w-full gap-1 py-3 px-2 border-t border-[#e7dfd5] text-stone-600 text-center">
           <div className="flex flex-col items-center justify-center min-w-0">
             <div className="flex items-center justify-center gap-1.5 text-stone-500 mb-0.5 w-full">
-              <Clock className="w-4 h-4 text-[#a86224] shrink-0" />
+              <Clock className="w-4 h-4 text-brand-primary shrink-0" />
               <span className="text-[10px] uppercase font-medium truncate">
                 {t('recipe_total_time')}
               </span>
@@ -979,7 +979,7 @@ export function RecipeDetailView({
 
           <div className="flex flex-col items-center justify-center min-w-0 border-x border-[#e7dfd5]/60 px-1">
             <div className="flex items-center justify-center gap-1.5 text-stone-500 mb-0.5 w-full">
-              <Users className="w-4 h-4 text-[#a86224] shrink-0" />
+              <Users className="w-4 h-4 text-brand-primary shrink-0" />
               <span className="text-[10px] uppercase font-medium truncate">
                 {t('recipe_base_servings')}
               </span>
@@ -991,7 +991,7 @@ export function RecipeDetailView({
 
           <div className="flex flex-col items-center justify-center min-w-0">
             <div className="flex items-center justify-center gap-1.5 text-stone-500 mb-0.5 w-full">
-              <ChefHat className="w-4 h-4 text-[#a86224] shrink-0" />
+              <ChefHat className="w-4 h-4 text-brand-primary shrink-0" />
               <span className="text-[10px] uppercase font-medium truncate">
                 {language === 'en' ? 'Level' : 'Nivel'}
               </span>
@@ -1022,7 +1022,7 @@ export function RecipeDetailView({
 
       {/* PANEL DE EDICIÓN DE INGREDIENTES EN MODO EDICIÓN */}
       {isEditing ? (
-        <section className="rounded-3xl bg-white border-2 border-[#a86224] p-5 sm:p-7 shadow-sm space-y-5 animate-fade-in">
+        <section className="rounded-3xl bg-white border-2 border-brand-primary p-5 sm:p-7 shadow-sm space-y-5 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#e7dfd5] pb-4">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900">
@@ -1036,7 +1036,7 @@ export function RecipeDetailView({
               type="button"
               onClick={handleAddIngredient}
               disabled={isSaving}
-              className="px-3.5 py-2 rounded-xl bg-[#f4efe6] hover:bg-[#e7dfd5] text-[#a86224] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer self-start sm:self-auto"
+              className="px-3.5 py-2 rounded-xl bg-[#f4efe6] hover:bg-[#e7dfd5] text-brand-primary text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer self-start sm:self-auto"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>{t('recipe_edit_add_ingredient')}</span>
@@ -1059,7 +1059,7 @@ export function RecipeDetailView({
                     onChange={(e) => handleIngredientChange(idx, 'nombre_limpio', e.target.value)}
                     placeholder={t('recipe_edit_name_placeholder')}
                     disabled={isSaving}
-                    className="flex-1 min-h-[42px] px-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 font-medium focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] shadow-2xs"
+                    className="flex-1 min-h-[42px] px-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 font-medium focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary shadow-2xs"
                   />
                 </div>
 
@@ -1075,7 +1075,7 @@ export function RecipeDetailView({
                       }
                       placeholder={t('recipe_edit_qty_placeholder')}
                       disabled={isSaving}
-                      className="w-full min-h-[42px] px-3 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 font-mono font-medium focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] shadow-2xs"
+                      className="w-full min-h-[42px] px-3 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 font-mono font-medium focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary shadow-2xs"
                     />
                   </div>
 
@@ -1086,7 +1086,7 @@ export function RecipeDetailView({
                       onChange={(e) => handleIngredientChange(idx, 'unidad', e.target.value)}
                       placeholder={t('recipe_edit_unit_placeholder')}
                       disabled={isSaving}
-                      className="w-full min-h-[42px] px-3 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 font-medium focus:outline-none focus:border-[#a86224] focus:ring-1 focus:ring-[#a86224] shadow-2xs"
+                      className="w-full min-h-[42px] px-3 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 font-medium focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary shadow-2xs"
                     />
                   </div>
 
@@ -1117,7 +1117,7 @@ export function RecipeDetailView({
               type="button"
               onClick={handleSaveEdit}
               disabled={isSaving}
-              className="min-h-[44px] px-6 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs sm:text-sm font-bold transition cursor-pointer flex items-center gap-2 shadow-xs disabled:opacity-50"
+              className="min-h-[44px] px-6 rounded-xl bg-brand-primary hover:bg-brand-hover text-white text-xs sm:text-sm font-bold transition cursor-pointer flex items-center gap-2 shadow-xs disabled:opacity-50"
             >
               {isSaving ? (
                 <>

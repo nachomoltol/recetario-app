@@ -133,7 +133,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
         aria-haspopup="true"
         className="flex items-center gap-1.5 sm:gap-2 py-1 px-1.5 sm:px-2.5 rounded-2xl bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] transition-all cursor-pointer shadow-2xs group shrink-0"
       >
-        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-[#f4efe6] group-hover:bg-white border border-[#e7dfd5] text-[#a86224] font-bold text-[10px] sm:text-xs flex items-center justify-center transition-colors shrink-0">
+        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-[#f4efe6] group-hover:bg-white border border-[#e7dfd5] text-brand-primary font-bold text-[10px] sm:text-xs flex items-center justify-center transition-colors shrink-0">
           {initials}
         </div>
 
@@ -148,7 +148,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
 
         <ChevronDown
           className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-stone-400 group-hover:text-stone-700 transition-transform duration-200 shrink-0 ${
-            isOpen ? 'rotate-180 text-[#a86224]' : ''
+            isOpen ? 'rotate-180 text-brand-primary' : ''
           }`}
         />
       </button>
@@ -158,7 +158,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
         <div className="absolute right-0 mt-2 w-72 sm:w-80 rounded-3xl bg-white border border-[#e7dfd5] shadow-2xl p-3 z-[100] animate-fade-in space-y-2">
           {/* Cabecera con datos del usuario */}
           <div className="p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5]/70 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white border border-[#e7dfd5] text-[#a86224] flex items-center justify-center font-bold text-sm shadow-2xs shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-white border border-[#e7dfd5] text-brand-primary flex items-center justify-center font-bold text-sm shadow-2xs shrink-0">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
@@ -169,7 +169,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
                 {displayEmail}
               </p>
               <div className="mt-1 flex items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#f4efe6] text-brand-primary border border-[#e7dfd5]">
                   <ChefHat className="w-3 h-3" /> {t('header_active_plan')}
                 </span>
               </div>
@@ -183,7 +183,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium"
             >
-              <BookOpen className="w-4 h-4 text-[#a86224]" />
+              <BookOpen className="w-4 h-4 text-brand-primary" />
               <div className="flex-1">
                 <span>{t('nav_collection_full')}</span>
               </div>
@@ -202,7 +202,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
                   <Calendar className="w-4 h-4 text-stone-400" />
                   <span className="line-through">{t('nav_meal_planner_full')}</span>
                 </div>
-                <span className="text-[10px] font-semibold text-[#a86224] bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
+                <span className="text-[10px] font-semibold text-brand-primary bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
                   {language === 'en' ? 'Use AI Menu' : 'Usa Menú con IA'}
                 </span>
               </div>
@@ -212,7 +212,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium"
               >
-                <Calendar className="w-4 h-4 text-[#a86224]" />
+                <Calendar className="w-4 h-4 text-brand-primary" />
                 <div className="flex-1">
                   <span>{t('nav_meal_planner_full')}</span>
                 </div>
@@ -225,7 +225,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
               className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-800 hover:text-stone-950 hover:bg-gradient-to-r hover:from-amber-50/90 hover:to-orange-50/90 transition cursor-pointer font-semibold border border-transparent hover:border-amber-200/70"
             >
               <div className="flex items-center gap-3">
-                <Sparkles className="w-4 h-4 text-[#a86224]" />
+                <Sparkles className="w-4 h-4 text-brand-primary" />
                 <span>{t('nav_create_ai_menu')}</span>
               </div>
               <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-400 text-stone-900 shadow-2xs">
@@ -261,7 +261,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
               className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium"
             >
               <div className="flex items-center gap-3">
-                <CreditCard className="w-4 h-4 text-[#a86224]" />
+                <CreditCard className="w-4 h-4 text-brand-primary" />
                 <span>{t('nav_payment_gateway')}</span>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-0.5">
@@ -288,7 +288,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
               }}
               className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium text-left"
             >
-              <LifeBuoy className="w-4 h-4 text-[#a86224]" />
+              <LifeBuoy className="w-4 h-4 text-brand-primary" />
               <div className="flex-1">
                 <span>Soporte y Feedback</span>
               </div>

@@ -36,7 +36,7 @@ export default function PrivacidadPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="w-10 h-10 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] hover:bg-[#f4efe6] transition cursor-pointer"
+              className="w-10 h-10 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center text-brand-primary hover:bg-[#f4efe6] transition cursor-pointer"
               title="Volver"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -65,7 +65,7 @@ export default function PrivacidadPage() {
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
         {/* Hero Banner */}
         <div className="p-8 sm:p-10 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224]">
+          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-brand-primary">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
@@ -81,7 +81,7 @@ export default function PrivacidadPage() {
         {/* 1. Responsable del Tratamiento */}
         <section className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center text-[#a86224]">
+            <div className="w-9 h-9 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center text-brand-primary">
               <FileText className="w-4 h-4" />
             </div>
             <h2 className="text-lg sm:text-xl font-bold font-serif text-stone-900">
@@ -92,7 +92,7 @@ export default function PrivacidadPage() {
             El responsable del tratamiento de los datos recabados mediante la aplicación Miga es el equipo de desarrollo de Miga App. Para cualquier duda, ejercicio de derechos o aclaración sobre esta política, puedes contactar directamente a través del correo electrónico:{' '}
             <a
               href="mailto:migarecetasredes@gmail.com"
-              className="font-medium text-[#a86224] underline hover:text-[#8e511c]"
+              className="font-medium text-brand-primary underline hover:text-[#8e511c]"
             >
               migarecetasredes@gmail.com
             </a>.
@@ -102,7 +102,7 @@ export default function PrivacidadPage() {
         {/* 2. Datos que Recopilamos */}
         <section className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center text-[#a86224]">
+            <div className="w-9 h-9 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center text-brand-primary">
               <UserCheck className="w-4 h-4" />
             </div>
             <h2 className="text-lg sm:text-xl font-bold font-serif text-stone-900">
@@ -131,7 +131,7 @@ export default function PrivacidadPage() {
         {/* 3. Servicios de Terceros */}
         <section className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center text-[#a86224]">
+            <div className="w-9 h-9 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center text-brand-primary">
               <Globe className="w-4 h-4" />
             </div>
             <h2 className="text-lg sm:text-xl font-bold font-serif text-stone-900">
@@ -144,7 +144,7 @@ export default function PrivacidadPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
             <div className="p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2">
               <div className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-[#a86224]" />
+                <Lock className="w-4 h-4 text-brand-primary" />
                 <h3 className="text-sm font-bold text-stone-900">Supabase Inc.</h3>
               </div>
               <p className="text-xs text-stone-600 leading-relaxed font-light">
@@ -154,7 +154,7 @@ export default function PrivacidadPage() {
 
             <div className="p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2">
               <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-[#a86224]" />
+                <CreditCard className="w-4 h-4 text-brand-primary" />
                 <h3 className="text-sm font-bold text-stone-900">Stripe Inc.</h3>
               </div>
               <p className="text-xs text-stone-600 leading-relaxed font-light">
@@ -164,7 +164,7 @@ export default function PrivacidadPage() {
 
             <div className="p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2">
               <div className="flex items-center gap-2">
-                <Radio className="w-4 h-4 text-[#a86224]" />
+                <Radio className="w-4 h-4 text-brand-primary" />
                 <h3 className="text-sm font-bold text-stone-900">Google AdMob</h3>
               </div>
               <p className="text-xs text-stone-600 leading-relaxed font-light">
@@ -174,7 +174,7 @@ export default function PrivacidadPage() {
 
             <div className="p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2">
               <div className="flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-[#a86224]" />
+                <Cpu className="w-4 h-4 text-brand-primary" />
                 <h3 className="text-sm font-bold text-stone-900">APIs de IA (Google Gemini)</h3>
               </div>
               <p className="text-xs text-stone-600 leading-relaxed font-light">
@@ -251,7 +251,7 @@ export default function PrivacidadPage() {
         {/* 6. Seguridad de la Información */}
         <section className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center text-[#a86224]">
+            <div className="w-9 h-9 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center text-brand-primary">
               <Lock className="w-4 h-4" />
             </div>
             <h2 className="text-lg sm:text-xl font-bold font-serif text-stone-900">
@@ -269,7 +269,7 @@ export default function PrivacidadPage() {
         {/* 7. Contacto */}
         <section className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center text-[#a86224]">
+            <div className="w-9 h-9 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-center text-brand-primary">
               <Mail className="w-4 h-4" />
             </div>
             <h2 className="text-lg sm:text-xl font-bold font-serif text-stone-900">
@@ -279,7 +279,7 @@ export default function PrivacidadPage() {
           <p className="text-sm text-stone-600 leading-relaxed font-light">
             Si tienes dudas, comentarios o requerimientos sobre nuestra Política de Privacidad o el tratamiento de tus datos, puedes escribirnos en cualquier momento a:
           </p>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-xs sm:text-sm font-semibold text-[#a86224]">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-xs sm:text-sm font-semibold text-brand-primary">
             <Mail className="w-4 h-4" />
             <a href="mailto:migarecetasredes@gmail.com" className="hover:underline">
               migarecetasredes@gmail.com
@@ -291,7 +291,7 @@ export default function PrivacidadPage() {
         <div className="pt-4 pb-8 text-center">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-sm transition shadow-xs cursor-pointer"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-sm transition shadow-xs cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Volver a Miga</span>

@@ -39,7 +39,7 @@ export function RecipeNutritionAccordion({
         className="w-full min-h-[46px] px-4 py-2.5 flex items-center justify-between text-left hover:bg-[#faf7f2] transition-colors cursor-pointer select-none"
       >
         <div className="flex items-center gap-2">
-          <Flame className="w-4 h-4 text-[#a86224]" />
+          <Flame className="w-4 h-4 text-brand-primary" />
           <span className="text-xs sm:text-sm font-semibold text-stone-900">
             {t('recipe_nutrition_title')}
           </span>
@@ -50,13 +50,13 @@ export function RecipeNutritionAccordion({
 
         <div className="flex items-center gap-2">
           {calorias && !isOpen && (
-            <span className="text-xs font-bold text-[#a86224] bg-[#f4efe6] px-2 py-0.5 rounded-lg border border-[#e7dfd5]">
+            <span className="text-xs font-bold text-brand-primary bg-[#f4efe6] px-2 py-0.5 rounded-lg border border-[#e7dfd5]">
               {Math.round(Number(calorias) || 0)} kcal
             </span>
           )}
           <div
             className={`w-6 h-6 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center transition-transform duration-200 ${
-              isOpen ? 'rotate-180 text-[#a86224]' : ''
+              isOpen ? 'rotate-180 text-brand-primary' : ''
             }`}
           >
             <ChevronDown className="w-3.5 h-3.5" />

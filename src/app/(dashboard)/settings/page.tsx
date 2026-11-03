@@ -5,6 +5,7 @@ import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
 import { CookingSettingsForm } from '@/components/settings/CookingSettingsForm';
+import { ThemeSelectorCard } from '@/components/settings/ThemeSelectorCard';
 import {
   SettingsHeaderTitle,
   SettingsHeroCard,
@@ -58,12 +59,15 @@ export default async function SettingsPage() {
         {/* Formulario de Preferencias: Raciones por defecto + Modo Manos en la Masa */}
         <CookingSettingsForm initialServings={profile?.raciones_defecto ?? 4} />
 
+        {/* Selector de Paletas y Temas de Color */}
+        <ThemeSelectorCard />
+
 
         {/* Pie de página con enlace legal */}
         <footer className="pt-6 pb-4 text-center text-xs text-stone-400">
           <Link
             href="/privacidad"
-            className="hover:text-[#a86224] underline underline-offset-4 decoration-stone-300 hover:decoration-[#a86224] transition-colors"
+            className="hover:text-brand-primary underline underline-offset-4 decoration-stone-300 hover:decoration-brand-primary transition-colors"
           >
             Política de Privacidad
           </Link>

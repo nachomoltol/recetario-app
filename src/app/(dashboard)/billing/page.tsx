@@ -61,7 +61,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         <Suspense
           fallback={
             <div className="flex items-center justify-center py-20 text-stone-500">
-              <Loader2 className="w-8 h-8 animate-spin text-[#a86224]" />
+              <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
             </div>
           }
         >

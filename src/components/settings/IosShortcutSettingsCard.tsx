@@ -13,7 +13,7 @@ export function IosShortcutSettingsCard() {
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-0.5">
             <span className="text-sm font-semibold text-stone-900 flex items-center gap-2">
-              <Share2 className="w-4 h-4 text-[#a86224]" /> Integración con Menú 'Compartir'
+              <Share2 className="w-4 h-4 text-brand-primary" /> Integración con Menú 'Compartir'
             </span>
             <p className="text-xs text-stone-500">
               Envía enlaces directamente desde TikTok, Instagram o YouTube sin copiar ni pegar
@@ -42,7 +42,7 @@ export function IosShortcutSettingsCard() {
               <strong className="text-stone-800 font-semibold flex items-center gap-1">
                 <span>iOS (iPhone / iPad)</span>
               </strong>
-              <span className="text-[10px] font-bold text-[#a86224] bg-[#f4efe6] px-2 py-0.5 rounded-full border border-[#e7dfd5]">
+              <span className="text-[10px] font-bold text-brand-primary bg-[#f4efe6] px-2 py-0.5 rounded-full border border-[#e7dfd5]">
                 Vía Atajo
               </span>
             </div>
@@ -52,7 +52,7 @@ export function IosShortcutSettingsCard() {
             <button
               type="button"
               onClick={() => setShowTutorial(true)}
-              className="w-full py-1.5 px-2.5 rounded-lg bg-[#f4efe6] hover:bg-[#ebdcc9] text-[#a86224] font-semibold text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer"
+              className="w-full py-1.5 px-2.5 rounded-lg bg-[#f4efe6] hover:bg-[#ebdcc9] text-brand-primary font-semibold text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
               <Smartphone className="w-3.5 h-3.5" />
               <span>Configurar Atajo de iPhone</span>

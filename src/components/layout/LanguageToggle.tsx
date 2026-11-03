@@ -38,7 +38,7 @@ export function LanguageToggle({ className = '' }: LanguageToggleProps) {
         aria-pressed={language === 'es'}
         className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer select-none ${
           language === 'es'
-            ? 'bg-white text-[#a86224] font-bold shadow-2xs ring-1 ring-[#e7dfd5]'
+            ? 'bg-white text-brand-primary font-bold shadow-2xs ring-1 ring-[#e7dfd5]'
             : 'text-stone-500 hover:text-stone-800'
         }`}
         title="Español"
@@ -53,7 +53,7 @@ export function LanguageToggle({ className = '' }: LanguageToggleProps) {
         aria-pressed={language === 'en'}
         className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer select-none ${
           language === 'en'
-            ? 'bg-white text-[#a86224] font-bold shadow-2xs ring-1 ring-[#e7dfd5]'
+            ? 'bg-white text-brand-primary font-bold shadow-2xs ring-1 ring-[#e7dfd5]'
             : 'text-stone-500 hover:text-stone-800'
         }`}
         title="English"

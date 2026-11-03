@@ -127,7 +127,7 @@ export function RecipeTagsEditor({ recetaId, initialTags }: RecipeTagsEditorProp
               {gastronomicTags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] shadow-2xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#f4efe6] text-brand-primary border border-[#e7dfd5] shadow-2xs"
                 >
                   <UtensilsCrossed className="w-3 h-3 shrink-0" />
                   <span>{tag}</span>
@@ -164,7 +164,7 @@ export function RecipeTagsEditor({ recetaId, initialTags }: RecipeTagsEditorProp
             onClick={() => setIsEditing(true)}
             className="min-h-[36px] px-3 py-1 rounded-full text-xs font-semibold text-stone-600 hover:text-stone-900 bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
           >
-            <Edit2 className="w-3 h-3 text-[#a86224]" />
+            <Edit2 className="w-3 h-3 text-brand-primary" />
             <span>{tags.length === 0 ? 'Añadir categorías' : 'Editar'}</span>
           </button>
 
@@ -180,7 +180,7 @@ export function RecipeTagsEditor({ recetaId, initialTags }: RecipeTagsEditorProp
           <div className="flex items-center justify-between border-b border-[#f4efe6] pb-3">
             <div>
               <h4 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
-                <Tag className="w-4 h-4 text-[#a86224]" />
+                <Tag className="w-4 h-4 text-brand-primary" />
                 <span>Gestor de Categorías y Momentos</span>
               </h4>
               <p className="text-xs text-stone-500">
@@ -200,7 +200,7 @@ export function RecipeTagsEditor({ recetaId, initialTags }: RecipeTagsEditorProp
                 type="button"
                 onClick={handleSave}
                 disabled={isPending}
-                className="min-h-[40px] px-4 rounded-xl text-xs font-semibold text-white bg-[#a86224] hover:bg-[#8e511c] transition flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+                className="min-h-[40px] px-4 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-hover transition flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
               >
                 {isPending ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -224,13 +224,13 @@ export function RecipeTagsEditor({ recetaId, initialTags }: RecipeTagsEditorProp
                 tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full text-xs font-semibold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]"
+                    className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full text-xs font-semibold bg-[#f4efe6] text-brand-primary border border-[#e7dfd5]"
                   >
                     <span>{tag}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
-                      className="w-4 h-4 rounded-full text-[#a86224] hover:bg-[#eae1d2] flex items-center justify-center cursor-pointer"
+                      className="w-4 h-4 rounded-full text-brand-primary hover:bg-[#eae1d2] flex items-center justify-center cursor-pointer"
                       title={`Eliminar ${tag}`}
                     >
                       <X className="w-3 h-3" />
@@ -244,7 +244,7 @@ export function RecipeTagsEditor({ recetaId, initialTags }: RecipeTagsEditorProp
           {/* Sugerencias rápidas: Categorías Gastronómicas */}
           <div className="space-y-2 pt-2 border-t border-[#f4efe6]">
             <span className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-              <UtensilsCrossed className="w-3.5 h-3.5 text-[#a86224]" />
+              <UtensilsCrossed className="w-3.5 h-3.5 text-brand-primary" />
               <span>Sugerencias Gastronómicas (Toca para añadir):</span>
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -312,7 +312,7 @@ export function RecipeTagsEditor({ recetaId, initialTags }: RecipeTagsEditorProp
                 value={customTagInput}
                 onChange={(e) => setCustomTagInput(e.target.value)}
                 placeholder="Escribe otra etiqueta o dieta (ej. Sin gluten, Keto...)"
-                className="flex-1 min-h-[42px] px-3.5 rounded-xl text-xs sm:text-sm bg-[#faf7f2] border border-[#e7dfd5] text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-[#a86224]"
+                className="flex-1 min-h-[42px] px-3.5 rounded-xl text-xs sm:text-sm bg-[#faf7f2] border border-[#e7dfd5] text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-brand-primary"
               />
               <button
                 type="submit"

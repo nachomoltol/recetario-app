@@ -75,7 +75,7 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
       <div className="p-6 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
               <Users className="w-5 h-5" />
             </div>
             <div>
@@ -107,7 +107,7 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
               type="button"
               onClick={() => handleServingsChange(servings - 1)}
               disabled={servings <= 1 || isPending}
-              className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:bg-[#f4efe6] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center text-stone-700 transition cursor-pointer shadow-2xs shrink-0"
+              className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] hover:border-brand-primary hover:bg-[#f4efe6] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center text-stone-700 transition cursor-pointer shadow-2xs shrink-0"
               aria-label="Disminuir raciones"
             >
               <Minus className="w-4 h-4" />
@@ -126,7 +126,7 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
               type="button"
               onClick={() => handleServingsChange(servings + 1)}
               disabled={servings >= 12 || isPending}
-              className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:bg-[#f4efe6] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center text-stone-700 transition cursor-pointer shadow-2xs shrink-0"
+              className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] hover:border-brand-primary hover:bg-[#f4efe6] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center text-stone-700 transition cursor-pointer shadow-2xs shrink-0"
               aria-label="Aumentar raciones"
             >
               <Plus className="w-4 h-4" />
@@ -139,7 +139,7 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
       <div className="p-6 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
               <Flame className="w-5 h-5" />
             </div>
             <div>
@@ -165,8 +165,8 @@ export function CookingSettingsForm({ initialServings }: CookingSettingsFormProp
             role="switch"
             aria-checked={wakeLockEnabled}
             onClick={handleToggleWakeLock}
-            className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#a86224] focus:ring-offset-2 ${
-              wakeLockEnabled ? 'bg-[#a86224]' : 'bg-stone-300'
+            className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 ${
+              wakeLockEnabled ? 'bg-brand-primary' : 'bg-stone-300'
             }`}
           >
             <span

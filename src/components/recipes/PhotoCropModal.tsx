@@ -343,7 +343,7 @@ export function PhotoCropModal({
           >
             {!isImageLoaded ? (
               <div className="flex flex-col items-center justify-center gap-2 text-stone-500 py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-[#a86224]" />
+                <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
                 <span className="text-xs">Cargando imagen...</span>
               </div>
             ) : (
@@ -413,7 +413,7 @@ export function PhotoCropModal({
               value={zoom}
               onChange={(e) => setZoom(parseFloat(e.target.value))}
               disabled={isProcessing}
-              className="w-full h-2 bg-stone-800 rounded-lg appearance-none cursor-pointer accent-[#a86224] focus:outline-none"
+              className="w-full h-2 bg-stone-800 rounded-lg appearance-none cursor-pointer accent-brand-primary focus:outline-none"
             />
             <button
               type="button"
@@ -441,7 +441,7 @@ export function PhotoCropModal({
             type="button"
             onClick={handleConfirmCrop}
             disabled={!isImageLoaded || isProcessing}
-            className="min-h-[44px] px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-white bg-[#a86224] hover:bg-[#8e511c] shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="min-h-[44px] px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-white bg-brand-primary hover:bg-brand-hover shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {isProcessing ? (
               <>

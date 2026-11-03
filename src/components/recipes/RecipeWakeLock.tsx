@@ -98,7 +98,7 @@ export function RecipeWakeLock() {
       onClick={toggleManualWakeLock}
       className={`h-9 inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 rounded-xl text-xs font-medium transition-all shadow-2xs cursor-pointer border ${
         isLocked
-          ? 'bg-amber-50 text-[#a86224] border-amber-200 hover:bg-amber-100/70'
+          ? 'bg-amber-50 text-brand-primary border-amber-200 hover:bg-amber-100/70'
           : 'bg-white text-stone-600 border-[#e7dfd5] hover:bg-[#faf7f2]'
       }`}
       title={

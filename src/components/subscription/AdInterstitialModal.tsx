@@ -113,7 +113,7 @@ export function AdInterstitialModal({
           <div className="space-y-5">
             {/* Cabecera Editorial */}
             <div className="text-center space-y-2 pr-6 sm:pr-0">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200/80 text-[#a86224] text-xs font-semibold tracking-wide uppercase">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-light border border-brand-subtle text-brand-primary text-xs font-semibold tracking-wide uppercase">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>{isEn ? 'Smart Generation' : 'Generación Inteligente'}</span>
               </div>
@@ -130,38 +130,38 @@ export function AdInterstitialModal({
             </div>
 
             {/* Tarjeta A: Opción PRO (Prioritaria y destacada) */}
-            <div className="relative p-4 sm:p-5 rounded-2xl border-2 border-[#a86224] bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white space-y-3.5 shadow-sm hover:shadow-md transition">
+            <div className="relative p-4 sm:p-5 rounded-2xl border-2 border-brand-primary bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white space-y-3.5 shadow-sm hover:shadow-md transition">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-[#a86224]/10 text-[#a86224] flex items-center justify-center">
-                    <Crown className="w-4 h-4 text-[#a86224]" />
+                  <div className="w-7 h-7 rounded-lg bg-brand-primary/10 text-brand-primary flex items-center justify-center">
+                    <Crown className="w-4 h-4 text-brand-primary" />
                   </div>
                   <span className="font-bold text-sm sm:text-base text-stone-900">
                     {isEn ? 'Miga PRO Experience' : 'Experiencia Miga PRO'}
                   </span>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-[#a86224] text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
+                <span className="px-2.5 py-0.5 rounded-full bg-brand-primary text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
                   {isEn ? 'Recommended' : 'Recomendado'}
                 </span>
               </div>
 
               <ul className="text-xs text-stone-700 space-y-2 pl-0.5">
                 <li className="flex items-start gap-2">
-                  <Check className="w-3.5 h-3.5 text-[#a86224] shrink-0 mt-0.5" />
+                  <Check className="w-3.5 h-3.5 text-brand-primary shrink-0 mt-0.5" />
                   <span>
                     <strong>{isEn ? 'Instant extraction' : 'Extracción instantánea'}</strong>{' '}
                     {isEn ? 'without waits or ads.' : 'sin esperas ni anuncios.'}
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="w-3.5 h-3.5 text-[#a86224] shrink-0 mt-0.5" />
+                  <Check className="w-3.5 h-3.5 text-brand-primary shrink-0 mt-0.5" />
                   <span>
                     <strong>{isEn ? 'Up to 150 recipes/month' : 'Hasta 150 recetas/mes'}</strong>{' '}
                     {isEn ? 'and advanced technical calibration.' : 'y calibración técnica avanzada.'}
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="w-3.5 h-3.5 text-[#a86224] shrink-0 mt-0.5" />
+                  <Check className="w-3.5 h-3.5 text-brand-primary shrink-0 mt-0.5" />
                   <span>
                     <strong>{isEn ? 'Export weekly menus to PDF' : 'Exportación de menús a PDF'}</strong>{' '}
                     {isEn ? 'with official editorial branding.' : 'editorial de alta resolución.'}
@@ -176,7 +176,7 @@ export function AdInterstitialModal({
                     onSelectPro();
                   }
                 }}
-                className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 text-amber-200" />
                 <span>{isEn ? 'Get PRO & extract instantly' : 'Hazte PRO y extrae al instante'}</span>
@@ -208,7 +208,7 @@ export function AdInterstitialModal({
                 onClick={() => setViewState('playing')}
                 className="w-full min-h-[42px] py-2 px-4 rounded-xl bg-white hover:bg-stone-100 border border-stone-300 text-stone-800 font-medium text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
               >
-                <Play className="w-3.5 h-3.5 text-[#a86224] fill-current" />
+                <Play className="w-3.5 h-3.5 text-brand-primary fill-current" />
                 <span>{isEn ? 'Watch ad and continue' : 'Ver anuncio y continuar'}</span>
               </button>
             </div>
@@ -220,7 +220,7 @@ export function AdInterstitialModal({
           <div className="space-y-6 text-center">
             {/* Cabecera / Badge de Patrocinador */}
             <div className="space-y-3">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200/80 text-[#a86224] text-xs font-semibold tracking-wide uppercase">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-light border border-brand-subtle text-brand-primary text-xs font-semibold tracking-wide uppercase">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>{isEn ? 'Sponsored Generation' : 'Generación Patrocinada'}</span>
               </div>
@@ -239,7 +239,7 @@ export function AdInterstitialModal({
             {isAdMobPlaying ? (
               /* Estado cargando AdMob nativo */
               <div className="py-8 flex flex-col items-center justify-center gap-3">
-                <Loader2 className="w-8 h-8 animate-spin text-[#a86224]" />
+                <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
                 <span className="text-xs text-stone-500 font-medium">
                   {isEn ? 'Loading sponsor video...' : 'Cargando vídeo patrocinado...'}
                 </span>
@@ -267,7 +267,7 @@ export function AdInterstitialModal({
                       strokeDasharray="264"
                       strokeDashoffset={264 - (264 * progressPercent) / 100}
                       strokeLinecap="round"
-                      className="text-[#a86224] transition-all duration-1000 ease-linear"
+                      className="text-brand-primary transition-all duration-1000 ease-linear"
                       fill="none"
                     />
                   </svg>
@@ -275,7 +275,7 @@ export function AdInterstitialModal({
                   <div className="absolute flex flex-col items-center justify-center text-center">
                     {secondsRemaining > 0 ? (
                       <>
-                        <span className="text-3xl font-extrabold text-[#a86224] font-mono leading-none">
+                        <span className="text-3xl font-extrabold text-brand-primary font-mono leading-none">
                           {secondsRemaining}s
                         </span>
                         <span className="text-[10px] text-stone-400 font-medium uppercase tracking-wider mt-1">

@@ -164,7 +164,7 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
             <button
               type="button"
               onClick={handleResetAndClose}
-              className="mt-4 px-6 py-2.5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs sm:text-sm font-semibold transition cursor-pointer"
+              className="mt-4 px-6 py-2.5 rounded-2xl bg-brand-primary hover:bg-brand-hover text-white text-xs sm:text-sm font-semibold transition cursor-pointer"
             >
               Entendido
             </button>
@@ -174,7 +174,7 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Cabecera */}
             <div className="space-y-1 pr-8">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] mb-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#f4efe6] text-brand-primary border border-[#e7dfd5] mb-1">
                 <LifeBuoy className="w-3.5 h-3.5" />
                 <span>Atención personalizada</span>
               </div>
@@ -189,7 +189,7 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
             {/* Bloque de Usuario (Supabase auth + Badge Verificado) */}
             <div className="p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between gap-3 shadow-2xs">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-white border border-[#e7dfd5] text-[#a86224] flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
+                <div className="w-10 h-10 rounded-2xl bg-white border border-[#e7dfd5] text-brand-primary flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
                   {initials}
                 </div>
                 <div className="min-w-0">
@@ -226,11 +226,11 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
                       onClick={() => setCategory(label)}
                       className={`flex items-center gap-2 px-3 py-2.5 rounded-2xl text-xs sm:text-sm font-medium transition cursor-pointer border text-left ${
                         isSelected
-                          ? 'bg-[#a86224] text-white border-[#a86224] shadow-xs font-semibold'
+                          ? 'bg-brand-primary text-white border-brand-primary shadow-xs font-semibold'
                           : 'bg-white text-stone-700 border-[#e7dfd5] hover:bg-[#faf7f2] hover:border-stone-300'
                       }`}
                     >
-                      <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-[#a86224]'}`} />
+                      <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-brand-primary'}`} />
                       <span className="truncate">{label}</span>
                     </button>
                   );
@@ -264,7 +264,7 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
                 onChange={(e) => setMessage(e.target.value)}
                 maxLength={500}
                 placeholder="Explica detalladamente qué ha ocurrido, qué dudas tienes o qué sugerencia quieres compartir para mejorar Miga..."
-                className="w-full px-3.5 py-3 rounded-2xl border border-[#e7dfd5] bg-white text-stone-900 text-xs sm:text-sm placeholder:text-stone-400 focus:outline-hidden focus:ring-2 focus:ring-[#a86224]/30 focus:border-[#a86224] transition resize-none leading-relaxed"
+                className="w-full px-3.5 py-3 rounded-2xl border border-[#e7dfd5] bg-white text-stone-900 text-xs sm:text-sm placeholder:text-stone-400 focus:outline-hidden focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition resize-none leading-relaxed"
                 disabled={isSubmitting}
               />
 
@@ -297,7 +297,7 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
               <button
                 type="submit"
                 disabled={!isMessageValid || isSubmitting}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs sm:text-sm font-semibold transition cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-brand-primary hover:bg-brand-hover text-white text-xs sm:text-sm font-semibold transition cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>

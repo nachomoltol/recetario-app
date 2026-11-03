@@ -31,7 +31,7 @@ export function HeaderBackButton({
       onClick={handleBack}
       className={`h-9 sm:h-10 ${
         compactOnMobile ? 'w-9 sm:w-auto p-0 sm:px-3.5' : 'px-3 sm:px-3.5'
-      } rounded-2xl bg-[#f4efe6] hover:bg-[#ebe3d5] border border-[#e7dfd5] flex items-center justify-center gap-1.5 text-[#a86224] hover:text-[#8c4f1a] transition shadow-2xs cursor-pointer font-bold text-xs sm:text-sm shrink-0 touch-manipulation active:scale-95 ${className}`}
+      } rounded-2xl bg-[#f4efe6] hover:bg-[#ebe3d5] border border-[#e7dfd5] flex items-center justify-center gap-1.5 text-brand-primary hover:text-[#8c4f1a] transition shadow-2xs cursor-pointer font-bold text-xs sm:text-sm shrink-0 touch-manipulation active:scale-95 ${className}`}
       title={title || backLabel}
       aria-label={backLabel}
     >

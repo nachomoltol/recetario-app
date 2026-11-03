@@ -233,7 +233,7 @@ export function IngredientRow({
           </span>
           <span
             className={`text-base sm:text-lg text-stone-800 break-words ${
-              appliedOption ? 'text-[#a86224] font-semibold' : ''
+              appliedOption ? 'text-brand-primary font-semibold' : ''
             }`}
           >
             <FormattedText text={cleanNombreDisplay} />
@@ -244,7 +244,7 @@ export function IngredientRow({
             </span>
           )}
           {appliedOption && (
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#f4efe6] text-[#a86224] font-semibold border border-[#e7dfd5] shrink-0">
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#f4efe6] text-brand-primary font-semibold border border-[#e7dfd5] shrink-0">
               {t('drawer_substituted_by')}{' '}
               {appliedOption.etiqueta_dinamica || appliedOption.etiqueta_tipo || 'Alternativa'}
             </span>
@@ -260,14 +260,14 @@ export function IngredientRow({
           title={isPro ? "Ver 3 alternativas inteligentes con IA" : "Disponible con Miga PRO"}
           className={`shrink-0 min-h-[38px] px-2.5 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 shadow-2xs ${
             appliedOption
-              ? 'bg-amber-50 border-amber-300 text-[#a86224] font-semibold'
-              : 'text-stone-700 hover:text-[#a86224] bg-[#f4efe6] hover:bg-[#eae1d2] border-[#e7dfd5]'
+              ? 'bg-amber-50 border-amber-300 text-brand-primary font-semibold'
+              : 'text-stone-700 hover:text-brand-primary bg-[#f4efe6] hover:bg-[#eae1d2] border-[#e7dfd5]'
           }`}
         >
           {isPending ? (
-            <Loader2 className="w-4 h-4 animate-spin text-[#a86224]" />
+            <Loader2 className="w-4 h-4 animate-spin text-brand-primary" />
           ) : (
-            <ArrowRightLeft className="w-3.5 h-3.5 text-[#a86224]" />
+            <ArrowRightLeft className="w-3.5 h-3.5 text-brand-primary" />
           )}
           <span className="text-xs font-semibold hidden xs:inline">
             {appliedOption ? t('drawer_btn_change') : t('drawer_btn_substitute')}
@@ -314,7 +314,7 @@ export function IngredientRow({
             <div className="p-5 overflow-y-auto space-y-4 flex-1">
               {isPending && (
                 <div className="py-12 flex flex-col items-center justify-center gap-3 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224]">
+                  <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-brand-primary">
                     <Loader2 className="w-6 h-6 animate-spin" />
                   </div>
                   <div>
@@ -357,7 +357,7 @@ export function IngredientRow({
                           ref={isSelected ? technicalCardRef : undefined}
                           className={`w-full rounded-2xl border transition-all duration-200 overflow-hidden ${
                             isSelected
-                              ? 'border-[#a86224] bg-white ring-2 ring-[#a86224]/20 shadow-sm'
+                              ? 'border-brand-primary bg-white ring-2 ring-[#a86224]/20 shadow-sm'
                               : 'border-[#e7dfd5] bg-white hover:bg-[#faf7f2]/80 shadow-2xs'
                           }`}
                         >
@@ -393,7 +393,7 @@ export function IngredientRow({
                             <div className="flex items-center gap-1 shrink-0 text-stone-400">
                               <ChevronDown
                                 className={`w-4 h-4 transition-transform duration-200 ${
-                                  isSelected ? 'rotate-180 text-[#a86224]' : ''
+                                  isSelected ? 'rotate-180 text-brand-primary' : ''
                                 }`}
                               />
                             </div>
@@ -404,7 +404,7 @@ export function IngredientRow({
                             <div className="px-3.5 sm:px-4 pb-4 pt-1 border-t border-[#f4efe6] space-y-3 bg-[#faf7f2]/40 animate-fade-in">
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
                                 <div className="p-3 rounded-xl bg-white border border-[#e7dfd5] space-y-1">
-                                  <span className="font-semibold text-stone-800 flex items-center gap-1.5 text-[#a86224]">
+                                  <span className="font-semibold text-stone-800 flex items-center gap-1.5 text-brand-primary">
                                     <ChefHat className="w-3.5 h-3.5" /> {t('drawer_spec_behavior')}
                                   </span>
                                   <p className="text-stone-600 leading-relaxed font-light">
@@ -413,7 +413,7 @@ export function IngredientRow({
                                 </div>
 
                                 <div className="p-3 rounded-xl bg-white border border-[#e7dfd5] space-y-1">
-                                  <span className="font-semibold text-stone-800 flex items-center gap-1.5 text-[#a86224]">
+                                  <span className="font-semibold text-stone-800 flex items-center gap-1.5 text-brand-primary">
                                     <HeartPulse className="w-3.5 h-3.5" /> {t('drawer_spec_benefit')}
                                   </span>
                                   <p className="text-stone-600 leading-relaxed font-light">
@@ -424,7 +424,7 @@ export function IngredientRow({
 
                               {opt.modo_uso && (
                                 <div className="p-3 rounded-xl bg-[#f4efe6] text-stone-700 text-xs leading-relaxed">
-                                  <strong className="text-[#a86224]">{t('drawer_spec_technique')}:</strong> {opt.modo_uso}
+                                  <strong className="text-brand-primary">{t('drawer_spec_technique')}:</strong> {opt.modo_uso}
                                 </div>
                               )}
 
@@ -436,7 +436,7 @@ export function IngredientRow({
                                   className={`w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95 ${
                                     isOptApplied
                                       ? 'bg-stone-200 text-stone-800 hover:bg-stone-300'
-                                      : 'bg-[#a86224] text-white hover:bg-[#8e511c]'
+                                      : 'bg-brand-primary text-white hover:bg-brand-hover'
                                   }`}
                                 >
                                   {isOptApplied ? (

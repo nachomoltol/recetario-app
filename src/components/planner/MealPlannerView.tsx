@@ -936,28 +936,28 @@ export function MealPlannerView({
       return (
         <div
           key={`${dayDateStr}-${currentSlot}`}
-          className="w-full max-w-full p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between gap-2.5 transition-all hover:border-[#a86224]/50 group shadow-2xs"
+          className="w-full max-w-full p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between gap-2.5 transition-all hover:border-brand-primary/50 group shadow-2xs"
         >
           <div className="min-w-0 flex-1 space-y-0.5">
             {/* Micro header: Icono + Nombre del momento/rol */}
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
-              <SlotIcon className="w-3 h-3 text-[#a86224] shrink-0" />
+              <SlotIcon className="w-3 h-3 text-brand-primary shrink-0" />
               <span className="truncate">{slotLabel}</span>
             </div>
 
             {/* Título de la receta en font-serif-recipe */}
             <Link
               href={`/recipes/${assignedPlan.receta.id}?servings=${displayDiners}&from=planner&date=${dayDateStr}`}
-              className="text-xs sm:text-sm font-bold font-serif-recipe text-stone-900 hover:text-[#a86224] transition-colors block truncate leading-tight"
+              className="text-xs sm:text-sm font-bold font-serif-recipe text-stone-900 hover:text-brand-primary transition-colors block truncate leading-tight"
               title={assignedPlan.receta.titulo}
             >
               {assignedPlan.receta.titulo}
             </Link>
 
             {/* Número de comensales prioritario con icono 👥 */}
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-[#a86224]">
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-brand-primary">
               <span className="flex items-center gap-1 shrink-0">
-                <Users className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+                <Users className="w-3.5 h-3.5 text-brand-primary shrink-0" />
                 <span>{displayDiners}</span>
               </span>
 
@@ -970,7 +970,7 @@ export function MealPlannerView({
                       setTwoCourseDays((prev) => new Set(prev).add(dayDateStr));
                       handleOpenAssignModal(dayDateStr, 'almuerzo_2');
                     }}
-                    className="text-[10px] font-semibold text-stone-500 hover:text-[#a86224] hover:underline cursor-pointer"
+                    className="text-[10px] font-semibold text-stone-500 hover:text-brand-primary hover:underline cursor-pointer"
                   >
                     {t('planner_add_second_course')}
                   </button>
@@ -984,7 +984,7 @@ export function MealPlannerView({
             <button
               type="button"
               onClick={() => handleOpenAssignModal(dayDateStr, currentSlot)}
-              className="w-7 h-7 rounded-xl bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] text-stone-600 hover:text-[#a86224] flex items-center justify-center transition cursor-pointer shadow-2xs"
+              className="w-7 h-7 rounded-xl bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] text-stone-600 hover:text-brand-primary flex items-center justify-center transition cursor-pointer shadow-2xs"
               title={t('planner_replace_dish')}
             >
               <Plus className="w-3.5 h-3.5" />
@@ -1006,7 +1006,7 @@ export function MealPlannerView({
     return (
       <div
         key={`${dayDateStr}-${currentSlot}`}
-        className="w-full max-w-full p-2.5 sm:p-3 rounded-2xl bg-white border border-dashed border-[#d5cabb] hover:border-[#a86224] transition-all flex items-center justify-between gap-2.5"
+        className="w-full max-w-full p-2.5 sm:p-3 rounded-2xl bg-white border border-dashed border-[#d5cabb] hover:border-brand-primary transition-all flex items-center justify-between gap-2.5"
       >
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-7 h-7 rounded-xl bg-[#faf7f2] flex items-center justify-center text-stone-400 shrink-0">
@@ -1018,7 +1018,7 @@ export function MealPlannerView({
               <button
                 type="button"
                 onClick={() => setTwoCourseDays((prev) => new Set(prev).add(dayDateStr))}
-                className="text-[10px] font-semibold text-stone-500 hover:text-[#a86224] hover:underline cursor-pointer flex items-center gap-0.5 mt-0.5 transition"
+                className="text-[10px] font-semibold text-stone-500 hover:text-brand-primary hover:underline cursor-pointer flex items-center gap-0.5 mt-0.5 transition"
               >
                 <span>{t('planner_add_second_course')}</span>
               </button>
@@ -1029,7 +1029,7 @@ export function MealPlannerView({
         <button
           type="button"
           onClick={() => handleOpenAssignModal(dayDateStr, currentSlot)}
-          className="min-h-[28px] px-2.5 py-1 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer shrink-0"
+          className="min-h-[28px] px-2.5 py-1 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer shrink-0"
         >
           <Plus className="w-3 h-3" />
           <span>{t('planner_assign_btn')}</span>
@@ -1050,12 +1050,12 @@ export function MealPlannerView({
       return (
         <div
           key={`${dayDateStr}-${currentSlot}`}
-          className="w-full p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2 text-left hover:border-[#a86224]/50 transition-all group shadow-2xs flex flex-col justify-between"
+          className="w-full p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2 text-left hover:border-brand-primary/50 transition-all group shadow-2xs flex flex-col justify-between"
         >
           {/* Fila superior: Icono de comida + Nombre del slot */}
           <div className="flex items-center justify-between text-[11px] font-semibold text-stone-600">
             <span className="flex items-center gap-1.5 capitalize text-stone-600">
-              <SlotIcon className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+              <SlotIcon className="w-3.5 h-3.5 text-brand-primary shrink-0" />
               <span className="truncate">{slotLabel}</span>
             </span>
           </div>
@@ -1064,7 +1064,7 @@ export function MealPlannerView({
           <div className="flex-1 py-0.5">
             <Link
               href={`/recipes/${assignedPlan.receta.id}?servings=${displayDiners}&from=planner&date=${dayDateStr}`}
-              className="text-xs sm:text-sm font-bold font-serif-recipe text-stone-900 hover:text-[#a86224] transition-colors block line-clamp-2 leading-snug"
+              className="text-xs sm:text-sm font-bold font-serif-recipe text-stone-900 hover:text-brand-primary transition-colors block line-clamp-2 leading-snug"
               title={assignedPlan.receta.titulo}
             >
               {assignedPlan.receta.titulo}
@@ -1072,10 +1072,10 @@ export function MealPlannerView({
           </div>
 
           {/* Barra inferior: Raciones y Botones de acción ordenados horizontalmente sin comprimirse */}
-          <div className="flex items-center justify-between pt-1.5 border-t border-[#e7dfd5]/60 text-[11px] font-semibold text-[#a86224]">
+          <div className="flex items-center justify-between pt-1.5 border-t border-[#e7dfd5]/60 text-[11px] font-semibold text-brand-primary">
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="flex items-center gap-1 text-[#a86224]" title={`${displayDiners} ${t('planner_servings')}`}>
-                <Users className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+              <span className="flex items-center gap-1 text-brand-primary" title={`${displayDiners} ${t('planner_servings')}`}>
+                <Users className="w-3.5 h-3.5 text-brand-primary shrink-0" />
                 <span>{displayDiners}</span>
               </span>
 
@@ -1088,7 +1088,7 @@ export function MealPlannerView({
                       setTwoCourseDays((prev) => new Set(prev).add(dayDateStr));
                       handleOpenAssignModal(dayDateStr, 'almuerzo_2');
                     }}
-                    className="text-[10px] font-semibold text-stone-500 hover:text-[#a86224] hover:underline cursor-pointer"
+                    className="text-[10px] font-semibold text-stone-500 hover:text-brand-primary hover:underline cursor-pointer"
                     title={t('planner_add_second_course')}
                   >
                     {t('planner_add_second_course')}
@@ -1101,7 +1101,7 @@ export function MealPlannerView({
               <button
                 type="button"
                 onClick={() => handleOpenAssignModal(dayDateStr, currentSlot)}
-                className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] text-stone-600 hover:text-[#a86224] flex items-center justify-center transition cursor-pointer shadow-2xs"
+                className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white hover:bg-[#f4efe6] border border-[#e7dfd5] text-stone-600 hover:text-brand-primary flex items-center justify-center transition cursor-pointer shadow-2xs"
                 title={t('planner_replace_dish')}
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -1124,7 +1124,7 @@ export function MealPlannerView({
     return (
       <div
         key={`${dayDateStr}-${currentSlot}`}
-        className="w-full p-2.5 sm:p-3 rounded-2xl bg-white border border-dashed border-[#d5cabb] hover:border-[#a86224] transition-all space-y-1.5"
+        className="w-full p-2.5 sm:p-3 rounded-2xl bg-white border border-dashed border-[#d5cabb] hover:border-brand-primary transition-all space-y-1.5"
       >
         <div className="flex items-center gap-1.5 text-[11px] font-semibold text-stone-500">
           <SlotIcon className="w-3.5 h-3.5 text-stone-400 shrink-0" />
@@ -1133,7 +1133,7 @@ export function MealPlannerView({
         <button
           type="button"
           onClick={() => handleOpenAssignModal(dayDateStr, currentSlot)}
-          className="w-full min-h-[34px] py-1 px-2 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] text-[11px] font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
+          className="w-full min-h-[34px] py-1 px-2 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary text-[11px] font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
         >
           <Plus className="w-3 h-3" />
           <span>{t('planner_assign_btn')}</span>
@@ -1142,7 +1142,7 @@ export function MealPlannerView({
           <button
             type="button"
             onClick={() => setTwoCourseDays((prev) => new Set(prev).add(dayDateStr))}
-            className="w-full text-center text-[10px] font-semibold text-stone-500 hover:text-[#a86224] transition cursor-pointer pt-0.5"
+            className="w-full text-center text-[10px] font-semibold text-stone-500 hover:text-brand-primary transition cursor-pointer pt-0.5"
           >
             {t('planner_add_second_course')}
           </button>
@@ -1174,7 +1174,7 @@ export function MealPlannerView({
             onClick={handleCurrentWeek}
             className="px-2.5 py-1 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[11px] font-bold font-serif-recipe text-stone-800 transition cursor-pointer leading-tight flex items-center gap-1.5"
           >
-            {isLoadingWeek && <Loader2 className="w-3 h-3 animate-spin text-[#a86224]" />}
+            {isLoadingWeek && <Loader2 className="w-3 h-3 animate-spin text-brand-primary" />}
             <span>
               {language === 'en'
                 ? `${weekDays[0].monthName} ${weekDays[0].dayNum}–${weekDays[6].dayNum}`
@@ -1211,9 +1211,9 @@ export function MealPlannerView({
             title={t('planner_export_pdf')}
           >
             {isExportingPdf ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#a86224]" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-primary" />
             ) : (
-              <Download className="w-3.5 h-3.5 text-[#a86224]" />
+              <Download className="w-3.5 h-3.5 text-brand-primary" />
             )}
           </button>
 
@@ -1221,7 +1221,7 @@ export function MealPlannerView({
             type="button"
             onClick={() => handleGenerateShoppingList()}
             disabled={isShoppingPending}
-            className="h-8 px-2.5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs flex items-center gap-1 shadow-xs transition cursor-pointer disabled:opacity-50"
+            className="h-8 px-2.5 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs flex items-center gap-1 shadow-xs transition cursor-pointer disabled:opacity-50"
             title={t('planner_generate_shopping_list')}
           >
             {isShoppingPending ? (
@@ -1276,7 +1276,7 @@ export function MealPlannerView({
                 {t('planner_weekly_planning')}
               </span>
             </div>
-            {isLoadingWeek && <Loader2 className="w-4 h-4 animate-spin text-[#a86224]" />}
+            {isLoadingWeek && <Loader2 className="w-4 h-4 animate-spin text-brand-primary" />}
           </div>
         </div>
 
@@ -1304,9 +1304,9 @@ export function MealPlannerView({
             title={t('planner_export_pdf')}
           >
             {isExportingPdf ? (
-              <Loader2 className="w-4 h-4 animate-spin text-[#a86224]" />
+              <Loader2 className="w-4 h-4 animate-spin text-brand-primary" />
             ) : (
-              <Download className="w-4 h-4 text-[#a86224]" />
+              <Download className="w-4 h-4 text-brand-primary" />
             )}
             <span>{t('planner_export_pdf')}</span>
             <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-md ml-0.5">
@@ -1318,7 +1318,7 @@ export function MealPlannerView({
             type="button"
             onClick={() => handleGenerateShoppingList()}
             disabled={isShoppingPending}
-            className="min-h-[46px] px-5 py-2.5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer disabled:opacity-50"
+            className="min-h-[46px] px-5 py-2.5 rounded-2xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer disabled:opacity-50"
           >
             <ShoppingCart className="w-4 h-4" />
             <span>
@@ -1400,7 +1400,7 @@ export function MealPlannerView({
             <span className="text-sm font-bold font-serif-recipe text-stone-900 capitalize">
               {activeDay.fullDateLabel}
             </span>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-[#a86224] px-2 py-0.5 rounded-lg bg-[#faf7f2] border border-[#e7dfd5]">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-brand-primary px-2 py-0.5 rounded-lg bg-[#faf7f2] border border-[#e7dfd5]">
               {activeDay.shortName} {activeDay.dayNum}
             </span>
           </div>
@@ -1429,7 +1429,7 @@ export function MealPlannerView({
               >
                 {/* Encabezado del día */}
                 <div className="border-b border-[#f4efe6] pb-2 text-center">
-                  <span className="text-xs uppercase font-bold tracking-wider text-[#a86224] block truncate">
+                  <span className="text-xs uppercase font-bold tracking-wider text-brand-primary block truncate">
                     {day.name}
                   </span>
                   <span className="text-xl font-bold font-serif-recipe text-stone-900">
@@ -1471,7 +1471,7 @@ export function MealPlannerView({
                     {t('planner_assign_date')}: <span className="font-medium text-stone-700">{pickerModal.fecha}</span>
                   </span>
                   <span>·</span>
-                  <span className="text-[#a86224] font-semibold flex items-center gap-1">
+                  <span className="text-brand-primary font-semibold flex items-center gap-1">
                     <Users className="w-3 h-3" />
                     <span>{defaultDiners} {t('home_servings')}</span>
                   </span>
@@ -1494,7 +1494,7 @@ export function MealPlannerView({
                 value={pickerSearchQuery}
                 onChange={(e) => setPickerSearchQuery(e.target.value)}
                 placeholder={isEn ? 'Search by title or tag...' : 'Buscar receta por título o etiqueta...'}
-                className="w-full pl-9 pr-8 py-2 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#a86224] focus:bg-white transition"
+                className="w-full pl-9 pr-8 py-2 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-brand-primary focus:bg-white transition"
               />
               {pickerSearchQuery && (
                 <button
@@ -1545,7 +1545,7 @@ export function MealPlannerView({
                       }}
                       className={`min-h-[30px] px-2.5 sm:px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer border ${
                         isActive
-                          ? 'bg-[#a86224] text-white border-[#a86224] shadow-xs'
+                          ? 'bg-brand-primary text-white border-brand-primary shadow-xs'
                           : 'bg-[#faf7f2] hover:bg-white text-stone-600 border-[#e7dfd5]'
                       }`}
                     >
@@ -1589,7 +1589,7 @@ export function MealPlannerView({
               <div className="flex items-center justify-between text-[11px] text-stone-500 px-1 shrink-0">
                 <span>
                   {isEn ? 'Filtered by' : 'Filtrando por'}:{' '}
-                  <strong className="text-[#a86224]">
+                  <strong className="text-brand-primary">
                     {isEn
                       ? PICKER_FILTER_CHIPS.find((c) => c.id === pickerFilterCategory)?.labelEn
                       : PICKER_FILTER_CHIPS.find((c) => c.id === pickerFilterCategory)?.labelEs}
@@ -1599,7 +1599,7 @@ export function MealPlannerView({
                 <button
                   type="button"
                   onClick={() => setPickerFilterCategory('todos')}
-                  className="text-[#a86224] hover:underline font-semibold cursor-pointer"
+                  className="text-brand-primary hover:underline font-semibold cursor-pointer"
                 >
                   {isEn ? 'Show all' : 'Mostrar todas'}
                 </button>
@@ -1609,7 +1609,7 @@ export function MealPlannerView({
             {/* Lista de recetas filtradas o estado vacío */}
             {filteredPickerRecipes.length === 0 ? (
               <div className="p-6 sm:p-8 text-center space-y-3 my-auto">
-                <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] text-brand-primary flex items-center justify-center mx-auto">
                   <BookOpen className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
@@ -1640,7 +1640,7 @@ export function MealPlannerView({
                         setPickerFilterCategory('todos');
                         setPickerSearchQuery('');
                       }}
-                      className="px-4 py-2 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-brand-primary hover:bg-brand-hover text-white text-xs font-semibold shadow-xs transition cursor-pointer"
                     >
                       {isEn ? `View all recipes (${userRecipes.length})` : `Ver todas mis recetas (${userRecipes.length})`}
                     </button>
@@ -1660,14 +1660,14 @@ export function MealPlannerView({
                     key={r.id}
                     type="button"
                     onClick={() => handleAssignRecipe(r.id)}
-                    className="w-full min-h-[48px] p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] hover:bg-white border border-[#e7dfd5] hover:border-[#a86224] transition text-left flex items-center justify-between gap-3 cursor-pointer group shadow-2xs"
+                    className="w-full min-h-[48px] p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] hover:bg-white border border-[#e7dfd5] hover:border-brand-primary transition text-left flex items-center justify-between gap-3 cursor-pointer group shadow-2xs"
                   >
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-bold text-xs sm:text-sm text-stone-900 group-hover:text-[#a86224] transition-colors line-clamp-1">
+                      <h4 className="font-bold text-xs sm:text-sm text-stone-900 group-hover:text-brand-primary transition-colors line-clamp-1">
                         {r.titulo}
                       </h4>
                       <div className="flex items-center gap-2 text-[11px] text-stone-500 mt-0.5">
-                        <span className="flex items-center gap-1 font-semibold text-[#a86224]">
+                        <span className="flex items-center gap-1 font-semibold text-brand-primary">
                           <Users className="w-3 h-3" />
                           <span>{defaultDiners} {t('home_servings')}</span>
                         </span>
@@ -1688,7 +1688,7 @@ export function MealPlannerView({
                         )}
                       </div>
                     </div>
-                    <div className="w-7 h-7 rounded-xl bg-white group-hover:bg-[#a86224] border border-[#e7dfd5] group-hover:border-[#a86224] flex items-center justify-center shrink-0 transition-colors">
+                    <div className="w-7 h-7 rounded-xl bg-white group-hover:bg-brand-primary border border-[#e7dfd5] group-hover:border-brand-primary flex items-center justify-center shrink-0 transition-colors">
                       <Plus className="w-4 h-4 text-stone-500 group-hover:text-white" />
                     </div>
                   </button>
@@ -1707,7 +1707,7 @@ export function MealPlannerView({
           <div className="w-full max-w-xl rounded-3xl bg-white border border-[#e7dfd5] shadow-2xl p-4 sm:p-6 space-y-3 sm:space-y-4 max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-[#e7dfd5] pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-brand-primary flex items-center justify-center">
                   <ShoppingCart className="w-5 h-5" />
                 </div>
                 <div>
@@ -1765,7 +1765,7 @@ export function MealPlannerView({
                     <button
                       type="button"
                       onClick={() => handleUpdateDaysInModal(weekDays.map((d) => d.dateStr))}
-                      className="text-[#a86224] hover:underline cursor-pointer font-semibold"
+                      className="text-brand-primary hover:underline cursor-pointer font-semibold"
                     >
                       {t('planner_filter_all')}
                     </button>
@@ -1773,7 +1773,7 @@ export function MealPlannerView({
                     <button
                       type="button"
                       onClick={() => handleUpdateDaysInModal(weekDays.slice(0, 5).map((d) => d.dateStr))}
-                      className="text-[#a86224] hover:underline cursor-pointer font-semibold"
+                      className="text-brand-primary hover:underline cursor-pointer font-semibold"
                     >
                       {t('planner_filter_mon_fri')}
                     </button>
@@ -1781,7 +1781,7 @@ export function MealPlannerView({
                     <button
                       type="button"
                       onClick={() => handleUpdateDaysInModal(weekDays.slice(0, 4).map((d) => d.dateStr))}
-                      className="text-[#a86224] hover:underline cursor-pointer font-semibold"
+                      className="text-brand-primary hover:underline cursor-pointer font-semibold"
                     >
                       {t('planner_filter_mon_thu')}
                     </button>
@@ -1807,7 +1807,7 @@ export function MealPlannerView({
                         }}
                         className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1 shrink-0 ${
                           isSelected
-                            ? 'bg-[#a86224] text-white shadow-2xs font-bold'
+                            ? 'bg-brand-primary text-white shadow-2xs font-bold'
                             : 'bg-white hover:bg-stone-50 border border-[#e7dfd5] text-stone-600'
                         }`}
                       >
@@ -1823,7 +1823,7 @@ export function MealPlannerView({
                   /* Píldora Resumen Compacta en Móvil/Desktop */
                   <div className="flex items-center justify-between bg-white border border-[#e7dfd5] px-3 py-2 rounded-xl text-xs shadow-2xs">
                     <div className="flex items-center gap-2 text-stone-700 min-w-0">
-                      <Calendar className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+                      <Calendar className="w-3.5 h-3.5 text-brand-primary shrink-0" />
                       <span className="font-semibold truncate">
                         {rangeStartDate} — {rangeEndDate}
                       </span>
@@ -1834,7 +1834,7 @@ export function MealPlannerView({
                     <button
                       type="button"
                       onClick={() => setIsRangeConfigOpen(true)}
-                      className="flex items-center gap-1 text-[11px] font-semibold text-[#a86224] hover:text-[#8e511c] ml-2 shrink-0 cursor-pointer"
+                      className="flex items-center gap-1 text-[11px] font-semibold text-brand-primary hover:text-[#8e511c] ml-2 shrink-0 cursor-pointer"
                     >
                       <span>{t('planner_adjust_dates')}</span>
                       <ChevronDown className="w-3.5 h-3.5" />
@@ -1858,7 +1858,7 @@ export function MealPlannerView({
                             key={days}
                             type="button"
                             onClick={() => handleApplyPresetDays(days)}
-                            className="px-2 py-0.5 rounded-lg bg-white border border-[#e7dfd5] hover:border-[#a86224] text-[#a86224] text-[11px] font-semibold transition cursor-pointer shadow-2xs"
+                            className="px-2 py-0.5 rounded-lg bg-white border border-[#e7dfd5] hover:border-brand-primary text-brand-primary text-[11px] font-semibold transition cursor-pointer shadow-2xs"
                           >
                             {t(labelKey)}
                           </button>
@@ -1899,7 +1899,7 @@ export function MealPlannerView({
                               end: rangeEndDate,
                             });
                           }}
-                          className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                          className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-brand-primary hover:bg-brand-hover text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
                         >
                           {isShoppingPending ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1940,9 +1940,9 @@ export function MealPlannerView({
                     className="flex-1 min-h-[36px] py-2 px-2.5 sm:px-3 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] font-medium text-xs sm:text-sm text-stone-800 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
                   >
                     {isExportingPdf ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#a86224] shrink-0" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-primary shrink-0" />
                     ) : (
-                      <Download className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+                      <Download className="w-3.5 h-3.5 text-brand-primary shrink-0" />
                     )}
                     <span className="truncate">{t('planner_export_pdf')}</span>
                     <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-md shrink-0">
@@ -1955,7 +1955,7 @@ export function MealPlannerView({
                     onClick={handleCopyShoppingList}
                     className="flex-1 min-h-[36px] py-2 px-2.5 sm:px-3 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] font-medium text-xs sm:text-sm text-stone-800 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                   >
-                    <Copy className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+                    <Copy className="w-3.5 h-3.5 text-brand-primary shrink-0" />
                     <span className="truncate">{isCopied ? t('planner_copied') : t('planner_copy_by_aisle')}</span>
                   </button>
                 </div>
@@ -2039,7 +2039,7 @@ export function MealPlannerView({
 
                                 <span
                                   className={`text-xs sm:text-sm font-bold shrink-0 text-right tabular-nums ml-2.5 ${
-                                    isChecked ? 'line-through text-stone-400' : 'text-[#a86224]'
+                                    isChecked ? 'line-through text-stone-400' : 'text-brand-primary'
                                   }`}
                                 >
                                   {item.cantidadTotal > 0 ? `${item.cantidadTotal} ${item.unidad}` : item.unidad}

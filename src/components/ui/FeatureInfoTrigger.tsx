@@ -53,7 +53,7 @@ export function FeatureInfoTrigger({
           setIsDrawerOpen(true);
         }}
         aria-label={title}
-        className="w-6 h-6 min-w-[24px] min-h-[24px] rounded-full bg-[#f4efe6] hover:bg-[#a86224] text-[#a86224] hover:text-white border border-[#e7dfd5] hover:border-[#a86224] flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#a86224]/30"
+        className="w-6 h-6 min-w-[24px] min-h-[24px] rounded-full bg-[#f4efe6] hover:bg-brand-primary text-brand-primary hover:text-white border border-[#e7dfd5] hover:border-brand-primary flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
       >
         <HelpCircle className="w-3.5 h-3.5 stroke-[2.2]" />
       </button>
@@ -120,7 +120,7 @@ export function FeatureInfoTrigger({
 
             <div className="px-5 py-3.5 border-b border-[#e7dfd5] flex items-center justify-between gap-3 shrink-0 bg-white">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-7 h-7 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary flex items-center justify-center shrink-0">
                   <HelpCircle className="w-4 h-4" />
                 </div>
                 <Drawer.Title className="text-base font-bold font-serif-recipe text-stone-900 leading-tight truncate">
@@ -155,7 +155,7 @@ export function FeatureInfoTrigger({
                             {b.label}
                           </span>
                           {b.badge && (
-                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-100 text-[#a86224] border border-amber-300/80 uppercase">
+                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-100 text-brand-primary border border-amber-300/80 uppercase">
                               {b.badge}
                             </span>
                           )}
@@ -171,7 +171,7 @@ export function FeatureInfoTrigger({
 
               {footerNote && (
                 <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-amber-900 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#a86224] shrink-0" />
+                  <Sparkles className="w-4 h-4 text-brand-primary shrink-0" />
                   <span className="font-medium leading-snug">{footerNote}</span>
                 </div>
               )}
@@ -181,7 +181,7 @@ export function FeatureInfoTrigger({
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}
-                className="w-full py-2.5 px-4 rounded-xl font-semibold text-sm text-white bg-[#a86224] hover:bg-[#8e511c] transition cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl font-semibold text-sm text-white bg-brand-primary hover:bg-brand-hover transition cursor-pointer"
               >
                 {closeLabel}
               </button>

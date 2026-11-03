@@ -23,7 +23,7 @@ export function SettingsHeroCard() {
   return (
     <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs">
       <div className="flex items-center gap-3.5">
-        <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+        <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
           <Settings className="w-6 h-6" />
         </div>
         <div>
@@ -44,7 +44,7 @@ export function SettingsProfileBanner() {
   return (
     <div className="p-6 rounded-3xl bg-[#f4efe6] border border-[#e7dfd5] flex flex-col sm:flex-row items-center justify-between gap-4">
       <div className="flex items-center gap-3 text-center sm:text-left">
-        <div className="w-10 h-10 rounded-2xl bg-white border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+        <div className="w-10 h-10 rounded-2xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
           <ChefHat className="w-5 h-5" />
         </div>
         <div>
@@ -59,7 +59,7 @@ export function SettingsProfileBanner() {
 
       <Link
         href="/profile"
-        className="w-full sm:w-auto min-h-[42px] px-5 py-2.5 rounded-xl bg-white hover:bg-stone-100 text-[#a86224] border border-[#e7dfd5] text-xs font-semibold flex items-center justify-center transition shadow-2xs"
+        className="w-full sm:w-auto min-h-[42px] px-5 py-2.5 rounded-xl bg-white hover:bg-stone-100 text-brand-primary border border-[#e7dfd5] text-xs font-semibold flex items-center justify-center transition shadow-2xs"
       >
         {t('settings_profile_link_btn')}
       </Link>

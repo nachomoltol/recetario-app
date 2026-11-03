@@ -376,7 +376,7 @@ export function CalendarRangePicker({
     <div className="space-y-4 select-none">
       {/* Instrucción clara superior bilingüe */}
       <div className="flex items-start gap-2.5 p-3 sm:p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-700">
-        <Info className="w-4 h-4 text-[#a86224] shrink-0 mt-0.5" />
+        <Info className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
         <div className="text-xs sm:text-sm">
           <p className="font-semibold text-stone-900">
             {isEn
@@ -478,17 +478,17 @@ export function CalendarRangePicker({
                   }}
                   className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex flex-col items-center justify-center text-xs sm:text-sm font-semibold transition touch-manipulation cursor-pointer ${
                     isStart || isEnd
-                      ? 'bg-[#a86224] text-white font-bold shadow-xs scale-105 z-10 opacity-100'
+                      ? 'bg-brand-primary text-white font-bold shadow-xs scale-105 z-10 opacity-100'
                       : isInRange
                       ? 'text-stone-900 font-bold hover:bg-[#e7dfd5] opacity-100'
                       : isDimmed
                       ? 'text-stone-400 opacity-60 hover:opacity-100 hover:text-stone-800 hover:bg-[#f4efe6]'
                       : 'text-stone-700 hover:bg-[#f4efe6]'
-                  } ${isToday && !isStart && !isEnd ? 'border border-[#a86224]/50' : ''}`}
+                  } ${isToday && !isStart && !isEnd ? 'border border-brand-primary/50' : ''}`}
                 >
                   <span>{dayNum}</span>
                   {isToday && !isStart && !isEnd && (
-                    <span className="w-1 h-1 rounded-full bg-[#a86224] -mt-0.5" />
+                    <span className="w-1 h-1 rounded-full bg-brand-primary -mt-0.5" />
                   )}
                 </button>
               </div>
@@ -500,7 +500,7 @@ export function CalendarRangePicker({
       {/* Caja Inferior de Confirmación Única */}
       <div className="p-3.5 sm:p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between gap-3 text-xs sm:text-sm animate-fade-in">
         <div className="flex items-center gap-2 text-stone-700">
-          <CalendarIcon className="w-4 h-4 text-[#a86224] shrink-0" />
+          <CalendarIcon className="w-4 h-4 text-brand-primary shrink-0" />
           <span className="font-semibold">
             {isEn ? 'Planned period:' : 'Período planificado:'}
           </span>

@@ -41,7 +41,7 @@ export function CollectionHeroHeader() {
 
       <Link
         href="/recipes"
-        className="min-h-[44px] px-4 py-2 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs sm:text-sm font-semibold inline-flex items-center justify-center gap-2 shadow-xs transition self-start sm:self-auto"
+        className="min-h-[44px] px-4 py-2 rounded-2xl bg-brand-primary hover:bg-brand-hover text-white text-xs sm:text-sm font-semibold inline-flex items-center justify-center gap-2 shadow-xs transition self-start sm:self-auto"
       >
         <Sparkles className="w-4 h-4" />
         <span>{language === 'en' ? 'Capture New Recipe' : 'Capturar Nueva Receta'}</span>

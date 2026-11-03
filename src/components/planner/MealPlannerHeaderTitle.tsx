@@ -11,7 +11,7 @@ export function MealPlannerHeaderTitle() {
         <span className="text-base font-bold font-serif-recipe tracking-tight text-stone-900 block leading-tight">
           {t('planner_title')}
         </span>
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#f4efe6] text-brand-primary border border-[#e7dfd5]">
           {t('planner_weekly_badge')}
         </span>
       </div>

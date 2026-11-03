@@ -193,7 +193,7 @@ export function QuickCategorizeModal({
           <div className="px-5 py-3 border-b border-[#e7dfd5] flex items-center justify-between shrink-0 bg-white">
             <div className="min-w-0 pr-3 flex-1">
               <div className="flex items-center gap-2">
-                <ChefHat className="w-4 h-4 text-[#a86224] shrink-0" />
+                <ChefHat className="w-4 h-4 text-brand-primary shrink-0" />
                 <Drawer.Title className="text-sm sm:text-base font-bold font-serif-recipe text-stone-900 leading-tight truncate">
                   {t('quick_categorize_modal_title')}
                 </Drawer.Title>
@@ -221,11 +221,11 @@ export function QuickCategorizeModal({
                     .replace('{current}', String(currentStep))
                     .replace('{total}', String(totalCount))}
                 </span>
-                <span className="text-[#a86224]">{progressPercent}%</span>
+                <span className="text-brand-primary">{progressPercent}%</span>
               </div>
               <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-[#a86224] transition-all duration-300 rounded-full"
+                  className="h-full bg-brand-primary transition-all duration-300 rounded-full"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
@@ -251,7 +251,7 @@ export function QuickCategorizeModal({
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className="w-full min-h-[48px] py-3 px-6 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white font-bold text-sm transition active:scale-95 shadow-sm cursor-pointer touch-manipulation select-none"
+                  className="w-full min-h-[48px] py-3 px-6 rounded-2xl bg-brand-primary hover:bg-brand-hover text-white font-bold text-sm transition active:scale-95 shadow-sm cursor-pointer touch-manipulation select-none"
                 >
                   {t('quick_categorize_success_btn')}
                 </button>
@@ -270,7 +270,7 @@ export function QuickCategorizeModal({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-[#f4efe6] text-[#a86224]">
+                    <div className="w-full h-full flex items-center justify-center bg-[#f4efe6] text-brand-primary">
                       <ChefHat className="w-6 h-6" />
                     </div>
                   )}
@@ -290,7 +290,7 @@ export function QuickCategorizeModal({
               {/* Chips de Momentos del Día */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#a86224]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-brand-primary">
                     {t('categorize_moments_title')}
                   </span>
                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full">
@@ -310,13 +310,13 @@ export function QuickCategorizeModal({
                         onClick={() => toggleMomento(opt.id)}
                         className={`min-h-[42px] px-3.5 py-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-all active:scale-95 flex items-center gap-2 cursor-pointer select-none touch-manipulation shadow-2xs ${
                           isSelected
-                            ? 'bg-[#a86224] text-white border-[#a86224]'
-                            : 'bg-white hover:bg-[#fbf9f5] text-stone-700 border-[#e7dfd5] hover:border-[#a86224]/50'
+                            ? 'bg-brand-primary text-white border-brand-primary'
+                            : 'bg-white hover:bg-[#fbf9f5] text-stone-700 border-[#e7dfd5] hover:border-brand-primary/50'
                         }`}
                       >
                         <Icon
                           className={`w-4 h-4 shrink-0 ${
-                            isSelected ? 'text-white' : 'text-[#a86224]'
+                            isSelected ? 'text-white' : 'text-brand-primary'
                           }`}
                         />
                         <span>{t(opt.labelKey)}</span>
@@ -364,7 +364,7 @@ export function QuickCategorizeModal({
                 {/* Switch estilo iOS */}
                 <div
                   className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 ease-in-out shrink-0 ${
-                    isMenuFavorite ? 'bg-[#a86224]' : 'bg-stone-200'
+                    isMenuFavorite ? 'bg-brand-primary' : 'bg-stone-200'
                   }`}
                 >
                   <div
@@ -389,7 +389,7 @@ export function QuickCategorizeModal({
                   type="button"
                   onClick={handleSaveAndNext}
                   disabled={isSaving}
-                  className="flex-1 min-h-[48px] py-3 px-5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] active:scale-95 transition-all text-white text-xs sm:text-sm font-bold shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 touch-manipulation select-none"
+                  className="flex-1 min-h-[48px] py-3 px-5 rounded-2xl bg-brand-primary hover:bg-brand-hover active:scale-95 transition-all text-white text-xs sm:text-sm font-bold shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 touch-manipulation select-none"
                 >
                   {isSaving ? (
                     <>

@@ -60,7 +60,7 @@ export const AISLE_CONFIGS: Record<SupermarketAisle, AisleConfig> = {
   'Despensa y Especias': {
     name: 'Despensa y Especias',
     colorBg: 'bg-[#f4efe6]',
-    colorText: 'text-[#a86224]',
+    colorText: 'text-brand-primary',
     colorBorder: 'border-[#e7dfd5]',
     iconName: 'Package',
   },

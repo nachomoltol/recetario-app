@@ -14,7 +14,7 @@ export function ShareAppsCard() {
       <div className="p-6 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
               <Share2 className="w-5 h-5" />
             </div>
             <div>
@@ -37,13 +37,13 @@ export function ShareAppsCard() {
 
         <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#faf7f2] p-4 rounded-2xl border border-[#e7dfd5]">
           <div className="flex items-center gap-2.5 text-xs text-stone-600">
-            <Smartphone className="w-4 h-4 text-[#a86224] shrink-0" />
+            <Smartphone className="w-4 h-4 text-brand-primary shrink-0" />
             <span>{t('settings_share_ios_label')}</span>
           </div>
           <button
             type="button"
             onClick={() => setShowTutorial(true)}
-            className="min-h-[42px] px-4 py-2 rounded-xl bg-white hover:bg-[#ebdcc9] text-[#a86224] font-semibold text-xs border border-[#e7dfd5] hover:border-[#a86224] flex items-center justify-center gap-2 transition cursor-pointer shrink-0 shadow-2xs"
+            className="min-h-[42px] px-4 py-2 rounded-xl bg-white hover:bg-[#ebdcc9] text-brand-primary font-semibold text-xs border border-[#e7dfd5] hover:border-brand-primary flex items-center justify-center gap-2 transition cursor-pointer shrink-0 shadow-2xs"
           >
             <Smartphone className="w-3.5 h-3.5" />
             <span>{t('settings_share_ios_btn')}</span>

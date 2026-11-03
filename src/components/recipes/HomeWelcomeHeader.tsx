@@ -26,7 +26,7 @@ export function HomeWelcomeHeader({ userName }: HomeWelcomeHeaderProps) {
           />
         </Link>
         <div className="h-10 sm:h-14 w-px bg-[#e7dfd5] shrink-0" />
-        <span className="text-xs sm:text-base font-bold uppercase tracking-wider text-[#a86224] leading-snug">
+        <span className="text-xs sm:text-base font-bold uppercase tracking-wider text-brand-primary leading-snug">
           {t('home_tag')}
         </span>
       </div>

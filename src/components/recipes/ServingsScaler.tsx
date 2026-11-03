@@ -19,7 +19,7 @@ export function ServingsScaler({
   return (
     <div className="p-3 sm:p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between gap-3">
       <div className="flex items-center gap-2 text-stone-700">
-        <Users className="w-4 h-4 text-[#a86224]" />
+        <Users className="w-4 h-4 text-brand-primary" />
         <span className="text-xs sm:text-sm font-semibold">{t('recipe_control_diners')}:</span>
       </div>
 

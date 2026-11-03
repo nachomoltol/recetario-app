@@ -261,7 +261,7 @@ export function SmartMenuWizardView({
           onClick={() => setCurrentStep(1)}
           className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
             currentStep === 1
-              ? 'bg-[#a86224] text-white shadow-xs'
+              ? 'bg-brand-primary text-white shadow-xs'
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
@@ -273,7 +273,7 @@ export function SmartMenuWizardView({
           onClick={() => setCurrentStep(2)}
           className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
             currentStep === 2
-              ? 'bg-[#a86224] text-white shadow-xs'
+              ? 'bg-brand-primary text-white shadow-xs'
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
@@ -303,7 +303,7 @@ export function SmartMenuWizardView({
             <button
               type="button"
               onClick={() => setCurrentStep(2)}
-              className="w-full min-h-[50px] rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition active:scale-[0.99] cursor-pointer touch-manipulation"
+              className="w-full min-h-[50px] rounded-2xl bg-brand-primary hover:bg-brand-hover text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition active:scale-[0.99] cursor-pointer touch-manipulation"
             >
               <span>{t('smart_menu_next_step')}</span>
               <ArrowRight className="w-4 h-4" />
@@ -364,7 +364,7 @@ export function SmartMenuWizardView({
                     setIncluirDesayunos(!incluirDesayunos);
                   }}
                   className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    incluirDesayunos ? 'bg-[#a86224]' : 'bg-stone-300'
+                    incluirDesayunos ? 'bg-brand-primary' : 'bg-stone-300'
                   }`}
                 >
                   <span
@@ -411,7 +411,7 @@ export function SmartMenuWizardView({
                     setIncluirAlmuerzos(!incluirAlmuerzos);
                   }}
                   className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    incluirAlmuerzos ? 'bg-[#a86224]' : 'bg-stone-300'
+                    incluirAlmuerzos ? 'bg-brand-primary' : 'bg-stone-300'
                   }`}
                 >
                   <span
@@ -429,7 +429,7 @@ export function SmartMenuWizardView({
                     onClick={() => setIntentarPrimeroYSegundo(!intentarPrimeroYSegundo)}
                     className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
                       intentarPrimeroYSegundo
-                        ? 'bg-white border-[#a86224] shadow-2xs'
+                        ? 'bg-white border-brand-primary shadow-2xs'
                         : 'bg-[#faf7f2]/90 border-[#e7dfd5]'
                     }`}
                   >
@@ -451,7 +451,7 @@ export function SmartMenuWizardView({
                         setIntentarPrimeroYSegundo(!intentarPrimeroYSegundo);
                       }}
                       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                        intentarPrimeroYSegundo ? 'bg-[#a86224]' : 'bg-stone-300'
+                        intentarPrimeroYSegundo ? 'bg-brand-primary' : 'bg-stone-300'
                       }`}
                     >
                       <span
@@ -500,7 +500,7 @@ export function SmartMenuWizardView({
                     setIncluirCenas(!incluirCenas);
                   }}
                   className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    incluirCenas ? 'bg-[#a86224]' : 'bg-stone-300'
+                    incluirCenas ? 'bg-brand-primary' : 'bg-stone-300'
                   }`}
                 >
                   <span
@@ -547,7 +547,7 @@ export function SmartMenuWizardView({
                     setIncluirSnackPostre(!incluirSnackPostre);
                   }}
                   className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    incluirSnackPostre ? 'bg-[#a86224]' : 'bg-stone-300'
+                    incluirSnackPostre ? 'bg-brand-primary' : 'bg-stone-300'
                   }`}
                 >
                   <span
@@ -595,7 +595,7 @@ export function SmartMenuWizardView({
                   setResetRecentHistory(!resetRecentHistory);
                 }}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                  resetRecentHistory ? 'bg-[#a86224]' : 'bg-stone-300'
+                  resetRecentHistory ? 'bg-brand-primary' : 'bg-stone-300'
                 }`}
               >
                 <span

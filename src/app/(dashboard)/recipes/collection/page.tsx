@@ -84,7 +84,7 @@ export default async function RecipeCollectionPage() {
 
         {total === 0 ? (
           <div className="p-12 text-center rounded-3xl bg-white border border-dashed border-[#e7dfd5] space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 rounded-2xl bg-[#f4efe6] text-brand-primary flex items-center justify-center mx-auto">
               <BookOpen className="w-7 h-7" />
             </div>
             <div className="space-y-1.5">
@@ -97,7 +97,7 @@ export default async function RecipeCollectionPage() {
             </div>
             <Link
               href="/recipes"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#a86224] text-white text-xs font-semibold shadow-xs hover:bg-[#8e511c] transition"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-brand-primary text-white text-xs font-semibold shadow-xs hover:bg-brand-hover transition"
             >
               <span>Ir al capturador</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -122,7 +122,7 @@ export default async function RecipeCollectionPage() {
           <div>
             <Link
               href="/privacidad"
-              className="hover:text-[#a86224] underline underline-offset-4 decoration-stone-300 hover:decoration-[#a86224] transition-colors"
+              className="hover:text-brand-primary underline underline-offset-4 decoration-stone-300 hover:decoration-brand-primary transition-colors"
             >
               Política de Privacidad
             </Link>

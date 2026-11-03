@@ -510,7 +510,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
         {/* TARJETA 1: Información básica del Chef (Compactada) */}
         <div className="p-3.5 sm:p-5 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs flex flex-col gap-2">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] font-bold text-lg sm:text-xl shadow-2xs shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-brand-primary font-bold text-lg sm:text-xl shadow-2xs shrink-0">
               {initials}
             </div>
             <div className="min-w-0 flex-1 space-y-0.5">
@@ -519,13 +519,13 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                   {nombre || (language === 'en' ? 'Chef' : 'Chef')}
                 </h2>
                 {isPro && nivelCulinario && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] shrink-0">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#f4efe6] text-brand-primary border border-[#e7dfd5] shrink-0">
                     {nivelCulinario}
                   </span>
                 )}
                 {isPro ? (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 shadow-2xs shrink-0">
-                    <Sparkles className="w-3 h-3 text-[#a86224]" /> PRO
+                    <Sparkles className="w-3 h-3 text-brand-primary" /> PRO
                   </span>
                 ) : (
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200 shrink-0">
@@ -549,7 +549,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
               htmlFor="chef-nombre"
               className="text-xs font-semibold text-stone-700 flex items-center gap-1.5 shrink-0"
             >
-              <User className="w-3.5 h-3.5 text-[#a86224]" />
+              <User className="w-3.5 h-3.5 text-brand-primary" />
               <span>{t('profile_chef_name')}:</span>
             </label>
             <input
@@ -558,7 +558,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               placeholder={language === 'en' ? 'Your chef name' : 'Tu nombre en la cocina'}
-              className="flex-1 px-3 py-1.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 focus:outline-none focus:border-[#a86224] transition"
+              className="flex-1 px-3 py-1.5 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 focus:outline-none focus:border-brand-primary transition"
             />
           </div>
         </div>
@@ -566,7 +566,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
         {/* TARJETA 2: Estadísticas Reales de Chef */}
         <div className="p-4 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-3 sm:space-y-4">
           <div className="flex items-center gap-2.5">
-            <Award className="w-5 h-5 text-[#a86224]" />
+            <Award className="w-5 h-5 text-brand-primary" />
             <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
               {t('profile_stats_title')}
             </h3>
@@ -576,7 +576,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
           <div className="grid grid-cols-4 gap-2 p-3 sm:p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-center">
             {/* Métrica 1: Recetas Guardadas */}
             <div className="flex flex-col items-center justify-center space-y-1">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shadow-2xs">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shadow-2xs">
                 <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
               <div>
@@ -640,7 +640,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
         <div className="p-4 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-3 sm:space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <ChefHat className="w-5 h-5 text-[#a86224] shrink-0" />
+              <ChefHat className="w-5 h-5 text-brand-primary shrink-0" />
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-lg font-bold font-serif-recipe text-stone-900">
@@ -648,7 +648,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                   </h3>
                   <FeatureInfoTrigger {...levelFeatureInfo} align="left" />
                   {!isPro && (
-                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-[#a86224] border border-amber-300/80 text-[10px] font-extrabold uppercase flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-brand-primary border border-amber-300/80 text-[10px] font-extrabold uppercase flex items-center gap-1">
                       <Lock className="w-2.5 h-2.5" />
                       <span>Miga Pro</span>
                     </span>
@@ -669,7 +669,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                   onClick={() => setNivelCulinario(nivel.id)}
                   className={`p-2 sm:p-3.5 rounded-xl sm:rounded-2xl text-left transition border flex flex-col justify-between gap-1 sm:gap-2 cursor-pointer ${
                     isSelected
-                      ? 'bg-[#f4efe6] border-[#a86224] ring-1 ring-[#a86224]/40 shadow-2xs'
+                      ? 'bg-[#f4efe6] border-brand-primary ring-1 ring-[#a86224]/40 shadow-2xs'
                       : 'bg-[#faf7f2] border-[#e7dfd5] hover:border-stone-400'
                   }`}
                 >
@@ -677,13 +677,13 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                     <span className="text-base sm:text-2xl">{nivel.badge}</span>
                     <div className="flex items-center gap-1">
                       {!isPro && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-amber-100 text-[#a86224] border border-amber-300/80 text-[8px] sm:text-[9px] font-extrabold uppercase flex items-center gap-0.5">
+                        <span className="px-1.5 py-0.5 rounded-md bg-amber-100 text-brand-primary border border-amber-300/80 text-[8px] sm:text-[9px] font-extrabold uppercase flex items-center gap-0.5">
                           <Lock className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
                           <span>PRO</span>
                         </span>
                       )}
                       {isSelected && (
-                        <span className="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-[#a86224] text-white flex items-center justify-center shrink-0">
+                        <span className="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-brand-primary text-white flex items-center justify-center shrink-0">
                           <Check className="w-2 sm:w-3 h-2 sm:h-3 stroke-[3]" />
                         </span>
                       )}
@@ -709,7 +709,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
         <div className="p-4 sm:p-6 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4">
           <div className="flex items-start justify-between gap-3 border-b border-[#e7dfd5] pb-3">
             <div className="flex items-center gap-2.5">
-              <HeartPulse className="w-5 h-5 text-[#a86224] shrink-0" />
+              <HeartPulse className="w-5 h-5 text-brand-primary shrink-0" />
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-base sm:text-lg font-bold font-serif-recipe text-stone-900">
@@ -739,7 +739,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                 </span>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {/* Patrón alimentario actual */}
-                  <span className="px-2.5 py-1 rounded-xl bg-amber-50 text-[#a86224] border border-amber-200/80 text-xs font-semibold flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-xl bg-amber-50 text-brand-primary border border-amber-200/80 text-xs font-semibold flex items-center gap-1">
                     <span>🍽️</span>
                     <span>
                       {selectedPatternObj
@@ -798,9 +798,9 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
               <button
                 type="button"
                 onClick={() => setIsClinicalDrawerOpen(true)}
-                className="min-h-[38px] px-3.5 py-2 rounded-xl bg-[#f4efe6] hover:bg-[#eae1d2] border border-[#e7dfd5] text-xs font-semibold text-stone-800 hover:text-[#a86224] transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs shrink-0 self-start sm:self-center"
+                className="min-h-[38px] px-3.5 py-2 rounded-xl bg-[#f4efe6] hover:bg-[#eae1d2] border border-[#e7dfd5] text-xs font-semibold text-stone-800 hover:text-brand-primary transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs shrink-0 self-start sm:self-center"
               >
-                <Settings className="w-3.5 h-3.5 text-[#a86224]" />
+                <Settings className="w-3.5 h-3.5 text-brand-primary" />
                 <span>
                   {language === 'en'
                     ? 'Modify conditions & pattern'
@@ -816,7 +816,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
           {!isPro ? (
             <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-50/95 via-[#fbf9f5] to-amber-100/60 border border-amber-200/90 shadow-sm space-y-4">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#a86224] text-white flex items-center justify-center shrink-0 shadow-xs">
+                <div className="w-10 h-10 rounded-2xl bg-brand-primary text-white flex items-center justify-center shrink-0 shadow-xs">
                   <Lock className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
@@ -831,7 +831,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
 
               <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div className="text-[11px] text-stone-500 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#a86224]" />
+                  <Sparkles className="w-3.5 h-3.5 text-brand-primary" />
                   <span>{t('profile_unlock_unlimited')}</span>
                 </div>
 
@@ -889,7 +889,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
         <div className="pt-2 space-y-2">
           {!isPro && hasSelectedProFeatures && (
             <div className="p-3 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-950 text-xs flex items-center gap-2.5 animate-fade-in">
-              <Lock className="w-4 h-4 text-[#a86224] shrink-0" />
+              <Lock className="w-4 h-4 text-brand-primary shrink-0" />
               <span>
                 {language === 'en'
                   ? 'You have selected Miga Pro features (culinary level or clinical conditions). Clicking "Save changes" will redirect you to Miga Pro.'
@@ -905,7 +905,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
               !isPro && hasSelectedProFeatures
                 ? 'bg-gradient-to-r from-[#a86224] to-[#c27835] hover:from-[#8e511c] hover:to-[#a86224] ring-2 ring-[#a86224]/30'
                 : isDirty
-                ? 'bg-[#a86224] hover:bg-[#8e511c] ring-2 ring-[#a86224]/30'
+                ? 'bg-brand-primary hover:bg-brand-hover ring-2 ring-[#a86224]/30'
                 : 'bg-stone-800 hover:bg-stone-900'
             }`}
           >
@@ -975,7 +975,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                     id="drawer-select-patron-alimentario"
                     value={patronAlimentario}
                     onChange={(e) => setPatronAlimentario(e.target.value)}
-                    className="w-full appearance-none min-h-[44px] px-3.5 py-2 pr-10 rounded-xl border border-[#e7dfd5] text-stone-900 text-xs sm:text-sm font-semibold transition bg-white focus:outline-none focus:border-[#a86224] cursor-pointer"
+                    className="w-full appearance-none min-h-[44px] px-3.5 py-2 pr-10 rounded-xl border border-[#e7dfd5] text-stone-900 text-xs sm:text-sm font-semibold transition bg-white focus:outline-none focus:border-brand-primary cursor-pointer"
                   >
                     {PATRONES_ALIMENTARIOS.map((opt) => (
                       <option key={opt.id} value={opt.id}>
@@ -1069,7 +1069,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
               <button
                 type="button"
                 onClick={() => setIsClinicalDrawerOpen(false)}
-                className="w-full py-2.5 px-4 rounded-xl font-semibold text-sm text-white bg-[#a86224] hover:bg-[#8e511c] transition cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl font-semibold text-sm text-white bg-brand-primary hover:bg-brand-hover transition cursor-pointer"
               >
                 {language === 'en' ? 'Done' : 'Listo'}
               </button>

@@ -218,7 +218,7 @@ export default function UpdatePasswordPage() {
           {/* Estado de carga verificando sesión */}
           {isCheckingSession && (
             <div className="py-8 text-center space-y-3">
-              <div className="w-8 h-8 border-3 border-[#a86224] border-t-transparent rounded-full animate-spin mx-auto" />
+              <div className="w-8 h-8 border-3 border-brand-primary border-t-transparent rounded-full animate-spin mx-auto" />
               <p className="text-xs text-stone-500">
                 Verificando enlace de recuperación...
               </p>
@@ -244,7 +244,7 @@ export default function UpdatePasswordPage() {
                 className="w-full min-h-[48px] py-2.5 px-4 rounded-2xl font-semibold text-xs sm:text-sm text-stone-700 bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
               >
                 <span>{t('auth_back_to_login')}</span>
-                <ArrowRight className="w-4 h-4 text-[#a86224]" />
+                <ArrowRight className="w-4 h-4 text-brand-primary" />
               </Link>
             </div>
           )}
@@ -330,7 +330,7 @@ export default function UpdatePasswordPage() {
                   <button
                     type="submit"
                     disabled={isPending}
-                    className="w-full min-h-[50px] mt-2 py-3 px-4 rounded-2xl font-semibold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                    className="w-full min-h-[50px] mt-2 py-3 px-4 rounded-2xl font-semibold text-sm sm:text-base text-white bg-brand-primary hover:bg-brand-hover active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {isPending ? (
                       <>

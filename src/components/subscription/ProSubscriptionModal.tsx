@@ -266,12 +266,12 @@ export function ProSubscriptionModal({
 
         {/* 1º. AVISO DESTACADO SI SE ALCANZÓ EL LÍMITE */}
         {context === 'limit_reached' ? (
-          <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 border-2 border-[#a86224]/30 shadow-xs flex items-center gap-3.5 text-left">
-            <div className="w-10 h-10 rounded-xl bg-[#a86224] text-white flex items-center justify-center shrink-0">
+          <div className="p-4 sm:p-5 rounded-2xl bg-brand-light border-2 border-brand-primary/30 shadow-xs flex items-center gap-3.5 text-left">
+            <div className="w-10 h-10 rounded-xl bg-brand-primary text-white flex items-center justify-center shrink-0">
               <AlertCircle className="w-5 h-5" />
             </div>
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#a86224] block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-brand-primary block">
                 {t('billing_limit_reached_badge')}
               </span>
               <h3 className="text-sm sm:text-base font-bold font-serif-recipe text-stone-900 leading-snug">
@@ -281,7 +281,7 @@ export function ProSubscriptionModal({
           </div>
         ) : (
           <div className="text-center space-y-2 pt-2">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] shadow-2xs mb-1">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary shadow-2xs mb-1">
               <Sparkles className="w-6 h-6 animate-pulse" />
             </div>
 
@@ -298,7 +298,7 @@ export function ProSubscriptionModal({
 
             {highlightCulinaryLevels && (
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-left pt-2">
-                <div className="p-3 rounded-2xl bg-amber-50/90 border border-amber-200/90 space-y-1 shadow-2xs">
+                <div className="p-3 rounded-2xl bg-brand-light/90 border border-brand-subtle/90 space-y-1 shadow-2xs">
                   <div className="flex items-center gap-1.5">
                     <span className="text-base">🌱</span>
                     <span className="text-xs font-bold font-serif-recipe text-stone-900">
@@ -346,8 +346,8 @@ export function ProSubscriptionModal({
 
         {/* 2º. TARJETA SECUNDARIA: OPCIÓN GRATUITA CON ADMOB (EN LÍMITE ALCANZADO) - PEGADA AL AVISO */}
         {context === 'limit_reached' && (
-          <div className="p-5 sm:p-6 rounded-2xl bg-white border-2 border-[#a86224]/30 shadow-xs text-center space-y-3.5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f4efe6] text-[#a86224] text-[10px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
+          <div className="p-5 sm:p-6 rounded-2xl bg-white border-2 border-brand-primary/30 shadow-xs text-center space-y-3.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f4efe6] text-brand-primary text-[10px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
               <Gift className="w-3 h-3" />
               <span>{t('billing_ad_card_badge')}</span>
             </div>
@@ -373,11 +373,11 @@ export function ProSubscriptionModal({
                   type="button"
                   onClick={handleWatchAd}
                   disabled={isAdLoading}
-                  className="w-full min-h-[48px] py-3 px-5 rounded-xl font-bold text-xs sm:text-sm text-stone-900 bg-[#f4efe6] hover:bg-[#ebdcc8] active:scale-[0.99] border-2 border-[#a86224]/30 shadow-2xs hover:border-[#a86224] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
+                  className="w-full min-h-[48px] py-3 px-5 rounded-xl font-bold text-xs sm:text-sm text-stone-900 bg-[#f4efe6] hover:bg-[#ebdcc8] active:scale-[0.99] border-2 border-brand-primary/30 shadow-2xs hover:border-brand-primary transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
                 >
                   {isAdLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-[#a86224] shrink-0" />
+                      <Loader2 className="w-4 h-4 animate-spin text-brand-primary shrink-0" />
                       <span>
                         {adLoadingStep === 'rewarding'
                           ? t('billing_ad_rewarding')
@@ -388,7 +388,7 @@ export function ProSubscriptionModal({
                     </>
                   ) : (
                     <>
-                      <PlayCircle className="w-4 h-4 text-[#a86224]" />
+                      <PlayCircle className="w-4 h-4 text-brand-primary" />
                       <span>{t('billing_ad_watch_btn')}</span>
                     </>
                   )}
@@ -417,7 +417,7 @@ export function ProSubscriptionModal({
 
         {/* 3º. TARJETA PRINCIPAL: SUSCRIPCIÓN PRO (3,50€/mes) */}
         <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#e7dfd5] shadow-xs text-center space-y-4">
-          <div className="inline-block px-3 py-1 rounded-full bg-[#f4efe6] text-[#a86224] text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
+          <div className="inline-block px-3 py-1 rounded-full bg-[#f4efe6] text-brand-primary text-[11px] font-bold tracking-wider uppercase border border-[#e7dfd5]">
             {t('billing_plan_name')}
           </div>
 
@@ -440,7 +440,7 @@ export function ProSubscriptionModal({
               type="button"
               onClick={handleSubscribeClick}
               disabled={isCheckoutLoading}
-              className="w-full min-h-[50px] py-3.5 px-6 rounded-2xl font-bold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] shadow-sm hover:shadow transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
+              className="w-full min-h-[50px] py-3.5 px-6 rounded-2xl font-bold text-sm sm:text-base text-white bg-brand-primary hover:bg-brand-hover active:scale-[0.99] shadow-sm hover:shadow transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
             >
               {isCheckoutLoading ? (
                 <>
@@ -472,7 +472,7 @@ export function ProSubscriptionModal({
         {/* 4. SISTEMA DE CÓDIGO VIP */}
         <div className="p-4 sm:p-5 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5]/80 space-y-3">
           <div className="flex items-center gap-2">
-            <Ticket className="w-4 h-4 text-[#a86224]" />
+            <Ticket className="w-4 h-4 text-brand-primary" />
             <h3 className="text-xs sm:text-sm font-bold text-stone-900">
               {t('billing_vip_question')}
             </h3>
@@ -494,7 +494,7 @@ export function ProSubscriptionModal({
                     if (vipError) setVipError(null);
                   }}
                   placeholder={t('billing_vip_placeholder')}
-                  className="flex-1 min-h-[42px] px-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#a86224]/30 focus:border-[#a86224] uppercase tracking-wider font-mono font-medium transition"
+                  className="flex-1 min-h-[42px] px-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary uppercase tracking-wider font-mono font-medium transition"
                   disabled={isVipValidating}
                 />
                 <button
@@ -528,7 +528,7 @@ export function ProSubscriptionModal({
 
           <div className="space-y-2.5">
             <div className="flex items-start gap-3 p-3 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]">
-              <div className="w-8 h-8 rounded-lg bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
+              <div className="w-8 h-8 rounded-lg bg-[#f4efe6] text-brand-primary flex items-center justify-center shrink-0 mt-0.5">
                 <InfinityIcon className="w-4 h-4" />
               </div>
               <div className="space-y-0.5">
@@ -542,7 +542,7 @@ export function ProSubscriptionModal({
             </div>
 
             <div className="flex items-start gap-3 p-3 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]">
-              <div className="w-8 h-8 rounded-lg bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
+              <div className="w-8 h-8 rounded-lg bg-[#f4efe6] text-brand-primary flex items-center justify-center shrink-0 mt-0.5">
                 <HeartPulse className="w-4 h-4" />
               </div>
               <div className="space-y-0.5">
@@ -556,7 +556,7 @@ export function ProSubscriptionModal({
             </div>
 
             <div className="flex items-start gap-3 p-3 rounded-xl bg-[#faf7f2] border border-[#e7dfd5]">
-              <div className="w-8 h-8 rounded-lg bg-[#f4efe6] text-[#a86224] flex items-center justify-center shrink-0 mt-0.5">
+              <div className="w-8 h-8 rounded-lg bg-[#f4efe6] text-brand-primary flex items-center justify-center shrink-0 mt-0.5">
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div className="space-y-0.5">

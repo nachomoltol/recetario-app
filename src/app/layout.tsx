@@ -55,8 +55,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${serifFont.variable} ${sansFont.variable}`}>
+    <html lang="es" data-theme="terracota" className={`${serifFont.variable} ${sansFont.variable}`} suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('miga_theme')||'terracota';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`,
+          }}
+        />
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" type="image/svg+xml" href="/miga-logo.svg" />
         <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />

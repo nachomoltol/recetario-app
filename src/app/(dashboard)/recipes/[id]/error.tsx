@@ -74,7 +74,7 @@ export default function RecipeDetailError({
           <button
             type="button"
             onClick={() => reset()}
-            className="min-h-[44px] px-5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white font-bold text-xs sm:text-sm inline-flex items-center gap-2 transition shadow-xs cursor-pointer"
+            className="min-h-[44px] px-5 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-bold text-xs sm:text-sm inline-flex items-center gap-2 transition shadow-xs cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
             <span>Reintentar carga</span>

@@ -351,8 +351,8 @@ const CATEGORIAS_CONFIG: CategoryConfig[] = [
     nombre: 'Aliños, Salsas y Dips',
     nombreEn: 'Dressings, Sauces & Dips',
     icono: Sparkles,
-    color: 'text-[#a86224] bg-[#f4efe6] border-[#e7dfd5]',
-    badgeColor: 'bg-[#ebdcc9] text-[#a86224] border-[#dfcbb3]',
+    color: 'text-brand-primary bg-[#f4efe6] border-[#e7dfd5]',
+    badgeColor: 'bg-[#ebdcc9] text-brand-primary border-[#dfcbb3]',
     keywords: [
       'aliño',
       'aliños',
@@ -675,12 +675,12 @@ export function RecipeCollectionOrganizer({
   const renderRecipeCard = (r: RecetaConIngredientes) => (
     <div
       key={r.id}
-      className="group rounded-2xl sm:rounded-3xl bg-white border border-[#e7dfd5] hover:border-[#a86224] hover:shadow-xs transition-all p-2.5 sm:p-4 space-y-2 sm:space-y-3.5 flex flex-col justify-between"
+      className="group rounded-2xl sm:rounded-3xl bg-white border border-[#e7dfd5] hover:border-brand-primary hover:shadow-xs transition-all p-2.5 sm:p-4 space-y-2 sm:space-y-3.5 flex flex-col justify-between"
     >
       <div className="space-y-1.5 sm:space-y-2.5">
         <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold gap-1 sm:gap-2">
           <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 min-w-0">
-            <span className="px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-[#f4efe6] text-[#a86224] font-bold uppercase tracking-wider text-[9px] sm:text-[10px] truncate">
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-[#f4efe6] text-brand-primary font-bold uppercase tracking-wider text-[9px] sm:text-[10px] truncate">
               {r.fuente_tipo}
             </span>
             <span className="px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-stone-100 text-stone-600 capitalize text-[9px] sm:text-[11px] truncate">
@@ -688,7 +688,7 @@ export function RecipeCollectionOrganizer({
             </span>
             {tieneAdaptacionClinica && (
               <span
-                className="px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-amber-50 text-[#a86224] border border-amber-200/80 text-[9px] sm:text-[10px] font-semibold flex items-center gap-0.5 sm:gap-1 shadow-2xs"
+                className="px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-amber-50 text-brand-primary border border-amber-200/80 text-[9px] sm:text-[10px] font-semibold flex items-center gap-0.5 sm:gap-1 shadow-2xs"
                 title={
                   language === 'en'
                     ? 'This recipe features custom adaptation according to your health profile'
@@ -710,7 +710,7 @@ export function RecipeCollectionOrganizer({
         </div>
         <Link
           href={`/recipes/${r.id}?from=recipes`}
-          className="block group-hover:text-[#a86224] transition-colors"
+          className="block group-hover:text-brand-primary transition-colors"
         >
           <h3 className="font-semibold sm:font-bold text-stone-900 font-serif-recipe text-xs sm:text-base leading-snug line-clamp-2">
             {r.titulo}
@@ -736,7 +736,7 @@ export function RecipeCollectionOrganizer({
       </div>
       <div className="pt-2 sm:pt-3 border-t border-[#f4efe6] flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
         <span className="flex items-center gap-1 font-medium">
-          <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#a86224]" /> {r.tiempo_total_min || 15} min
+          <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-brand-primary" /> {r.tiempo_total_min || 15} min
         </span>
         {assignDateParam && assignSlotParam ? (
           <button
@@ -750,7 +750,7 @@ export function RecipeCollectionOrganizer({
               });
               router.push(`/meal-planner?date=${assignDateParam}`);
             }}
-            className="min-h-[28px] px-2.5 py-1 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold flex items-center gap-1 transition text-[11px] cursor-pointer shadow-2xs"
+            className="min-h-[28px] px-2.5 py-1 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-semibold flex items-center gap-1 transition text-[11px] cursor-pointer shadow-2xs"
           >
             <Plus className="w-3 h-3" />
             <span>{language === 'en' ? 'Assign' : 'Asignar'}</span>
@@ -758,7 +758,7 @@ export function RecipeCollectionOrganizer({
         ) : (
           <Link
             href={`/recipes/${r.id}?from=recipes`}
-            className="text-[#a86224] hover:text-[#8e511c] font-semibold inline-flex items-center gap-0.5 sm:gap-1 transition-colors text-[10px] sm:text-xs"
+            className="text-brand-primary hover:text-[#8e511c] font-semibold inline-flex items-center gap-0.5 sm:gap-1 transition-colors text-[10px] sm:text-xs"
           >
             <span className="hidden xs:inline">{t('collection_open_recipe')}</span>
             <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 group-hover:translate-x-0.5 transition-transform" />
@@ -775,7 +775,7 @@ export function RecipeCollectionOrganizer({
           {assignDateParam && assignSlotParam && (
             <div className="flex items-center justify-between gap-3 text-xs sm:text-sm">
               <div className="flex items-center gap-2 min-w-0">
-                <Sparkles className="w-4 h-4 text-[#a86224] shrink-0" />
+                <Sparkles className="w-4 h-4 text-brand-primary shrink-0" />
                 <span className="text-stone-800 font-medium truncate">
                   {language === 'en'
                     ? `Assignment mode: Pick a recipe for ${assignSlotParam} (${assignDateParam}).`
@@ -784,7 +784,7 @@ export function RecipeCollectionOrganizer({
               </div>
               <Link
                 href={`/meal-planner?date=${assignDateParam}`}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-amber-200 text-[#a86224] font-semibold text-xs shrink-0 transition"
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-amber-200 text-brand-primary font-semibold text-xs shrink-0 transition"
               >
                 {language === 'en' ? 'Back to planner' : 'Volver al plan'}
               </Link>
@@ -813,7 +813,7 @@ export function RecipeCollectionOrganizer({
                     }}
                     className={`min-h-[30px] px-2.5 sm:px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer border ${
                       isActive
-                        ? 'bg-[#a86224] text-white border-[#a86224] shadow-xs'
+                        ? 'bg-brand-primary text-white border-brand-primary shadow-xs'
                         : 'bg-white hover:bg-[#faf7f2] text-stone-600 border-[#e7dfd5]'
                     }`}
                   >
@@ -834,7 +834,7 @@ export function RecipeCollectionOrganizer({
               <div className="flex items-center justify-between text-[11px] text-stone-500 px-1 pt-0.5">
                 <span>
                   {language === 'en' ? 'Filtered by moment' : 'Filtrando por momento'}:{' '}
-                  <strong className="text-[#a86224]">
+                  <strong className="text-brand-primary">
                     {language === 'en'
                       ? MOMENTO_FILTER_CHIPS.find((c) => c.id === filtroMomento)?.labelEn
                       : MOMENTO_FILTER_CHIPS.find((c) => c.id === filtroMomento)?.labelEs}
@@ -844,7 +844,7 @@ export function RecipeCollectionOrganizer({
                 <button
                   type="button"
                   onClick={() => setFiltroMomento('todos')}
-                  className="text-[#a86224] hover:underline font-semibold cursor-pointer"
+                  className="text-brand-primary hover:underline font-semibold cursor-pointer"
                 >
                   {language === 'en' ? 'Show all moments' : 'Ver todos los momentos'}
                 </button>
@@ -907,7 +907,7 @@ export function RecipeCollectionOrganizer({
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="text-[#a86224] hover:underline font-semibold cursor-pointer"
+              className="text-brand-primary hover:underline font-semibold cursor-pointer"
             >
               {t('collection_clear_search')}
             </button>
@@ -922,7 +922,7 @@ export function RecipeCollectionOrganizer({
             type="button"
             onClick={() => scrollCategories('left')}
             aria-label={t('planner_scroll_left')}
-            className="hidden md:flex absolute -left-3 z-20 w-8 h-8 rounded-full bg-white/95 border border-[#e7dfd5] text-stone-700 hover:text-[#a86224] shadow-md items-center justify-center transition cursor-pointer hover:bg-stone-50 active:scale-95"
+            className="hidden md:flex absolute -left-3 z-20 w-8 h-8 rounded-full bg-white/95 border border-[#e7dfd5] text-stone-700 hover:text-brand-primary shadow-md items-center justify-center transition cursor-pointer hover:bg-stone-50 active:scale-95"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -938,7 +938,7 @@ export function RecipeCollectionOrganizer({
             onClick={() => setFiltroActivo('Todas')}
             className={`min-h-[42px] px-4 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
               filtroActivo === 'Todas'
-                ? 'bg-[#a86224] text-white shadow-xs'
+                ? 'bg-brand-primary text-white shadow-xs'
                 : 'bg-white hover:bg-[#faf7f2] text-stone-700 border border-[#e7dfd5]'
             }`}
           >
@@ -956,7 +956,7 @@ export function RecipeCollectionOrganizer({
                 onClick={() => setFiltroActivo(category.id)}
                 className={`min-h-[42px] px-3.5 rounded-xl text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                   isSelected
-                    ? 'bg-[#a86224] text-white shadow-xs'
+                    ? 'bg-brand-primary text-white shadow-xs'
                     : 'bg-white hover:bg-[#faf7f2] text-stone-700 border border-[#e7dfd5]'
                 }`}
               >
@@ -980,7 +980,7 @@ export function RecipeCollectionOrganizer({
             type="button"
             onClick={() => scrollCategories('right')}
             aria-label={t('planner_scroll_right')}
-            className="hidden md:flex absolute -right-3 z-20 w-8 h-8 rounded-full bg-white/95 border border-[#e7dfd5] text-stone-700 hover:text-[#a86224] shadow-md items-center justify-center transition cursor-pointer hover:bg-stone-50 active:scale-95"
+            className="hidden md:flex absolute -right-3 z-20 w-8 h-8 rounded-full bg-white/95 border border-[#e7dfd5] text-stone-700 hover:text-brand-primary shadow-md items-center justify-center transition cursor-pointer hover:bg-stone-50 active:scale-95"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -989,7 +989,7 @@ export function RecipeCollectionOrganizer({
       {/* 3. ESTADO VACÍO CUANDO NO HAY COINCIDENCIAS */}
       {filteredRecipes.length === 0 && (
         <div className="p-10 text-center rounded-3xl bg-white border border-dashed border-[#e7dfd5] space-y-3 animate-fade-in">
-          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center mx-auto">
+          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] text-brand-primary flex items-center justify-center mx-auto">
             <Search className="w-6 h-6" />
           </div>
           <div className="space-y-1">
@@ -1004,7 +1004,7 @@ export function RecipeCollectionOrganizer({
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="px-4 py-2 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-brand-primary hover:bg-brand-hover text-white text-xs font-semibold shadow-xs transition cursor-pointer"
             >
               {t('collection_see_all')}
             </button>
@@ -1035,7 +1035,7 @@ export function RecipeCollectionOrganizer({
                   <button
                     type="button"
                     onClick={() => setFiltroActivo('Todas')}
-                    className="text-xs text-[#a86224] font-semibold hover:underline cursor-pointer"
+                    className="text-xs text-brand-primary font-semibold hover:underline cursor-pointer"
                   >
                     {t('collection_back_to_all')}
                   </button>

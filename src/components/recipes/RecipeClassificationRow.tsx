@@ -102,7 +102,7 @@ export function RecipeClassificationRow({
           </>
         ) : (
           <div className="flex items-center gap-1.5 text-stone-500 text-xs">
-            <Sparkles className="w-3.5 h-3.5 text-[#a86224] shrink-0" />
+            <Sparkles className="w-3.5 h-3.5 text-brand-primary shrink-0" />
             <span className="italic">{t('categorize_unclassified')}</span>
           </div>
         )}
@@ -112,10 +112,10 @@ export function RecipeClassificationRow({
       <button
         type="button"
         onClick={onOpenDrawer}
-        className="min-h-[34px] px-2.5 py-1 rounded-xl bg-white hover:bg-[#fbf9f5] text-stone-600 hover:text-[#a86224] border border-[#e7dfd5] hover:border-[#a86224]/40 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ml-auto shrink-0"
+        className="min-h-[34px] px-2.5 py-1 rounded-xl bg-white hover:bg-[#fbf9f5] text-stone-600 hover:text-brand-primary border border-[#e7dfd5] hover:border-brand-primary/40 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ml-auto shrink-0"
         aria-label={t('categorize_edit_btn')}
       >
-        <SlidersHorizontal className="w-3.5 h-3.5 text-[#a86224]" />
+        <SlidersHorizontal className="w-3.5 h-3.5 text-brand-primary" />
         <span>
           {hasMomentos
             ? language === 'en'

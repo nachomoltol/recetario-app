@@ -13,7 +13,7 @@ interface FormattedTextProps {
 export function FormattedText({
   text,
   className,
-  markClassName = 'bg-amber-100 text-[#a86224] font-semibold px-1 py-0.5 rounded-md border border-amber-300/60 not-italic underline decoration-amber-400 underline-offset-2',
+  markClassName = 'bg-amber-100 text-brand-primary font-semibold px-1 py-0.5 rounded-md border border-amber-300/60 not-italic underline decoration-amber-400 underline-offset-2',
 }: FormattedTextProps) {
   if (text === null || text === undefined) return null;
   const str = typeof text === 'string' ? text : String(text);

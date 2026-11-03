@@ -78,14 +78,14 @@ export default async function RecipesDashboardPage(props: RecipesDashboardPagePr
         {assignSlot && assignDate && (
           <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-between gap-3 text-xs sm:text-sm animate-fade-in shadow-2xs">
             <div className="flex items-center gap-2 min-w-0">
-              <Sparkles className="w-4 h-4 text-[#a86224] shrink-0" />
+              <Sparkles className="w-4 h-4 text-brand-primary shrink-0" />
               <span className="text-stone-800 font-medium truncate">
                 Asignando plato para <strong>{assignSlot}</strong> ({assignDate}).
               </span>
             </div>
             <Link
               href={`/recipes/collection?momento=${momento || ''}&assignDate=${assignDate}&assignSlot=${assignSlot}`}
-              className="px-3.5 py-1.5 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs shrink-0 transition"
+              className="px-3.5 py-1.5 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs shrink-0 transition"
             >
               Explorar colección
             </Link>
@@ -109,7 +109,7 @@ export default async function RecipesDashboardPage(props: RecipesDashboardPagePr
         {/* Estado Vacío si no hay recetas */}
         {!ultimaReceta && (
           <div className="p-10 text-center rounded-3xl bg-white border border-dashed border-[#e7dfd5] space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] text-[#a86224] flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] text-brand-primary flex items-center justify-center mx-auto">
               <BookOpen className="w-6 h-6" />
             </div>
             <HomeEmptyCookbookState />

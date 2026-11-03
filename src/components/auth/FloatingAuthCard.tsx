@@ -123,7 +123,7 @@ export function FloatingAuthCard({
                 className="p-1.5 -ml-1.5 rounded-xl hover:bg-[#faf7f2] text-stone-600 hover:text-stone-900 transition cursor-pointer"
                 title={t('auth_back_to_login')}
               >
-                <ArrowLeft className="w-4 h-4 text-[#a86224]" />
+                <ArrowLeft className="w-4 h-4 text-brand-primary" />
               </button>
               <div>
                 <h2 className="text-lg font-bold text-stone-900 font-serif-recipe">
@@ -190,7 +190,7 @@ export function FloatingAuthCard({
                 <button
                   type="submit"
                   disabled={isResetPending}
-                  className="w-full min-h-[50px] mt-2 py-3 px-4 rounded-2xl font-semibold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  className="w-full min-h-[50px] mt-2 py-3 px-4 rounded-2xl font-semibold text-sm sm:text-base text-white bg-brand-primary hover:bg-brand-hover active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isResetPending ? (
                     <>
@@ -288,7 +288,7 @@ export function FloatingAuthCard({
                       <button
                         type="button"
                         onClick={() => setShowForgotPassword(true)}
-                        className="text-xs font-semibold text-[#a86224] hover:text-[#8e511c] hover:underline cursor-pointer"
+                        className="text-xs font-semibold text-brand-primary hover:text-[#8e511c] hover:underline cursor-pointer"
                       >
                         {t('auth_forgot_password')}
                       </button>
@@ -312,7 +312,7 @@ export function FloatingAuthCard({
                   <button
                     type="submit"
                     disabled={isLoginPending}
-                    className="w-full min-h-[50px] mt-2 py-3 px-4 rounded-2xl font-semibold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                    className="w-full min-h-[50px] mt-2 py-3 px-4 rounded-2xl font-semibold text-sm sm:text-base text-white bg-brand-primary hover:bg-brand-hover active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {isLoginPending ? (
                       <>
@@ -424,7 +424,7 @@ export function FloatingAuthCard({
                 <button
                   type="submit"
                   disabled={isRegisterPending}
-                  className="w-full min-h-[50px] mt-2 py-3 px-4 rounded-2xl font-semibold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  className="w-full min-h-[50px] mt-2 py-3 px-4 rounded-2xl font-semibold text-sm sm:text-base text-white bg-brand-primary hover:bg-brand-hover active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isRegisterPending ? (
                     <>
@@ -451,7 +451,7 @@ export function FloatingAuthCard({
         <div>
           <Link
             href="/privacidad"
-            className="text-xs text-stone-500 hover:text-[#a86224] underline underline-offset-4 decoration-stone-300 hover:decoration-[#a86224] transition-colors"
+            className="text-xs text-stone-500 hover:text-brand-primary underline underline-offset-4 decoration-stone-300 hover:decoration-brand-primary transition-colors"
           >
             Política de Privacidad
           </Link>

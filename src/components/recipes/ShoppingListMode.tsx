@@ -179,7 +179,7 @@ export function ShoppingListMode({
                 : 'text-stone-600 hover:text-stone-900 hover:bg-white/40'
             }`}
           >
-            <ChefHat className={`w-4 h-4 ${!isShoppingMode ? 'text-[#a86224]' : 'text-stone-500'}`} />
+            <ChefHat className={`w-4 h-4 ${!isShoppingMode ? 'text-brand-primary' : 'text-stone-500'}`} />
             <span>{t('recipe_control_cook_mode')}</span>
           </button>
 
@@ -192,7 +192,7 @@ export function ShoppingListMode({
                 : 'text-stone-600 hover:text-stone-900 hover:bg-white/40'
             }`}
           >
-            <ShoppingCart className={`w-4 h-4 ${isShoppingMode ? 'text-[#a86224]' : 'text-stone-500'}`} />
+            <ShoppingCart className={`w-4 h-4 ${isShoppingMode ? 'text-brand-primary' : 'text-stone-500'}`} />
             <span>{t('recipe_control_shopping_list')}</span>
           </button>
         </div>
@@ -206,7 +206,7 @@ export function ShoppingListMode({
               title="Copiar lista de ingredientes formateada"
               className="min-h-[38px] px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-[#e7dfd5] text-stone-700 font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
-              <Copy className="w-3.5 h-3.5 text-[#a86224]" />
+              <Copy className="w-3.5 h-3.5 text-brand-primary" />
               <span>{copied ? t('planner_copied') : t('recipe_shopping_copy')}</span>
             </button>
 
@@ -245,7 +245,7 @@ export function ShoppingListMode({
                 return (
                   <div key={secName} className="space-y-2">
                     <div className="flex items-center gap-2 px-1 pt-1">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#a86224] bg-[#f4efe6] px-2.5 py-1 rounded-lg border border-[#e7dfd5]">
+                      <span className="text-xs font-bold uppercase tracking-wider text-brand-primary bg-[#f4efe6] px-2.5 py-1 rounded-lg border border-[#e7dfd5]">
                         {secName}
                       </span>
                       <div className="h-px flex-1 bg-[#e7dfd5]" />
@@ -296,10 +296,10 @@ export function ShoppingListMode({
           <div className="p-4 rounded-2xl bg-white border border-[#e7dfd5] space-y-2 shadow-2xs">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-stone-800 flex items-center gap-1.5">
-                <ShoppingCart className="w-3.5 h-3.5 text-[#a86224]" />
+                <ShoppingCart className="w-3.5 h-3.5 text-brand-primary" />
                 <span>{t('recipe_shopping_progress')}</span>
               </span>
-              <span className="font-mono font-bold text-[#a86224]">
+              <span className="font-mono font-bold text-brand-primary">
                 {completed} {t('capture_of_label')} {total} {t('recipe_section_ingredients').toLowerCase()} ({progressPercent}%)
               </span>
             </div>
@@ -405,7 +405,7 @@ export function ShoppingListMode({
                               )}
 
                               {item.explicaciones && item.explicaciones.length > 0 && !isChecked && (
-                                <span className="text-[10px] text-[#a86224] block truncate font-medium">
+                                <span className="text-[10px] text-brand-primary block truncate font-medium">
                                   ✦ <FormattedText text={item.explicaciones.join(' · ')} />
                                 </span>
                               )}
@@ -423,7 +423,7 @@ export function ShoppingListMode({
 
                             <span
                               className={`text-sm sm:text-base font-bold shrink-0 tabular-nums ${
-                                isChecked ? 'line-through text-stone-400' : 'text-[#a86224]'
+                                isChecked ? 'line-through text-stone-400' : 'text-brand-primary'
                               }`}
                             >
                               {isDespensa ? (

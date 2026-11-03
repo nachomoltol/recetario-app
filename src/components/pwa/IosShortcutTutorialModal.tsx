@@ -50,7 +50,7 @@ export function IosShortcutTutorialModal({ isOpen, onClose }: IosShortcutTutoria
         {/* Cabecera con estética Lino / Terracotta */}
         <div className="flex items-start justify-between border-b border-[#f4efe6] pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] flex items-center justify-center shadow-2xs shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-[#f4efe6] text-brand-primary border border-[#e7dfd5] flex items-center justify-center shadow-2xs shrink-0">
               <Share2 className="w-5 h-5" />
             </div>
             <div>
@@ -58,7 +58,7 @@ export function IosShortcutTutorialModal({ isOpen, onClose }: IosShortcutTutoria
                 <h3 className="text-lg font-bold font-serif-recipe text-stone-900 leading-tight">
                   Menú 'Compartir' en iPhone
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#f4efe6] text-brand-primary border border-[#e7dfd5]">
                   iOS Shortcut
                 </span>
               </div>
@@ -79,7 +79,7 @@ export function IosShortcutTutorialModal({ isOpen, onClose }: IosShortcutTutoria
 
         {/* Noticia explicativa sobre iOS */}
         <div className="p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-xs text-stone-700 leading-relaxed flex items-start gap-2.5">
-          <Info className="w-4 h-4 text-[#a86224] shrink-0 mt-0.5" />
+          <Info className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
           <div>
             <strong className="text-stone-900 font-semibold block mb-0.5">
               ¿Por qué es necesario en Apple?
@@ -91,14 +91,14 @@ export function IosShortcutTutorialModal({ isOpen, onClose }: IosShortcutTutoria
 
         {/* Guía en 3 Pasos */}
         <div className="space-y-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#a86224] block">
+          <span className="text-xs font-bold uppercase tracking-wider text-brand-primary block">
             Configuración en 30 segundos
           </span>
 
           {/* Paso 1 */}
           <div className="p-3.5 rounded-2xl bg-white border border-[#e7dfd5] shadow-2xs space-y-2">
             <div className="flex items-center gap-2 text-xs font-bold text-stone-900">
-              <span className="w-5 h-5 rounded-full bg-[#a86224] text-white flex items-center justify-center text-[11px]">
+              <span className="w-5 h-5 rounded-full bg-brand-primary text-white flex items-center justify-center text-[11px]">
                 1
               </span>
               <span>Añade el Atajo a tu iPhone</span>
@@ -111,7 +111,7 @@ export function IosShortcutTutorialModal({ isOpen, onClose }: IosShortcutTutoria
                 href={shortcutICloudUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#a86224] hover:bg-[#8e511c] text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-primary hover:bg-brand-hover text-white text-xs font-semibold shadow-xs transition cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Instalar Atajo en iOS</span>
@@ -123,7 +123,7 @@ export function IosShortcutTutorialModal({ isOpen, onClose }: IosShortcutTutoria
           {/* Paso 2 */}
           <div className="p-3.5 rounded-2xl bg-white border border-[#e7dfd5] shadow-2xs space-y-1.5">
             <div className="flex items-center gap-2 text-xs font-bold text-stone-900">
-              <span className="w-5 h-5 rounded-full bg-[#a86224] text-white flex items-center justify-center text-[11px]">
+              <span className="w-5 h-5 rounded-full bg-brand-primary text-white flex items-center justify-center text-[11px]">
                 2
               </span>
               <span>Comparte desde TikTok, Reels o YouTube</span>
@@ -137,7 +137,7 @@ export function IosShortcutTutorialModal({ isOpen, onClose }: IosShortcutTutoria
           {/* Paso 3 */}
           <div className="p-3.5 rounded-2xl bg-white border border-[#e7dfd5] shadow-2xs space-y-1.5">
             <div className="flex items-center gap-2 text-xs font-bold text-stone-900">
-              <span className="w-5 h-5 rounded-full bg-[#a86224] text-white flex items-center justify-center text-[11px]">
+              <span className="w-5 h-5 rounded-full bg-brand-primary text-white flex items-center justify-center text-[11px]">
                 3
               </span>
               <span>Extracción Inteligente Automática</span>
@@ -155,7 +155,7 @@ export function IosShortcutTutorialModal({ isOpen, onClose }: IosShortcutTutoria
             <button
               type="button"
               onClick={handleCopyEndpoint}
-              className="text-[#a86224] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+              className="text-brand-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
             >
               {copied ? (
                 <>

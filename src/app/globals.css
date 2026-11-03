@@ -18,15 +18,57 @@
 
   --color-olive-600: #4d7c0f;
   --color-olive-700: #3f6212;
+
+  /* Tokens Dinámicos de Marca Gourmet */
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-light: var(--brand-light);
+  --color-brand-subtle: var(--brand-subtle);
 }
 
-:root {
+:root, [data-theme="terracota"] {
   --background: #faf7f2;
   --foreground: #1c1917;
   --card: #ffffff;
   --card-foreground: #1c1917;
   --border: #e7dfd5;
   --accent: #c27835;
+
+  /* Paleta Terracota (Original Miga) */
+  --brand-primary: #a86224;
+  --brand-hover: #8e511c;
+  --brand-light: #fef3e9;
+  --brand-subtle: #fbeee1;
+}
+
+[data-theme="oliva"] {
+  --accent: #4d7c0f;
+
+  /* Paleta Oliva (Cocina Mediterránea) */
+  --brand-primary: #4d7c0f;
+  --brand-hover: #3f6212;
+  --brand-light: #f7fee7;
+  --brand-subtle: #ecfccb;
+}
+
+[data-theme="pizarra"] {
+  --accent: #334155;
+
+  /* Paleta Pizarra (Elegancia Nórdica) */
+  --brand-primary: #334155;
+  --brand-hover: #1e293b;
+  --brand-light: #f1f5f9;
+  --brand-subtle: #e2e8f0;
+}
+
+[data-theme="vino"] {
+  --accent: #881337;
+
+  /* Paleta Vino (Borgoña Alta Cocina) */
+  --brand-primary: #881337;
+  --brand-hover: #700c2a;
+  --brand-light: #fff1f2;
+  --brand-subtle: #ffe4e6;
 }
 
 body {

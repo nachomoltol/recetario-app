@@ -872,7 +872,7 @@ export function RecipeInteractiveSections({
 
         return (
           <li key={paso?.id || `paso-${idx}`} className="flex gap-3 sm:gap-5 group">
-            <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] font-serif-recipe font-bold text-sm sm:text-base flex items-center justify-center shrink-0 self-start mt-0.5 shadow-2xs">
+            <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary font-serif-recipe font-bold text-sm sm:text-base flex items-center justify-center shrink-0 self-start mt-0.5 shadow-2xs">
               {paso?.orden ?? idx + 1}
             </span>
 
@@ -886,7 +886,7 @@ export function RecipeInteractiveSections({
                         ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                         : effectiveActiveLevel === 'Avanzado'
                         ? 'bg-stone-900 text-amber-200 border-stone-800'
-                        : 'bg-[#f4efe6] text-[#a86224] border-[#e7dfd5]'
+                        : 'bg-[#f4efe6] text-brand-primary border-[#e7dfd5]'
                     }`}
                   >
                     <span>
@@ -930,7 +930,7 @@ export function RecipeInteractiveSections({
                 <div className="space-y-2 animate-fade-in">
                   {paso.descriptor_sensorial && (
                     <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 via-[#fffcf5] to-amber-100/70 border-2 border-amber-300/90 text-amber-950 text-xs sm:text-sm flex items-start gap-2.5 shadow-xs">
-                      <div className="w-7 h-7 rounded-xl bg-[#a86224] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                      <div className="w-7 h-7 rounded-xl bg-brand-primary text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
                         <Eye className="w-4 h-4" />
                       </div>
                       <div className="space-y-1 flex-1 min-w-0">
@@ -963,7 +963,7 @@ export function RecipeInteractiveSections({
                 <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 pt-1 text-xs text-stone-600">
                   {paso.tiempo_estimado_min && (
                     <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-700 font-medium">
-                      <Clock className="w-3.5 h-3.5 text-[#a86224]" />
+                      <Clock className="w-3.5 h-3.5 text-brand-primary" />
                       {paso.tiempo_estimado_min} min
                     </span>
                   )}
@@ -981,7 +981,7 @@ export function RecipeInteractiveSections({
 
                   {paso.consejo_pro && (
                     <div className="w-full mt-1.5 sm:mt-2 p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-[#e7dfd5] bg-[#faf7f2] text-stone-700 text-xs sm:text-sm font-light">
-                      <span className="font-semibold text-[#a86224]">{t('recipe_chef_tip')}</span>{' '}
+                      <span className="font-semibold text-brand-primary">{t('recipe_chef_tip')}</span>{' '}
                       <FormattedText text={paso.consejo_pro} />
                     </div>
                   )}
@@ -1005,7 +1005,7 @@ export function RecipeInteractiveSections({
           onClick={() => setMobileTab('ingredients')}
           className={`flex-1 py-2.5 px-3 rounded-xl font-serif-recipe text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             mobileTab === 'ingredients'
-              ? 'bg-[#a86224] text-white shadow-xs'
+              ? 'bg-brand-primary text-white shadow-xs'
               : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
           }`}
         >
@@ -1027,7 +1027,7 @@ export function RecipeInteractiveSections({
           onClick={() => setMobileTab('steps')}
           className={`flex-1 py-2.5 px-3 rounded-xl font-serif-recipe text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             mobileTab === 'steps'
-              ? 'bg-[#a86224] text-white shadow-xs'
+              ? 'bg-brand-primary text-white shadow-xs'
               : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
           }`}
         >
@@ -1061,7 +1061,7 @@ export function RecipeInteractiveSections({
           className="hidden md:flex w-full min-h-[58px] p-5 sm:p-6 items-center justify-between gap-4 text-left hover:bg-[#faf7f2] transition-colors cursor-pointer select-none"
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary flex items-center justify-center shrink-0">
               <Layers className="w-5 h-5" />
             </div>
             <div>
@@ -1077,12 +1077,12 @@ export function RecipeInteractiveSections({
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
+            <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f4efe6] text-brand-primary border border-[#e7dfd5]">
               {isIngredientsOpen ? t('recipe_collapse') : t('recipe_expand')}
             </span>
             <div
               className={`w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center transition-transform duration-200 ${
-                isIngredientsOpen ? 'rotate-180 text-[#a86224]' : ''
+                isIngredientsOpen ? 'rotate-180 text-brand-primary' : ''
               }`}
             >
               <ChevronDown className="w-4 h-4" />
@@ -1149,7 +1149,7 @@ export function RecipeInteractiveSections({
               onClick={() => handleLevelSelect('Principiante')}
               className={`relative w-9 h-8 rounded-lg flex items-center justify-center text-sm transition-all cursor-pointer ${
                 effectiveActiveLevel === 'Principiante'
-                  ? 'bg-[#a86224] text-white shadow-xs'
+                  ? 'bg-brand-primary text-white shadow-xs'
                   : !isPro
                   ? 'text-stone-400 opacity-75 hover:opacity-100 hover:bg-amber-50/70'
                   : 'text-stone-500 hover:text-stone-900 hover:bg-white/60'
@@ -1162,7 +1162,7 @@ export function RecipeInteractiveSections({
             >
               <span>🌱</span>
               {!isPro && (
-                <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 border border-amber-300 text-[#a86224] text-[7px] font-extrabold leading-none flex items-center gap-0.5 shadow-2xs">
+                <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 border border-amber-300 text-brand-primary text-[7px] font-extrabold leading-none flex items-center gap-0.5 shadow-2xs">
                   <Lock className="w-2 h-2 stroke-[2.5]" />
                 </span>
               )}
@@ -1174,7 +1174,7 @@ export function RecipeInteractiveSections({
               onClick={() => handleLevelSelect('Intermedio')}
               className={`relative w-9 h-8 rounded-lg flex items-center justify-center text-sm transition-all cursor-pointer ${
                 effectiveActiveLevel === 'Intermedio'
-                  ? 'bg-[#a86224] text-white shadow-xs'
+                  ? 'bg-brand-primary text-white shadow-xs'
                   : !isPro
                   ? 'text-stone-400 opacity-75 hover:opacity-100 hover:bg-amber-50/70'
                   : 'text-stone-500 hover:text-stone-900 hover:bg-white/60'
@@ -1187,7 +1187,7 @@ export function RecipeInteractiveSections({
             >
               <span>🍳</span>
               {!isPro && (
-                <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 border border-amber-300 text-[#a86224] text-[7px] font-extrabold leading-none flex items-center gap-0.5 shadow-2xs">
+                <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 border border-amber-300 text-brand-primary text-[7px] font-extrabold leading-none flex items-center gap-0.5 shadow-2xs">
                   <Lock className="w-2 h-2 stroke-[2.5]" />
                 </span>
               )}
@@ -1199,7 +1199,7 @@ export function RecipeInteractiveSections({
               onClick={() => handleLevelSelect('Avanzado')}
               className={`relative w-9 h-8 rounded-lg flex items-center justify-center text-sm transition-all cursor-pointer ${
                 effectiveActiveLevel === 'Avanzado'
-                  ? 'bg-[#a86224] text-white shadow-xs'
+                  ? 'bg-brand-primary text-white shadow-xs'
                   : !isPro
                   ? 'text-stone-400 opacity-75 hover:opacity-100 hover:bg-amber-50/70'
                   : 'text-stone-500 hover:text-stone-900 hover:bg-white/60'
@@ -1212,7 +1212,7 @@ export function RecipeInteractiveSections({
             >
               <span>👨‍🍳</span>
               {!isPro && (
-                <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 border border-amber-300 text-[#a86224] text-[7px] font-extrabold leading-none flex items-center gap-0.5 shadow-2xs">
+                <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 border border-amber-300 text-brand-primary text-[7px] font-extrabold leading-none flex items-center gap-0.5 shadow-2xs">
                   <Lock className="w-2 h-2 stroke-[2.5]" />
                 </span>
               )}
@@ -1228,7 +1228,7 @@ export function RecipeInteractiveSections({
           className="hidden md:flex w-full min-h-[58px] p-5 sm:p-6 items-center justify-between gap-4 text-left hover:bg-[#faf7f2] transition-colors cursor-pointer select-none"
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary flex items-center justify-center shrink-0">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
@@ -1245,12 +1245,12 @@ export function RecipeInteractiveSections({
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5]">
+            <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f4efe6] text-brand-primary border border-[#e7dfd5]">
               {isStepsOpen ? t('recipe_collapse') : t('recipe_expand')}
             </span>
             <div
               className={`w-8 h-8 rounded-full bg-[#f4efe6] text-stone-600 flex items-center justify-center transition-transform duration-200 ${
-                isStepsOpen ? 'rotate-180 text-[#a86224]' : ''
+                isStepsOpen ? 'rotate-180 text-brand-primary' : ''
               }`}
             >
               <ChevronDown className="w-4 h-4" />
@@ -1269,7 +1269,7 @@ export function RecipeInteractiveSections({
           {/* Selector de Nivel Culinario Reactivo en Escritorio con Tooltip flotante (?) */}
           <div className="hidden md:flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5]">
             <div className="flex items-center gap-2 flex-wrap">
-              <ChefHat className="w-4 h-4 text-[#a86224] shrink-0" />
+              <ChefHat className="w-4 h-4 text-brand-primary shrink-0" />
               <span className="text-xs sm:text-sm font-semibold font-serif-recipe text-stone-900">
                 {language === 'en' ? 'Culinary Level' : 'Nivel de Cocinado'}
               </span>
@@ -1301,7 +1301,7 @@ export function RecipeInteractiveSections({
                 onClick={() => handleLevelSelect('Principiante')}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
                   effectiveActiveLevel === 'Principiante'
-                    ? 'bg-[#a86224] text-white shadow-xs font-semibold'
+                    ? 'bg-brand-primary text-white shadow-xs font-semibold'
                     : !isPro
                     ? 'text-stone-400 opacity-80 hover:opacity-100 hover:bg-amber-50/60'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-[#faf7f2]'
@@ -1319,7 +1319,7 @@ export function RecipeInteractiveSections({
                 <span>🌱</span>
                 <span>{language === 'en' ? 'Beginner' : 'Principiante'}</span>
                 {!isPro && (
-                  <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-[#a86224] border border-amber-300/80 text-[9px] font-extrabold uppercase">
+                  <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-brand-primary border border-amber-300/80 text-[9px] font-extrabold uppercase">
                     <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
                     <span>PRO</span>
                   </span>
@@ -1332,7 +1332,7 @@ export function RecipeInteractiveSections({
                 onClick={() => handleLevelSelect('Intermedio')}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
                   effectiveActiveLevel === 'Intermedio'
-                    ? 'bg-[#a86224] text-white shadow-xs font-semibold'
+                    ? 'bg-brand-primary text-white shadow-xs font-semibold'
                     : !isPro
                     ? 'text-stone-400 opacity-80 hover:opacity-100 hover:bg-amber-50/60'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-[#faf7f2]'
@@ -1350,7 +1350,7 @@ export function RecipeInteractiveSections({
                 <span>🍳</span>
                 <span>{language === 'en' ? 'Medium' : 'Intermedio'}</span>
                 {!isPro && (
-                  <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-[#a86224] border border-amber-300/80 text-[9px] font-extrabold uppercase">
+                  <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-brand-primary border border-amber-300/80 text-[9px] font-extrabold uppercase">
                     <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
                     <span>PRO</span>
                   </span>
@@ -1363,7 +1363,7 @@ export function RecipeInteractiveSections({
                 onClick={() => handleLevelSelect('Avanzado')}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
                   effectiveActiveLevel === 'Avanzado'
-                    ? 'bg-[#a86224] text-white shadow-xs font-semibold'
+                    ? 'bg-brand-primary text-white shadow-xs font-semibold'
                     : !isPro
                     ? 'text-stone-400 opacity-80 hover:opacity-100 hover:bg-amber-50/60'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-[#faf7f2]'
@@ -1381,7 +1381,7 @@ export function RecipeInteractiveSections({
                 <span>👨‍🍳</span>
                 <span>{language === 'en' ? 'Advanced' : 'Avanzado'}</span>
                 {!isPro && (
-                  <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-[#a86224] border border-amber-300/80 text-[9px] font-extrabold uppercase">
+                  <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-brand-primary border border-amber-300/80 text-[9px] font-extrabold uppercase">
                     <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
                     <span>PRO</span>
                   </span>

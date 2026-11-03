@@ -82,7 +82,7 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
           <div
             className={`w-14 h-14 rounded-3xl flex items-center justify-center shadow-md ${
               isProLimit
-                ? 'bg-[#a86224] text-white'
+                ? 'bg-brand-primary text-white'
                 : 'bg-gradient-to-br from-amber-500 to-[#a86224] text-white'
             }`}
           >
@@ -96,7 +96,7 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
           </div>
 
           {/* Badge */}
-          <div className="inline-block px-3 py-1 rounded-full bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] text-[11px] font-bold tracking-wider uppercase">
+          <div className="inline-block px-3 py-1 rounded-full bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary text-[11px] font-bold tracking-wider uppercase">
             {isProLimit
               ? isEn
                 ? 'PRO Monthly Quota (150/150)'
@@ -144,8 +144,8 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
         {/* Tarjeta de ventajas PRO (si no es PRO) */}
         {!isProLimit && (
           <div className="p-4 sm:p-5 rounded-2xl bg-white border border-[#e7dfd5] shadow-2xs space-y-3 text-left">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#a86224]">
-              <Sparkles className="w-4 h-4 text-[#a86224]" />
+            <div className="flex items-center gap-2 text-xs font-bold text-brand-primary">
+              <Sparkles className="w-4 h-4 text-brand-primary" />
               <span>{isEn ? 'Included in PRO:' : 'Ventajas del Plan PRO:'}</span>
             </div>
             <ul className="text-xs text-stone-700 space-y-1.5 list-disc pl-4">
@@ -194,7 +194,7 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="w-full py-3 px-5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-[#a86224] hover:bg-[#8e511c] transition-all shadow-sm active:scale-95 text-center cursor-pointer"
+              className="w-full py-3 px-5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-brand-primary hover:bg-brand-hover transition-all shadow-sm active:scale-95 text-center cursor-pointer"
             >
               {isEn ? 'Understood' : 'Entendido'}
             </button>

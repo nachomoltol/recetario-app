@@ -74,10 +74,10 @@ export function RecipeDetailHeader({
           <button
             type="button"
             onClick={handleBack}
-            className="h-9 sm:h-10 px-3 sm:px-3.5 rounded-2xl bg-[#f4efe6] hover:bg-[#ebe3d5] border border-[#e7dfd5] inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#a86224] hover:text-[#8c4f1a] transition shadow-2xs cursor-pointer shrink-0 touch-manipulation active:scale-95"
+            className="h-9 sm:h-10 px-3 sm:px-3.5 rounded-2xl bg-[#f4efe6] hover:bg-[#ebe3d5] border border-[#e7dfd5] inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-brand-primary hover:text-[#8c4f1a] transition shadow-2xs cursor-pointer shrink-0 touch-manipulation active:scale-95"
             title={backTitle}
           >
-            <ArrowLeft className="w-4 h-4 text-[#a86224] shrink-0" />
+            <ArrowLeft className="w-4 h-4 text-brand-primary shrink-0" />
             <span className="truncate">{backLabel}</span>
           </button>
         </div>
@@ -89,13 +89,13 @@ export function RecipeDetailHeader({
               href={fuenteUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="h-7 sm:h-8 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-[#f4efe6] hover:bg-[#ebe3d5] border border-[#e7dfd5] inline-flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold text-stone-800 hover:text-[#a86224] transition-all shadow-2xs active:scale-95 shrink-0"
+              className="h-7 sm:h-8 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-[#f4efe6] hover:bg-[#ebe3d5] border border-[#e7dfd5] inline-flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold text-stone-800 hover:text-brand-primary transition-all shadow-2xs active:scale-95 shrink-0"
               title={isVideoSource ? t('recipe_nav_original_video') : t('recipe_nav_original_source')}
             >
               {isVideoSource ? (
-                <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#a86224] fill-[#a86224] shrink-0" />
+                <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-brand-primary fill-[#a86224] shrink-0" />
               ) : (
-                <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#a86224] shrink-0" />
+                <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-brand-primary shrink-0" />
               )}
               <span className="whitespace-nowrap">
                 {isVideoSource
@@ -115,7 +115,7 @@ export function RecipeDetailHeader({
         {/* Derecha: Avatar de usuario y badge opcional de dificultad */}
         <div className="flex-1 flex items-center justify-end gap-1.5 sm:gap-2 min-w-0">
           {dificultad && (
-            <span className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] capitalize shrink-0">
+            <span className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-[#f4efe6] text-brand-primary border border-[#e7dfd5] capitalize shrink-0">
               {dificultad}
             </span>
           )}

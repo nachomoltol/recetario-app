@@ -18,7 +18,7 @@ export function UserProfileBadge({ fallbackName, email }: UserProfileBadgeProps)
 
   return (
     <div className="flex items-center gap-3">
-      <div className="w-9 h-9 rounded-full bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] font-bold text-xs flex items-center justify-center shadow-xs">
+      <div className="w-9 h-9 rounded-full bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary font-bold text-xs flex items-center justify-center shadow-xs">
         {initials}
       </div>
       <div className="hidden sm:block text-left">

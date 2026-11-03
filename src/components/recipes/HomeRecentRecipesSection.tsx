@@ -128,7 +128,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-[#a86224]" />
+            <Sparkles className="w-3.5 h-3.5 text-brand-primary" />
             <span>{t('capture_tab_latest')}</span>
           </button>
 
@@ -141,7 +141,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <Eye className="w-3.5 h-3.5 text-[#a86224]" />
+            <Eye className="w-3.5 h-3.5 text-brand-primary" />
             <span>{t('capture_tab_viewed')}</span>
           </button>
         </div>
@@ -161,11 +161,11 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
       </div>
 
       {/* Tarjeta de previsualización de la receta seleccionada */}
-      <div className="group rounded-3xl bg-white border-2 border-[#e7dfd5] hover:border-[#a86224] transition-all p-6 sm:p-7 shadow-xs space-y-5">
+      <div className="group rounded-3xl bg-white border-2 border-[#e7dfd5] hover:border-brand-primary transition-all p-6 sm:p-7 shadow-xs space-y-5">
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs font-semibold">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-1 rounded-xl bg-[#f4efe6] text-[#a86224] border border-[#e7dfd5] font-bold uppercase tracking-wider text-[10px]">
+              <span className="px-2.5 py-1 rounded-xl bg-[#f4efe6] text-brand-primary border border-[#e7dfd5] font-bold uppercase tracking-wider text-[10px]">
                 {recipeToShow.fuente_tipo}
               </span>
               <span className="px-2.5 py-1 rounded-xl bg-stone-100 text-stone-700 capitalize text-[11px]">
@@ -188,7 +188,7 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
 
           <Link
             href={recipeHref}
-            className="block group-hover:text-[#a86224] transition-colors"
+            className="block group-hover:text-brand-primary transition-colors"
           >
             <h2 className="font-bold text-stone-900 font-serif-recipe text-2xl sm:text-3xl leading-snug">
               {recipeToShow.titulo}
@@ -225,17 +225,17 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
         <div className="pt-4 border-t border-[#f4efe6] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-xs sm:text-sm text-stone-500 font-medium">
             <span className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-[#a86224]" /> {recipeToShow.tiempo_total_min || 15} min
+              <Clock className="w-4 h-4 text-brand-primary" /> {recipeToShow.tiempo_total_min || 15} min
             </span>
             <span>·</span>
             <span className="flex items-center gap-1.5">
-              <Utensils className="w-4 h-4 text-[#a86224]" /> {recipeToShow.porciones} {t('home_servings')}
+              <Utensils className="w-4 h-4 text-brand-primary" /> {recipeToShow.porciones} {t('home_servings')}
             </span>
           </div>
 
           <Link
             href={recipeHref}
-            className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-[#a86224] hover:bg-[#8e511c] text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+            className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
           >
             <span>{t('home_view_in_kitchen')}</span>
             <ArrowRight className="w-4 h-4" />

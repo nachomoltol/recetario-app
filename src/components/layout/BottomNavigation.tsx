@@ -54,11 +54,11 @@ export function BottomNavigation() {
               href={item.href}
               className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-2xl transition-all cursor-pointer min-w-[72px] min-h-[48px] ${
                 item.isActive
-                  ? 'text-[#a86224] font-bold bg-[#f4efe6]/80'
+                  ? 'text-brand-primary font-bold bg-[#f4efe6]/80'
                   : 'text-stone-500 hover:text-stone-800 font-medium'
               }`}
             >
-              <Icon className={`w-5 h-5 ${item.isActive ? 'text-[#a86224]' : 'text-stone-400'}`} />
+              <Icon className={`w-5 h-5 ${item.isActive ? 'text-brand-primary' : 'text-stone-400'}`} />
               <span className="text-[11px] leading-tight tracking-tight">{item.label}</span>
             </Link>
           );

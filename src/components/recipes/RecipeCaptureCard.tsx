@@ -526,7 +526,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0 shadow-2xs">
+          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0 shadow-2xs">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
@@ -554,7 +554,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                 : 'text-stone-600 hover:text-stone-900'
             } disabled:opacity-50`}
           >
-            <LinkIcon className="w-4 h-4 text-[#a86224]" />
+            <LinkIcon className="w-4 h-4 text-brand-primary" />
             <span>{t('capture_tab_url')}</span>
           </button>
           <button
@@ -570,7 +570,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                 : 'text-stone-600 hover:text-stone-900'
             } disabled:opacity-50`}
           >
-            <FileText className="w-4 h-4 text-[#a86224]" />
+            <FileText className="w-4 h-4 text-brand-primary" />
             <span>{t('capture_tab_text')}</span>
           </button>
         </div>
@@ -579,7 +579,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       {/* Aviso de captura nativa Web Share Target */}
       {autoStart && (
         <div className="p-4 rounded-2xl bg-[#f4efe6] border border-[#c27835]/40 text-stone-800 text-xs sm:text-sm flex items-center gap-3 animate-fade-in">
-          <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-[#a86224] shrink-0 shadow-2xs">
+          <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-brand-primary shrink-0 shadow-2xs">
             <Share2 className="w-4 h-4" />
           </div>
           <div>
@@ -595,10 +595,10 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       {isPending && (
         <div className="p-5 sm:p-6 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-4 animate-fade-in shadow-2xs">
           <div className="flex items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-[#a86224] font-semibold">
+            <div className="flex items-center gap-2 text-brand-primary font-semibold">
               <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#a86224] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#a86224]"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-primary"></span>
               </span>
               <span className="uppercase tracking-wider">
                 {t('capture_phase_label')} {stageIndex + 1} {t('capture_of_label')} {loadingStages.length}
@@ -606,7 +606,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             </div>
 
             <div className="flex items-center gap-1.5 text-stone-500 font-medium">
-              <Clock className="w-3.5 h-3.5 text-[#a86224]" />
+              <Clock className="w-3.5 h-3.5 text-brand-primary" />
               <span>{elapsedSeconds}{t('capture_elapsed_seconds')}</span>
             </div>
           </div>
@@ -622,7 +622,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
           {/* Mensaje descriptivo dinámico con humor culinario */}
           <div className="space-y-1">
             <h4 className="text-sm sm:text-base font-bold text-stone-900 flex items-center gap-2">
-              <Radio className="w-4 h-4 text-[#a86224] animate-pulse" />
+              <Radio className="w-4 h-4 text-brand-primary animate-pulse" />
               {currentHumorPhrase}
             </h4>
             <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-light">
@@ -632,7 +632,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
           {/* Aviso informativo de espera para la IA */}
           <div className="p-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs text-stone-600 flex items-start gap-2.5 shadow-2xs">
-            <Sparkles className="w-4 h-4 text-[#a86224] shrink-0 mt-0.5" />
+            <Sparkles className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
             <span className="leading-relaxed">
               {t('capture_loading_long_video')}
             </span>
@@ -718,7 +718,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isPending}
                 title={t('capture_title_upload_file')}
-                className="min-h-[52px] px-3.5 sm:px-4 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] active:scale-[0.98] border border-[#e7dfd5] text-[#a86224] hover:text-[#8e511c] font-medium transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs shrink-0 disabled:opacity-50"
+                className="min-h-[52px] px-3.5 sm:px-4 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] active:scale-[0.98] border border-[#e7dfd5] text-brand-primary hover:text-[#8e511c] font-medium transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs shrink-0 disabled:opacity-50"
               >
                 <Paperclip className="w-5 h-5" />
                 <span className="hidden sm:inline text-xs font-semibold">{t('capture_btn_upload_file')}</span>
@@ -738,11 +738,11 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                       />
                     </div>
                   ) : selectedFile.type.startsWith('image/') ? (
-                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
                       <Camera className="w-5 h-5" />
                     </div>
                   ) : (
-                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
                       <FileText className="w-5 h-5" />
                     </div>
                   )}
@@ -783,7 +783,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isPending}
-                className="px-3.5 py-2 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-[#a86224] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
               >
                 <Paperclip className="w-4 h-4" />
                 <span>{t('capture_btn_attach_file')}</span>
@@ -813,11 +813,11 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                       />
                     </div>
                   ) : selectedFile.type.startsWith('image/') ? (
-                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
                       <Camera className="w-5 h-5" />
                     </div>
                   ) : (
-                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-[#a86224] shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
                       <FileText className="w-5 h-5" />
                     </div>
                   )}
@@ -845,7 +845,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         <button
           type="submit"
           disabled={isPending}
-          className="w-full min-h-[54px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-[#a86224] hover:bg-[#8e511c] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-sm shadow-[#a86224]/20 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
+          className="w-full min-h-[54px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-brand-primary hover:bg-brand-hover active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-sm shadow-[#a86224]/20 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
         >
           {isPending ? (
             <>
