@@ -7,6 +7,11 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     url: 'https://www.migaapp.com',
+    allowNavigation: [
+      'www.migaapp.com',
+      'migaapp.com',
+      '*.migaapp.com',
+    ],
   },
 };
 

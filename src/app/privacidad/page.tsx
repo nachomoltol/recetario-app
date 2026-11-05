@@ -14,6 +14,7 @@ import {
   Radio,
   FileText,
 } from 'lucide-react';
+import { SupportContactTrigger } from '@/components/feedback/SupportContactTrigger';
 
 export const metadata: Metadata = {
   title: 'Política de Privacidad | Miga',
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacidadPage() {
-  const ultimaActualizacion = '17 de octubre de 2026';
+  const ultimaActualizacion = '5 de noviembre de 2026';
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col font-sans">
@@ -89,13 +90,8 @@ export default function PrivacidadPage() {
             </h2>
           </div>
           <p className="text-sm text-stone-600 leading-relaxed font-light">
-            El responsable del tratamiento de los datos recabados mediante la aplicación Miga es el equipo de desarrollo de Miga App. Para cualquier duda, ejercicio de derechos o aclaración sobre esta política, puedes contactar directamente a través del correo electrónico:{' '}
-            <a
-              href="mailto:migarecetasredes@gmail.com"
-              className="font-medium text-brand-primary underline hover:text-[#8e511c]"
-            >
-              migarecetasredes@gmail.com
-            </a>.
+            El responsable del tratamiento de los datos recabados mediante la aplicación Miga es NMT Digital Apps (Ignacio Adolfo Molina Toledo). Para cualquier duda, ejercicio de derechos o aclaración sobre esta política, puedes contactar directamente a través del correo electrónico:{' '}
+            <SupportContactTrigger variant="brand" defaultCategory="Otro" />.
           </p>
         </section>
 
@@ -241,9 +237,7 @@ export default function PrivacidadPage() {
             </ol>
             <p className="text-xs text-stone-500 pt-1">
               Alternativamente, puedes solicitar la eliminación manual de tus datos enviando un correo a{' '}
-              <a href="mailto:migarecetasredes@gmail.com" className="underline font-medium text-stone-700">
-                migarecetasredes@gmail.com
-              </a>.
+              <SupportContactTrigger variant="stone" defaultCategory="Otro" />.
             </p>
           </div>
         </section>
@@ -279,12 +273,7 @@ export default function PrivacidadPage() {
           <p className="text-sm text-stone-600 leading-relaxed font-light">
             Si tienes dudas, comentarios o requerimientos sobre nuestra Política de Privacidad o el tratamiento de tus datos, puedes escribirnos en cualquier momento a:
           </p>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-xs sm:text-sm font-semibold text-brand-primary">
-            <Mail className="w-4 h-4" />
-            <a href="mailto:migarecetasredes@gmail.com" className="hover:underline">
-              migarecetasredes@gmail.com
-            </a>
-          </div>
+          <SupportContactTrigger variant="pill" defaultCategory="Otro" />
         </section>
 
         {/* Botón de Retorno */}

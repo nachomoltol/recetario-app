@@ -11,19 +11,11 @@ const SYSTEM_FROM_DEFAULT = 'Soporte Miga <soporte@migaapp.com>';
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Proteger endpoint mediante la sesión autenticada de Supabase
+    // 1. Obtener sesión de Supabase (opcional para consultas desde /privacidad)
     const supabase = await createClient();
     const {
       data: { user },
-      error: authError,
     } = await supabase.auth.getUser();
-
-    if (authError || !user || !user.email) {
-      return NextResponse.json(
-        { error: 'No autorizado. Debes iniciar sesión para enviar feedback.' },
-        { status: 401 }
-      );
-    }
 
     // 2. Parsear y validar el cuerpo de la petición
     const body = await req.json().catch(() => null);
@@ -34,7 +26,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { category, message } = body;
+    const { category, message, guestEmail } = body;
+
+    const cleanGuestEmail = typeof guestEmail === 'string' ? guestEmail.trim() : '';
+    const isValidGuestEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanGuestEmail);
+
+    if (!user?.email && !isValidGuestEmail) {
+      return NextResponse.json(
+        { error: 'Por favor, indica un correo electrónico válido para poder responderte.' },
+        { status: 400 }
+      );
+    }
 
     const validCategories = [
       'Informar de un error',
@@ -73,15 +75,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Variables de enrutamiento estrictas (sin cruce de variables)
-    // - to: Únicamente el correo del equipo de soporte
-    // - from: Sistema verificado (NUNCA el correo del usuario)
-    // - reply_to: El correo del usuario para respuesta directa desde Gmail
-    // - subject: [Soporte Miga] - {Categoría} - {Correo del Usuario}
-    const userEmail = user.email;
+    const userEmail = user?.email || cleanGuestEmail;
     const userName =
-      user.user_metadata?.nombre ||
-      user.user_metadata?.full_name ||
+      user?.user_metadata?.nombre ||
+      user?.user_metadata?.full_name ||
       userEmail.split('@')[0];
+    const userIdLabel = user?.id || 'Visitante (Política de Privacidad)';
 
     const subject = `[Soporte Miga] - ${category} - ${userEmail}`;
 
@@ -96,7 +95,7 @@ export async function POST(req: NextRequest) {
 
 • Remitente (Usuario): ${userName} <${userEmail}>
 • Categoría: ${category}
-• ID de Usuario: ${user.id}
+• ID de Usuario: ${userIdLabel}
 • Fecha: ${new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}
 
 ==================================================
@@ -134,7 +133,7 @@ ${trimmedMessage}
         <strong>Categoría:</strong> ${category}
       </p>
       <p style="margin: 0 0 6px 0; font-size: 12px; color: #a8a29e;">
-        <strong>ID de Usuario Supabase:</strong> ${user.id}
+        <strong>ID de Usuario Supabase:</strong> ${userIdLabel}
       </p>
       <p style="margin: 0; font-size: 12px; color: #a8a29e;">
         <strong>Fecha:</strong> ${new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}

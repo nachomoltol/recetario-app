@@ -13,6 +13,7 @@ import {
   MessageSquare,
   BadgeCheck,
   LifeBuoy,
+  Mail,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProfileStore } from '@/stores/useProfileStore';
@@ -20,9 +21,10 @@ import { useProfileStore } from '@/stores/useProfileStore';
 interface SupportFeedbackModalProps {
   isOpen: boolean;
   onClose: () => void;
+  defaultCategory?: FeedbackCategory;
 }
 
-type FeedbackCategory =
+export type FeedbackCategory =
   | 'Informar de un error'
   | 'Sugerencia'
   | 'Duda técnica'
@@ -35,12 +37,17 @@ const CATEGORIES: { label: FeedbackCategory; icon: typeof AlertCircle }[] = [
   { label: 'Otro', icon: MessageSquare },
 ];
 
-export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalProps) {
+export function SupportFeedbackModal({
+  isOpen,
+  onClose,
+  defaultCategory = 'Informar de un error',
+}: SupportFeedbackModalProps) {
   const [mounted, setMounted] = useState(false);
   const user = useAuthStore((s) => s.user);
   const profile = useProfileStore((s) => s.profile);
 
-  const [category, setCategory] = useState<FeedbackCategory>('Informar de un error');
+  const [category, setCategory] = useState<FeedbackCategory>(defaultCategory);
+  const [guestEmail, setGuestEmail] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,9 +57,15 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (isOpen) {
+      setCategory(defaultCategory);
+    }
+  }, [isOpen, defaultCategory]);
+
   const handleResetAndClose = () => {
     setMessage('');
-    setCategory('Informar de un error');
+    setCategory(defaultCategory);
     setError(null);
     setIsSuccess(false);
     onClose();
@@ -80,12 +93,15 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
 
   if (!mounted || !isOpen || typeof document === 'undefined') return null;
 
-  const displayName = profile?.nombre || user?.user_metadata?.nombre || user?.email?.split('@')[0] || 'Chef';
-  const displayEmail = user?.email || 'usuario@migaapp.com';
+  const isAuthenticated = Boolean(user?.email);
+  const displayName =
+    profile?.nombre || user?.user_metadata?.nombre || user?.email?.split('@')[0] || 'Chef';
+  const displayEmail = user?.email || guestEmail.trim() || 'tu correo';
   const initials = displayName.slice(0, 2).toUpperCase();
 
   const charCount = message.length;
-  const isMessageValid = charCount >= 5 && charCount <= 500;
+  const isGuestEmailValid = isAuthenticated || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.trim());
+  const isMessageValid = charCount >= 5 && charCount <= 500 && isGuestEmailValid;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +119,7 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
         body: JSON.stringify({
           category,
           message: message.trim(),
+          guestEmail: !isAuthenticated ? guestEmail.trim() : undefined,
         }),
       });
 
@@ -157,7 +174,7 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
                 ¡Mensaje recibido!
               </h3>
               <p className="text-sm text-stone-600 max-w-sm mx-auto">
-                Muchas gracias por tu reporte. Te responderemos directamente a{' '}
+                Muchas gracias por tu consulta. Te responderemos directamente a{' '}
                 <strong className="text-stone-800">{displayEmail}</strong> con la mayor rapidez posible.
               </p>
             </div>
@@ -179,37 +196,62 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
                 <span>Atención personalizada</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-bold font-serif text-stone-900 leading-tight">
-                Soporte y Feedback
+                Soporte y Contacto
               </h2>
               <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-light">
-                ¿Tienes alguna duda, problema o sugerencia? Cuéntanoslo y te ayudaremos con rapidez.
+                Envíanos tu consulta directamente a{' '}
+                <span className="font-medium text-stone-800">migarecetasredes@gmail.com</span> y te ayudaremos con rapidez.
               </p>
             </div>
 
-            {/* Bloque de Usuario (Supabase auth + Badge Verificado) */}
-            <div className="p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between gap-3 shadow-2xs">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-white border border-[#e7dfd5] text-brand-primary flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
-                  {initials}
+            {/* Bloque de Usuario (Supabase auth + Badge Verificado) o Input de Correo para Visitantes */}
+            {isAuthenticated ? (
+              <div className="p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-white border border-[#e7dfd5] text-brand-primary flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
+                    {initials}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-bold text-stone-900 truncate">
+                      {displayName}
+                    </p>
+                    <p className="text-[11px] text-stone-500 truncate" title={displayEmail}>
+                      {displayEmail}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm font-bold text-stone-900 truncate">
-                    {displayName}
-                  </p>
-                  <p className="text-[11px] text-stone-500 truncate" title={displayEmail}>
-                    {displayEmail}
-                  </p>
-                </div>
-              </div>
 
-              {/* Badge Visual Verificado */}
-              <div className="shrink-0">
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Verificado</span>
-                </span>
+                {/* Badge Visual Verificado */}
+                <div className="shrink-0">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Verificado</span>
+                  </span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="guest-email"
+                  className="block text-xs font-semibold text-stone-700 uppercase tracking-wider"
+                >
+                  Tu correo electrónico de respuesta
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    id="guest-email"
+                    type="email"
+                    required
+                    value={guestEmail}
+                    onChange={(e) => setGuestEmail(e.target.value)}
+                    placeholder="tucorreo@ejemplo.com"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-[#e7dfd5] bg-[#faf7f2] focus:bg-white text-stone-900 text-xs sm:text-sm placeholder:text-stone-400 focus:outline-hidden focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition"
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Selector de Categoría (Chips interactivos) */}
             <div className="space-y-2">
@@ -263,7 +305,7 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 maxLength={500}
-                placeholder="Explica detalladamente qué ha ocurrido, qué dudas tienes o qué sugerencia quieres compartir para mejorar Miga..."
+                placeholder="Explica detalladamente tu consulta, ejercicio de derechos o sugerencia..."
                 className="w-full px-3.5 py-3 rounded-2xl border border-[#e7dfd5] bg-white text-stone-900 text-xs sm:text-sm placeholder:text-stone-400 focus:outline-hidden focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition resize-none leading-relaxed"
                 disabled={isSubmitting}
               />
@@ -319,4 +361,3 @@ export function SupportFeedbackModal({ isOpen, onClose }: SupportFeedbackModalPr
     document.body
   );
 }
-
