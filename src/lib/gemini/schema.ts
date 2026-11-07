@@ -145,22 +145,7 @@ export const recipeExtractionSchema = {
           instruccion: {
             type: Type.STRING,
             description:
-              'Nivel Intermedio (Estándar / Free): Guía estándar paso a paso para cocina doméstica eficiente. Instrucciones claras, secuenciales y ordenadas con tiempos y temperaturas precisos. OBLIGATORIO: integra las cantidades exactas en prosa culinaria fluida (ej: "Añade media cebolla picada finamente", "Vierte una cucharada de aceite (15 ml)", "Incorpora los 200 g de pechuga de pollo cortada en dados"). TERMINANTEMENTE PROHIBIDO redactar números con decimales de laboratorio fríos o antinaturales (NO escribir "añade 0.5 unidades de cebolla" ni "vierte 15ml de aceite"). Las cantidades inyectadas deben coincidir con las porciones escaladas de la receta.',
-          },
-          instruccion_principiante: {
-            type: Type.STRING,
-            description:
-              'Nivel Principiante (PRO): OBLIGATORIO. Redacción didáctica, pedagógica y de seguridad integral que NO puede ser una sustitución cosmética o mero sinónimo de "instruccion". Arquetipo cognitivo: principiante que necesita comprender el "por qué" de cada técnica (ej: secar ingredientes antes de dorar para que no suelten agua), advertencias preventivas de seguridad física (salpicaduras de aceite caliente, distancia del vapor, agarre de dedos en cortes), tiempos preventivos y señales sensoriales explícitas (ej: "hasta que el cuchillo entre sin resistencia", "dorado avellana pero no quemado"). Integra también las cantidades exactas en prosa culinaria natural.',
-          },
-          instruccion_avanzada: {
-            type: Type.STRING,
-            description:
-              'Nivel Avanzado (PRO): TERMINANTEMENTE PROHIBIDO clonar los pasos del nivel intermedio o sustituir meras palabras sueltas por jerga cosmética ("trocear" -> "brunoise", "aceite" -> "EVOO"). Agrupa las acciones en bloques de ejecución técnica y simultánea (condensando acciones paralelas: ej. extracción de grasa y mise en place mientras avanza el asado). Exige fundamentos físico-químicos reales: puntos de extracción de grasa, control de almidones para ligazón/mantecatura, caramelización de azúcares y emulsiones mecánicas fuera del fuego.',
-          },
-          descriptor_sensorial: {
-            type: Type.STRING,
-            description:
-              'OBLIGATORIO para Nivel Principiante (PRO): Tarjeta sensorial detallada con los cambios de color, texturas y aromas clave para saber exactamente cuándo pasar al siguiente paso sin miedo a quemar o dejar crudo el alimento (ej: "La cebolla pasará de blanco opaco a transparente brillante y desprenderá un aroma dulce; retira antes de que los bordes oscurezcan").',
+              'Redacción canónica, directa, clara, limpia y fiel al creador original para este paso. Guía estándar paso a paso con tiempos y temperaturas precisos. OBLIGATORIO: integra las cantidades exactas en prosa culinaria fluida (ej: "Añade media cebolla picada finamente", "Vierte una cucharada de aceite (15 ml)", "Incorpora los 200 g de pechuga de pollo cortada en dados"). TERMINANTEMENTE PROHIBIDO redactar números con decimales de laboratorio fríos o antinaturales (NO escribir "añade 0.5 unidades de cebolla" ni "vierte 15ml de aceite"). Las cantidades inyectadas deben coincidir con las porciones base de la receta.',
           },
           potencia_fuego: {
             type: Type.STRING,
@@ -181,7 +166,7 @@ export const recipeExtractionSchema = {
             description: 'Consejo gastronómico o secreto de técnica culinaria.',
           },
         },
-        required: ['orden', 'instruccion', 'instruccion_principiante', 'instruccion_avanzada', 'descriptor_sensorial'],
+        required: ['orden', 'instruccion'],
       },
     },
     macros_estimados_por_porcion: {
@@ -409,31 +394,9 @@ export function buildRecipeSystemInstruction(options?: {
        - Mug cakes / cup cakes / individual pancakes: batter summing between 90 – 140 g corresponds to exactly 1 serving.
      * MANDATORY CONSEQUENCE: Calculate servings by dividing the weight of the base ingredient by its reference unit weight and round to the nearest whole integer (e.g. 400 g cooked chickpeas with greens = 2 servings; 500 g chicken breast = 3 servings; 160 g dry pasta = 2 servings).
    - Faithfully extract the recipe's native base servings into the 'porciones' field. Ingredient quantities integrated into the steps narrative must correspond accurately to those base servings.
-    - COGNITIVE ARCHETYPE MATRIX FOR CULINARY LEVELS (STRICT FORBIDDANCE OF COSMETIC SYNONYM REPLACEMENT):
-      It is STRICTLY FORBIDDEN to simply swap words or use cosmetic synonyms between levels. Each level represents a fundamentally distinct cognitive profile, informational density, and pedagogical approach:
-
-      * 'instruccion_principiante': BEGINNER LEVEL (Pedagogy, "The Why", and Physical Safety).
-        - Archetype: Novice cook experiencing thermal, cutting, or timing insecurity.
-        - Approach: Explains the "why" behind each action (e.g. "pat the meat thoroughly dry before searing so surface moisture does not boil the meat").
-        - Safety & Prevention: Explicit physical safety warnings (hot oil splatters, steam vent clearance, 'claw' grip when chopping).
-        - Explicit Sensory Signals: Non-ambiguous visual, tactile, and audible cues (e.g. "until a knife slides in effortlessly like butter", "hazelnut golden but not dark brown", "the sizzle settles into a gentle bubbling").
-
-      * 'instruccion': INTERMEDIATE LEVEL (Efficient Domestic Standard).
-        - Archetype: Everyday cook seeking sequential order, clarity, and agile workflow without elementary warnings.
-        - Approach: Standard step-by-step guidance for efficient home cooking. Clear, sequential instructions with precise timings, temperatures, and fluid prose quantities.
-
-      * 'instruccion_avanzada': ADVANCED LEVEL (Professional Technique, Concurrency & Physical-Chemical Principles).
-        - Archetype: Experienced chef or line brigade focused on mise en place, thermal precision, and multi-pan concurrency.
-        - STRICT FORBIDDANCE: It is STRICTLY FORBIDDEN to clone intermediate steps or swap words with cosmetic jargon (e.g. NEVER just replace "chop" with "brunoise" or "oil" with "EVOO").
-        - Technical Concurrency Blocks: Condense parallel tasks to streamline execution (e.g. advance mise en place and slow fat rendering while roasting or stock reduction progresses).
-        - Mandatory Physical-Chemical Principles:
-          * Gentle fat rendering points without scorching milk solids or degrading lipids.
-          * Starch suspension control for mantecatura/emulsion using amylose-rich cooking water.
-          * Sugar caramelization and Maillard browning with pan deglazing to capture caramelized sucs.
-          * Off-heat mechanical emulsions to protect protein structures and prevent fat splitting.
-
-      * 'descriptor_sensorial': Empirical visual, textural, and aromatic cues confirming the exact cooking milestone.
-      * 'potencia_fuego': Strictly classify fire intensity: 'suave', 'medio', 'medio-alto', 'alto', or 'horno'.`
+   - CANONICAL STEP INSTRUCTION ('instruccion'):
+     * In the initial capture, ONLY generate the canonical 'instruccion' field for each step. It must be direct, clean, clear, and 100% faithful to the original creator, integrating timings, temperatures, and exact quantities in natural prose.
+     * 'potencia_fuego': Strictly classify heat intensity when applicable: 'suave', 'medio', 'medio-alto', 'alto', or 'horno'.`
       : `8. REDACCIÓN EN PROSA CULINARIA NATURAL, TABLA MAESTRA DE GRAMAJES E INFERENCIA DE RACIONES:
    - En el array de 'pasos' o 'preparación', integra siempre las cantidades exactas de los ingredientes de forma fluida, profesional y natural.
    - PROHIBICIÓN ESTRICTA DE DECIMALES DE LABORATORIO: Queda TERMINANTEMENTE PROHIBIDO redactar expresiones frías, artificiales o de laboratorio como "añade 0.5 unidades de cebolla", "vierte 0.25 cucharadas" o "agrega 15ml de aceite".
@@ -486,32 +449,9 @@ export function buildRecipeSystemInstruction(options?: {
        - Mug cakes / bizcochos en taza / tortitas individuales: masas que sumen entre 90 – 140 g totales corresponden exactamente a 1 ración.
      * CONSECUENCIA OBLIGATORIA: Calcula las raciones dividiendo el peso del ingrediente base entre su gramaje unitario de referencia y redondea al entero más próximo (ej: 400 g de garbanzos cocidos con hojas verdes = 2 raciones; 500 g de pechuga de pollo = 3 raciones; 160 g de pasta seca = 2 raciones).
    - Extrae con total fidelidad las porciones o raciones base originales de la elaboración y refléjalas en el campo 'porciones'. Las cantidades integradas en los pasos deben corresponderse exactamente con dichas porciones base.
-    - MATRIZ ARQUETÍPICA DE NIVELES CULINARIOS Y PEDAGOGÍA REAL (PROHIBICIÓN ESTRICTA DE SUSTITUCIÓN COSMÉTICA/SINÓNIMOS):
-      Queda TERMINANTEMENTE PROHIBIDO limitarse a cambiar sinónimos o palabras sueltas entre niveles. Cada nivel representa un perfil cognitivo, una densidad de información y una estructura pedagógica profundamente diferenciada:
-
-      * 'instruccion_principiante': NIVEL PRINCIPIANTE (Didáctica, Pedagogía y Seguridad Física Integral).
-        - Arquetipo: Cocinero novato con inseguridad térmica, de cortes o de tiempos.
-        - Enfoque: Explica el "por qué" detrás de cada técnica (ej: "secamos bien la carne antes de dorar para que no suelte agua y logre un sellado caramelizado").
-        - Seguridad y Prevención: Incluye advertencias de seguridad física preventiva (control de salpicaduras de aceite caliente, distancia del vapor al abrir recipientes/horno, posición de dedos en 'garra' al cortar).
-        - Señales Sensoriales Explícitas y Tiempos Preventivos: Usa marcadores táctiles, sonoros, olfativos y visuales no ambiguos (ej: "hasta que el cuchillo entre sin resistencia como mantequilla", "dorado avellana pero sin llegar a marrón oscuro", "el chisporroteo del aceite pase de intenso a suave").
-        - Paso a paso desgranado: No des nada por sabido.
-
-      * 'instruccion': NIVEL INTERMEDIO (Estándar de Cocina Doméstica Eficiente).
-        - Arquetipo: Cocinero habitual que busca orden secuencial, fluidez y efectividad sin advertencias elementales ni jerga pretenciosa.
-        - Enfoque: Guía estándar paso a paso para cocina doméstica eficiente. Instrucciones claras y ordenadas con tiempos, temperaturas y cantidades integradas en prosa fluida.
-
-      * 'instruccion_avanzada': NIVEL AVANZADO (Técnica Profesional, Simultaneidad y Fundamentos Físico-Químicos).
-        - Arquetipo: Cocinero experto o brigada culinaria orientado a mise en place, precisión térmica y ejecución paralela.
-        - PROHIBICIÓN ESTRICTA: Queda TERMINANTEMENTE PROHIBIDO clonar los pasos del nivel intermedio o limitarse a sustituir palabras sueltas por jerga cosmética ("trocear" -> "brunoise", "aceite" -> "EVOO").
-        - Bloques de Ejecución Técnica Simultánea: Agrupa y condensa acciones paralelas para optimizar tiempos (ej: sincronizar mise en place y renderizado lento de grasa mientras avanza el asado u horneado).
-        - Fundamentos Físico-Químicos Obligatorios:
-          * Extracción y renderizado lipídico a fuego suave para desgrasar sin quemar sólidos ni degradar lípidos.
-          * Control coloidal de almidones para ligazón y mantecatura mediante agitación con agua de cocción rica en amilosa.
-          * Caramelización de azúcares y reacción de Maillard con desglasado para recuperar sucs adheridos.
-          * Emulsiones mecánicas fuera del fuego directo para evitar desnaturalización proteica y separación de fases.
-
-      * 'descriptor_sensorial': Pistas empíricas obligatorias (aroma, color, textura, sonido) que validan el punto exacto de cocción.
-      * 'potencia_fuego': Clasificación obligatoria de calor: 'suave', 'medio', 'medio-alto', 'alto' u 'horno'.`;
+   - REDACCIÓN CANÓNICA DEL PASO ('instruccion'):
+     * En la captura inicial, redacta exclusivamente el campo 'instruccion' como la instrucción canónica, directa, limpia, clara y fiel al creador original, con tiempos, temperaturas y cantidades integradas en prosa fluida.
+     * 'potencia_fuego': Clasificación de calor cuando aplique: 'suave', 'medio', 'medio-alto', 'alto' u 'horno'.`;
 
   return `
 Eres un Chef Ejecutivo y Nutricionista Clínico de élite especializado en estandarización culinaria, análisis audiovisual y salud sostenible.

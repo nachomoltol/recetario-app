@@ -640,19 +640,22 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
           instruccion: 'Seguir la preparación mostrada en el contenido audiovisual.',
         }];
 
-    const pasosPayload = rawPasos.map((p, idx) => ({
-      receta_id: nuevaReceta.id,
-      orden: idx + 1, // CRÍTICO: idx + 1 garantiza que no haya duplicados ni valores <= 0
-      instruccion: (p.instruccion || 'Preparación según indicaciones del vídeo.').trim(),
-      instruccion_principiante: p.instruccion_principiante ? p.instruccion_principiante.trim() : null,
-      instruccion_avanzada: p.instruccion_avanzada ? p.instruccion_avanzada.trim() : null,
-      descriptor_sensorial: p.descriptor_sensorial ? p.descriptor_sensorial.trim() : null,
-      potencia_fuego: p.potencia_fuego ? p.potencia_fuego.trim() : null,
-      tiempo_estimado_min: typeof p.tiempo_estimado_min === 'number' && p.tiempo_estimado_min > 0 ? p.tiempo_estimado_min : null,
-      temperatura_celsius: typeof p.temperatura_celsius === 'number' && p.temperatura_celsius > 0 ? p.temperatura_celsius : null,
-      consejo_pro: p.consejo_pro ? p.consejo_pro.trim() : null,
-      utensilios_sugeridos: [],
-    }));
+    const pasosPayload = rawPasos.map((p, idx) => {
+      const instruccionBase = (p.instruccion || 'Preparación según indicaciones del vídeo.').trim();
+      return {
+        receta_id: nuevaReceta.id,
+        orden: idx + 1, // CRÍTICO: idx + 1 garantiza que no haya duplicados ni valores <= 0
+        instruccion: instruccionBase,
+        instruccion_principiante: null,
+        instruccion_avanzada: null,
+        descriptor_sensorial: null,
+        potencia_fuego: p.potencia_fuego ? p.potencia_fuego.trim() : null,
+        tiempo_estimado_min: typeof p.tiempo_estimado_min === 'number' && p.tiempo_estimado_min > 0 ? p.tiempo_estimado_min : null,
+        temperatura_celsius: typeof p.temperatura_celsius === 'number' && p.temperatura_celsius > 0 ? p.temperatura_celsius : null,
+        consejo_pro: p.consejo_pro ? p.consejo_pro.trim() : null,
+        utensilios_sugeridos: [],
+      };
+    });
 
     let { error: errPasos } = await supabase.from('pasos').insert(pasosPayload);
 
