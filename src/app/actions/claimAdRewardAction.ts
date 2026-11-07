@@ -42,6 +42,15 @@ export async function claimAdRewardAction(): Promise<ClaimAdRewardResult> {
       );
 
       if (!rpcError && typeof rpcSaldo === 'number') {
+        await db
+          .from('usuarios')
+          .update({
+            solicitud_recarga_pc: false,
+            solicitud_recarga_pc_at: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+
         return {
           success: true,
           nuevoSaldo: rpcSaldo,
@@ -81,6 +90,8 @@ export async function claimAdRewardAction(): Promise<ClaimAdRewardResult> {
       .from('usuarios')
       .update({
         creditos_anuncio: nuevoSaldo,
+        solicitud_recarga_pc: false,
+        solicitud_recarga_pc_at: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id);

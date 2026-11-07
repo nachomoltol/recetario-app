@@ -10,6 +10,8 @@ export type CheckUserBalanceResult =
       is_pro: boolean;
       limite_gratuito: number;
       puede_extraer: boolean;
+      solicitud_recarga_pc: boolean;
+      solicitud_recarga_pc_at: string | null;
     }
   | {
       success: false;
@@ -19,6 +21,8 @@ export type CheckUserBalanceResult =
       is_pro?: never;
       limite_gratuito?: never;
       puede_extraer?: never;
+      solicitud_recarga_pc?: never;
+      solicitud_recarga_pc_at?: never;
     };
 
 /**
@@ -45,7 +49,7 @@ export async function checkUserBalanceAction(): Promise<CheckUserBalanceResult> 
 
     const { data: profile, error: profileErr } = await db
       .from('usuarios')
-      .select('plan_suscripcion, capturas_mes_actual, creditos_anuncio')
+      .select('plan_suscripcion, capturas_mes_actual, creditos_anuncio, solicitud_recarga_pc, solicitud_recarga_pc_at')
       .eq('id', user.id)
       .single();
 
@@ -62,6 +66,8 @@ export async function checkUserBalanceAction(): Promise<CheckUserBalanceResult> 
       Boolean((profile as any)?.is_pro);
     const capturas = Number(profile?.capturas_mes_actual) || 0;
     const creditosAnuncio = Number(profile?.creditos_anuncio) || 0;
+    const solicitudRecargaPc = Boolean(profile?.solicitud_recarga_pc);
+    const solicitudRecargaPcAt = profile?.solicitud_recarga_pc_at ?? null;
 
     return {
       success: true,
@@ -70,6 +76,8 @@ export async function checkUserBalanceAction(): Promise<CheckUserBalanceResult> 
       is_pro: isPro,
       limite_gratuito: 20,
       puede_extraer: isPro || creditosAnuncio > 0 || capturas < 20,
+      solicitud_recarga_pc: solicitudRecargaPc,
+      solicitud_recarga_pc_at: solicitudRecargaPcAt,
     };
   } catch (err: unknown) {
     console.error('[checkUserBalanceAction] Excepción:', err);

@@ -16,8 +16,14 @@ import {
   Paperclip,
   X,
   Camera,
+  MonitorPlay,
+  Play,
 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { ingestRecipeAction } from '@/app/actions/recipeIngest';
+import { checkUserBalanceAction } from '@/app/actions/checkUserBalanceAction';
+import { claimAdRewardAction } from '@/app/actions/claimAdRewardAction';
+import { showRewardVideoAdFlow, preloadRewardedAd } from '@/lib/admob/admobService';
 import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
 import { AdInterstitialModal } from '@/components/subscription/AdInterstitialModal';
 import { HardLimitModal, HardLimitType } from '@/components/subscription/HardLimitModal';
@@ -189,6 +195,104 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   // Estados de carga progresiva
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const hasAutoStarted = useRef(false);
+
+  // Estados de solicitud de recarga pendiente desde PC (Exclusivo Android Nativo)
+  const [isNativeAndroid, setIsNativeAndroid] = useState(false);
+  const [hasPendingPcRequest, setHasPendingPcRequest] = useState(false);
+  const [isPlayingPcUnlockAd, setIsPlayingPcUnlockAd] = useState(false);
+  const [pcUnlockFeedback, setPcUnlockFeedback] = useState<{
+    type: 'success' | 'warning';
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let nativeAndroid = false;
+    try {
+      nativeAndroid =
+        Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+    } catch {
+      nativeAndroid = false;
+    }
+    setIsNativeAndroid(nativeAndroid);
+
+    if (!nativeAndroid) return;
+
+    const verifyPendingPcRequest = async () => {
+      try {
+        const res = await checkUserBalanceAction();
+        if (res.success && res.solicitud_recarga_pc) {
+          if (res.solicitud_recarga_pc_at) {
+            const ageMs = Date.now() - new Date(res.solicitud_recarga_pc_at).getTime();
+            const isUnder30Min = ageMs >= 0 && ageMs < 30 * 60 * 1000;
+            setHasPendingPcRequest(isUnder30Min);
+            if (isUnder30Min) {
+              preloadRewardedAd().catch(() => {});
+            }
+          } else {
+            setHasPendingPcRequest(true);
+            preloadRewardedAd().catch(() => {});
+          }
+        } else {
+          setHasPendingPcRequest(false);
+        }
+      } catch (err) {
+        console.error('[RecipeCaptureCard] Error comprobando solicitud_recarga_pc:', err);
+      }
+    };
+
+    verifyPendingPcRequest();
+  }, [currentProfile]);
+
+  const handleWatchAdForPc = async () => {
+    if (isPlayingPcUnlockAd) return;
+    setIsPlayingPcUnlockAd(true);
+    setPcUnlockFeedback(null);
+
+    try {
+      const result = await showRewardVideoAdFlow();
+      if (result.rewarded) {
+        await claimAdRewardAction();
+        setHasPendingPcRequest(false);
+        setPcUnlockFeedback({
+          type: 'success',
+          message:
+            language === 'en'
+              ? 'Credit added! Go back to your PC and click "Check balance / I watched the video" to unlock your recipe.'
+              : '¡Crédito acreditado con éxito! Vuelve a tu PC y pulsa "Comprobar saldo / Ya vi el vídeo" para desbloquear tu receta.',
+        });
+      } else if (result.error === 'AD_DISMISSED_WITHOUT_REWARD') {
+        setPcUnlockFeedback({
+          type: 'warning',
+          message:
+            language === 'en'
+              ? 'You must watch the full video to unlock the recipe on your PC.'
+              : 'Debes ver el vídeo completo para desbloquear la receta en tu ordenador.',
+        });
+      } else {
+        await claimAdRewardAction();
+        setHasPendingPcRequest(false);
+        setPcUnlockFeedback({
+          type: 'success',
+          message:
+            language === 'en'
+              ? 'Courtesy credit added! You can now unlock your recipe on your PC.'
+              : '¡Crédito de cortesía acreditado! Ya puedes desbloquear tu receta en tu ordenador.',
+        });
+      }
+    } catch (err) {
+      console.error('[RecipeCaptureCard] Error reproduciendo anuncio para PC:', err);
+      setPcUnlockFeedback({
+        type: 'warning',
+        message:
+          language === 'en'
+            ? 'Could not load video right now. Please try again.'
+            : 'No se pudo cargar el vídeo en este momento. Inténtalo de nuevo.',
+      });
+    } finally {
+      setIsPlayingPcUnlockAd(false);
+    }
+  };
 
   // Previsualización ligera para miniaturas sin re-renders masivos ni fugas de memoria
   const filePreviewUrl = useMemo(() => {
@@ -575,6 +679,63 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
           </button>
         </div>
       </div>
+
+      {/* Tarjeta Banner de Solicitud de Desbloqueo Pendiente desde PC (Exclusivo Android Nativo < 30 min) */}
+      {isNativeAndroid && hasPendingPcRequest && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-50 via-orange-50/60 to-white border-2 border-brand-primary shadow-sm space-y-3.5 animate-fade-in">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-primary/15 text-brand-primary flex items-center justify-center shrink-0">
+              <MonitorPlay className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm sm:text-base font-bold text-stone-900 leading-tight">
+                {language === 'en' ? 'Pending recipe on your PC' : 'Receta pendiente en tu PC'}
+              </h3>
+              <p className="text-xs text-stone-600 leading-relaxed">
+                {language === 'en'
+                  ? 'Watch a short sponsored video to unlock the extraction started on your computer'
+                  : 'Mira un vídeo corto patrocinado para desbloquear la extracción iniciada en tu ordenador'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleWatchAdForPc}
+            disabled={isPlayingPcUnlockAd}
+            className="w-full min-h-[46px] py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-75 text-white font-semibold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+          >
+            {isPlayingPcUnlockAd ? (
+              <Loader2 className="w-4 h-4 text-amber-300 animate-spin" />
+            ) : (
+              <Play className="w-4 h-4 text-amber-300 fill-current" />
+            )}
+            <span>
+              {isPlayingPcUnlockAd
+                ? (language === 'en' ? 'Loading video...' : 'Cargando vídeo...')
+                : (language === 'en' ? 'Watch video and unlock on PC' : 'Ver vídeo y desbloquear en PC')}
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Feedback tras reproducir el vídeo para PC en Android */}
+      {isNativeAndroid && pcUnlockFeedback && (
+        <div
+          className={`p-3.5 rounded-2xl text-xs sm:text-sm font-medium flex items-center gap-2.5 animate-fade-in ${
+            pcUnlockFeedback.type === 'success'
+              ? 'bg-emerald-50 border border-emerald-300 text-emerald-900'
+              : 'bg-amber-50 border border-amber-300 text-amber-900'
+          }`}
+        >
+          {pcUnlockFeedback.type === 'success' ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+          )}
+          <span>{pcUnlockFeedback.message}</span>
+        </div>
+      )}
 
       {/* Aviso de captura nativa Web Share Target */}
       {autoStart && (

@@ -30,6 +30,7 @@ import {
 } from '@/lib/admob/admobService';
 import { claimAdRewardAction } from '@/app/actions/claimAdRewardAction';
 import { checkUserBalanceAction } from '@/app/actions/checkUserBalanceAction';
+import { requestMobileAdUnlockAction } from '@/app/actions/requestMobileAdUnlockAction';
 
 export interface AdInterstitialModalProps {
   isOpen: boolean;
@@ -62,10 +63,12 @@ export function AdInterstitialModal({
   // Estado del usuario y correo
   const [userEmail, setUserEmail] = useState<string>(profile?.email || '');
 
-  // Estado de comprobación de saldo en PC / Web
+  // Estado de comprobación de saldo y solicitud de recarga en PC / Web
   const [isCheckingBalance, setIsCheckingBalance] = useState(false);
   const [balanceCheckStatus, setBalanceCheckStatus] = useState<'idle' | 'success' | 'not_found' | 'error'>('idle');
   const [balanceCheckMessage, setBalanceCheckMessage] = useState<string | null>(null);
+  const [isUnlockRequested, setIsUnlockRequested] = useState(Boolean((profile as any)?.solicitud_recarga_pc));
+  const [isRequestingUnlock, setIsRequestingUnlock] = useState(false);
 
   // Notificación toast local para Android al sincronizar hacia PC
   const [toastNotification, setToastNotification] = useState<string | null>(null);
@@ -143,7 +146,24 @@ export function AdInterstitialModal({
     setBalanceCheckStatus('idle');
     setBalanceCheckMessage(null);
     setToastNotification(null);
-  }, [isOpen]);
+
+    // Sincronizar si ya existe una solicitud de desbloqueo reciente (< 30 min)
+    checkUserBalanceAction().then((res) => {
+      if (res.success && res.solicitud_recarga_pc) {
+        if (res.solicitud_recarga_pc_at) {
+          const diffMs = Date.now() - new Date(res.solicitud_recarga_pc_at).getTime();
+          if (diffMs < 30 * 60 * 1000) {
+            setIsUnlockRequested(true);
+            return;
+          }
+        } else {
+          setIsUnlockRequested(true);
+          return;
+        }
+      }
+      setIsUnlockRequested(Boolean((profile as any)?.solicitud_recarga_pc));
+    }).catch(() => {});
+  }, [isOpen, profile]);
 
   // Lógica de reproducción cuando el usuario pasa a 'playing'
   useEffect(() => {
@@ -225,6 +245,22 @@ export function AdInterstitialModal({
       if (timerInterval) clearInterval(timerInterval);
     };
   }, [isOpen, viewState, isEn]);
+
+  // Manejador del botón "Solicitar desbloqueo en mi móvil" en PC
+  const handleRequestMobileUnlock = async () => {
+    if (isRequestingUnlock) return;
+    setIsRequestingUnlock(true);
+    try {
+      const res = await requestMobileAdUnlockAction();
+      if (res.success) {
+        setIsUnlockRequested(true);
+      }
+    } catch (err) {
+      console.error('[AdInterstitialModal] Error solicitando desbloqueo móvil:', err);
+    } finally {
+      setIsRequestingUnlock(false);
+    }
+  };
 
   // Manejador del botón "Comprobar saldo / Ya vi el vídeo" en PC
   const handleCheckBalance = async () => {
@@ -507,6 +543,36 @@ export function AdInterstitialModal({
               {/* Caso 2: PC / Navegador Web de Escritorio (!isNativeAndroid) */}
               {!isNativeAndroid && platform === 'desktop_web' && (
                 <div className="space-y-3.5 pt-0.5 text-left">
+                  {/* Paso Previo Interactivo: Solicitud de Desbloqueo en Móvil */}
+                  {!isUnlockRequested ? (
+                    <button
+                      type="button"
+                      onClick={handleRequestMobileUnlock}
+                      disabled={isRequestingUnlock}
+                      className="w-full min-h-[46px] py-2.5 px-4 rounded-xl bg-amber-100 hover:bg-amber-200/80 border border-amber-300 text-amber-950 font-semibold text-xs sm:text-sm shadow-2xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
+                    >
+                      {isRequestingUnlock ? (
+                        <Loader2 className="w-4 h-4 text-amber-800 animate-spin" />
+                      ) : (
+                        <Smartphone className="w-4 h-4 text-amber-800" />
+                      )}
+                      <span>
+                        {isRequestingUnlock
+                          ? (isEn ? 'Sending request to mobile...' : 'Enviando solicitud al móvil...')
+                          : (isEn ? 'Request unlock on my phone' : 'Solicitar desbloqueo en mi móvil')}
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-medium flex items-center gap-2.5 animate-fade-in">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                      <span>
+                        {isEn
+                          ? 'Request sent! Open the Miga app on your phone to watch the ad.'
+                          : '¡Solicitud enviada! Abre la app Miga en tu móvil para ver el anuncio'}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Guía Numerada Clara */}
                   <div className="space-y-2 text-xs text-stone-700 bg-[#f4efe6] p-3.5 rounded-xl border border-[#e7dfd5]">
                     <p className="font-semibold text-stone-900 text-xs sm:text-sm flex items-center gap-1.5">

@@ -43,6 +43,8 @@ export interface Database {
           plan_suscripcion: 'gratis' | 'pro';
           capturas_mes_actual: number;
           creditos_anuncio?: number;
+          solicitud_recarga_pc?: boolean;
+          solicitud_recarga_pc_at?: string | null;
           fecha_ultimo_reinicio: string;
           antiguedad_ciclos_mes: number;
           stripe_customer_id?: string | null;
@@ -63,6 +65,8 @@ export interface Database {
           plan_suscripcion?: 'gratis' | 'pro';
           capturas_mes_actual?: number;
           creditos_anuncio?: number;
+          solicitud_recarga_pc?: boolean;
+          solicitud_recarga_pc_at?: string | null;
           fecha_ultimo_reinicio?: string;
           antiguedad_ciclos_mes?: number;
           stripe_customer_id?: string | null;
@@ -83,6 +87,8 @@ export interface Database {
           plan_suscripcion?: 'gratis' | 'pro';
           capturas_mes_actual?: number;
           creditos_anuncio?: number;
+          solicitud_recarga_pc?: boolean;
+          solicitud_recarga_pc_at?: string | null;
           fecha_ultimo_reinicio?: string;
           antiguedad_ciclos_mes?: number;
           stripe_customer_id?: string | null;
