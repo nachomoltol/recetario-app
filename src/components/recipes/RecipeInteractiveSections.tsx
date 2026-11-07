@@ -12,7 +12,6 @@ import {
   ChefHat,
   Eye,
   Lock,
-  ShieldAlert,
 } from 'lucide-react';
 import { RecetaIngrediente, Paso } from '@/types/recipe';
 import {
@@ -112,320 +111,6 @@ function formatStepHeat(
   }
 
   return null;
-}
-
-/**
- * Comprueba si dos textos de instrucción son prácticamente iguales para forzar
- * la generación de un relato pedagógico expandido y visiblemente distinto.
- */
-function areInstructionsTooSimilar(baseText: string, candidateText?: string | null): boolean {
-  if (!candidateText) return true;
-  const a = baseText
-    .toLowerCase()
-    .replace(/[^a-záéíóúñ0-9]/gi, '')
-    .trim();
-  const b = candidateText
-    .toLowerCase()
-    .replace(/[^a-záéíóúñ0-9]/gi, '')
-    .trim();
-  if (!b) return true;
-  if (a === b) return true;
-  // Si el candidato es apenas un 20% más largo o contiene exactamente el mismo arranque sin desarrollo didáctico
-  if (b.length < a.length * 1.25 && (b.includes(a) || a.includes(b))) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Calibración pedagógica para Nivel Principiante (PRO):
- * Garantiza que:
- * 1. El relato principal (instruccion_principiante) cambie de forma EVIDENTE y PALPABLE
- *    respecto al Nivel Intermedio (paso.instruccion), desglosando el paso con explicación guiada.
- * 2. Exista siempre una tarjeta sensorial rica (cambios de color, texturas y aromas clave).
- * 3. Incluya advertencias de seguridad térmica y precauciones claras para no quemar ni dejar crudo el alimento.
- */
-function buildBeginnerPedagogicalCalibration(
-  baseInstruction: string,
-  explicitBeginnerInstruction: string | undefined | null,
-  explicitSensoryCue: string | undefined | null,
-  potenciaFuego: string | undefined | null,
-  tempCelsius: number | undefined | null,
-  tiempoMin: number | undefined | null,
-  lang: 'es' | 'en' = 'es',
-  isFirstBakingStep: boolean = true
-): {
-  beginnerInstruction: string;
-  sensoryCue: string;
-  thermalSafetyWarning: string;
-} {
-  const cleanBase = baseInstruction.trim().replace(/\.+$/, '');
-  const norm = cleanBase.toLowerCase();
-
-  const isBaking =
-    potenciaFuego === 'horno' ||
-    /\b(horno|hornear|hornea|precalienta|precalentar|airfryer|freidora\s+de\s+aire|oven|bake|roast|gratinar|gratina)\b/i.test(
-      norm
-    );
-  const isSearingOrFrying =
-    /\b(sofreír|sofríe|sofrie|dorar|dora|saltear|saltea|freír|fríe|frie|pochar|pocha|sartén|sarten|aceite|marcar|marca|plancha|sauté|sear|fry|brown)\b/i.test(
-      norm
-    );
-  const isBoilingOrSimmering =
-    /\b(hervir|hierve|cocer|cuece|caldo|agua|ebullición|ebullicion|fuego\s+lento|reducir|reduce|guisar|cocinar\s+a\s+fuego|boil|simmer|broth)\b/i.test(
-      norm
-    );
-  const isCuttingOrPrep =
-    /\b(cortar|corta|picar|pica|pelar|pela|trocear|trocea|laminar|lamina|rallar|ralla|limpiar|limpia|lavar|lava|chop|dice|slice|mince|peel)\b/i.test(
-      norm
-    );
-  const isMixingOrEmulsifying =
-    /\b(mezclar|mezcla|batir|bate|integrar|integra|remover|remueve|triturar|tritura|amasar|amasa|emulsionar|incorporar|incorpora|añadir|añade|agregar|agrega|mix|whisk|blend|stir)\b/i.test(
-      norm
-    );
-
-  // 1. Relato pedagógico expandido para Principiante (visiblemente distinto a Intermedio a simple vista)
-  let beginnerInstruction = (explicitBeginnerInstruction || '').trim();
-  if (areInstructionsTooSimilar(cleanBase, beginnerInstruction)) {
-    const lowerFirstBase =
-      cleanBase.length > 1
-        ? cleanBase.charAt(0).toLowerCase() + cleanBase.slice(1)
-        : cleanBase.toLowerCase();
-
-    if (lang === 'en') {
-      if (isBaking) {
-        if (isFirstBakingStep) {
-          beginnerInstruction = `Step-by-step beginner guide: First, verify that your oven or air fryer is fully preheated${
-            tempCelsius ? ` to ${tempCelsius}°C` : ''
-          } so the food starts cooking evenly right away without drying out. Next, ${lowerFirstBase}. Place the tray in the center rack so heat circulates all around, and check progress${
-            tiempoMin ? ` around the ${tiempoMin}-minute mark` : ' during the final minutes'
-          } to ensure the interior is tender and the outside doesn't over-brown.`;
-        } else {
-          beginnerInstruction = `Step-by-step beginner guide: With the oven already actively hot${
-            tempCelsius ? ` at ${tempCelsius}°C` : ''
-          }, ${lowerFirstBase}. Keep the oven door closed so heat remains constant, and check progress${
-            tiempoMin ? ` around the ${tiempoMin}-minute mark` : ''
-          } to ensure it cooks through evenly.`;
-        }
-      } else if (isSearingOrFrying) {
-        beginnerInstruction = `Step-by-step beginner guide: Place your pan over ${
-          potenciaFuego ? `${potenciaFuego} heat` : 'medium heat'
-        } and let it warm up for 30 to 45 seconds before starting so the food doesn't stick to the surface. Now, ${lowerFirstBase}. Move the ingredients gently and continuously with a wooden or silicone spatula so every piece receives even heat without scorching the edges or burning the oil.`;
-      } else if (isBoilingOrSimmering) {
-        beginnerInstruction = `Step-by-step beginner guide: Regulate the burner carefully to keep a controlled temperature throughout the liquid. Proceed to ${lowerFirstBase}. Stir occasionally by sliding a spoon across the bottom of the pot so nothing sticks, allowing flavors to concentrate while the texture cooks evenly all the way through.`;
-      } else if (isCuttingOrPrep) {
-        beginnerInstruction = `Step-by-step beginner guide: Set up a stable cutting board on a flat counter and curl your fingertips slightly inward ("claw grip") to protect your hands. Carefully ${lowerFirstBase}. Take your time to make all pieces as uniform in size as possible—this guarantees they will cook at the exact same speed in the next steps without smaller pieces burning.`;
-      } else if (isMixingOrEmulsifying) {
-        beginnerInstruction = `Step-by-step beginner guide: Use a wide bowl or container that gives you plenty of room to work comfortably without spilling. Slowly ${lowerFirstBase}. Use a flexible spatula to scrape down the sides and bottom of the container using enveloping movements until you achieve a smooth, lump-free mixture.`;
-      } else {
-        beginnerInstruction = `Step-by-step beginner guide: Have all your utensils and measured ingredients ready on the counter before starting this action. Calmly ${lowerFirstBase}. Verify that the texture, moisture, and seasoning look uniform across the dish before moving on to the next step.`;
-      }
-    } else {
-      if (isBaking) {
-        if (isFirstBakingStep) {
-          beginnerInstruction = `Guía paso a paso para principiantes: En primer lugar, comprueba que el horno o freidora de aire haya alcanzado la temperatura adecuada${
-            tempCelsius ? ` (${tempCelsius}°C)` : ''
-          } antes de meter los alimentos para que no queden crudos por dentro. A continuación, ${lowerFirstBase}. Coloca la bandeja a altura media para que el calor envuelva el plato por igual y vigila los últimos minutos${
-            tiempoMin ? ` (de los ${tiempoMin} min estimados)` : ''
-          } para lograr un dorado uniforme sin que se tueste en exceso.`;
-        } else {
-          beginnerInstruction = `Guía paso a paso para principiantes: Con el horneado ya en marcha a temperatura adecuada${
-            tempCelsius ? ` (${tempCelsius}°C)` : ''
-          }, ${lowerFirstBase}. Mantén la puerta del horno cerrada para no perder calor y vigila el progreso${
-            tiempoMin ? ` durante los ${tiempoMin} min estimados` : ''
-          } para asegurar que se cocine de forma homogénea sin quemarse.`;
-        }
-      } else if (isSearingOrFrying) {
-        beginnerInstruction = `Guía paso a paso para principiantes: Calienta primero el recipiente a fuego ${
-          potenciaFuego || 'medio'
-        } durante 30-40 segundos para que la base tome temperatura y los ingredientes no se peguen. Seguidamente, ${lowerFirstBase}. Remueve con suavidad pero de forma constante usando una espátula de madera o silicona, repartiendo el calor por igual para que se cocine por dentro sin quemarse por fuera.`;
-      } else if (isBoilingOrSimmering) {
-        beginnerInstruction = `Guía paso a paso para principiantes: Ajusta la potencia del fuego para mantener un hervor controlado y constante sin que el líquido se desborde. Paso seguido, ${lowerFirstBase}. Pasa una cuchara de vez en cuando por el fondo de la cazuela para evitar que los ingredientes se agarren y asegurar una cocción tierna y homogénea.`;
-      } else if (isCuttingOrPrep) {
-        beginnerInstruction = `Guía paso a paso para principiantes: Prepara una tabla firme sobre la encimera y sujeta el ingrediente curvando las yemas de los dedos hacia dentro ("postura de garra") para mayor seguridad. Con calma, ${lowerFirstBase}. Procura que todos los trozos queden de un grosor muy similar; así se cocinarán exactamente al mismo tiempo sin que unos se quemen y otros queden crudos.`;
-      } else if (isMixingOrEmulsifying) {
-        beginnerInstruction = `Guía paso a paso para principiantes: Elige un bol o recipiente amplio que te permita trabajar con holgura sin salpicar fuera. De forma progresiva, ${lowerFirstBase}. Ayúdate de una lengua o espátula repasando bien las paredes y el fondo con movimientos envolventes hasta que no queden grumos ni partes secas sin integrar.`;
-      } else {
-        beginnerInstruction = `Guía paso a paso para principiantes: Ten preparados a mano los ingredientes y utensilios antes de iniciar este paso para trabajar sin prisas. A continuación, ${lowerFirstBase}. Asegúrate de que todo quede bien distribuido y en su punto de textura antes de pasar al siguiente paso de la receta.`;
-      }
-    }
-  }
-
-  // 2. Tarjeta / Badge Sensorial (descriptor_sensorial) prominente
-  let sensoryCue = (explicitSensoryCue || '').trim();
-  if (!sensoryCue) {
-    if (lang === 'en') {
-      if (isBaking) {
-        sensoryCue =
-          'Look for an evenly golden-brown crust, a warm toasted aroma filling the kitchen, and a firm yet tender center when gently pressed or pierced with a toothpick.';
-      } else if (isSearingOrFrying) {
-        sensoryCue =
-          'Listen for a steady, gentle sizzle. Vegetables will turn translucent and glossy, while proteins will release easily from the pan with an appetizing golden color and nutty aroma.';
-      } else if (isBoilingOrSimmering) {
-        sensoryCue =
-          'Wait for steady, gentle bubbles breaking the surface, a concentrated savory aroma, and a tender texture when pierced with a fork—never mushy or raw inside.';
-      } else if (isCuttingOrPrep) {
-        sensoryCue =
-          'Pieces should look uniform in thickness and size, with clean edges and fresh aroma, ensuring even heat penetration during cooking.';
-      } else {
-        sensoryCue =
-          'You will notice a smooth, cohesive texture with a uniform color and balanced aroma before moving to the next step.';
-      }
-    } else {
-      if (isBaking) {
-        sensoryCue =
-          'Sabrás que está en su punto cuando la superficie adquiera un tono dorado uniforme, desprenda un aroma tostado envolvente y al pinchar el centro salga limpio y tierno sin resistencia cruda.';
-      } else if (isSearingOrFrying) {
-        sensoryCue =
-          'Escucharás un chisporroteo constante y suave; el alimento cambiará a un color dorado brillante (o traslúcido en verduras) y soltará un aroma dulce y tostado sin humear ni oscurecerse.';
-      } else if (isBoilingOrSimmering) {
-        sensoryCue =
-          'Observa un burbujeo suave y continuo; el líquido espesará ligeramente liberando todo su aroma y, al pinchar el ingrediente principal, se sentirá tierno por dentro sin deshacerse.';
-      } else if (isCuttingOrPrep) {
-        sensoryCue =
-          'Los trozos deben verse de grosor y tamaño homogéneo al tacto y a la vista, garantizando que todos alcancen el punto exacto de cocción a la vez.';
-      } else {
-        sensoryCue =
-          'Notarás una textura homogénea, brillante y bien ligada, con un color uniforme y aroma equilibrado que indica que puedes pasar al siguiente paso.';
-      }
-    }
-  }
-
-  // 3. Advertencia de seguridad térmica y precauciones claras
-  let thermalSafetyWarning = '';
-  if (lang === 'en') {
-    if (isBaking) {
-      thermalSafetyWarning = isFirstBakingStep
-        ? `Thermal safety: Always use dry oven mitts when handling trays${
-            tempCelsius ? ` at ${tempCelsius}°C` : ''
-          } and step back slightly when opening the door to avoid hot steam burns.`
-        : `Thermal safety: Always use oven mitts when rotating or handling hot baking trays${
-            tempCelsius ? ` at ${tempCelsius}°C` : ''
-          } and avoid leaving the door open to prevent heat loss.`;
-    } else if (isSearingOrFrying) {
-      thermalSafetyWarning =
-        'Thermal safety: Pat wet ingredients dry before adding to hot oil to prevent splatters. If the pan starts smoking, lower the heat immediately so the oil does not burn.';
-    } else if (isBoilingOrSimmering) {
-      thermalSafetyWarning =
-        'Thermal safety: Tilt the lid away from your face when uncovering the pot to let hot steam escape safely, and keep handles turned inward.';
-    } else if (isCuttingOrPrep) {
-      thermalSafetyWarning =
-        'Safety precaution: Place a damp cloth or paper towel under your cutting board so it never slips while using the knife.';
-    } else {
-      thermalSafetyWarning =
-        'Culinary precaution: Taste and check temperature carefully with a clean spoon before serving or advancing.';
-    }
-  } else {
-    if (isBaking) {
-      thermalSafetyWarning = isFirstBakingStep
-        ? `Seguridad térmica: Utiliza siempre manoplas secas al manipular bandejas${
-            tempCelsius ? ` a ${tempCelsius}°C` : ''
-          } y retira ligeramente el rostro al abrir la puerta para evitar el golpe de vapor caliente.`
-        : `Seguridad térmica: Utiliza manoplas térmicas secas al manipular la bandeja o comprobar el asado, evitando abrir la puerta más de lo necesario para no enfriar el horno.`;
-    } else if (isSearingOrFrying) {
-      thermalSafetyWarning =
-        'Seguridad térmica: Seca el exceso de humedad de los alimentos antes de echarlos al aceite caliente para evitar salpicaduras. Si ves humo blanco, baja el fuego de inmediato para no quemar el fondo.';
-    } else if (isBoilingOrSimmering) {
-      thermalSafetyWarning =
-        'Seguridad térmica: Al destapar la olla o remover líquidos calientes, inclina la tapa hacia el lado contrario a ti para evacuar el vapor sin quemarte.';
-    } else if (isCuttingOrPrep) {
-      thermalSafetyWarning =
-        'Precaución en cocina: Coloca un paño ligeramente húmedo bajo la tabla de corte para fijarla a la encimera y evitar que resbale al cortar.';
-    } else {
-      thermalSafetyWarning =
-        'Precaución térmica y de punto: Comprueba la temperatura con precaución antes de probar o emplatar para evitar quemaduras.';
-    }
-  }
-
-  return {
-    beginnerInstruction,
-    sensoryCue,
-    thermalSafetyWarning,
-  };
-}
-
-/**
- * Calibración pedagógica técnica para Nivel Avanzado (PRO):
- * Bloques de ejecución simultánea y fundamentos físico-químicos reales:
- * - Extracción y renderizado de grasa
- * - Control de almidones para ligazón y mantecatura
- * - Caramelización de azúcares y reacción de Maillard
- * - Emulsiones mecánicas fuera del fuego directo
- */
-function buildAdvancedTechnicalCalibration(
-  baseInstruction: string,
-  explicitAdvancedInstruction: string | undefined | null,
-  potenciaFuego: string | undefined | null,
-  tempCelsius: number | undefined | null,
-  tiempoMin: number | undefined | null,
-  lang: 'es' | 'en' = 'es'
-): string {
-  const cleanBase = baseInstruction.trim();
-  const explicitClean = (explicitAdvancedInstruction || '').trim();
-
-  // Si existe una instrucción avanzada explícita en BD y no es un mero clon con reemplazo léxico
-  if (
-    explicitClean &&
-    explicitClean.toLowerCase() !== cleanBase.toLowerCase() &&
-    !explicitClean.toLowerCase().includes('brunoise') &&
-    !explicitClean.toLowerCase().includes('mirepoix')
-  ) {
-    return explicitClean;
-  }
-
-  const isEn = lang === 'en';
-  const lower = cleanBase.toLowerCase();
-
-  // Detección de fundamentos físico-químicos clave
-  const isFatRendering = /\b(guanciale|panceta|bacon|tocino|grasa|chorizo|sofrito|rehogar|dorar|aceite|mantequilla)\b/i.test(lower);
-  const isBaking = /\b(horno|hornear|asado|asar|220|200|180|gratinar|airfryer|bake|roast|oven)\b/i.test(lower);
-  const isStarchEmulsion = /\b(pasta|arroz|mantecar|mantecatura|ligar|crema|emulsion|almidon|caldo|agua de cocci[oó]n)\b/i.test(lower);
-  const isOffHeatEmulsion = /\b(queso|parmesano|pecorino|yema|huevo|nata|fuera del fuego|apagar el fuego|retirar del fuego)\b/i.test(lower);
-  const isSearing = /\b(sellar|dorar|marcar|carne|pechuga|pescado|filete|solomillo)\b/i.test(lower);
-
-  const specs: string[] = [];
-  if (tempCelsius && tempCelsius > 0) specs.push(`${tempCelsius}°C`);
-  if (potenciaFuego) specs.push(isEn ? `heat: ${potenciaFuego}` : `fuego ${potenciaFuego}`);
-  if (tiempoMin && tiempoMin > 0) specs.push(`${tiempoMin} min`);
-  const specText = specs.length > 0 ? ` [${specs.join(' · ')}]` : '';
-
-  if (isEn) {
-    if (isBaking) {
-      return `Technical concurrency block${specText}: Execute high-temperature roasting (${tempCelsius || 220}°C) to maximize sugar caramelization and surface Maillard reaction. Concurrently, advance the mise en place and base prep on the stovetop to streamline workflow.`;
-    }
-    if (isFatRendering) {
-      return `Lipid extraction & temperature control${specText}: Render fat slowly on gentle heat without scorching milk solids or burning lipids. Reserve the rendered liquid fat as the primary hydrophobic flavor carrier.`;
-    }
-    if (isOffHeatEmulsion) {
-      return `Off-heat mechanical emulsion${specText}: Remove pan entirely from direct heat before incorporating fats/cheeses. Emulsify mechanically with starch-rich cooking water below 65°C to prevent protein coagulation and lipid splitting.`;
-    }
-    if (isStarchEmulsion) {
-      return `Starch suspension & mantecatura${specText}: Agitate vigorously while adding starchy cooking water in stages. Starch amylose binds free fats into a glossy, velvety emulsion without excess dairy.`;
-    }
-    if (isSearing) {
-      return `Thermal searing & osmoregulation${specText}: Sear over intense heat to trigger Maillard browning instantly without boiling core moisture. Rest the protein post-searing to allow internal juices to redistribute evenly.`;
-    }
-    return `Executive execution block${specText}: ${cleanBase.replace(/\.+$/, '')}. Synchronize parallel components and calibrate seasoning and reduction density for final plating.`;
-  }
-
-  // Español
-  if (isBaking) {
-    return `Bloque de ejecución simultánea${specText}: Inicia el asado a alta temperatura (${tempCelsius || 220}°C) para activar la caramelización de azúcares y Maillard superficial. En paralelo y sin tiempos muertos, avanza la mise en place y la preparación de sartén en los fuegos.`;
-  }
-  if (isFatRendering) {
-    return `Extracción lipídica y control térmico${specText}: Extrae la grasa lentamente a fuego moderado sin quemar los sólidos. Aprovecha la grasa fundida como vehículo hidrofóbico conductor de aroma y reserva los trozos crocantes para texturizar al pase.`;
-  }
-  if (isOffHeatEmulsion) {
-    return `Emulsión mecánica fuera del fuego${specText}: Retira el recipiente de la fuente directa de calor antes de incorporar lácteos o yemas. Bate con agua de cocción almidonada (<65°C) para ligar la crema sin que las proteínas coagulen ni se separe la grasa.`;
-  }
-  if (isStarchEmulsion) {
-    return `Control de almidones y mantecatura${specText}: Manteca con movimiento circular constante agregando agua de cocción rica en almidón por tandas. La amilosa emulsionará las grasas en una suspensión coloidal brillante y aterciopelada.`;
-  }
-  if (isSearing) {
-    return `Sellado térmico y redistribución osmótica${specText}: Marca a fuego vivo para provocar caramelización rápida de superficie sin cocer el interior en sus propios jugos. Deja reposar la pieza antes de trinchar para que la presión osmótica retenga los jugos.`;
-  }
-
-  return `Bloque técnico ejecutivo${specText}: ${cleanBase.replace(/\.+$/, '')}. Coordina las elaboraciones en paralelo y ajusta punto de salinidad y densidad de ligazón al pase.`;
 }
 
 interface RecipeInteractiveSectionsProps {
@@ -722,8 +407,6 @@ export function RecipeInteractiveSections({
       (entry): entry is [string, string] => Boolean(entry[1])
     );
     const usageTracker = new Map<string, number>();
-    const currentLang = (language as 'es' | 'en') || 'es';
-    let hasEncounteredBaking = false;
 
     return safePasos.map((paso) => {
       const baseInstruction = String(paso?.instruccion || '');
@@ -736,16 +419,6 @@ export function RecipeInteractiveSections({
       const rawSensory = (paso as any)?.descriptor_sensorial
         ? String((paso as any).descriptor_sensorial).trim()
         : undefined;
-
-      const isCurrentStepBaking =
-        (paso as any)?.potencia_fuego === 'horno' ||
-        /\b(horno|hornear|hornea|precalienta|precalentar|airfryer|freidora\s+de\s+aire|oven|bake|roast|gratinar|gratina)\b/i.test(
-          baseInstruction
-        );
-      const isFirstBakingStep = isCurrentStepBaking && !hasEncounteredBaking;
-      if (isCurrentStepBaking) {
-        hasEncounteredBaking = true;
-      }
 
       const stepScaledTime = paso.tiempo_estimado_min
         ? scaleCookingTime(
@@ -762,36 +435,17 @@ export function RecipeInteractiveSections({
 
       let instruccion = baseInstruction;
       let descriptorSensorial: string | undefined = undefined;
-      let precaucionTermica: string | undefined = undefined;
 
       if (!isPro || effectiveActiveLevel === null) {
         // Usuario FREE: Lee el paso a paso TAL CUAL se genera al cargar el vídeo original (texto base neutro de extracción)
         instruccion = baseInstruction;
       } else if (effectiveActiveLevel === 'Principiante') {
-        // Usuario PRO - Nivel Principiante: Renderiza paso.instruccion_principiante (o genera relato pedagógico expandido si viene vacío/idéntico) + descriptor sensorial + precaución térmica
-        const calibrated = buildBeginnerPedagogicalCalibration(
-          baseInstruction,
-          rawBeginner,
-          rawSensory,
-          (paso as any)?.potencia_fuego,
-          paso?.temperatura_celsius,
-          stepScaledTime ?? paso?.tiempo_estimado_min,
-          currentLang,
-          isFirstBakingStep
-        );
-        instruccion = calibrated.beginnerInstruction;
-        descriptorSensorial = calibrated.sensoryCue;
-        precaucionTermica = calibrated.thermalSafetyWarning;
+        // Usuario PRO - Nivel Principiante: Renderiza fielmente paso.instruccion_principiante (o la instrucción base si no existe) + descriptor sensorial real de BD
+        instruccion = rawBeginner || baseInstruction;
+        descriptorSensorial = rawSensory || undefined;
       } else if (effectiveActiveLevel === 'Avanzado') {
-        // Usuario PRO - Nivel Avanzado: Renderiza paso.instruccion_avanzada (o calibración técnica ejecutiva sintética)
-        instruccion = buildAdvancedTechnicalCalibration(
-          baseInstruction,
-          rawAdvanced,
-          (paso as any)?.potencia_fuego,
-          paso?.temperatura_celsius,
-          stepScaledTime ?? paso?.tiempo_estimado_min,
-          currentLang
-        );
+        // Usuario PRO - Nivel Avanzado: Renderiza fielmente paso.instruccion_avanzada (o la instrucción base si no existe)
+        instruccion = rawAdvanced || baseInstruction;
       } else {
         // Usuario PRO - Nivel Intermedio: Renderiza paso.instruccion (versión técnica equilibrada estándar)
         instruccion = baseInstruction;
@@ -851,7 +505,6 @@ export function RecipeInteractiveSections({
         ...paso,
         instruccion,
         descriptor_sensorial: descriptorSensorial,
-        precaucion_termica: precaucionTermica,
         potencia_fuego: (paso as any)?.potencia_fuego || null,
         tiempo_estimado_min: stepScaledTime ?? paso.tiempo_estimado_min,
         consejo_pro: consejo,
@@ -937,37 +590,26 @@ export function RecipeInteractiveSections({
                 <FormattedText text={paso.instruccion} />
               </p>
 
-              {/* MODO PRINCIPIANTE (PRO): Tarjeta / Badge Sensorial prominente + Advertencia de seguridad térmica */}
-              {isPro && effectiveActiveLevel === 'Principiante' && (
+              {/* MODO PRINCIPIANTE (PRO): Tarjeta / Badge Sensorial prominente si existe en BD */}
+              {isPro && effectiveActiveLevel === 'Principiante' && paso.descriptor_sensorial && (
                 <div className="space-y-2 animate-fade-in">
-                  {paso.descriptor_sensorial && (
-                    <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 via-[#fffcf5] to-amber-100/70 border-2 border-amber-300/90 text-amber-950 text-xs sm:text-sm flex items-start gap-2.5 shadow-xs">
-                      <div className="w-7 h-7 rounded-xl bg-brand-primary text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                        <Eye className="w-4 h-4" />
-                      </div>
-                      <div className="space-y-1 flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-200/80 text-[#8a4e1b] border border-amber-300">
-                            {language === 'en'
-                              ? 'Sensory Cue · Color, Texture & Aroma'
-                              : 'Guía Sensorial · Color, Textura y Aroma'}
-                          </span>
-                        </div>
-                        <p className="text-xs sm:text-sm text-stone-800 leading-relaxed font-medium">
-                          {paso.descriptor_sensorial}
-                        </p>
-                      </div>
+                  <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 via-[#fffcf5] to-amber-100/70 border-2 border-amber-300/90 text-amber-950 text-xs sm:text-sm flex items-start gap-2.5 shadow-xs">
+                    <div className="w-7 h-7 rounded-xl bg-brand-primary text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                      <Eye className="w-4 h-4" />
                     </div>
-                  )}
-
-                  {(paso as any).precaucion_termica && (
-                    <div className="p-2.5 sm:p-3 rounded-xl bg-rose-50/80 border border-rose-200/90 text-rose-950 text-xs flex items-start gap-2 shadow-2xs">
-                      <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                      <span className="leading-snug font-medium">
-                        {(paso as any).precaucion_termica}
-                      </span>
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-200/80 text-[#8a4e1b] border border-amber-300">
+                          {language === 'en'
+                            ? 'Sensory Cue · Color, Texture & Aroma'
+                            : 'Guía Sensorial · Color, Textura y Aroma'}
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm text-stone-800 leading-relaxed font-medium">
+                        {paso.descriptor_sensorial}
+                      </p>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
 
