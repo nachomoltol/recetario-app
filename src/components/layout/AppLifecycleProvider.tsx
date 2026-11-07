@@ -30,7 +30,8 @@ export function AppLifecycleProvider() {
       const isSpecialRoute =
         currentPath.startsWith('/auth') ||
         currentPath === '/update-password' ||
-        currentPath === '/share-target';
+        currentPath === '/share-target' ||
+        currentPath.startsWith('/privacidad');
 
       const hasSpecialParams =
         params.has('code') ||
