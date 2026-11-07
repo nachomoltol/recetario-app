@@ -842,57 +842,53 @@ export function RecipeDetailView({
 
       {/* Cabecera Editorial Limpia */}
       <section className="space-y-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-brand-primary">
-            <ChefHat className="w-4 h-4 shrink-0" />
-            <span className="truncate">{t('recipe_card_header')}</span>
-          </div>
-
-          {/* Barra compacta de acciones secundarias (36px / h-9) */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Botón de Modo Edición */}
-            {isEditing ? (
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  disabled={isSaving}
-                  className="h-9 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
-                >
-                  <X className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{t('recipe_cancel_btn')}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveEdit}
-                  disabled={isSaving}
-                  className="h-9 px-3.5 rounded-xl bg-brand-primary hover:bg-brand-hover text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span className="hidden sm:inline">{t('recipe_saving_btn')}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">{t('recipe_save_btn')}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            ) : (
+        {/* Barra superior de acciones optimizada para móvil y escritorio */}
+        <div className="flex flex-wrap items-center justify-between gap-2 w-full">
+          {/* Botón de Modo Edición */}
+          {isEditing ? (
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={handleStartEdit}
-                title={t('recipe_edit_btn')}
-                className="h-9 px-2.5 sm:px-3 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-brand-primary text-xs font-semibold text-stone-700 hover:text-brand-primary transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                onClick={handleCancelEdit}
+                disabled={isSaving}
+                className="h-9 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
               >
-                <Pencil className="w-3.5 h-3.5 text-brand-primary" />
-                <span className="hidden sm:inline">{t('recipe_edit_btn')}</span>
+                <X className="w-3.5 h-3.5" />
+                <span>{t('recipe_cancel_btn')}</span>
               </button>
-            )}
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={isSaving}
+                className="h-9 px-3.5 rounded-xl bg-brand-primary hover:bg-brand-hover text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>{t('recipe_saving_btn')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{t('recipe_save_btn')}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleStartEdit}
+              title={t('recipe_edit_btn')}
+              className="h-9 px-2.5 sm:px-3 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-brand-primary text-xs font-semibold text-stone-700 hover:text-brand-primary transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+            >
+              <Pencil className="w-3.5 h-3.5 text-brand-primary" />
+              <span className="text-xs">{t('recipe_edit_btn')}</span>
+            </button>
+          )}
 
+          {/* Grupo de acciones: PDF, Modo Cocinar (WakeLock) y Favoritos/Rating */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Botón de Descarga PDF de la Receta */}
             <button
               type="button"
@@ -927,14 +923,14 @@ export function RecipeDetailView({
               }}
               disabled={isExportingPdf}
               title={language === 'en' ? 'Download PDF' : 'Descargar PDF'}
-              className="h-9 px-2.5 sm:px-3 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-brand-primary text-xs font-semibold text-stone-700 hover:text-brand-primary transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+              className="h-9 px-3 py-1.5 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-brand-primary text-xs font-semibold text-stone-700 hover:text-brand-primary transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
             >
               {isExportingPdf ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-primary" />
               ) : (
                 <FileDown className="w-3.5 h-3.5 text-brand-primary" />
               )}
-              <span className="hidden sm:inline">PDF</span>
+              <span className="font-semibold text-xs">PDF</span>
             </button>
 
             {/* Modo Manos en la Masa: Wake Lock para que no se apague la pantalla */}

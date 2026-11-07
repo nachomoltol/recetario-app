@@ -6,6 +6,7 @@ import { useLanguageStore } from '@/stores/useLanguageStore';
 
 export function RecipeWakeLock() {
   const t = useLanguageStore((s) => s.t);
+  const language = useLanguageStore((s) => s.language);
   const [isLocked, setIsLocked] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [isEnabled, setIsEnabled] = useState(true);
@@ -112,8 +113,8 @@ export function RecipeWakeLock() {
           isLocked ? 'bg-amber-500 animate-pulse' : 'bg-stone-400'
         }`}
       />
-      <span className="hidden sm:inline">
-        {isLocked ? t('wakelock_label_active') : t('wakelock_label_normal')}
+      <span className="inline-block text-[11px] sm:text-xs">
+        {isLocked ? (language === 'en' ? 'Screen ON' : 'Cocinar') : (language === 'en' ? 'Keep ON' : 'Cocinar')}
       </span>
       {isLocked ? (
         <Eye className="w-3.5 h-3.5 opacity-80 shrink-0" />
