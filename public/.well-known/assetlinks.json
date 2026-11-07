@@ -1,0 +1,16 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.migaapp.app",
+      "sha256_cert_fingerprint_list": [
+        "01:AF:C8:FA:41:6C:76:A5:21:25:6C:C9:9E:93:43:97:71:38:2D:8B:2A:DB:0A:99:AB:7B:EE:10:82:54:C1:A7"
+      ]
+    }
+  }
+]
+

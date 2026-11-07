@@ -3,7 +3,7 @@
 import { useState, useActionState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChefHat, ArrowRight, Lock, Mail, User, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { ChefHat, ArrowRight, Lock, Mail, User, AlertCircle, CheckCircle2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { loginAction, registerAction, AuthActionResult } from '@/app/actions/auth';
 import { createClient } from '@/lib/supabase/client';
 import { useLanguageStore } from '@/stores/useLanguageStore';
@@ -52,6 +52,10 @@ export function FloatingAuthCard({
   const [isResetPending, setIsResetPending] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+
+  // Estados de visibilidad de contraseña
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
 
   const [loginState, loginFormAction, isLoginPending] = useActionState<
     AuthActionResult | null,
@@ -269,7 +273,8 @@ export function FloatingAuthCard({
                         id="login-email"
                         name="email"
                         type="email"
-                        autoComplete="email"
+                        autoComplete="username email"
+                        inputMode="email"
                         required
                         placeholder="chef@gastronomia.com"
                         className="w-full min-h-[48px] pl-10 pr-4 py-2.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition"
@@ -300,12 +305,24 @@ export function FloatingAuthCard({
                       <input
                         id="login-password"
                         name="password"
-                        type="password"
+                        type={showLoginPassword ? 'text' : 'password'}
                         autoComplete="current-password"
                         required
                         placeholder="••••••••••••"
-                        className="w-full min-h-[48px] pl-10 pr-4 py-2.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition"
+                        className="w-full min-h-[48px] pl-10 pr-11 py-2.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                        aria-label={showLoginPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-stone-400 hover:text-stone-700 transition cursor-pointer"
+                      >
+                        {showLoginPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
                     </div>
                   </div>
 
@@ -411,13 +428,25 @@ export function FloatingAuthCard({
                     <input
                       id="reg-password"
                       name="password"
-                      type="password"
+                      type={showRegisterPassword ? 'text' : 'password'}
                       autoComplete="new-password"
                       required
                       minLength={6}
                       placeholder="••••••••••••"
-                      className="w-full min-h-[48px] pl-10 pr-4 py-2.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition"
+                      className="w-full min-h-[48px] pl-10 pr-11 py-2.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c27835]/30 focus:border-[#c27835] transition"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                      aria-label={showRegisterPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-stone-400 hover:text-stone-700 transition cursor-pointer"
+                    >
+                      {showRegisterPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
 

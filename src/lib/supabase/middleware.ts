@@ -51,6 +51,7 @@ export async function updateSession(request: NextRequest) {
       path.startsWith('/share-target') ||
       path.startsWith('/robots.txt') ||
       path.startsWith('/app-ads.txt') ||
+      path.startsWith('/.well-known') ||
       path.startsWith('/sitemap.xml') ||
       path.startsWith('/manifest.json') ||
       path.startsWith('/site.webmanifest') ||
