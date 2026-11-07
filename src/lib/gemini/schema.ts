@@ -145,17 +145,17 @@ export const recipeExtractionSchema = {
           instruccion: {
             type: Type.STRING,
             description:
-              'Nivel Intermedio (Estándar / Free): Guía estándar paso a paso para cocina doméstica eficiente. Instrucciones claras, secuenciales y ordenadas con tiempos y temperaturas precisos. OBLIGATORIO: integra las cantidades exactas en prosa culinaria fluida (ej: "Añade media cebolla picada finamente", "Vierte una cucharada de aceite (15 ml)", "Incorpora los 200 g de pechuga de pollo cortada en dados"). TERMINANTEMENTE PROHIBIDO redactar números con decimales de laboratorio fríos o antinaturales (NO escribir "añade 0.5 unidades de cebolla" ni "vierte 15ml de aceite"). Las cantidades inyectadas deben coincidir con las porciones escaladas de la receta.',
+              'Nivel Intermedio (Estándar / Free): Redacción canónica, directa, clara y limpia del paso para cocina doméstica eficiente. Instrucciones secuenciales y ordenadas con tiempos y temperaturas precisos. OBLIGATORIO: integra las cantidades exactas en prosa culinaria fluida (ej: "Añade media cebolla picada finamente", "Vierte una cucharada de aceite (15 ml)", "Incorpora los 200 g de pechuga de pollo cortada en dados"). TERMINANTEMENTE PROHIBIDO redactar números con decimales de laboratorio fríos o antinaturales (NO escribir "añade 0.5 unidades de cebolla" ni "vierte 15ml de aceite"). Las cantidades inyectadas deben coincidir con las porciones base de la receta.',
           },
           instruccion_principiante: {
             type: Type.STRING,
             description:
-              'Nivel Principiante (PRO): OBLIGATORIO. Redacción didáctica, pedagógica y de seguridad integral que NO puede ser una sustitución cosmética o mero sinónimo de "instruccion". Arquetipo cognitivo: principiante que necesita comprender el "por qué" de cada técnica (ej: secar ingredientes antes de dorar para que no suelten agua), advertencias preventivas de seguridad física (salpicaduras de aceite caliente, distancia del vapor, agarre de dedos en cortes), tiempos preventivos y señales sensoriales explícitas (ej: "hasta que el cuchillo entre sin resistencia", "dorado avellana pero no quemado"). Integra también las cantidades exactas en prosa culinaria natural.',
+              'Nivel Principiante (PRO): OBLIGATORIO. Tono pedagógico y cercano. Detalla cómo realizar la acción real de este paso sin dar nada por sentado, avisando de errores típicos específicos del paso (ej. no echar ingredientes fríos de la nevera o húmedos a aceite caliente, cómo regular el fuego para que no se queme por fuera y quede crudo por dentro) y explicando señales visuales y de textura sencillas (ej. "hasta que la cebolla se vuelva transparente", "hasta que al pinchar con un cuchillo entre suave"). PROHIBIDO repetir coletillas genéricas idénticas en todos los pasos. Integra también las cantidades exactas en prosa culinaria natural.',
           },
           instruccion_avanzada: {
             type: Type.STRING,
             description:
-              'Nivel Avanzado (PRO): TERMINANTEMENTE PROHIBIDO clonar los pasos del nivel intermedio o sustituir meras palabras sueltas por jerga cosmética ("trocear" -> "brunoise", "aceite" -> "EVOO"). Agrupa las acciones en bloques de ejecución técnica y simultánea (condensando acciones paralelas: ej. extracción de grasa y mise en place mientras avanza el asado). Exige fundamentos físico-químicos reales: puntos de extracción de grasa, control de almidones para ligazón/mantecatura, caramelización de azúcares y emulsiones mecánicas fuera del fuego.',
+              'Nivel Avanzado (PRO): OBLIGATORIO. Tono de cocinero práctico con oficio y criterio gastronómico real sobre este paso concreto. Se enfoca en: 1) Eficiencia de tiempos (aprovechar tiempos muertos de cocción para avanzar cortes o preparaciones siguientes), 2) Técnicas reales de cocina diaria que potencian el sabor y la textura (atemperar proteínas antes de cocinar, sellados vivos para conservar jugos, desglasar el fondo de la sartén o cazuela con caldo o vino para recuperar los jugos tostados pegados, ligar o mantecar salsas fuera del fuego con un toque de grasa fría o agua de cocción). Usa lenguaje gastronómico natural, útil y profesional. TERMINANTEMENTE PROHIBIDO usar tecnicismos de laboratorio o jerga pseudo-científica ("sustrato", "fracción lipídica", "renderizado lipídico", "control coloidal", "desnaturalización proteica", "pirodecantación", "reacción de Maillard", etc.) ni limitarse a cambiar palabras por sinónimos.',
           },
           descriptor_sensorial: {
             type: Type.STRING,
@@ -409,30 +409,26 @@ export function buildRecipeSystemInstruction(options?: {
        - Mug cakes / cup cakes / individual pancakes: batter summing between 90 – 140 g corresponds to exactly 1 serving.
      * MANDATORY CONSEQUENCE: Calculate servings by dividing the weight of the base ingredient by its reference unit weight and round to the nearest whole integer (e.g. 400 g cooked chickpeas with greens = 2 servings; 500 g chicken breast = 3 servings; 160 g dry pasta = 2 servings).
    - Faithfully extract the recipe's native base servings into the 'porciones' field. Ingredient quantities integrated into the steps narrative must correspond accurately to those base servings.
-    - COGNITIVE ARCHETYPE MATRIX FOR CULINARY LEVELS (STRICT FORBIDDANCE OF COSMETIC SYNONYM REPLACEMENT):
-      It is STRICTLY FORBIDDEN to simply swap words or use cosmetic synonyms between levels. Each level represents a fundamentally distinct cognitive profile, informational density, and pedagogical approach:
+    - CULINARY LEVEL WRITING GUIDELINES (NATURAL GASTRONOMIC PROSE, NO LAB JARGON):
+      Each level must describe the actual step of the recipe with a distinct, practical culinary voice:
 
-      * 'instruccion_principiante': BEGINNER LEVEL (Pedagogy, "The Why", and Physical Safety).
-        - Archetype: Novice cook experiencing thermal, cutting, or timing insecurity.
-        - Approach: Explains the "why" behind each action (e.g. "pat the meat thoroughly dry before searing so surface moisture does not boil the meat").
-        - Safety & Prevention: Explicit physical safety warnings (hot oil splatters, steam vent clearance, 'claw' grip when chopping).
-        - Explicit Sensory Signals: Non-ambiguous visual, tactile, and audible cues (e.g. "until a knife slides in effortlessly like butter", "hazelnut golden but not dark brown", "the sizzle settles into a gentle bubbling").
+      * 'instruccion' (Intermediate / Standard):
+        - Canonical, direct, clear, and clean phrasing of the step for everyday home cooking.
+        - Sequential and well-ordered with accurate timings, temperatures, and natural prose quantities.
 
-      * 'instruccion': INTERMEDIATE LEVEL (Efficient Domestic Standard).
-        - Archetype: Everyday cook seeking sequential order, clarity, and agile workflow without elementary warnings.
-        - Approach: Standard step-by-step guidance for efficient home cooking. Clear, sequential instructions with precise timings, temperatures, and fluid prose quantities.
+      * 'instruccion_principiante' (Beginner):
+        - Warm, pedagogical, and approachable tone.
+        - Explains how to perform the action without taking anything for granted, warning against common mistakes specific to that step (e.g. not adding cold fridge ingredients or wet food into hot oil, how to regulate heat so food does not burn outside while staying raw inside) and explaining simple visual and texture cues.
+        - Never repeat identical generic boilerplate across steps.
 
-      * 'instruccion_avanzada': ADVANCED LEVEL (Professional Technique, Concurrency & Physical-Chemical Principles).
-        - Archetype: Experienced chef or line brigade focused on mise en place, thermal precision, and multi-pan concurrency.
-        - STRICT FORBIDDANCE: It is STRICTLY FORBIDDEN to clone intermediate steps or swap words with cosmetic jargon (e.g. NEVER just replace "chop" with "brunoise" or "oil" with "EVOO").
-        - Technical Concurrency Blocks: Condense parallel tasks to streamline execution (e.g. advance mise en place and slow fat rendering while roasting or stock reduction progresses).
-        - Mandatory Physical-Chemical Principles:
-          * Gentle fat rendering points without scorching milk solids or degrading lipids.
-          * Starch suspension control for mantecatura/emulsion using amylose-rich cooking water.
-          * Sugar caramelization and Maillard browning with pan deglazing to capture caramelized sucs.
-          * Off-heat mechanical emulsions to protect protein structures and prevent fat splitting.
+      * 'instruccion_avanzada' (Advanced):
+        - Practical, seasoned cook tone with real culinary craft and judgment.
+        - Focuses on:
+          1) Time efficiency: using passive cooking time to advance prep, cuts, or next components.
+          2) Real flavor-boosting techniques: tempering proteins before cooking, high-heat searing to lock in juices, deglazing the pan fond with wine or broth to recover browned juices, and finishing or emulsifying sauces off the heat with a touch of cold butter/oil or cooking water.
+        - Use natural, useful, professional everyday kitchen language. It is STRICTLY FORBIDDEN to use pseudo-scientific or laboratory jargon ("substrate", "lipid fraction", "lipid rendering", "colloidal control", "protein denaturation", "Maillard reaction", etc.).
 
-      * 'descriptor_sensorial': Empirical visual, textural, and aromatic cues confirming the exact cooking milestone.
+      * 'descriptor_sensorial': Clear visual, textural, and aromatic cues confirming the exact cooking point.
       * 'potencia_fuego': Strictly classify fire intensity: 'suave', 'medio', 'medio-alto', 'alto', or 'horno'.`
       : `8. REDACCIÓN EN PROSA CULINARIA NATURAL, TABLA MAESTRA DE GRAMAJES E INFERENCIA DE RACIONES:
    - En el array de 'pasos' o 'preparación', integra siempre las cantidades exactas de los ingredientes de forma fluida, profesional y natural.
@@ -486,32 +482,27 @@ export function buildRecipeSystemInstruction(options?: {
        - Mug cakes / bizcochos en taza / tortitas individuales: masas que sumen entre 90 – 140 g totales corresponden exactamente a 1 ración.
      * CONSECUENCIA OBLIGATORIA: Calcula las raciones dividiendo el peso del ingrediente base entre su gramaje unitario de referencia y redondea al entero más próximo (ej: 400 g de garbanzos cocidos con hojas verdes = 2 raciones; 500 g de pechuga de pollo = 3 raciones; 160 g de pasta seca = 2 raciones).
    - Extrae con total fidelidad las porciones o raciones base originales de la elaboración y refléjalas en el campo 'porciones'. Las cantidades integradas en los pasos deben corresponderse exactamente con dichas porciones base.
-    - MATRIZ ARQUETÍPICA DE NIVELES CULINARIOS Y PEDAGOGÍA REAL (PROHIBICIÓN ESTRICTA DE SUSTITUCIÓN COSMÉTICA/SINÓNIMOS):
-      Queda TERMINANTEMENTE PROHIBIDO limitarse a cambiar sinónimos o palabras sueltas entre niveles. Cada nivel representa un perfil cognitivo, una densidad de información y una estructura pedagógica profundamente diferenciada:
+    - PAUTAS DE REDACCIÓN CULINARIA POR NIVEL (COCINA REAL, SIN JERGA DE LABORATORIO):
+      Cada nivel debe redactar el paso real de la receta con un enfoque práctico, natural y adaptado a la experiencia del cocinero:
 
-      * 'instruccion_principiante': NIVEL PRINCIPIANTE (Didáctica, Pedagogía y Seguridad Física Integral).
-        - Arquetipo: Cocinero novato con inseguridad térmica, de cortes o de tiempos.
-        - Enfoque: Explica el "por qué" detrás de cada técnica (ej: "secamos bien la carne antes de dorar para que no suelte agua y logre un sellado caramelizado").
-        - Seguridad y Prevención: Incluye advertencias de seguridad física preventiva (control de salpicaduras de aceite caliente, distancia del vapor al abrir recipientes/horno, posición de dedos en 'garra' al cortar).
-        - Señales Sensoriales Explícitas y Tiempos Preventivos: Usa marcadores táctiles, sonoros, olfativos y visuales no ambiguos (ej: "hasta que el cuchillo entre sin resistencia como mantequilla", "dorado avellana pero sin llegar a marrón oscuro", "el chisporroteo del aceite pase de intenso a suave").
-        - Paso a paso desgranado: No des nada por sabido.
+      * 'instruccion' (Intermedio / Estándar):
+        - Redacción canónica, directa, clara y limpia del paso.
+        - Instrucciones secuenciales con tiempos, temperaturas y cantidades integradas con naturalidad.
 
-      * 'instruccion': NIVEL INTERMEDIO (Estándar de Cocina Doméstica Eficiente).
-        - Arquetipo: Cocinero habitual que busca orden secuencial, fluidez y efectividad sin advertencias elementales ni jerga pretenciosa.
-        - Enfoque: Guía estándar paso a paso para cocina doméstica eficiente. Instrucciones claras y ordenadas con tiempos, temperaturas y cantidades integradas en prosa fluida.
+      * 'instruccion_principiante' (Principiante):
+        - Tono pedagógico y cercano.
+        - Detalla cómo realizar la acción sin dar nada por sentado, avisando de errores típicos concretos de ese paso (ej. no echar ingredientes fríos de la nevera o húmedos al aceite caliente, cómo regular el fuego para que no se queme por fuera y quede crudo por dentro) y explicando señales visuales sencillas para saber cuándo está listo.
+        - Prohibido repetir la misma frase o coletilla genérica al inicio de cada paso.
 
-      * 'instruccion_avanzada': NIVEL AVANZADO (Técnica Profesional, Simultaneidad y Fundamentos Físico-Químicos).
-        - Arquetipo: Cocinero experto o brigada culinaria orientado a mise en place, precisión térmica y ejecución paralela.
-        - PROHIBICIÓN ESTRICTA: Queda TERMINANTEMENTE PROHIBIDO clonar los pasos del nivel intermedio o limitarse a sustituir palabras sueltas por jerga cosmética ("trocear" -> "brunoise", "aceite" -> "EVOO").
-        - Bloques de Ejecución Técnica Simultánea: Agrupa y condensa acciones paralelas para optimizar tiempos (ej: sincronizar mise en place y renderizado lento de grasa mientras avanza el asado u horneado).
-        - Fundamentos Físico-Químicos Obligatorios:
-          * Extracción y renderizado lipídico a fuego suave para desgrasar sin quemar sólidos ni degradar lípidos.
-          * Control coloidal de almidones para ligazón y mantecatura mediante agitación con agua de cocción rica en amilosa.
-          * Caramelización de azúcares y reacción de Maillard con desglasado para recuperar sucs adheridos.
-          * Emulsiones mecánicas fuera del fuego directo para evitar desnaturalización proteica y separación de fases.
+      * 'instruccion_avanzada' (Avanzado):
+        - Tono de cocinero práctico con oficio y criterio gastronómico.
+        - Se enfoca en:
+          1) Eficiencia de tiempos: aprovechar tiempos muertos de cocción o reposo para avanzar cortes, sofritos o preparaciones del paso siguiente.
+          2) Técnicas reales que potencian el sabor: atemperar proteínas antes de pasar por plancha, sellados vivos para no perder jugos, desglasar fondos de cazuela o sartén con caldo o vino para recuperar todo el jugo tostado pegado, y ligar o emulsionar salsas fuera del fuego con un toque de grasa fría o agua de cocción.
+        - Utiliza lenguaje gastronómico natural, útil y profesional de cocina diaria. Queda TERMINANTEMENTE PROHIBIDO emplear tecnicismos de laboratorio o jerga pseudo-científica ("sustrato", "fracción lipídica", "renderizado lipídico", "control coloidal", "desnaturalización proteica", "pirodecantación", "reacción de Maillard", etc.).
 
-      * 'descriptor_sensorial': Pistas empíricas obligatorias (aroma, color, textura, sonido) que validan el punto exacto de cocción.
-      * 'potencia_fuego': Clasificación obligatoria de calor: 'suave', 'medio', 'medio-alto', 'alto' u 'horno'.`;
+      * 'descriptor_sensorial': Señales visuales, de textura y de aroma sencillas y claras que confirman el punto de cocción del paso.
+      * 'potencia_fuego': Clasificación del calor del paso: 'suave', 'medio', 'medio-alto', 'alto' u 'horno'.`;
 
   return `
 Eres un Chef Ejecutivo y Nutricionista Clínico de élite especializado en estandarización culinaria, análisis audiovisual y salud sostenible.
