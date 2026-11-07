@@ -12,6 +12,7 @@ import {
   ChefHat,
   Eye,
   Lock,
+  Loader2,
 } from 'lucide-react';
 import { RecetaIngrediente, Paso } from '@/types/recipe';
 import {
@@ -34,15 +35,17 @@ const ProSubscriptionModal = dynamic(
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { SubstituteOption } from '@/app/actions/suggestSubstitute';
+import { generateCulinaryLevelAction } from '@/app/actions/generateCulinaryLevelAction';
 
-export type NivelCulinarioUI = 'Principiante' | 'Intermedio' | 'Avanzado';
+export type CulinaryLevel = 'principiante' | 'intermedio' | 'avanzado';
+export type NivelCulinarioUI = CulinaryLevel | 'Principiante' | 'Intermedio' | 'Avanzado';
 
-export function normalizeNivelCulinario(val?: string | null): NivelCulinarioUI {
-  if (!val) return 'Intermedio';
+export function normalizeNivelCulinario(val?: string | null): CulinaryLevel {
+  if (!val) return 'intermedio';
   const clean = val.trim().toLowerCase();
-  if (clean === 'avanzado' || clean === 'advanced') return 'Avanzado';
-  if (clean === 'principiante' || clean === 'beginner') return 'Principiante';
-  return 'Intermedio';
+  if (clean === 'avanzado' || clean === 'advanced') return 'avanzado';
+  if (clean === 'principiante' || clean === 'beginner') return 'principiante';
+  return 'intermedio';
 }
 
 /**
@@ -232,7 +235,16 @@ export function RecipeInteractiveSections({
     onSubstitutePersist?.(cleanTarget, cleanNew, baseKey, substituteOption);
   };
 
-  const safePasos = Array.isArray(pasos) ? pasos : [];
+  const [currentSteps, setCurrentSteps] = useState<Paso[]>(Array.isArray(pasos) ? pasos : []);
+  const [isGeneratingLevel, setIsGeneratingLevel] = useState<'principiante' | 'avanzado' | null>(
+    null
+  );
+
+  useEffect(() => {
+    setCurrentSteps(Array.isArray(pasos) ? pasos : []);
+  }, [pasos]);
+
+  const safePasos = Array.isArray(currentSteps) ? currentSteps : [];
   const safeIngredientes = Array.isArray(ingredientes) ? ingredientes : [];
 
   const language = useLanguageStore((s) => s.language);
@@ -279,12 +291,12 @@ export function RecipeInteractiveSections({
     ? scaleCookingTime(tiempoCoccionMin, basePorciones || 2, servings, {
         titulo: tituloReceta,
         isBaking,
-        pasos,
+        pasos: safePasos,
       })
     : null;
 
   // ==============================================================
-  // MONETIZACIÓN Y COMPORTAMIENTO POR NIVEL CULINARIO (100% PRO)
+  // MONETIZACIÓN Y COMPORTAMIENTO POR NIVEL CULINARIO ON-DEMAND
   // ==============================================================
   const profileFromStore = useProfileStore((s) => s.profile);
   const resolvedPlan = (
@@ -294,27 +306,12 @@ export function RecipeInteractiveSections({
   )
     .trim()
     .toLowerCase();
-  const isPro = resolvedPlan === 'pro';
+  const isPro = resolvedPlan === 'pro' || Boolean(userProfile?.is_pro);
 
-  // Usuario PRO: El microselector arranca seleccionado en el nivel guardado en su perfil.
-  // Usuario FREE: Los 3 niveles están bloqueados (effectiveActiveLevel = null) y lee el texto base neutro de extracción.
-  const initialProLevel: NivelCulinarioUI = normalizeNivelCulinario(
-    profileFromStore?.nivel_culinario || userProfile?.nivel_culinario
-  );
+  // El nivel activo inicia siempre en 'intermedio' (la versión canónica original)
+  const [activeLevel, setActiveLevel] = useState<CulinaryLevel>('intermedio');
 
-  const [activeLevel, setActiveLevel] = useState<NivelCulinarioUI>(initialProLevel);
-
-  useEffect(() => {
-    if (!isPro) return;
-    const freshLevel =
-      profileFromStore?.nivel_culinario || userProfile?.nivel_culinario;
-    if (freshLevel) {
-      setActiveLevel(normalizeNivelCulinario(freshLevel));
-    }
-  }, [isPro, userProfile?.nivel_culinario, profileFromStore?.nivel_culinario]);
-
-  // En Usuario FREE effectiveActiveLevel es null (ningún nivel PRO activo; las 3 opciones muestran candado)
-  const effectiveActiveLevel: NivelCulinarioUI | null = isPro ? activeLevel : null;
+  const effectiveActiveLevel: CulinaryLevel = isPro ? activeLevel : 'intermedio';
 
   useEffect(() => {
     onServingsChange?.(servings);
@@ -324,16 +321,54 @@ export function RecipeInteractiveSections({
     onLevelChange?.(effectiveActiveLevel);
   }, [effectiveActiveLevel, onLevelChange]);
 
-  // Manejador de clic en el microselector [ 🌱 | 🍳 | 👨‍🍳 ]
-  const handleLevelSelect = (targetLevel: NivelCulinarioUI) => {
-    if (!isPro) {
-      // Usuario FREE: LAS TRES OPCIONES (Principiante, Intermedio y Avanzado) están bloqueadas.
-      // No se cambia nada y se abre el modal de suscripción Miga Pro.
+  // Manejador de clic en el microselector [ 🌱 | 🍳 | 👨‍🍳 ] con generación On-Demand
+  const handleLevelSelect = async (rawTargetLevel: CulinaryLevel | NivelCulinarioUI) => {
+    const targetLevel: CulinaryLevel = normalizeNivelCulinario(rawTargetLevel);
+
+    if (!isPro && targetLevel !== 'intermedio') {
       setShowProLevelModal(true);
       return;
     }
-    // Usuario PRO: conmutación libre e instantánea (0 ms) entre los 3 niveles
+
+    if (targetLevel === 'intermedio') {
+      setActiveLevel('intermedio');
+      return;
+    }
+
+    // Nivel 'principiante' o 'avanzado' para usuario PRO
+    const alreadyHasLevel = currentSteps.some((p) =>
+      targetLevel === 'principiante'
+        ? !!p.instruccion_principiante
+        : !!p.instruccion_avanzada
+    );
+
+    if (alreadyHasLevel) {
+      setActiveLevel(targetLevel);
+      return;
+    }
+
     setActiveLevel(targetLevel);
+    setIsGeneratingLevel(targetLevel);
+
+    try {
+      const res = await generateCulinaryLevelAction({
+        recetaId,
+        nivel: targetLevel,
+        titulo: tituloReceta,
+        porciones: servings,
+        ingredientes: safeIngredientes,
+        pasos: currentSteps,
+        idioma: (language as 'es' | 'en') || 'es',
+      });
+
+      if (res.success && Array.isArray(res.pasos)) {
+        setCurrentSteps(res.pasos);
+      }
+    } catch (err) {
+      console.error('Error generando nivel culinario on-demand:', err);
+    } finally {
+      setIsGeneratingLevel(null);
+    }
   };
 
   // Textos para la Capa Informativa (Tooltip en PC y Bottom Sheet '?' en Móvil)
@@ -342,30 +377,30 @@ export function RecipeInteractiveSections({
       return {
         title: 'Pedagogical Calibration & Culinary Levels (Miga Pro)',
         description:
-          'All 3 culinary levels are an exclusive Miga Pro feature that rewrites every step in real time to match your cooking experience:',
+          'Culinary levels adapt each step on demand to match your cooking experience:',
         bullets: [
           {
             icon: '🌱',
             label: 'Beginner',
             badge: 'PRO',
-            text: 'Expanded step-by-step pedagogical narrative with prominent sensory cards (color, texture & aroma cues) and thermal safety warnings.',
+            text: 'Didactic step-by-step guidance with practical warnings and clear visual/sensory cues.',
           },
           {
             icon: '🍳',
             label: 'Intermediate',
-            badge: 'PRO',
-            text: 'Balanced, direct technical prose for everyday home cooking without elementary warnings.',
+            badge: 'BASE',
+            text: 'Canonical, direct and clean step-by-step instructions faithful to the original creator.',
           },
           {
             icon: '👨‍🍳',
             label: 'Advanced',
             badge: 'PRO',
-            text: 'Synthetic, executive restaurant-grade phrasing using professional culinary terminology (sear, deglaze, emulsify, reduce).',
+            text: 'Practical chef craft optimizing parallel tasks, resting times, deglazing and emulsions.',
           },
         ],
         footerNote: isPro
-          ? 'Miga Pro Active: Switch freely between all 3 levels in 0 ms.'
-          : 'Free accounts read the raw video extraction. Subscribe to Miga Pro to unlock all 3 culinary levels.',
+          ? 'Miga Pro Active: Generate and switch between Beginner, Intermediate and Advanced.'
+          : 'Subscribe to Miga Pro to unlock Beginner and Advanced culinary levels.',
         closeLabel: 'Got it',
       };
     }
@@ -373,30 +408,30 @@ export function RecipeInteractiveSections({
     return {
       title: 'Calibración Pedagógica y Niveles Culinarios (Miga Pro)',
       description:
-        'Los 3 niveles culinarios son una funcionalidad exclusiva Miga Pro que adapta en tiempo real el relato de cada paso según tu dominio en la cocina:',
+        'Los niveles culinarios adaptan bajo demanda el relato de cada paso según tu experiencia en cocina:',
       bullets: [
         {
           icon: '🌱',
           label: 'Principiante',
           badge: 'PRO',
-          text: 'Relato pedagógico expandido paso a paso con tarjetas sensoriales (cambios de color, texturas y aromas clave) y advertencias de seguridad térmica.',
+          text: 'Guía didáctica y cercana con prevención de errores típicos y señales visuales claras.',
         },
         {
           icon: '🍳',
           label: 'Intermedio',
-          badge: 'PRO',
-          text: 'Versión técnica equilibrada con prosa directa, limpia y estructurada para cocina doméstica ágil.',
+          badge: 'BASE',
+          text: 'Versión canónica, directa y limpia fiel a la receta original.',
         },
         {
           icon: '👨‍🍳',
           label: 'Avanzado',
           badge: 'PRO',
-          text: 'Versión sintética y profesional con terminología ejecutiva de restaurante (marcar, reducir, desglasar, emulsionar).',
+          text: 'Criterio de cocinero práctico: aprovecha tiempos muertos y aplica técnicas reales de sabor.',
         },
       ],
       footerNote: isPro
-        ? 'Miga Pro Activo: Conmuta libremente (0 ms) entre Principiante, Intermedio y Avanzado.'
-        : 'En cuentas gratuitas lees la extracción base del vídeo. Suscríbete a Miga Pro para desbloquear los 3 niveles culinarios.',
+        ? 'Miga Pro Activo: Conmuta entre Principiante, Intermedio y Avanzado.'
+        : 'Suscríbete a Miga Pro para desbloquear los niveles Principiante y Avanzado.',
       closeLabel: 'Entendido',
     };
   }, [language, isPro]);
@@ -436,19 +471,13 @@ export function RecipeInteractiveSections({
       let instruccion = baseInstruction;
       let descriptorSensorial: string | undefined = undefined;
 
-      if (!isPro || effectiveActiveLevel === null) {
-        // Usuario FREE: Lee el paso a paso TAL CUAL se genera al cargar el vídeo original (texto base neutro de extracción)
+      if (!isPro || effectiveActiveLevel === 'intermedio') {
         instruccion = baseInstruction;
-      } else if (effectiveActiveLevel === 'Principiante') {
-        // Usuario PRO - Nivel Principiante: Renderiza fielmente paso.instruccion_principiante (o la instrucción base si no existe) + descriptor sensorial real de BD
+      } else if (effectiveActiveLevel === 'principiante') {
         instruccion = rawBeginner || baseInstruction;
         descriptorSensorial = rawSensory || undefined;
-      } else if (effectiveActiveLevel === 'Avanzado') {
-        // Usuario PRO - Nivel Avanzado: Renderiza fielmente paso.instruccion_avanzada (o la instrucción base si no existe)
+      } else if (effectiveActiveLevel === 'avanzado') {
         instruccion = rawAdvanced || baseInstruction;
-      } else {
-        // Usuario PRO - Nivel Intermedio: Renderiza paso.instruccion (versión técnica equilibrada estándar)
-        instruccion = baseInstruction;
       }
 
       let consejo = paso?.consejo_pro ? String(paso.consejo_pro).trim() : undefined;
@@ -525,128 +554,154 @@ export function RecipeInteractiveSections({
   ]);
 
   // Renderizado unificado de pasos interactivos
-  const renderStepsList = () => (
-    <ol className="space-y-5 md:space-y-7 pt-1 md:pt-0">
-      {reactivePasos.map((paso, idx) => {
-        const heat = formatStepHeat(
-          paso.temperatura_celsius,
-          paso.instruccion,
-          (paso as any).potencia_fuego,
-          (language as 'es' | 'en') || 'es'
-        );
+  const renderStepsList = () => {
+    if (isGeneratingLevel) {
+      const levelLabel =
+        isGeneratingLevel === 'principiante'
+          ? language === 'en'
+            ? 'Beginner'
+            : 'Principiante'
+          : language === 'en'
+          ? 'Advanced'
+          : 'Avanzado';
 
-        return (
-          <li key={paso?.id || `paso-${idx}`} className="flex gap-3 sm:gap-5 group">
-            <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary font-serif-recipe font-bold text-sm sm:text-base flex items-center justify-center shrink-0 self-start mt-0.5 shadow-2xs">
-              {paso?.orden ?? idx + 1}
-            </span>
+      return (
+        <div className="py-12 px-4 sm:px-6 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex flex-col items-center justify-center text-center gap-3 animate-fade-in">
+          <div className="w-11 h-11 rounded-2xl bg-white border border-[#e7dfd5] text-brand-primary flex items-center justify-center shadow-2xs">
+            <Loader2 className="w-5 h-5 animate-spin" />
+          </div>
+          <p className="text-sm sm:text-base font-serif-recipe font-medium text-stone-800 max-w-md">
+            {language === 'en'
+              ? `Adapting step-by-step to ${levelLabel} level with culinary craft...`
+              : `Adaptando paso a paso al nivel ${levelLabel} con criterio culinario...`}
+          </p>
+        </div>
+      );
+    }
 
-            <div className="space-y-2.5 sm:space-y-3 flex-1 min-w-0">
-              {/* Badge sutil de modo activo cuando el usuario es PRO para reforzar feedback visual instantáneo */}
-              {isPro && effectiveActiveLevel && (
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
-                      effectiveActiveLevel === 'Principiante'
-                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                        : effectiveActiveLevel === 'Avanzado'
-                        ? 'bg-stone-900 text-amber-200 border-stone-800'
-                        : 'bg-[#f4efe6] text-brand-primary border-[#e7dfd5]'
-                    }`}
-                  >
-                    <span>
-                      {effectiveActiveLevel === 'Principiante'
-                        ? '🌱'
-                        : effectiveActiveLevel === 'Avanzado'
-                        ? '👨‍🍳'
-                        : '🍳'}
+    return (
+      <ol className="space-y-5 md:space-y-7 pt-1 md:pt-0">
+        {reactivePasos.map((paso, idx) => {
+          const heat = formatStepHeat(
+            paso.temperatura_celsius,
+            paso.instruccion,
+            (paso as any).potencia_fuego,
+            (language as 'es' | 'en') || 'es'
+          );
+
+          return (
+            <li key={paso?.id || `paso-${idx}`} className="flex gap-3 sm:gap-5 group">
+              <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary font-serif-recipe font-bold text-sm sm:text-base flex items-center justify-center shrink-0 self-start mt-0.5 shadow-2xs">
+                {paso?.orden ?? idx + 1}
+              </span>
+
+              <div className="space-y-2.5 sm:space-y-3 flex-1 min-w-0">
+                {/* Badge sutil de modo activo cuando el usuario es PRO para reforzar feedback visual instantáneo */}
+                {isPro && effectiveActiveLevel && (
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
+                        effectiveActiveLevel === 'principiante'
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          : effectiveActiveLevel === 'avanzado'
+                          ? 'bg-stone-900 text-amber-200 border-stone-800'
+                          : 'bg-[#f4efe6] text-brand-primary border-[#e7dfd5]'
+                      }`}
+                    >
+                      <span>
+                        {effectiveActiveLevel === 'principiante'
+                          ? '🌱'
+                          : effectiveActiveLevel === 'avanzado'
+                          ? '👨‍🍳'
+                          : '🍳'}
+                      </span>
+                      <span>
+                        {effectiveActiveLevel === 'principiante'
+                          ? language === 'en'
+                            ? 'Beginner · Guided Step-by-Step'
+                            : 'Principiante · Relato Guiado Paso a Paso'
+                          : effectiveActiveLevel === 'avanzado'
+                          ? language === 'en'
+                            ? 'Advanced · Executive Technique'
+                            : 'Avanzado · Técnica Ejecutiva'
+                          : language === 'en'
+                          ? 'Intermediate · Balanced Standard'
+                          : 'Intermedio · Técnica Equilibrada'}
+                      </span>
                     </span>
-                    <span>
-                      {effectiveActiveLevel === 'Principiante'
-                        ? language === 'en'
-                          ? 'Beginner · Guided Step-by-Step'
-                          : 'Principiante · Relato Guiado Paso a Paso'
-                        : effectiveActiveLevel === 'Avanzado'
-                        ? language === 'en'
-                          ? 'Advanced · Executive Technique'
-                          : 'Avanzado · Técnica Ejecutiva'
-                        : language === 'en'
-                        ? 'Intermediate · Balanced Standard'
-                        : 'Intermedio · Técnica Equilibrada'}
-                    </span>
-                  </span>
-                </div>
-              )}
+                  </div>
+                )}
 
-              <p
-                className={`text-sm sm:text-lg text-stone-800 leading-relaxed ${
-                  effectiveActiveLevel === 'Avanzado'
-                    ? 'font-medium tracking-tight'
-                    : effectiveActiveLevel === 'Principiante'
-                    ? 'font-normal text-stone-900'
-                    : 'font-light'
-                }`}
-              >
-                <FormattedText text={paso.instruccion} />
-              </p>
+                <p
+                  className={`text-sm sm:text-lg text-stone-800 leading-relaxed ${
+                    effectiveActiveLevel === 'avanzado'
+                      ? 'font-medium tracking-tight'
+                      : effectiveActiveLevel === 'principiante'
+                      ? 'font-normal text-stone-900'
+                      : 'font-light'
+                  }`}
+                >
+                  <FormattedText text={paso.instruccion} />
+                </p>
 
-              {/* MODO PRINCIPIANTE (PRO): Tarjeta / Badge Sensorial prominente si existe en BD */}
-              {isPro && effectiveActiveLevel === 'Principiante' && paso.descriptor_sensorial && (
-                <div className="space-y-2 animate-fade-in">
-                  <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 via-[#fffcf5] to-amber-100/70 border-2 border-amber-300/90 text-amber-950 text-xs sm:text-sm flex items-start gap-2.5 shadow-xs">
-                    <div className="w-7 h-7 rounded-xl bg-brand-primary text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                      <Eye className="w-4 h-4" />
-                    </div>
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-200/80 text-[#8a4e1b] border border-amber-300">
-                          {language === 'en'
-                            ? 'Sensory Cue · Color, Texture & Aroma'
-                            : 'Guía Sensorial · Color, Textura y Aroma'}
-                        </span>
+                {/* MODO PRINCIPIANTE (PRO): Tarjeta / Badge Sensorial prominente si existe en BD */}
+                {isPro && effectiveActiveLevel === 'principiante' && paso.descriptor_sensorial && (
+                  <div className="space-y-2 animate-fade-in">
+                    <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 via-[#fffcf5] to-amber-100/70 border-2 border-amber-300/90 text-amber-950 text-xs sm:text-sm flex items-start gap-2.5 shadow-xs">
+                      <div className="w-7 h-7 rounded-xl bg-brand-primary text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                        <Eye className="w-4 h-4" />
                       </div>
-                      <p className="text-xs sm:text-sm text-stone-800 leading-relaxed font-medium">
-                        {paso.descriptor_sensorial}
-                      </p>
+                      <div className="space-y-1 flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-200/80 text-[#8a4e1b] border border-amber-300">
+                            {language === 'en'
+                              ? 'Sensory Cue · Color, Texture & Aroma'
+                              : 'Guía Sensorial · Color, Textura y Aroma'}
+                          </span>
+                        </div>
+                        <p className="text-xs sm:text-sm text-stone-800 leading-relaxed font-medium">
+                          {paso.descriptor_sensorial}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {(paso.tiempo_estimado_min || heat || paso.consejo_pro) && (
-                <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 pt-1 text-xs text-stone-600">
-                  {paso.tiempo_estimado_min && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-700 font-medium">
-                      <Clock className="w-3.5 h-3.5 text-brand-primary" />
-                      {paso.tiempo_estimado_min} min
-                    </span>
-                  )}
+                {(paso.tiempo_estimado_min || heat || paso.consejo_pro) && (
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 pt-1 text-xs text-stone-600">
+                    {paso.tiempo_estimado_min && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-700 font-medium">
+                        <Clock className="w-3.5 h-3.5 text-brand-primary" />
+                        {paso.tiempo_estimado_min} min
+                      </span>
+                    )}
 
-                  {heat && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-700 font-medium">
-                      {heat.isBaking ? (
-                        <Thermometer className="w-3.5 h-3.5 text-brand-primary" />
-                      ) : (
-                        <Flame className="w-3.5 h-3.5 text-[#e05d26]" />
-                      )}
-                      {heat.label}
-                    </span>
-                  )}
+                    {heat && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-700 font-medium">
+                        {heat.isBaking ? (
+                          <Thermometer className="w-3.5 h-3.5 text-brand-primary" />
+                        ) : (
+                          <Flame className="w-3.5 h-3.5 text-[#e05d26]" />
+                        )}
+                        {heat.label}
+                      </span>
+                    )}
 
-                  {paso.consejo_pro && (
-                    <div className="w-full mt-1.5 sm:mt-2 p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-[#e7dfd5] bg-[#faf7f2] text-stone-700 text-xs sm:text-sm font-light">
-                      <span className="font-semibold text-brand-primary">{t('recipe_chef_tip')}</span>{' '}
-                      <FormattedText text={paso.consejo_pro} />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
+                    {paso.consejo_pro && (
+                      <div className="w-full mt-1.5 sm:mt-2 p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-[#e7dfd5] bg-[#faf7f2] text-stone-700 text-xs sm:text-sm font-light">
+                        <span className="font-semibold text-brand-primary">{t('recipe_chef_tip')}</span>{' '}
+                        <FormattedText text={paso.consejo_pro} />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    );
+  };
 
   return (
     <div className="pt-2 space-y-6 md:space-y-8">
@@ -800,9 +855,9 @@ export function RecipeInteractiveSections({
             {/* Principiante */}
             <button
               type="button"
-              onClick={() => handleLevelSelect('Principiante')}
+              onClick={() => handleLevelSelect('principiante')}
               className={`relative w-9 h-8 rounded-lg flex items-center justify-center text-sm transition-all cursor-pointer ${
-                effectiveActiveLevel === 'Principiante'
+                effectiveActiveLevel === 'principiante'
                   ? 'bg-brand-primary text-white shadow-xs'
                   : !isPro
                   ? 'text-stone-400 opacity-75 hover:opacity-100 hover:bg-amber-50/70'
@@ -825,34 +880,23 @@ export function RecipeInteractiveSections({
             {/* Intermedio */}
             <button
               type="button"
-              onClick={() => handleLevelSelect('Intermedio')}
+              onClick={() => handleLevelSelect('intermedio')}
               className={`relative w-9 h-8 rounded-lg flex items-center justify-center text-sm transition-all cursor-pointer ${
-                effectiveActiveLevel === 'Intermedio'
+                effectiveActiveLevel === 'intermedio'
                   ? 'bg-brand-primary text-white shadow-xs'
-                  : !isPro
-                  ? 'text-stone-400 opacity-75 hover:opacity-100 hover:bg-amber-50/70'
                   : 'text-stone-500 hover:text-stone-900 hover:bg-white/60'
               }`}
-              title={
-                !isPro
-                  ? 'Intermedio (Exclusivo Miga Pro): Técnica equilibrada'
-                  : 'Intermedio: Versión técnica equilibrada estándar'
-              }
+              title="Intermedio: Versión canónica estándar"
             >
               <span>🍳</span>
-              {!isPro && (
-                <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 border border-amber-300 text-brand-primary text-[7px] font-extrabold leading-none flex items-center gap-0.5 shadow-2xs">
-                  <Lock className="w-2 h-2 stroke-[2.5]" />
-                </span>
-              )}
             </button>
 
             {/* Avanzado */}
             <button
               type="button"
-              onClick={() => handleLevelSelect('Avanzado')}
+              onClick={() => handleLevelSelect('avanzado')}
               className={`relative w-9 h-8 rounded-lg flex items-center justify-center text-sm transition-all cursor-pointer ${
-                effectiveActiveLevel === 'Avanzado'
+                effectiveActiveLevel === 'avanzado'
                   ? 'bg-brand-primary text-white shadow-xs'
                   : !isPro
                   ? 'text-stone-400 opacity-75 hover:opacity-100 hover:bg-amber-50/70'
@@ -860,8 +904,8 @@ export function RecipeInteractiveSections({
               }`}
               title={
                 !isPro
-                  ? 'Avanzado (Exclusivo Miga Pro): Técnicas de restaurante'
-                  : 'Avanzado: Prosa técnica, sintética y profesional'
+                  ? 'Avanzado (Exclusivo Miga Pro): Técnicas de oficio'
+                  : 'Avanzado: Criterio práctico y técnicas de cocina'
               }
             >
               <span>👨‍🍳</span>
@@ -931,30 +975,30 @@ export function RecipeInteractiveSections({
               <span className="text-[11px] text-stone-500 hidden lg:inline">
                 {!isPro
                   ? language === 'en'
-                    ? '· Base video extraction (Unlock levels with Miga Pro)'
-                    : '· Extracción base del vídeo (Desbloquea los 3 niveles con Miga Pro)'
-                  : effectiveActiveLevel === 'Principiante'
+                    ? '· Base recipe (Unlock Beginner & Advanced with Miga Pro)'
+                    : '· Receta base (Desbloquea Principiante y Avanzado con Miga Pro)'
+                  : effectiveActiveLevel === 'principiante'
                   ? language === 'en'
                     ? '· Expanded step-by-step guide & sensory cues'
-                    : '· Relato expandido paso a paso, guía sensorial y seguridad térmica'
-                  : effectiveActiveLevel === 'Intermedio'
+                    : '· Relato didáctico paso a paso y guía sensorial'
+                  : effectiveActiveLevel === 'intermedio'
                   ? language === 'en'
-                    ? '· Standard balanced technical prose'
-                    : '· Versión técnica equilibrada estándar'
+                    ? '· Standard canonical recipe prose'
+                    : '· Versión canónica equilibrada estándar'
                   : language === 'en'
-                  ? '· Synthetic restaurant-grade phrasing'
-                  : '· Versión sintética y técnica de restaurante'}
+                  ? '· Practical chef craft & parallel efficiency'
+                  : '· Criterio de oficio y eficiencia en cocina'}
               </span>
             </div>
 
-            {/* Segmented Control de escritorio: LAS 3 OPCIONES bloqueadas con candado PRO para usuarios Free */}
+            {/* Segmented Control de escritorio */}
             <div className="inline-flex items-center p-1 rounded-xl bg-white border border-[#e7dfd5] shadow-2xs self-start sm:self-auto">
-              {/* Principiante (100% PRO) */}
+              {/* Principiante (PRO) */}
               <button
                 type="button"
-                onClick={() => handleLevelSelect('Principiante')}
+                onClick={() => handleLevelSelect('principiante')}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
-                  effectiveActiveLevel === 'Principiante'
+                  effectiveActiveLevel === 'principiante'
                     ? 'bg-brand-primary text-white shadow-xs font-semibold'
                     : !isPro
                     ? 'text-stone-400 opacity-80 hover:opacity-100 hover:bg-amber-50/60'
@@ -966,8 +1010,8 @@ export function RecipeInteractiveSections({
                       ? 'Beginner (Miga Pro): Step-by-step sensory guide'
                       : 'Principiante (Miga Pro): Guía sensorial paso a paso'
                     : language === 'en'
-                    ? 'Beginner: Expanded step-by-step guide and sensory cues'
-                    : 'Principiante: Relato expandido paso a paso y guía sensorial'
+                    ? 'Beginner: Didactic step-by-step guide and sensory cues'
+                    : 'Principiante: Guía didáctica paso a paso y señales sensoriales'
                 }
               >
                 <span>🌱</span>
@@ -980,43 +1024,31 @@ export function RecipeInteractiveSections({
                 )}
               </button>
 
-              {/* Intermedio (100% PRO) */}
+              {/* Intermedio (Estándar) */}
               <button
                 type="button"
-                onClick={() => handleLevelSelect('Intermedio')}
+                onClick={() => handleLevelSelect('intermedio')}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
-                  effectiveActiveLevel === 'Intermedio'
+                  effectiveActiveLevel === 'intermedio'
                     ? 'bg-brand-primary text-white shadow-xs font-semibold'
-                    : !isPro
-                    ? 'text-stone-400 opacity-80 hover:opacity-100 hover:bg-amber-50/60'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-[#faf7f2]'
                 }`}
                 title={
-                  !isPro
-                    ? language === 'en'
-                      ? 'Intermediate (Miga Pro): Balanced technical prose'
-                      : 'Intermedio (Miga Pro): Versión técnica equilibrada'
-                    : language === 'en'
-                    ? 'Intermediate: Balanced standard technical version'
-                    : 'Intermedio: Versión técnica equilibrada estándar'
+                  language === 'en'
+                    ? 'Intermediate: Canonical standard version'
+                    : 'Intermedio: Versión canónica equilibrada estándar'
                 }
               >
                 <span>🍳</span>
                 <span>{language === 'en' ? 'Medium' : 'Intermedio'}</span>
-                {!isPro && (
-                  <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-brand-primary border border-amber-300/80 text-[9px] font-extrabold uppercase">
-                    <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
-                    <span>PRO</span>
-                  </span>
-                )}
               </button>
 
-              {/* Avanzado (100% PRO) */}
+              {/* Avanzado (PRO) */}
               <button
                 type="button"
-                onClick={() => handleLevelSelect('Avanzado')}
+                onClick={() => handleLevelSelect('avanzado')}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
-                  effectiveActiveLevel === 'Avanzado'
+                  effectiveActiveLevel === 'avanzado'
                     ? 'bg-brand-primary text-white shadow-xs font-semibold'
                     : !isPro
                     ? 'text-stone-400 opacity-80 hover:opacity-100 hover:bg-amber-50/60'
@@ -1025,11 +1057,11 @@ export function RecipeInteractiveSections({
                 title={
                   !isPro
                     ? language === 'en'
-                      ? 'Advanced (Miga Pro): Restaurant culinary techniques'
-                      : 'Avanzado (Miga Pro): Técnicas de restaurante'
+                      ? 'Advanced (Miga Pro): Practical chef techniques'
+                      : 'Avanzado (Miga Pro): Criterio y técnicas de oficio'
                     : language === 'en'
-                    ? 'Advanced: Concise high culinary phrasing'
-                    : 'Avanzado: Prosa sintética y alta cocina'
+                    ? 'Advanced: Practical chef craft & parallel workflow'
+                    : 'Avanzado: Criterio de oficio y técnicas de sabor'
                 }
               >
                 <span>👨‍🍳</span>
