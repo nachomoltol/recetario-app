@@ -322,7 +322,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
             }
           }
 
-          // Descontar crédito por anuncio o incrementar cuota mensual de generación (+1)
+          // Descontar crédito por anuncio (si aplica) e incrementar cuota mensual de generación (+1)
           const { data: usuarioFresco } = await db
             .from('usuarios')
             .select('capturas_mes_actual, creditos_anuncio')
@@ -331,47 +331,43 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
 
           const frescoCreditos = Number(usuarioFresco?.creditos_anuncio) || 0;
           const usoCreditoAnuncio = !isPro && frescoCreditos > 0;
+          const conteoBase = Number(usuarioFresco?.capturas_mes_actual) || capturasMesActual;
+          const nuevoConteo = conteoBase + 1;
+
+          const updateUsuarioPayload = {
+            capturas_mes_actual: nuevoConteo,
+            updated_at: new Date().toISOString(),
+            ...(usoCreditoAnuncio
+              ? { creditos_anuncio: Math.max(0, frescoCreditos - 1) }
+              : {}),
+          };
 
           if (usoCreditoAnuncio) {
-            const nuevoSaldoCreditos = Math.max(0, frescoCreditos - 1);
-            await db
-              .from('usuarios')
-              .update({
-                creditos_anuncio: nuevoSaldoCreditos,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', user.id);
             console.log(
-              `[recipeIngest] Caché semántica: Crédito por anuncio consumido (-1). Saldo restante: ${nuevoSaldoCreditos} para usuario ${user.id}.`
+              `[recipeIngest] Caché semántica: Crédito por anuncio consumido (-1). Saldo restante: ${Math.max(0, frescoCreditos - 1)} para usuario ${user.id}.`
             );
-          } else {
-            const conteoBase = Number(usuarioFresco?.capturas_mes_actual) || capturasMesActual;
-            const nuevoConteo = conteoBase + 1;
+          }
 
+          await db
+            .from('usuarios')
+            .update(updateUsuarioPayload)
+            .eq('id', user.id);
+
+          if (isValidoDeviceId) {
+            const { data: dispFresco } = await db
+              .from('dispositivos_cuotas')
+              .select('capturas_mes_actual')
+              .eq('device_id', rawDeviceId)
+              .maybeSingle();
+
+            const conteoBaseDisp = Number(dispFresco?.capturas_mes_actual) || capturasDispositivo;
             await db
-              .from('usuarios')
+              .from('dispositivos_cuotas')
               .update({
-                capturas_mes_actual: nuevoConteo,
+                capturas_mes_actual: conteoBaseDisp + 1,
                 updated_at: new Date().toISOString(),
               })
-              .eq('id', user.id);
-
-            if (isValidoDeviceId) {
-              const { data: dispFresco } = await db
-                .from('dispositivos_cuotas')
-                .select('capturas_mes_actual')
-                .eq('device_id', rawDeviceId)
-                .maybeSingle();
-
-              const conteoBaseDisp = Number(dispFresco?.capturas_mes_actual) || capturasDispositivo;
-              await db
-                .from('dispositivos_cuotas')
-                .update({
-                  capturas_mes_actual: conteoBaseDisp + 1,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('device_id', rawDeviceId);
-            }
+              .eq('device_id', rawDeviceId);
           }
 
           // Revalidación exhaustiva de Next.js
@@ -697,7 +693,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       return { error: `Error guardando los pasos: ${errPasos.message}` };
     }
 
-    // 6. Descontar crédito por anuncio o incrementar cuota mensual de generación (+1)
+    // 6. Descontar crédito por anuncio (si aplica) e incrementar cuota mensual de generación (+1)
     const { data: usuarioFresco } = await db
       .from('usuarios')
       .select('capturas_mes_actual, creditos_anuncio')
@@ -706,62 +702,53 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
 
     const frescoCreditos = Number(usuarioFresco?.creditos_anuncio) || 0;
     const usoCreditoAnuncio = !isPro && frescoCreditos > 0;
+    const conteoBase = Number(usuarioFresco?.capturas_mes_actual) || capturasMesActual;
+    const nuevoConteo = conteoBase + 1;
+
+    const updateUsuarioPayload = {
+      capturas_mes_actual: nuevoConteo,
+      updated_at: new Date().toISOString(),
+      ...(usoCreditoAnuncio
+        ? { creditos_anuncio: Math.max(0, frescoCreditos - 1) }
+        : {}),
+    };
 
     if (usoCreditoAnuncio) {
-      const nuevoSaldoCreditos = Math.max(0, frescoCreditos - 1);
-      const { error: errUpdateCreditos } = await db
-        .from('usuarios')
-        .update({
-          creditos_anuncio: nuevoSaldoCreditos,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
+      console.log(
+        `[recipeIngest] Crédito por anuncio consumido (-1). Saldo restante: ${Math.max(0, frescoCreditos - 1)} para usuario ${user.id}.`
+      );
+    }
 
-      if (errUpdateCreditos) {
-        console.error('[recipeIngest] ERROR al descontar creditos_anuncio de usuario:', errUpdateCreditos);
-      } else {
-        console.log(
-          `[recipeIngest] Crédito por anuncio consumido (-1). Saldo restante: ${nuevoSaldoCreditos} para usuario ${user.id}.`
-        );
-      }
+    const { data: updatedRows, error: errUpdateCuota } = await db
+      .from('usuarios')
+      .update(updateUsuarioPayload)
+      .eq('id', user.id)
+      .select('id, capturas_mes_actual');
+
+    if (errUpdateCuota) {
+      console.error('[recipeIngest] ERROR al actualizar cuota y créditos de usuario:', errUpdateCuota);
     } else {
-      const conteoBase = Number(usuarioFresco?.capturas_mes_actual) || capturasMesActual;
-      const nuevoConteo = conteoBase + 1;
+      console.log(
+        `[recipeIngest] Cuota de usuario incrementada con éxito a ${nuevoConteo} para usuario ${user.id}.`
+      );
+    }
 
-      const { data: updatedRows, error: errUpdateCuota } = await db
-        .from('usuarios')
+    // Incrementar también el contador del dispositivo físico
+    if (isValidoDeviceId) {
+      const { data: dispFresco } = await db
+        .from('dispositivos_cuotas')
+        .select('capturas_mes_actual')
+        .eq('device_id', rawDeviceId)
+        .maybeSingle();
+
+      const conteoBaseDisp = Number(dispFresco?.capturas_mes_actual) || capturasDispositivo;
+      await db
+        .from('dispositivos_cuotas')
         .update({
-          capturas_mes_actual: nuevoConteo,
+          capturas_mes_actual: conteoBaseDisp + 1,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user.id)
-        .select('id, capturas_mes_actual');
-
-      if (errUpdateCuota) {
-        console.error('[recipeIngest] ERROR al incrementar capturas_mes_actual de usuario:', errUpdateCuota);
-      } else {
-        console.log(
-          `[recipeIngest] Cuota de usuario incrementada con éxito a ${nuevoConteo} para usuario ${user.id}.`
-        );
-      }
-
-      // Incrementar también el contador del dispositivo físico
-      if (isValidoDeviceId) {
-        const { data: dispFresco } = await db
-          .from('dispositivos_cuotas')
-          .select('capturas_mes_actual')
-          .eq('device_id', rawDeviceId)
-          .maybeSingle();
-
-        const conteoBaseDisp = Number(dispFresco?.capturas_mes_actual) || capturasDispositivo;
-        await db
-          .from('dispositivos_cuotas')
-          .update({
-            capturas_mes_actual: conteoBaseDisp + 1,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('device_id', rawDeviceId);
-      }
+        .eq('device_id', rawDeviceId);
     }
 
     // 7. Revalidación exhaustiva de caché de Next.js
