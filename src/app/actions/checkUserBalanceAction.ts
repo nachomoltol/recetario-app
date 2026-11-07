@@ -12,6 +12,7 @@ export type CheckUserBalanceResult =
       puede_extraer: boolean;
       solicitud_recarga_pc: boolean;
       solicitud_recarga_pc_at: string | null;
+      solicitud_recarga_url: string | null;
     }
   | {
       success: false;
@@ -23,6 +24,7 @@ export type CheckUserBalanceResult =
       puede_extraer?: never;
       solicitud_recarga_pc?: never;
       solicitud_recarga_pc_at?: never;
+      solicitud_recarga_url?: never;
     };
 
 /**
@@ -49,7 +51,9 @@ export async function checkUserBalanceAction(): Promise<CheckUserBalanceResult> 
 
     const { data: profile, error: profileErr } = await db
       .from('usuarios')
-      .select('plan_suscripcion, capturas_mes_actual, creditos_anuncio, solicitud_recarga_pc, solicitud_recarga_pc_at')
+      .select(
+        'plan_suscripcion, capturas_mes_actual, creditos_anuncio, solicitud_recarga_pc, solicitud_recarga_pc_at, solicitud_recarga_url'
+      )
       .eq('id', user.id)
       .single();
 
@@ -68,6 +72,7 @@ export async function checkUserBalanceAction(): Promise<CheckUserBalanceResult> 
     const creditosAnuncio = Number(profile?.creditos_anuncio) || 0;
     const solicitudRecargaPc = Boolean(profile?.solicitud_recarga_pc);
     const solicitudRecargaPcAt = profile?.solicitud_recarga_pc_at ?? null;
+    const solicitudRecargaUrl = profile?.solicitud_recarga_url ?? null;
 
     return {
       success: true,
@@ -78,6 +83,7 @@ export async function checkUserBalanceAction(): Promise<CheckUserBalanceResult> 
       puede_extraer: isPro || creditosAnuncio > 0 || capturas < 20,
       solicitud_recarga_pc: solicitudRecargaPc,
       solicitud_recarga_pc_at: solicitudRecargaPcAt,
+      solicitud_recarga_url: solicitudRecargaUrl,
     };
   } catch (err: unknown) {
     console.error('[checkUserBalanceAction] Excepción:', err);
@@ -90,4 +96,3 @@ export async function checkUserBalanceAction(): Promise<CheckUserBalanceResult> 
     };
   }
 }
-

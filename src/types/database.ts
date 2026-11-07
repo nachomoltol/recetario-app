@@ -45,6 +45,7 @@ export interface Database {
           creditos_anuncio?: number;
           solicitud_recarga_pc?: boolean;
           solicitud_recarga_pc_at?: string | null;
+          solicitud_recarga_url?: string | null;
           fecha_ultimo_reinicio: string;
           antiguedad_ciclos_mes: number;
           stripe_customer_id?: string | null;
@@ -67,6 +68,7 @@ export interface Database {
           creditos_anuncio?: number;
           solicitud_recarga_pc?: boolean;
           solicitud_recarga_pc_at?: string | null;
+          solicitud_recarga_url?: string | null;
           fecha_ultimo_reinicio?: string;
           antiguedad_ciclos_mes?: number;
           stripe_customer_id?: string | null;
@@ -89,6 +91,7 @@ export interface Database {
           creditos_anuncio?: number;
           solicitud_recarga_pc?: boolean;
           solicitud_recarga_pc_at?: string | null;
+          solicitud_recarga_url?: string | null;
           fecha_ultimo_reinicio?: string;
           antiguedad_ciclos_mes?: number;
           stripe_customer_id?: string | null;

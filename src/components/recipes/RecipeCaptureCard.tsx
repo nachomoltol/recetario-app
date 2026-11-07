@@ -18,6 +18,8 @@ import {
   Camera,
   MonitorPlay,
   Play,
+  Monitor,
+  Smartphone,
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { ingestRecipeAction } from '@/app/actions/recipeIngest';
@@ -199,6 +201,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   // Estados de solicitud de recarga pendiente desde PC (Exclusivo Android Nativo)
   const [isNativeAndroid, setIsNativeAndroid] = useState(false);
   const [hasPendingPcRequest, setHasPendingPcRequest] = useState(false);
+  const [pendingPcUrl, setPendingPcUrl] = useState<string | null>(null);
   const [isPlayingPcUnlockAd, setIsPlayingPcUnlockAd] = useState(false);
   const [pcUnlockFeedback, setPcUnlockFeedback] = useState<{
     type: 'success' | 'warning';
@@ -227,10 +230,12 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             const isUnder30Min = ageMs >= 0 && ageMs < 30 * 60 * 1000;
             setHasPendingPcRequest(isUnder30Min);
             if (isUnder30Min) {
+              setPendingPcUrl(res.solicitud_recarga_url || null);
               preloadRewardedAd().catch(() => {});
             }
           } else {
             setHasPendingPcRequest(true);
+            setPendingPcUrl(res.solicitud_recarga_url || null);
             preloadRewardedAd().catch(() => {});
           }
         } else {
@@ -377,9 +382,11 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       const capturas = Number(currentProfile?.capturas_mes_actual) || 0;
       const antiguedad = Number(currentProfile?.antiguedad_ciclos_mes) || 0;
       const esPrimerMes = antiguedad === 0;
+      const creditosAnuncio = Number((currentProfile as any)?.creditos_anuncio) || 0;
+      const hasAdCredit = creditosAnuncio > 0 || skipInterstitialRef.current;
 
-      // 1. Bloqueo duro inmediato en cliente si ya superó el límite mensual
-      if (!isPro && capturas >= 20) {
+      // 1. Bloqueo duro inmediato en cliente si ya superó el límite mensual y no dispone de crédito por anuncio
+      if (!isPro && capturas >= 20 && !hasAdCredit) {
         setHardLimitModal('FREE_LIMIT_REACHED');
         return;
       }
@@ -394,7 +401,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       // - Usuario Gratis Mes 2+: Generaciones 1 a 20 con anuncio desde la 1ª.
       const requiresInterstitial = !isPro && (!esPrimerMes || capturas >= 5);
 
-      if (requiresInterstitial && !skipInterstitialRef.current) {
+      if (requiresInterstitial && !hasAdCredit) {
         setPendingIngestParams({ mode: targetMode, value: targetValue });
         setShowInterstitialModal(true);
         return;
@@ -604,6 +611,23 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     }
   }, [initialUrl, initialText, autoStart, executeIngest, router, searchParams]);
 
+  const handleExtractHereOnMobile = () => {
+    if (!pendingPcUrl) return;
+    const trimmed = pendingPcUrl.trim();
+    const isHttp = /^https?:\/\//i.test(trimmed);
+    const targetMode: 'url' | 'texto' = isHttp ? 'url' : 'texto';
+    if (targetMode === 'url') {
+      setMode('url');
+      setUrl(trimmed);
+    } else {
+      setMode('texto');
+      setTexto(trimmed);
+    }
+    setPcUnlockFeedback(null);
+    skipInterstitialRef.current = true;
+    executeIngest(targetMode, trimmed);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     executeIngest(mode, mode === 'url' ? url : texto);
@@ -722,18 +746,42 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       {/* Feedback tras reproducir el vídeo para PC en Android */}
       {isNativeAndroid && pcUnlockFeedback && (
         <div
-          className={`p-3.5 rounded-2xl text-xs sm:text-sm font-medium flex items-center gap-2.5 animate-fade-in ${
+          className={`p-4 rounded-2xl text-xs sm:text-sm font-medium space-y-3 animate-fade-in ${
             pcUnlockFeedback.type === 'success'
               ? 'bg-emerald-50 border border-emerald-300 text-emerald-900'
               : 'bg-amber-50 border border-amber-300 text-amber-900'
           }`}
         >
-          {pcUnlockFeedback.type === 'success' ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+          <div className="flex items-start gap-2.5">
+            {pcUnlockFeedback.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            )}
+            <span>{pcUnlockFeedback.message}</span>
+          </div>
+
+          {pcUnlockFeedback.type === 'success' && pendingPcUrl && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setPcUnlockFeedback(null)}
+                className="w-full min-h-[44px] py-2.5 px-3.5 rounded-xl bg-white hover:bg-emerald-100/70 border border-emerald-300 text-emerald-950 font-semibold text-xs sm:text-sm shadow-2xs transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Monitor className="w-4 h-4 text-emerald-700" />
+                <span>{language === 'en' ? 'Continue on PC' : 'Continuar en el PC'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExtractHereOnMobile}
+                className="w-full min-h-[44px] py-2.5 px-3.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Smartphone className="w-4 h-4 text-amber-300" />
+                <span>{language === 'en' ? 'Extract here on mobile' : 'Extraer aquí en el móvil'}</span>
+              </button>
+            </div>
           )}
-          <span>{pcUnlockFeedback.message}</span>
         </div>
       )}
 
@@ -1050,6 +1098,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         onComplete={handleInterstitialComplete}
         onCancel={handleInterstitialCancel}
         onSelectPro={handleSelectProFromInterstitial}
+        pendingUrl={url || texto || pendingIngestParams?.value || ''}
       />
 
       {/* Modal de Bloqueo Duro por Límite Mensual Alcanzado */}

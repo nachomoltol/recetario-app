@@ -37,6 +37,7 @@ export interface AdInterstitialModalProps {
   onComplete: () => void;
   onCancel: () => void;
   onSelectPro?: () => void;
+  pendingUrl?: string;
 }
 
 type PlatformType = 'android_native' | 'ios' | 'desktop_web';
@@ -47,11 +48,23 @@ export function AdInterstitialModal({
   onComplete,
   onCancel,
   onSelectPro,
+  pendingUrl,
 }: AdInterstitialModalProps) {
   const language = useLanguageStore((s) => s.language);
   const isEn = language === 'en';
   const profile = useProfileStore((state) => state.profile);
-  const capturas = Number(profile?.capturas_mes_actual) || 0;
+  const [syncedCapturas, setSyncedCapturas] = useState<number | null>(
+    profile?.capturas_mes_actual != null ? Number(profile.capturas_mes_actual) : null
+  );
+  const [syncedCreditosAnuncio, setSyncedCreditosAnuncio] = useState<number>(
+    Number((profile as any)?.creditos_anuncio) || 0
+  );
+  const capturas =
+    syncedCapturas !== null
+      ? syncedCapturas
+      : profile?.capturas_mes_actual != null
+      ? Number(profile.capturas_mes_actual)
+      : 20;
   const recetasRestantes = Math.max(0, 20 - capturas);
 
   const [viewState, setViewState] = useState<ViewStateType>('choice');
@@ -147,22 +160,29 @@ export function AdInterstitialModal({
     setBalanceCheckMessage(null);
     setToastNotification(null);
 
-    // Sincronizar si ya existe una solicitud de desbloqueo reciente (< 30 min)
-    checkUserBalanceAction().then((res) => {
-      if (res.success && res.solicitud_recarga_pc) {
-        if (res.solicitud_recarga_pc_at) {
-          const diffMs = Date.now() - new Date(res.solicitud_recarga_pc_at).getTime();
-          if (diffMs < 30 * 60 * 1000) {
-            setIsUnlockRequested(true);
-            return;
+    // Sincronizar de inmediato capturas_mes_actual, creditos_anuncio y solicitud de desbloqueo reciente (< 30 min)
+    checkUserBalanceAction()
+      .then((res) => {
+        if (res.success) {
+          setSyncedCapturas(res.capturas_mes_actual);
+          setSyncedCreditosAnuncio(res.creditos_anuncio);
+
+          if (res.solicitud_recarga_pc) {
+            if (res.solicitud_recarga_pc_at) {
+              const diffMs = Date.now() - new Date(res.solicitud_recarga_pc_at).getTime();
+              if (diffMs < 30 * 60 * 1000) {
+                setIsUnlockRequested(true);
+                return;
+              }
+            } else {
+              setIsUnlockRequested(true);
+              return;
+            }
           }
-        } else {
-          setIsUnlockRequested(true);
-          return;
         }
-      }
-      setIsUnlockRequested(Boolean((profile as any)?.solicitud_recarga_pc));
-    }).catch(() => {});
+        setIsUnlockRequested(Boolean((profile as any)?.solicitud_recarga_pc));
+      })
+      .catch(() => {});
   }, [isOpen, profile]);
 
   // Lógica de reproducción cuando el usuario pasa a 'playing'
@@ -251,7 +271,7 @@ export function AdInterstitialModal({
     if (isRequestingUnlock) return;
     setIsRequestingUnlock(true);
     try {
-      const res = await requestMobileAdUnlockAction();
+      const res = await requestMobileAdUnlockAction({ url: pendingUrl });
       if (res.success) {
         setIsUnlockRequested(true);
       }
@@ -271,6 +291,10 @@ export function AdInterstitialModal({
 
     try {
       const res = await checkUserBalanceAction();
+      if (res.success) {
+        setSyncedCapturas(res.capturas_mes_actual);
+        setSyncedCreditosAnuncio(res.creditos_anuncio);
+      }
       if (res.success && res.creditos_anuncio > 0) {
         setBalanceCheckStatus('success');
         setBalanceCheckMessage(
@@ -549,12 +573,12 @@ export function AdInterstitialModal({
                       type="button"
                       onClick={handleRequestMobileUnlock}
                       disabled={isRequestingUnlock}
-                      className="w-full min-h-[46px] py-2.5 px-4 rounded-xl bg-amber-100 hover:bg-amber-200/80 border border-amber-300 text-amber-950 font-semibold text-xs sm:text-sm shadow-2xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
+                      className="w-full min-h-[46px] bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs sm:text-sm shadow-sm py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-70"
                     >
                       {isRequestingUnlock ? (
-                        <Loader2 className="w-4 h-4 text-amber-800 animate-spin" />
+                        <Loader2 className="w-4 h-4 text-white animate-spin" />
                       ) : (
-                        <Smartphone className="w-4 h-4 text-amber-800" />
+                        <Smartphone className="w-4 h-4 text-white" />
                       )}
                       <span>
                         {isRequestingUnlock

@@ -47,6 +47,7 @@ export async function claimAdRewardAction(): Promise<ClaimAdRewardResult> {
           .update({
             solicitud_recarga_pc: false,
             solicitud_recarga_pc_at: null,
+            solicitud_recarga_url: null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', user.id);
@@ -92,6 +93,7 @@ export async function claimAdRewardAction(): Promise<ClaimAdRewardResult> {
         creditos_anuncio: nuevoSaldo,
         solicitud_recarga_pc: false,
         solicitud_recarga_pc_at: null,
+        solicitud_recarga_url: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id);
