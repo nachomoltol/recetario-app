@@ -38,6 +38,7 @@ export interface AdInterstitialModalProps {
   onCancel: () => void;
   onSelectPro?: () => void;
   pendingUrl?: string;
+  isCrossDeviceRequest?: boolean;
 }
 
 type PlatformType = 'android_native' | 'ios' | 'desktop_web';
@@ -49,6 +50,7 @@ export function AdInterstitialModal({
   onCancel,
   onSelectPro,
   pendingUrl,
+  isCrossDeviceRequest,
 }: AdInterstitialModalProps) {
   const language = useLanguageStore((s) => s.language);
   const isEn = language === 'en';
@@ -229,8 +231,20 @@ export function AdInterstitialModal({
               console.error('[AdInterstitialModal] Error acreditando recompensa en Supabase:', err);
             }
 
-            if (isMounted) {
+            if (!isMounted) return;
+
+            // Comprobar si el modal se abrió por una solicitud cruzada de PC
+            const isCrossDevice =
+              typeof isCrossDeviceRequest === 'boolean'
+                ? isCrossDeviceRequest
+                : Boolean(isUnlockRequested && !pendingUrl);
+
+            if (isCrossDevice) {
+              // Si y solo si proviene de una solicitud de PC pendiente, mostrar pantalla de bifurcación
               setViewState('reward_credited');
+            } else {
+              // Flujo normal nativo de móvil: auto-extraer de inmediato sin pantallas intermedias
+              onCompleteRef.current();
             }
           } else if (result.error === 'AD_DISMISSED_WITHOUT_REWARD') {
             setViewState('choice');
