@@ -241,7 +241,26 @@ export function RecipeInteractiveSections({
   );
 
   useEffect(() => {
-    setCurrentSteps(Array.isArray(pasos) ? pasos : []);
+    const incoming = Array.isArray(pasos) ? pasos : [];
+    setCurrentSteps((prevSteps) => {
+      if (!prevSteps || prevSteps.length === 0) return incoming;
+      return incoming.map((inc, idx) => {
+        const existing =
+          prevSteps.find((p) => p.id && inc.id && p.id === inc.id) ||
+          prevSteps[idx];
+        if (!existing) return { ...inc, orden: idx + 1 };
+        return {
+          ...inc,
+          orden: idx + 1,
+          instruccion_principiante:
+            inc.instruccion_principiante || existing.instruccion_principiante || null,
+          instruccion_avanzada:
+            inc.instruccion_avanzada || existing.instruccion_avanzada || null,
+          descriptor_sensorial:
+            inc.descriptor_sensorial || existing.descriptor_sensorial || null,
+        };
+      });
+    });
   }, [pasos]);
 
   const safePasos = Array.isArray(currentSteps) ? currentSteps : [];
@@ -362,7 +381,24 @@ export function RecipeInteractiveSections({
       });
 
       if (res.success && Array.isArray(res.pasos)) {
-        setCurrentSteps(res.pasos);
+        setCurrentSteps((prevSteps) =>
+          res.pasos!.map((updated, idx) => {
+            const prev =
+              prevSteps.find((p) => p.id && updated.id && p.id === updated.id) ||
+              prevSteps[idx];
+            return {
+              ...prev,
+              ...updated,
+              orden: idx + 1,
+              instruccion_principiante:
+                updated.instruccion_principiante || prev?.instruccion_principiante || null,
+              instruccion_avanzada:
+                updated.instruccion_avanzada || prev?.instruccion_avanzada || null,
+              descriptor_sensorial:
+                updated.descriptor_sensorial || prev?.descriptor_sensorial || null,
+            };
+          })
+        );
       }
     } catch (err) {
       console.error('Error generando nivel culinario on-demand:', err);
@@ -592,46 +628,10 @@ export function RecipeInteractiveSections({
           return (
             <li key={paso?.id || `paso-${idx}`} className="flex gap-3 sm:gap-5 group">
               <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary font-serif-recipe font-bold text-sm sm:text-base flex items-center justify-center shrink-0 self-start mt-0.5 shadow-2xs">
-                {paso?.orden ?? idx + 1}
+                {idx + 1}
               </span>
 
               <div className="space-y-2.5 sm:space-y-3 flex-1 min-w-0">
-                {/* Badge sutil de modo activo cuando el usuario es PRO para reforzar feedback visual instantáneo */}
-                {isPro && effectiveActiveLevel && (
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
-                        effectiveActiveLevel === 'principiante'
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                          : effectiveActiveLevel === 'avanzado'
-                          ? 'bg-stone-900 text-amber-200 border-stone-800'
-                          : 'bg-[#f4efe6] text-brand-primary border-[#e7dfd5]'
-                      }`}
-                    >
-                      <span>
-                        {effectiveActiveLevel === 'principiante'
-                          ? '🌱'
-                          : effectiveActiveLevel === 'avanzado'
-                          ? '👨‍🍳'
-                          : '🍳'}
-                      </span>
-                      <span>
-                        {effectiveActiveLevel === 'principiante'
-                          ? language === 'en'
-                            ? 'Beginner · Guided Step-by-Step'
-                            : 'Principiante · Relato Guiado Paso a Paso'
-                          : effectiveActiveLevel === 'avanzado'
-                          ? language === 'en'
-                            ? 'Advanced · Executive Technique'
-                            : 'Avanzado · Técnica Ejecutiva'
-                          : language === 'en'
-                          ? 'Intermediate · Balanced Standard'
-                          : 'Intermedio · Técnica Equilibrada'}
-                      </span>
-                    </span>
-                  </div>
-                )}
-
                 <p
                   className={`text-sm sm:text-lg text-stone-800 leading-relaxed ${
                     effectiveActiveLevel === 'avanzado'
