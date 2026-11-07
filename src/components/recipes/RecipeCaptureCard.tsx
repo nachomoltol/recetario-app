@@ -275,7 +275,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       const esPrimerMes = antiguedad === 0;
 
       // 1. Bloqueo duro inmediato en cliente si ya superó el límite mensual
-      if (!isPro && capturas >= 50) {
+      if (!isPro && capturas >= 20) {
         setHardLimitModal('FREE_LIMIT_REACHED');
         return;
       }
@@ -286,8 +286,8 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
       // 2. Fricción por Intersticial de 5s:
       // - Usuario PRO: Cero fricción (nunca se muestra).
-      // - Usuario Gratis Mes 1: Generaciones 1 a 5 directas; 6 a 50 con anuncio.
-      // - Usuario Gratis Mes 2+: Generaciones 1 a 50 con anuncio desde la 1ª.
+      // - Usuario Gratis Mes 1: Generaciones 1 a 5 directas; 6 a 20 con anuncio.
+      // - Usuario Gratis Mes 2+: Generaciones 1 a 20 con anuncio desde la 1ª.
       const requiresInterstitial = !isPro && (!esPrimerMes || capturas >= 5);
 
       if (requiresInterstitial && !skipInterstitialRef.current) {

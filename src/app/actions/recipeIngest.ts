@@ -15,6 +15,7 @@ export interface IngestRecipeResult {
   success?: boolean;
   recetaId?: string;
   error?: string;
+  message?: string;
 }
 
 export async function ingestRecipeAction(formData: FormData): Promise<IngestRecipeResult> {
@@ -164,21 +165,23 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     };
   }
 
-  // B) Usuario GRATUITO: Límite estricto de 50 recetas por mes calendario
-  if (!isPro && capturasMesActual >= 50) {
-    console.warn(`[recipeIngest] BLOQUEO DURO GRATUITO: Usuario ${user.id} alcanzó el límite mensual de 50 generaciones.`);
+  // B) Usuario GRATUITO: Límite estricto de 20 recetas por mes calendario
+  if (!isPro && capturasMesActual >= 20) {
+    console.warn(`[recipeIngest] BLOQUEO DURO GRATUITO: Usuario ${user.id} alcanzó el límite mensual de 20 generaciones.`);
     return {
       success: false,
       error: 'FREE_LIMIT_REACHED',
+      message: 'Has alcanzado el límite de 20 recetas gratis este mes. Pásate a PRO para continuar.',
     };
   }
 
-  // C) Anti-Fraude Dispositivo Físico: Límite de 50 recetas por mes en el mismo hardware
-  if (!isPro && isValidoDeviceId && capturasDispositivo >= 50) {
-    console.warn(`[recipeIngest] BLOQUEO ANTI-FRAUDE DISPOSITIVO: Dispositivo ${rawDeviceId} alcanzó el límite de 50.`);
+  // C) Anti-Fraude Dispositivo Físico: Límite de 20 recetas por mes en el mismo hardware
+  if (!isPro && isValidoDeviceId && capturasDispositivo >= 20) {
+    console.warn(`[recipeIngest] BLOQUEO ANTI-FRAUDE DISPOSITIVO: Dispositivo ${rawDeviceId} alcanzó el límite de 20.`);
     return {
       success: false,
       error: 'DEVICE_LIMIT_REACHED',
+      message: 'Este dispositivo ha alcanzado el límite máximo de recetas gratuitas este mes. Pásate a PRO para continuar.',
     };
   }
 

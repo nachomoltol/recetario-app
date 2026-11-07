@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { useProfileStore } from '@/stores/useProfileStore';
 import {
   isNativePlatform,
   showRewardVideoAdFlow,
@@ -39,6 +40,9 @@ export function AdInterstitialModal({
 }: AdInterstitialModalProps) {
   const language = useLanguageStore((s) => s.language);
   const isEn = language === 'en';
+  const profile = useProfileStore((state) => state.profile);
+  const capturas = Number(profile?.capturas_mes_actual) || 0;
+  const recetasRestantes = Math.max(0, 20 - capturas);
   const [viewState, setViewState] = useState<'choice' | 'playing'>('choice');
   const [platform, setPlatform] = useState<PlatformType>('desktop_web');
   const [secondsRemaining, setSecondsRemaining] = useState(5);
@@ -273,20 +277,41 @@ export function AdInterstitialModal({
             </div>
 
             {/* Tarjeta B: Opción Gratuita según plataforma */}
-            <div className="p-4 sm:p-5 rounded-2xl border border-stone-200 bg-stone-50/80 space-y-3.5">
-              <div className="flex items-center justify-between">
+            <div className="relative p-4 sm:p-5 rounded-2xl border-2 border-[#e7dfd5] bg-gradient-to-br from-white via-[#faf7f2] to-[#f4efe6]/60 space-y-4 shadow-sm hover:shadow-md transition">
+              <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <PlayCircle className="w-4 h-4 text-stone-600" />
-                  <span className="font-semibold text-xs sm:text-sm text-stone-800">
-                    {isEn ? 'Free Option' : 'Opción Gratuita'}
-                  </span>
+                  <div className="w-7 h-7 rounded-lg bg-stone-100 border border-stone-200 text-stone-700 flex items-center justify-center">
+                    <PlayCircle className="w-4 h-4 text-stone-700" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm sm:text-base text-stone-900 block leading-tight">
+                      {isEn ? 'Free Option' : 'Opción Gratuita'}
+                    </span>
+                    <span className="text-[11px] text-stone-500 font-medium">
+                      {platform === 'android_native'
+                        ? (isEn ? 'Sponsored short ad' : 'Vídeo patrocinado')
+                        : platform === 'ios'
+                        ? (isEn ? 'iOS in progress' : 'Próximamente en iOS')
+                        : (isEn ? 'Android App Exclusive' : 'Exclusivo en Android App')}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-[11px] text-stone-500 font-medium">
-                  {platform === 'android_native'
-                    ? (isEn ? 'Short sponsor ad' : 'Vídeo patrocinado')
-                    : platform === 'ios'
-                    ? (isEn ? 'iOS in progress' : 'Próximamente en iOS')
-                    : (isEn ? 'Android App Exclusive' : 'Exclusivo en Android App')}
+
+                {/* Badge visible de recetas restantes */}
+                <span className="px-2.5 py-1 rounded-full bg-emerald-100/90 border border-emerald-300 text-emerald-950 text-[11px] font-bold tracking-tight whitespace-nowrap shadow-2xs">
+                  {isEn
+                    ? `${recetasRestantes} of 20 left`
+                    : `${recetasRestantes} de 20 restantes`}
+                </span>
+              </div>
+
+              {/* Banner explicativo de cupo mensual */}
+              <div className="p-2.5 sm:p-3 rounded-xl bg-amber-50/90 border border-amber-200/90 text-amber-950 text-xs font-medium flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-brand-primary shrink-0" />
+                <span className="leading-tight">
+                  {isEn
+                    ? `You have ${recetasRestantes} free recipes left this month (out of 20).`
+                    : `Te quedan ${recetasRestantes} recetas gratis este mes (de 20).`}
                 </span>
               </div>
 
@@ -305,9 +330,9 @@ export function AdInterstitialModal({
                       setDismissWarning(null);
                       setViewState('playing');
                     }}
-                    className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 active:scale-[0.99] text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <Play className="w-3.5 h-3.5 text-white fill-current" />
+                    <Play className="w-4 h-4 text-amber-300 fill-current" />
                     <span>{isEn ? 'Watch ad and continue' : 'Ver anuncio y continuar'}</span>
                   </button>
                 </>
