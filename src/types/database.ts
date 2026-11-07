@@ -42,6 +42,7 @@ export interface Database {
           nivel_culinario: string;
           plan_suscripcion: 'gratis' | 'pro';
           capturas_mes_actual: number;
+          creditos_anuncio?: number;
           fecha_ultimo_reinicio: string;
           antiguedad_ciclos_mes: number;
           stripe_customer_id?: string | null;
@@ -61,6 +62,7 @@ export interface Database {
           nivel_culinario?: string;
           plan_suscripcion?: 'gratis' | 'pro';
           capturas_mes_actual?: number;
+          creditos_anuncio?: number;
           fecha_ultimo_reinicio?: string;
           antiguedad_ciclos_mes?: number;
           stripe_customer_id?: string | null;
@@ -80,6 +82,7 @@ export interface Database {
           nivel_culinario?: string;
           plan_suscripcion?: 'gratis' | 'pro';
           capturas_mes_actual?: number;
+          creditos_anuncio?: number;
           fecha_ultimo_reinicio?: string;
           antiguedad_ciclos_mes?: number;
           stripe_customer_id?: string | null;
@@ -525,7 +528,13 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      increment_creditos_anuncio: {
+        Args: {
+          p_user_id: string;
+          p_amount?: number;
+        };
+        Returns: number;
+      };
     };
     Enums: {
       dificultad_receta: DificultadReceta;
