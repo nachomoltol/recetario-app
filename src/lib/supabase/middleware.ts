@@ -3,6 +3,13 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { Database } from '@/types/database';
 
 export async function updateSession(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+
+  // Acceso público directo sin comprobación de sesión ni cookies para el rastreador de Google AdMob y Asset Links
+  if (path === '/app-ads.txt' || path.startsWith('/.well-known')) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -50,6 +57,7 @@ export async function updateSession(request: NextRequest) {
       path.startsWith('/api/stripe/webhook') ||
       path.startsWith('/share-target') ||
       path.startsWith('/robots.txt') ||
+      path === '/app-ads.txt' ||
       path.startsWith('/app-ads.txt') ||
       path.startsWith('/.well-known') ||
       path.startsWith('/sitemap.xml') ||
