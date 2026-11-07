@@ -12,10 +12,15 @@ import {
   Loader2,
   ExternalLink,
   Mail,
+  AlertCircle,
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useLanguageStore } from '@/stores/useLanguageStore';
-import { isNativePlatform, showRewardVideoAdFlow } from '@/lib/admob/admobService';
+import {
+  isNativePlatform,
+  showRewardVideoAdFlow,
+  preloadRewardedAd,
+} from '@/lib/admob/admobService';
 
 export interface AdInterstitialModalProps {
   isOpen: boolean;
@@ -33,10 +38,12 @@ export function AdInterstitialModal({
   onSelectPro,
 }: AdInterstitialModalProps) {
   const language = useLanguageStore((s) => s.language);
+  const isEn = language === 'en';
   const [viewState, setViewState] = useState<'choice' | 'playing'>('choice');
   const [platform, setPlatform] = useState<PlatformType>('desktop_web');
   const [secondsRemaining, setSecondsRemaining] = useState(5);
   const [isAdMobPlaying, setIsAdMobPlaying] = useState(false);
+  const [dismissWarning, setDismissWarning] = useState<string | null>(null);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
@@ -65,17 +72,26 @@ export function AdInterstitialModal({
     }
   }, []);
 
+  // Precarga automática del anuncio bonificado al abrir el modal en Android nativo
+  useEffect(() => {
+    if (isOpen && viewState === 'choice' && isNativePlatform()) {
+      preloadRewardedAd().catch(() => {});
+    }
+  }, [isOpen, viewState]);
+
   // Al abrir o cerrar el modal, reiniciar estado
   useEffect(() => {
     if (!isOpen) {
       setViewState('choice');
       setSecondsRemaining(5);
       setIsAdMobPlaying(false);
+      setDismissWarning(null);
       return;
     }
     setViewState('choice');
     setSecondsRemaining(5);
     setIsAdMobPlaying(false);
+    setDismissWarning(null);
   }, [isOpen]);
 
   // Solo cuando el usuario pasa a 'playing' se ejecuta AdMob o el contador regresivo
@@ -84,49 +100,74 @@ export function AdInterstitialModal({
       return;
     }
 
+    let isMounted = true;
+    let timerInterval: NodeJS.Timeout | null = null;
+
+    const startFallbackCountdown = () => {
+      if (!isMounted) return;
+      setIsAdMobPlaying(false);
+      setSecondsRemaining(5);
+      timerInterval = setInterval(() => {
+        if (!isMounted) return;
+        setSecondsRemaining((prev) => {
+          if (prev <= 1) {
+            if (timerInterval) clearInterval(timerInterval);
+            setTimeout(() => {
+              if (isMounted) onCompleteRef.current();
+            }, 300);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    };
+
     // 1. Entorno nativo Android: ejecutar AdMob Rewarded Video
     if (isNativePlatform()) {
-      let isMounted = true;
       setIsAdMobPlaying(true);
       showRewardVideoAdFlow()
-        .then(() => {
+        .then((result) => {
           if (!isMounted) return;
           setIsAdMobPlaying(false);
-          onCompleteRef.current();
+
+          if (result.rewarded) {
+            onCompleteRef.current();
+          } else if (result.error === 'AD_DISMISSED_WITHOUT_REWARD') {
+            setViewState('choice');
+            setDismissWarning(
+              isEn
+                ? 'You must watch the full video to unlock your free recipe.'
+                : 'Debes ver el vídeo completo para desbloquear tu receta gratuita.'
+            );
+          } else {
+            console.warn('[AdInterstitial] Fallo al cargar anuncio de AdMob, ejecutando fallback de cortesía:', result.error);
+            startFallbackCountdown();
+          }
         })
         .catch((err) => {
-          console.warn('[AdInterstitial] Error en AdMob nativo, fallback:', err);
+          console.warn('[AdInterstitial] Excepción en AdMob nativo, ejecutando fallback:', err);
           if (isMounted) {
-            setIsAdMobPlaying(false);
-            onCompleteRef.current();
+            startFallbackCountdown();
           }
         });
+
       return () => {
         isMounted = false;
+        if (timerInterval) clearInterval(timerInterval);
       };
     }
 
-    // 2. Fallback temporal para otros entornos
-    setSecondsRemaining(5);
-    const interval = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          setTimeout(() => {
-            onCompleteRef.current();
-          }, 300);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    // 2. Otros entornos (Web/PC)
+    startFallbackCountdown();
 
-    return () => clearInterval(interval);
-  }, [isOpen, viewState]);
+    return () => {
+      isMounted = false;
+      if (timerInterval) clearInterval(timerInterval);
+    };
+  }, [isOpen, viewState, isEn]);
 
   if (!isOpen) return null;
 
-  const isEn = language === 'en';
   const progressPercent = Math.min(100, Math.max(0, ((5 - secondsRemaining) / 5) * 100));
 
   return (
@@ -168,6 +209,14 @@ export function AdInterstitialModal({
                   : 'Has disfrutado de tus recetas directas del mes. Elige tu experiencia para continuar:'}
               </p>
             </div>
+
+            {/* Aviso en caso de descarte anticipado del vídeo bonificado */}
+            {dismissWarning && (
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs sm:text-sm font-medium flex items-center gap-2.5 animate-fade-in text-left">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                <span>{dismissWarning}</span>
+              </div>
+            )}
 
             {/* Tarjeta A: Opción PRO (Prioritaria y destacada) */}
             <div className="relative p-4 sm:p-5 rounded-2xl border-2 border-brand-primary bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white space-y-3.5 shadow-sm hover:shadow-md transition">
@@ -252,7 +301,10 @@ export function AdInterstitialModal({
 
                   <button
                     type="button"
-                    onClick={() => setViewState('playing')}
+                    onClick={() => {
+                      setDismissWarning(null);
+                      setViewState('playing');
+                    }}
                     className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Play className="w-3.5 h-3.5 text-white fill-current" />

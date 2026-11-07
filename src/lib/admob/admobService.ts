@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import {
   AdMob,
+  AdmobConsentStatus,
   RewardAdPluginEvents,
   type AdMobRewardItem,
 } from '@capacitor-community/admob';
@@ -53,24 +54,113 @@ export function getRewardedAdUnitId(): string {
   return 'ca-app-pub-3940256099942544/5224354917';
 }
 
-let isAdMobInitialized = false;
+let isUmpConsentGathered = false;
+let umpPromise: Promise<boolean> | null = null;
 
 /**
- * Inicializa el SDK de Google Mobile Ads (AdMob) si no ha sido inicializado.
+ * Solicita y gestiona el consentimiento del usuario con Google UMP antes de AdMob.
+ * En la Unión Europea (RGPD) y Reino Unido, despliega el formulario oficial de AdMob si es requerido.
+ */
+export async function ensureUmpConsent(): Promise<boolean> {
+  if (!isNativePlatform() || isUmpConsentGathered) return true;
+  if (umpPromise) return umpPromise;
+
+  umpPromise = (async () => {
+    try {
+      const isTesting = process.env.NODE_ENV !== 'production';
+
+      // 1. Solicitar información de consentimiento a Google UMP
+      const consentInfo = await AdMob.requestConsentInfo({
+        debugGeography: isTesting ? 1 : 0, // 1 = EEA para entornos de prueba
+      });
+
+      // 2. Si se requiere consentimiento y el formulario está disponible, mostrarlo
+      if (
+        consentInfo.isConsentFormAvailable &&
+        consentInfo.status === AdmobConsentStatus.REQUIRED
+      ) {
+        const updatedInfo = await AdMob.showConsentForm();
+        isUmpConsentGathered = true;
+        return updatedInfo.canRequestAds;
+      }
+
+      isUmpConsentGathered = true;
+      return consentInfo.canRequestAds;
+    } catch (err) {
+      console.warn('[AdMob UMP] Error al procesar consentimiento UMP:', err);
+      // En caso de fallo de red al pedir consentimiento, permitir inicialización defensiva
+      return true;
+    } finally {
+      umpPromise = null;
+    }
+  })();
+
+  return umpPromise;
+}
+
+let isAdMobInitialized = false;
+let initPromise: Promise<void> | null = null;
+
+/**
+ * Inicializa el SDK de Google Mobile Ads (AdMob) tras verificar el consentimiento UMP.
  */
 export async function initializeAdMob(): Promise<void> {
   if (!isNativePlatform() || isAdMobInitialized) return;
+  if (initPromise) return initPromise;
 
-  try {
-    const isTesting = process.env.NODE_ENV !== 'production';
+  initPromise = (async () => {
+    try {
+      const canRequestAds = await ensureUmpConsent();
+      if (!canRequestAds) {
+        console.warn('[AdMob] Consentimiento UMP denegado; no se pueden solicitar anuncios.');
+        return;
+      }
 
-    await AdMob.initialize({
-      initializeForTesting: isTesting,
-    });
-    isAdMobInitialized = true;
-  } catch (error) {
-    console.error('[AdMob] Error al inicializar AdMob SDK:', error);
-  }
+      const isTesting = process.env.NODE_ENV !== 'production';
+
+      await AdMob.initialize({
+        initializeForTesting: isTesting,
+      });
+      isAdMobInitialized = true;
+    } catch (error) {
+      console.error('[AdMob] Error al inicializar AdMob SDK:', error);
+    } finally {
+      initPromise = null;
+    }
+  })();
+
+  return initPromise;
+}
+
+let isAdLoaded = false;
+let preloadPromise: Promise<boolean> | null = null;
+
+/**
+ * Precarga el anuncio bonificado en background para reproducción instantánea.
+ * Evita peticiones duplicadas mediante control de promesa activa.
+ */
+export async function preloadRewardedAd(): Promise<boolean> {
+  if (!isNativePlatform()) return false;
+  if (isAdLoaded) return true;
+  if (preloadPromise) return preloadPromise;
+
+  preloadPromise = (async () => {
+    try {
+      await initializeAdMob();
+      const adId = getRewardedAdUnitId();
+      await AdMob.prepareRewardVideoAd({ adId });
+      isAdLoaded = true;
+      return true;
+    } catch (err) {
+      console.warn('[AdMob] Error en precarga de anuncio bonificado:', err);
+      isAdLoaded = false;
+      return false;
+    } finally {
+      preloadPromise = null;
+    }
+  })();
+
+  return preloadPromise;
 }
 
 export interface ShowRewardedAdResult {
@@ -80,9 +170,8 @@ export interface ShowRewardedAdResult {
 }
 
 /**
- * Prepara y muestra un anuncio de vídeo con recompensa (Rewarded Video).
- * Solo se ejecuta si estamos en una plataforma nativa (iOS/Android).
- * Retorna true en `rewarded` si el usuario vio el vídeo completo y se le otorgó la recompensa.
+ * Muestra el anuncio de vídeo bonificado gestionando de forma robusta los eventos
+ * de recompensa y cierre para devolver un estado determinista.
  */
 export async function showRewardVideoAdFlow(): Promise<ShowRewardedAdResult> {
   if (!isNativePlatform()) {
@@ -93,46 +182,90 @@ export async function showRewardVideoAdFlow(): Promise<ShowRewardedAdResult> {
   }
 
   try {
-    await initializeAdMob();
-
-    const adId = getRewardedAdUnitId();
-    let earnedReward: AdMobRewardItem | null = null;
-
-    // Escuchar el evento de recompensa
-    const rewardListener = await AdMob.addListener(
-      RewardAdPluginEvents.Rewarded,
-      (reward: AdMobRewardItem) => {
-        earnedReward = reward;
+    // Si no está precargado, preparar ahora
+    if (!isAdLoaded) {
+      const ready = await preloadRewardedAd();
+      if (!ready) {
+        return {
+          rewarded: false,
+          error: 'AD_LOAD_FAILED',
+        };
       }
-    );
-
-    try {
-      // 1. Preparar el anuncio
-      await AdMob.prepareRewardVideoAd({ adId });
-
-      // 2. Mostrar el anuncio
-      const resultReward = await AdMob.showRewardVideoAd();
-      if (resultReward) {
-        earnedReward = resultReward;
-      }
-    } finally {
-      // Limpiar listener
-      await rewardListener.remove();
     }
 
-    if (earnedReward) {
-      return {
-        rewarded: true,
-        reward: earnedReward,
+    return await new Promise<ShowRewardedAdResult>(async (resolve) => {
+      let earnedReward: AdMobRewardItem | null = null;
+      let isResolved = false;
+
+      let rewardSub: { remove: () => Promise<void> } | null = null;
+      let dismissSub: { remove: () => Promise<void> } | null = null;
+      let failedSub: { remove: () => Promise<void> } | null = null;
+
+      const safeResolve = async (result: ShowRewardedAdResult) => {
+        if (isResolved) return;
+        isResolved = true;
+        isAdLoaded = false; // Marcar como consumido para forzar nueva precarga
+        try {
+          if (rewardSub) await rewardSub.remove();
+          if (dismissSub) await dismissSub.remove();
+          if (failedSub) await failedSub.remove();
+        } catch {}
+        resolve(result);
       };
-    }
 
-    return {
-      rewarded: false,
-      error: 'AD_DISMISSED_WITHOUT_REWARD',
-    };
+      try {
+        // 1. Escuchar evento de recompensa ganada
+        rewardSub = await AdMob.addListener(
+          RewardAdPluginEvents.Rewarded,
+          (reward: AdMobRewardItem) => {
+            earnedReward = reward;
+          }
+        );
+
+        // 2. Escuchar evento de cierre/descarte del anuncio
+        dismissSub = await AdMob.addListener(
+          RewardAdPluginEvents.Dismissed,
+          () => {
+            if (earnedReward) {
+              safeResolve({ rewarded: true, reward: earnedReward });
+            } else {
+              safeResolve({ rewarded: false, error: 'AD_DISMISSED_WITHOUT_REWARD' });
+            }
+          }
+        );
+
+        // 3. Escuchar evento de fallo al mostrar
+        failedSub = await AdMob.addListener(
+          RewardAdPluginEvents.FailedToShow,
+          (err) => {
+            safeResolve({ rewarded: false, error: err?.message || 'AD_FAILED_TO_SHOW' });
+          }
+        );
+
+        // Invocar apertura del anuncio preparado
+        AdMob.showRewardVideoAd()
+          .then((res) => {
+            if (res) {
+              earnedReward = res;
+            }
+          })
+          .catch((err) => {
+            console.warn('[AdMob] Error al invocar showRewardVideoAd:', err);
+            safeResolve({
+              rewarded: false,
+              error: err instanceof Error ? err.message : 'SHOW_EXCEPTION',
+            });
+          });
+      } catch (subErr) {
+        safeResolve({
+          rewarded: false,
+          error: subErr instanceof Error ? subErr.message : 'LISTENER_ATTACH_FAILED',
+        });
+      }
+    });
   } catch (err: unknown) {
     console.error('[AdMob] Error al mostrar vídeo bonificado:', err);
+    isAdLoaded = false;
     return {
       rewarded: false,
       error: err instanceof Error ? err.message : 'AD_LOAD_FAILED',
