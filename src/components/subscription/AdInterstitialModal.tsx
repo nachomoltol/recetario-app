@@ -13,15 +13,23 @@ import {
   ExternalLink,
   Mail,
   AlertCircle,
+  CheckCircle2,
+  Monitor,
+  Smartphone,
+  RefreshCw,
+  PartyPopper,
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
+import { createClient } from '@/lib/supabase/client';
 import {
   isNativePlatform,
   showRewardVideoAdFlow,
   preloadRewardedAd,
 } from '@/lib/admob/admobService';
+import { claimAdRewardAction } from '@/app/actions/claimAdRewardAction';
+import { checkUserBalanceAction } from '@/app/actions/checkUserBalanceAction';
 
 export interface AdInterstitialModalProps {
   isOpen: boolean;
@@ -31,6 +39,7 @@ export interface AdInterstitialModalProps {
 }
 
 type PlatformType = 'android_native' | 'ios' | 'desktop_web';
+type ViewStateType = 'choice' | 'playing' | 'reward_credited';
 
 export function AdInterstitialModal({
   isOpen,
@@ -43,11 +52,24 @@ export function AdInterstitialModal({
   const profile = useProfileStore((state) => state.profile);
   const capturas = Number(profile?.capturas_mes_actual) || 0;
   const recetasRestantes = Math.max(0, 20 - capturas);
-  const [viewState, setViewState] = useState<'choice' | 'playing'>('choice');
+
+  const [viewState, setViewState] = useState<ViewStateType>('choice');
   const [platform, setPlatform] = useState<PlatformType>('desktop_web');
   const [secondsRemaining, setSecondsRemaining] = useState(5);
   const [isAdMobPlaying, setIsAdMobPlaying] = useState(false);
   const [dismissWarning, setDismissWarning] = useState<string | null>(null);
+
+  // Estado del usuario y correo
+  const [userEmail, setUserEmail] = useState<string>(profile?.email || '');
+
+  // Estado de comprobación de saldo en PC / Web
+  const [isCheckingBalance, setIsCheckingBalance] = useState(false);
+  const [balanceCheckStatus, setBalanceCheckStatus] = useState<'idle' | 'success' | 'not_found' | 'error'>('idle');
+  const [balanceCheckMessage, setBalanceCheckMessage] = useState<string | null>(null);
+
+  // Notificación toast local para Android al sincronizar hacia PC
+  const [toastNotification, setToastNotification] = useState<string | null>(null);
+
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
@@ -76,6 +98,23 @@ export function AdInterstitialModal({
     }
   }, []);
 
+  // Carga o sincronización del email del usuario activo
+  useEffect(() => {
+    if (profile?.email) {
+      setUserEmail(profile.email);
+    } else {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data }) => {
+        if (data?.user?.email) {
+          setUserEmail(data.user.email);
+        }
+      });
+    }
+  }, [profile?.email]);
+
+  const userEmailDisplay = userEmail || (isEn ? 'your account' : 'tu cuenta');
+  const isNativeAndroid = platform === 'android_native';
+
   // Precarga automática del anuncio bonificado al abrir el modal en Android nativo
   useEffect(() => {
     if (isOpen && viewState === 'choice' && isNativePlatform()) {
@@ -83,22 +122,30 @@ export function AdInterstitialModal({
     }
   }, [isOpen, viewState]);
 
-  // Al abrir o cerrar el modal, reiniciar estado
+  // Al abrir o cerrar el modal, reiniciar estados limpios
   useEffect(() => {
     if (!isOpen) {
       setViewState('choice');
       setSecondsRemaining(5);
       setIsAdMobPlaying(false);
       setDismissWarning(null);
+      setIsCheckingBalance(false);
+      setBalanceCheckStatus('idle');
+      setBalanceCheckMessage(null);
+      setToastNotification(null);
       return;
     }
     setViewState('choice');
     setSecondsRemaining(5);
     setIsAdMobPlaying(false);
     setDismissWarning(null);
+    setIsCheckingBalance(false);
+    setBalanceCheckStatus('idle');
+    setBalanceCheckMessage(null);
+    setToastNotification(null);
   }, [isOpen]);
 
-  // Solo cuando el usuario pasa a 'playing' se ejecuta AdMob o el contador regresivo
+  // Lógica de reproducción cuando el usuario pasa a 'playing'
   useEffect(() => {
     if (!isOpen || viewState !== 'playing') {
       return;
@@ -130,12 +177,21 @@ export function AdInterstitialModal({
     if (isNativePlatform()) {
       setIsAdMobPlaying(true);
       showRewardVideoAdFlow()
-        .then((result) => {
+        .then(async (result) => {
           if (!isMounted) return;
           setIsAdMobPlaying(false);
 
           if (result.rewarded) {
-            onCompleteRef.current();
+            // Acreditar el saldo en la base de datos de Supabase (+1 creditos_anuncio)
+            try {
+              await claimAdRewardAction();
+            } catch (err) {
+              console.error('[AdInterstitialModal] Error acreditando recompensa en Supabase:', err);
+            }
+
+            if (isMounted) {
+              setViewState('reward_credited');
+            }
           } else if (result.error === 'AD_DISMISSED_WITHOUT_REWARD') {
             setViewState('choice');
             setDismissWarning(
@@ -161,7 +217,7 @@ export function AdInterstitialModal({
       };
     }
 
-    // 2. Otros entornos (Web/PC)
+    // 2. Otros entornos (Web/PC de cortesía si entrase en playing)
     startFallbackCountdown();
 
     return () => {
@@ -169,6 +225,60 @@ export function AdInterstitialModal({
       if (timerInterval) clearInterval(timerInterval);
     };
   }, [isOpen, viewState, isEn]);
+
+  // Manejador del botón "Comprobar saldo / Ya vi el vídeo" en PC
+  const handleCheckBalance = async () => {
+    if (isCheckingBalance) return;
+    setIsCheckingBalance(true);
+    setBalanceCheckStatus('idle');
+    setBalanceCheckMessage(null);
+
+    try {
+      const res = await checkUserBalanceAction();
+      if (res.success && res.creditos_anuncio > 0) {
+        setBalanceCheckStatus('success');
+        setBalanceCheckMessage(
+          isEn
+            ? `Balance detected (${res.creditos_anuncio} recipe)! Unlocking recipe...`
+            : `¡Saldo detectado (${res.creditos_anuncio} receta)! Desbloqueando receta...`
+        );
+        setTimeout(() => {
+          onCompleteRef.current();
+        }, 800);
+      } else {
+        setBalanceCheckStatus('not_found');
+        setBalanceCheckMessage(
+          isEn
+            ? 'No credited balance detected yet. Make sure you completed the video on your Android phone using this same account.'
+            : 'Aún no se ha detectado saldo acreditado. Asegúrate de haber completado el vídeo en tu móvil con esta misma cuenta.'
+        );
+      }
+    } catch (err) {
+      setBalanceCheckStatus('error');
+      setBalanceCheckMessage(
+        isEn ? 'Error checking balance. Please try again.' : 'Error al comprobar saldo. Por favor, reinténtalo.'
+      );
+    } finally {
+      setIsCheckingBalance(false);
+    }
+  };
+
+  // Manejador para Android: Continuar en el PC
+  const handleContinueOnPC = () => {
+    setToastNotification(
+      isEn
+        ? 'Balance ready in cloud! You can unlock your recipe on your PC now.'
+        : '¡Saldo listo en la nube! Ya puedes desbloquear tu receta en el PC.'
+    );
+    setTimeout(() => {
+      onCancel();
+    }, 1200);
+  };
+
+  // Manejador para Android: Procesar en este móvil
+  const handleProcessOnMobile = () => {
+    onCompleteRef.current();
+  };
 
   if (!isOpen) return null;
 
@@ -191,7 +301,63 @@ export function AdInterstitialModal({
           <X className="w-4 h-4" />
         </button>
 
-        {viewState === 'choice' ? (
+        {/* Notificación Toast Flotante */}
+        {toastNotification && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 w-[90%] max-w-sm px-4 py-3 bg-stone-900 text-white rounded-2xl shadow-xl flex items-center gap-2.5 text-xs sm:text-sm font-medium animate-fade-in border border-stone-700">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{toastNotification}</span>
+          </div>
+        )}
+
+        {viewState === 'reward_credited' ? (
+          /* ========================================================================= */
+          /* PANTALLA DE ÉXITO DE ACREDITACIÓN (EXCLUSIVO TRAS ADMOB EN ANDROID NATIVO)*/
+          /* ========================================================================= */
+          <div className="space-y-6 text-center py-2 animate-fade-in">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+              <PartyPopper className="w-8 h-8 text-emerald-600 animate-bounce" />
+            </div>
+
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold tracking-wide uppercase">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>{isEn ? 'Reward Confirmed' : 'Recompensa Confirmada'}</span>
+              </div>
+
+              <h3 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900">
+                {isEn ? 'Credit Added Successfully! (+1 Recipe)' : '¡Crédito Acreditado con Éxito! (+1 Receta)'}
+              </h3>
+
+              <p className="text-xs sm:text-sm text-stone-600 max-w-sm mx-auto leading-relaxed">
+                {isEn
+                  ? `Your balance is now synced in the cloud for your account (${userEmailDisplay}). Where would you prefer to continue?`
+                  : `Tu saldo ya está sincronizado en la nube para tu cuenta (${userEmailDisplay}). ¿Dónde prefieres continuar?`}
+              </p>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              {/* Botón Principal: Continuar en el PC */}
+              <button
+                type="button"
+                onClick={handleContinueOnPC}
+                className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-brand-primary hover:bg-brand-hover active:scale-[0.99] text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2.5 cursor-pointer"
+              >
+                <Monitor className="w-4 h-4 text-amber-200" />
+                <span>{isEn ? 'Continue on PC' : 'Continuar en el PC'}</span>
+              </button>
+
+              {/* Botón Secundario: Procesar en este móvil */}
+              <button
+                type="button"
+                onClick={handleProcessOnMobile}
+                className="w-full min-h-[46px] py-2.5 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-300 active:scale-[0.99] text-stone-800 font-semibold text-xs sm:text-sm shadow-2xs transition flex items-center justify-center gap-2.5 cursor-pointer"
+              >
+                <Smartphone className="w-4 h-4 text-stone-600" />
+                <span>{isEn ? 'Process on this phone' : 'Procesar en este móvil'}</span>
+              </button>
+            </div>
+          </div>
+        ) : viewState === 'choice' ? (
           /* ========================================================================= */
           /* FASE 1: SELECTOR DUAL (HAZTE PRO VS CONTINUAR CON ANUNCIO SEGMENTADO)     */
           /* ========================================================================= */
@@ -288,11 +454,11 @@ export function AdInterstitialModal({
                       {isEn ? 'Free Option' : 'Opción Gratuita'}
                     </span>
                     <span className="text-[11px] text-stone-500 font-medium">
-                      {platform === 'android_native'
+                      {isNativeAndroid
                         ? (isEn ? 'Sponsored short ad' : 'Vídeo patrocinado')
                         : platform === 'ios'
                         ? (isEn ? 'iOS in progress' : 'Próximamente en iOS')
-                        : (isEn ? 'Android App Exclusive' : 'Exclusivo en Android App')}
+                        : (isEn ? 'Via Android App' : 'Vía App Android')}
                     </span>
                   </div>
                 </div>
@@ -316,7 +482,7 @@ export function AdInterstitialModal({
               </div>
 
               {/* Caso 1: Android Nativo (Botón sólido para ver anuncio de AdMob) */}
-              {platform === 'android_native' && (
+              {isNativeAndroid && (
                 <>
                   <p className="text-xs text-stone-600 leading-relaxed">
                     {isEn
@@ -338,29 +504,73 @@ export function AdInterstitialModal({
                 </>
               )}
 
-              {/* Caso 2: PC / Navegador Web de Escritorio */}
-              {platform === 'desktop_web' && (
-                <div className="space-y-3 pt-0.5">
-                  <div className="p-3.5 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-700 leading-relaxed space-y-1 text-left">
-                    <p className="font-medium text-stone-900">
-                      {isEn ? 'Available on Android App' : 'Disponible en la App de Android'}
+              {/* Caso 2: PC / Navegador Web de Escritorio (!isNativeAndroid) */}
+              {!isNativeAndroid && platform === 'desktop_web' && (
+                <div className="space-y-3.5 pt-0.5 text-left">
+                  {/* Guía Numerada Clara */}
+                  <div className="space-y-2 text-xs text-stone-700 bg-[#f4efe6] p-3.5 rounded-xl border border-[#e7dfd5]">
+                    <p className="font-semibold text-stone-900 text-xs sm:text-sm flex items-center gap-1.5">
+                      <Smartphone className="w-4 h-4 text-brand-primary" />
+                      <span>{isEn ? 'Steps to unlock from mobile:' : 'Pasos para desbloquear desde el móvil:'}</span>
                     </p>
-                    <p className="text-stone-600">
-                      {isEn
-                        ? 'Ad-supported free recipe processing is only available on our official Android App. Download MigaApp on Google Play to continue extracting for free, or upgrade to PRO to process without limits from your computer.'
-                        : 'La visualización de anuncios para recetas gratuitas solo está disponible en nuestra App oficial de Android. Descarga MigaApp en Google Play para seguir extrayendo gratis o hazte PRO para procesar sin límites desde tu ordenador.'}
-                    </p>
+                    <ol className="space-y-2 list-decimal list-inside pl-0.5 leading-relaxed text-stone-700">
+                      <li>
+                        <span>{isEn ? 'Open MigaApp on your Android phone with this account: ' : 'Abre MigaApp en tu móvil Android con esta cuenta: '}</span>
+                        <strong className="text-stone-900 break-all font-mono text-[11px] bg-white px-1.5 py-0.5 rounded border border-stone-200">
+                          {userEmailDisplay}
+                        </strong>
+                      </li>
+                      <li>
+                        <span>{isEn ? 'On your phone, tap to watch a short sponsored video.' : 'En tu móvil, pulsa ver un vídeo corto patrocinado.'}</span>
+                      </li>
+                      <li>
+                        <span>{isEn ? 'After watching the ad, click the button below to unlock your extraction here.' : 'Tras ver el anuncio, pulsa el botón inferior para desbloquear tu extracción aquí.'}</span>
+                      </li>
+                    </ol>
                   </div>
 
-                  <a
-                    href="https://play.google.com/store/apps/details?id=com.migaapp.app"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2"
+                  {/* Alerta de Estado del Chequeo de Saldo */}
+                  {balanceCheckStatus === 'success' && (
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-medium flex items-center gap-2.5 animate-fade-in">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                      <span>{balanceCheckMessage || (isEn ? 'Balance detected! Unlocking recipe...' : '¡Saldo detectado! Desbloqueando receta...')}</span>
+                    </div>
+                  )}
+
+                  {(balanceCheckStatus === 'not_found' || balanceCheckStatus === 'error') && (
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-medium flex items-center gap-2.5 animate-fade-in">
+                      <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                      <span>{balanceCheckMessage}</span>
+                    </div>
+                  )}
+
+                  {/* Botón Interactivo de Verificación */}
+                  <button
+                    type="button"
+                    onClick={handleCheckBalance}
+                    disabled={isCheckingBalance || balanceCheckStatus === 'success'}
+                    className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-75 disabled:cursor-not-allowed text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2.5 cursor-pointer"
                   >
-                    <ExternalLink className="w-4 h-4 text-emerald-400" />
-                    <span>{isEn ? 'Get MigaApp on Google Play' : 'Descargar en Google Play'}</span>
-                  </a>
+                    <RefreshCw className={`w-4 h-4 text-amber-300 ${isCheckingBalance ? 'animate-spin' : ''}`} />
+                    <span>
+                      {isCheckingBalance
+                        ? (isEn ? 'Checking balance...' : 'Comprobando saldo...')
+                        : (isEn ? 'Check balance / I watched the video' : 'Comprobar saldo / Ya vi el vídeo')}
+                    </span>
+                  </button>
+
+                  {/* Enlace Secundario: Google Play */}
+                  <div className="text-center pt-1">
+                    <a
+                      href="https://play.google.com/store/apps/details?id=com.migaapp.app"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs text-stone-600 hover:text-stone-900 font-medium underline underline-offset-4 transition"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{isEn ? "Don't have the app yet? Download on Google Play" : '¿Aún no tienes la app? Descargar en Google Play'}</span>
+                    </a>
+                  </div>
                 </div>
               )}
 

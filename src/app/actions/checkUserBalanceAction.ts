@@ -2,13 +2,24 @@
 
 import { createClient, getAdminClient } from '@/lib/supabase/server';
 
-export interface CheckUserBalanceResult {
-  success: boolean;
-  creditos_anuncio?: number;
-  capturas_mes_actual?: number;
-  is_pro?: boolean;
-  error?: string;
-}
+export type CheckUserBalanceResult =
+  | {
+      success: true;
+      creditos_anuncio: number;
+      capturas_mes_actual: number;
+      is_pro: boolean;
+      limite_gratuito: number;
+      puede_extraer: boolean;
+    }
+  | {
+      success: false;
+      error: string;
+      creditos_anuncio?: never;
+      capturas_mes_actual?: never;
+      is_pro?: never;
+      limite_gratuito?: never;
+      puede_extraer?: never;
+    };
 
 /**
  * Server Action que consulta y devuelve el saldo actual y estado de cuotas
@@ -57,6 +68,8 @@ export async function checkUserBalanceAction(): Promise<CheckUserBalanceResult> 
       creditos_anuncio: creditosAnuncio,
       capturas_mes_actual: capturas,
       is_pro: isPro,
+      limite_gratuito: 20,
+      puede_extraer: isPro || creditosAnuncio > 0 || capturas < 20,
     };
   } catch (err: unknown) {
     console.error('[checkUserBalanceAction] Excepción:', err);
@@ -69,3 +82,4 @@ export async function checkUserBalanceAction(): Promise<CheckUserBalanceResult> 
     };
   }
 }
+
