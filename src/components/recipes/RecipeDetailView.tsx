@@ -16,6 +16,7 @@ import {
   Clock,
   Users,
   Camera,
+  FileDown,
 } from 'lucide-react';
 import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe';
 import { MomentoDia, RolPlato } from '@/types/database';
@@ -88,7 +89,14 @@ export function RecipeDetailView({
   // Estados de visualización y edición
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [currentServings, setCurrentServings] = useState<number>(
+    initialServings && initialServings > 0 ? initialServings : receta?.porciones || 2
+  );
+  const [currentCulinaryLevel, setCurrentCulinaryLevel] = useState<string | null>(
+    userProfile?.nivel_culinario || 'Intermedio'
+  );
 
   // Estados de datos
   const [currentTitulo, setCurrentTitulo] = useState(receta?.titulo || 'Receta');
@@ -885,6 +893,50 @@ export function RecipeDetailView({
               </button>
             )}
 
+            {/* Botón de Descarga PDF de la Receta */}
+            <button
+              type="button"
+              onClick={async () => {
+                if (isExportingPdf) return;
+                setIsExportingPdf(true);
+                try {
+                  const { exportRecipeToPdf } = await import('@/lib/pdf/exportRecipeToPdf');
+                  await exportRecipeToPdf({
+                    receta: {
+                      ...receta,
+                      titulo: currentTitulo,
+                    },
+                    porciones: currentServings,
+                    ingredientes: currentIngredientes,
+                    pasos: currentPasos,
+                    lang: language,
+                    nivelCulinario: currentCulinaryLevel,
+                  });
+                } catch (err) {
+                  console.error('Error al exportar receta a PDF:', err);
+                  setToast({
+                    message:
+                      language === 'en'
+                        ? 'Error generating PDF'
+                        : 'Error al generar el PDF de la receta',
+                    type: 'error',
+                  });
+                } finally {
+                  setIsExportingPdf(false);
+                }
+              }}
+              disabled={isExportingPdf}
+              title={language === 'en' ? 'Download PDF' : 'Descargar PDF'}
+              className="h-9 px-2.5 sm:px-3 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-brand-primary text-xs font-semibold text-stone-700 hover:text-brand-primary transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+            >
+              {isExportingPdf ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-primary" />
+              ) : (
+                <FileDown className="w-3.5 h-3.5 text-brand-primary" />
+              )}
+              <span className="hidden sm:inline">PDF</span>
+            </button>
+
             {/* Modo Manos en la Masa: Wake Lock para que no se apague la pantalla */}
             <RecipeWakeLock />
 
@@ -1152,6 +1204,8 @@ export function RecipeDetailView({
           }
           isAdapted={isAdapted}
           userProfile={userProfile}
+          onServingsChange={setCurrentServings}
+          onLevelChange={setCurrentCulinaryLevel}
         />
       )}
 

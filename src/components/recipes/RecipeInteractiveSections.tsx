@@ -446,6 +446,8 @@ interface RecipeInteractiveSectionsProps {
   userProfile?: any;
   rolPlato?: string | null;
   categoriasGastronomicas?: string[] | null;
+  onServingsChange?: (servings: number) => void;
+  onLevelChange?: (level: NivelCulinarioUI | null) => void;
 }
 
 export function RecipeInteractiveSections({
@@ -461,6 +463,8 @@ export function RecipeInteractiveSections({
   userProfile,
   rolPlato,
   categoriasGastronomicas,
+  onServingsChange,
+  onLevelChange,
 }: RecipeInteractiveSectionsProps) {
   const t = useLanguageStore((s) => s.t);
   const searchParams = useSearchParams();
@@ -626,6 +630,14 @@ export function RecipeInteractiveSections({
 
   // En Usuario FREE effectiveActiveLevel es null (ningún nivel PRO activo; las 3 opciones muestran candado)
   const effectiveActiveLevel: NivelCulinarioUI | null = isPro ? activeLevel : null;
+
+  useEffect(() => {
+    onServingsChange?.(servings);
+  }, [servings, onServingsChange]);
+
+  useEffect(() => {
+    onLevelChange?.(effectiveActiveLevel);
+  }, [effectiveActiveLevel, onLevelChange]);
 
   // Manejador de clic en el microselector [ 🌱 | 🍳 | 👨‍🍳 ]
   const handleLevelSelect = (targetLevel: NivelCulinarioUI) => {

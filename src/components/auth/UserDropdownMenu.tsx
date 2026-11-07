@@ -47,9 +47,11 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
   const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
 
-  const isPaidPlan = ['pro', 'chef', 'premium', 'admin'].includes(
-    profile?.plan_suscripcion?.toLowerCase() || ''
-  );
+  const isPaidPlan =
+    Boolean((profile as any)?.is_pro) ||
+    ['pro', 'chef', 'premium', 'admin'].includes(
+      profile?.plan_suscripcion?.toLowerCase() || ''
+    );
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -191,7 +193,7 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
 
             {isPaidPlan ? (
               <div
-                className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-400 bg-stone-50/80 border border-stone-200/50 cursor-not-allowed select-none opacity-60 pointer-events-none"
+                className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-400 bg-stone-50/80 border border-stone-200/50 select-none opacity-40 cursor-not-allowed pointer-events-none"
                 title={
                   language === 'en'
                     ? 'Manual meal planner disabled: You have the AI Smart Menu available'

@@ -28,7 +28,7 @@ const MIGA_LOGO_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAY
 /**
  * Limpia emojis y simbolos Unicode incompatibles con las fuentes estandar de jsPDF.
  */
-function cleanPdfText(text: string): string {
+export function cleanPdfText(text: string): string {
   return text
     .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
     .trim();
@@ -443,3 +443,5 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
   const filename = `Miga_Plan_Semanal_${cleanRange}.pdf`;
   doc.save(filename);
 }
+
+export { MIGA_LOGO_PNG };
