@@ -112,3 +112,19 @@ h1, h2, h3, .font-serif-recipe {
   scrollbar-width: none;
 }
 
+/* Soporte iOS Safe Area (Dynamic Island / Notch y Barra de Inicio) */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-area-pt {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  .safe-area-pb {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
