@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Play, ExternalLink } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { openExternalVideoUrl } from '@/lib/utils/externalLauncher';
 
 interface RecipeDetailHeaderProps {
   fuenteUrl?: string | null;
@@ -85,11 +86,10 @@ export function RecipeDetailHeader({
         {/* Centro: Enlace al vídeo original en píldora compacta contenida */}
         {fuenteUrl ? (
           <div className="flex items-center justify-center shrink-0 px-1">
-            <a
-              href={fuenteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="h-7 sm:h-8 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-[#f4efe6] hover:bg-[#ebe3d5] border border-[#e7dfd5] inline-flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold text-stone-800 hover:text-brand-primary transition-all shadow-2xs active:scale-95 shrink-0"
+            <button
+              type="button"
+              onClick={() => openExternalVideoUrl(fuenteUrl)}
+              className="h-7 sm:h-8 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-[#f4efe6] hover:bg-[#ebe3d5] border border-[#e7dfd5] inline-flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold text-stone-800 hover:text-brand-primary transition-all shadow-2xs active:scale-95 shrink-0 cursor-pointer"
               title={isVideoSource ? t('recipe_nav_original_video') : t('recipe_nav_original_source')}
             >
               {isVideoSource ? (
@@ -106,7 +106,7 @@ export function RecipeDetailHeader({
                   ? 'Source'
                   : 'Ver fuente'}
               </span>
-            </a>
+            </button>
           </div>
         ) : (
           <div className="shrink-0" />
