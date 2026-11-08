@@ -56,7 +56,7 @@ export default async function MealPlannerPage(props: MealPlannerPageProps) {
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
       {/* Cabecera Luminosa Lino / Terracotta (1 Sola Fila Horizontal en todas las resoluciones) */}
-      <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
+      <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
         <div className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8">
           <div className="h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-3 w-full">
             {/* Lado izquierdo: Botón Volver (ultra-compacto en móvil: 36x36px solo icono) */}

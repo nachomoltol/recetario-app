@@ -75,7 +75,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#faf7f2" />
       </head>
-      <body className="min-h-screen bg-[#faf7f2] text-stone-900 font-sans antialiased selection:bg-amber-200 selection:text-amber-950 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 pt-[env(safe-area-inset-top)]">
+      <body className="min-h-screen bg-[#faf7f2] text-stone-900 font-sans antialiased selection:bg-amber-200 selection:text-amber-950 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
         <CinematicSplash />
         <AppLifecycleProvider />
         <ServiceWorkerRegister />

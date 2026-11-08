@@ -68,7 +68,7 @@ export function RecipeDetailHeader({
   const isVideoSource = fuenteTipo !== 'web' && fuenteTipo !== 'manual';
 
   return (
-    <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-50 w-full max-w-full">
+    <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-50 w-full max-w-full pt-[env(safe-area-inset-top)]">
       <div className="max-w-4xl mx-auto px-2 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-1 sm:gap-2 relative w-full">
         {/* Izquierda: Botón de retorno compacto */}
         <div className="flex-1 flex items-center justify-start min-w-0">

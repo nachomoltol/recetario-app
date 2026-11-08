@@ -367,7 +367,7 @@ export function AdInterstitialModal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/65 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] bg-black/65 backdrop-blur-sm animate-fade-in"
     >
       <div className="relative w-full max-w-lg bg-white border border-[#e7dfd5] rounded-3xl shadow-2xl overflow-hidden p-3.5 sm:p-6 space-y-3 text-stone-900 max-h-[95vh] overflow-y-auto">
         {/* Botón Cerrar/Cancelar */}

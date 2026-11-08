@@ -38,7 +38,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
-      <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-50">
+      <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-50 pt-[env(safe-area-inset-top)]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <HeaderBackButton fallbackUrl="/" />

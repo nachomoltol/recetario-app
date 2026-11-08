@@ -99,7 +99,7 @@ export default async function SmartMenuPage(props: SmartMenuPageProps) {
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
       {/* Cabecera Limpia y Minimalista */}
-      <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40">
+      <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           {/* Extremo izquierdo: Botón táctil [ ← Volver ] */}
           <HeaderBackButton fallbackUrl="/" />
