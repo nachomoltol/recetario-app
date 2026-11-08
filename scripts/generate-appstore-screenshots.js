@@ -92,3 +92,4 @@ generateScreenshots().catch((err) => {
   console.error('Error generando capturas:', err);
   process.exit(1);
 });
+
