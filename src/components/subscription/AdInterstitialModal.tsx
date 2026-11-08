@@ -365,20 +365,20 @@ export function AdInterstitialModal({
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/65 backdrop-blur-sm animate-fade-in"
     >
-      <div className="relative w-full max-w-lg bg-white border border-[#e7dfd5] rounded-3xl shadow-2xl overflow-hidden p-5 sm:p-7 space-y-5 text-stone-900 max-h-[92vh] overflow-y-auto">
+      <div className="relative w-full max-w-lg bg-white border border-[#e7dfd5] rounded-3xl shadow-2xl overflow-hidden p-3.5 sm:p-6 space-y-3 text-stone-900 max-h-[95vh] overflow-y-auto">
         {/* Botón Cerrar/Cancelar */}
         <button
           type="button"
           onClick={onCancel}
-          className="absolute top-4 right-4 w-9 h-9 rounded-2xl bg-[#f4efe6] hover:bg-stone-200 border border-[#e7dfd5] flex items-center justify-center text-stone-500 hover:text-stone-800 transition cursor-pointer z-10"
+          className="absolute top-3 right-3 w-8 h-8 rounded-xl bg-[#f4efe6] hover:bg-stone-200 border border-[#e7dfd5] flex items-center justify-center text-stone-500 hover:text-stone-800 transition cursor-pointer z-10"
           title={isEn ? 'Cancel generation' : 'Cancelar generación'}
         >
-          <X className="w-4 h-4" />
+          <X className="w-3.5 h-3.5" />
         </button>
 
         {/* Notificación Toast Flotante */}
         {toastNotification && (
-          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 w-[90%] max-w-sm px-4 py-3 bg-stone-900 text-white rounded-2xl shadow-xl flex items-center gap-2.5 text-xs sm:text-sm font-medium animate-fade-in border border-stone-700">
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 w-[90%] max-w-sm px-3.5 py-2.5 bg-stone-900 text-white rounded-2xl shadow-xl flex items-center gap-2 text-xs font-medium animate-fade-in border border-stone-700">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>{toastNotification}</span>
           </div>
@@ -388,34 +388,34 @@ export function AdInterstitialModal({
           /* ========================================================================= */
           /* PANTALLA DE ÉXITO DE ACREDITACIÓN (EXCLUSIVO TRAS ADMOB EN ANDROID NATIVO)*/
           /* ========================================================================= */
-          <div className="space-y-6 text-center py-2 animate-fade-in">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-              <PartyPopper className="w-8 h-8 text-emerald-600 animate-bounce" />
+          <div className="space-y-4 text-center py-2 animate-fade-in">
+            <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+              <PartyPopper className="w-7 h-7 text-emerald-600 animate-bounce" />
             </div>
 
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold tracking-wide uppercase">
-                <CheckCircle2 className="w-3.5 h-3.5" />
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-semibold tracking-wide uppercase">
+                <CheckCircle2 className="w-3 h-3" />
                 <span>{isEn ? 'Reward Confirmed' : 'Recompensa Confirmada'}</span>
               </div>
 
-              <h3 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900">
+              <h3 className="text-lg sm:text-xl font-bold font-serif-recipe text-stone-900">
                 {isEn ? 'Credit Added Successfully! (+1 Recipe)' : '¡Crédito Acreditado con Éxito! (+1 Receta)'}
               </h3>
 
-              <p className="text-xs sm:text-sm text-stone-600 max-w-sm mx-auto leading-relaxed">
+              <p className="text-xs text-stone-600 max-w-sm mx-auto leading-relaxed">
                 {isEn
                   ? `Your balance is now synced in the cloud for your account (${userEmailDisplay}). Where would you prefer to continue?`
                   : `Tu saldo ya está sincronizado en la nube para tu cuenta (${userEmailDisplay}). ¿Dónde prefieres continuar?`}
               </p>
             </div>
 
-            <div className="space-y-3 pt-2">
+            <div className="space-y-2.5 pt-1">
               {/* Botón Principal: Continuar en el PC */}
               <button
                 type="button"
                 onClick={handleContinueOnPC}
-                className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-brand-primary hover:bg-brand-hover active:scale-[0.99] text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2.5 cursor-pointer"
+                className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-brand-primary hover:bg-brand-hover active:scale-[0.99] text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Monitor className="w-4 h-4 text-amber-200" />
                 <span>{isEn ? 'Continue on PC' : 'Continuar en el PC'}</span>
@@ -425,7 +425,7 @@ export function AdInterstitialModal({
               <button
                 type="button"
                 onClick={handleProcessOnMobile}
-                className="w-full min-h-[46px] py-2.5 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-300 active:scale-[0.99] text-stone-800 font-semibold text-xs sm:text-sm shadow-2xs transition flex items-center justify-center gap-2.5 cursor-pointer"
+                className="w-full min-h-[42px] py-2 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-300 active:scale-[0.99] text-stone-800 font-semibold text-xs sm:text-sm shadow-2xs transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Smartphone className="w-4 h-4 text-stone-600" />
                 <span>{isEn ? 'Process on this phone' : 'Procesar en este móvil'}</span>
@@ -436,72 +436,64 @@ export function AdInterstitialModal({
           /* ========================================================================= */
           /* FASE 1: SELECTOR DUAL (HAZTE PRO VS CONTINUAR CON ANUNCIO SEGMENTADO)     */
           /* ========================================================================= */
-          <div className="space-y-5">
+          <div className="space-y-2.5">
             {/* Cabecera Editorial */}
-            <div className="text-center space-y-2 pr-6 sm:pr-0">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-light border border-brand-subtle text-brand-primary text-xs font-semibold tracking-wide uppercase">
-                <Sparkles className="w-3.5 h-3.5" />
+            <div className="text-center space-y-1 pr-6 sm:pr-0">
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-light border border-brand-subtle text-brand-primary text-[10px] sm:text-xs font-semibold tracking-wide uppercase">
+                <Sparkles className="w-3 h-3" />
                 <span>{isEn ? 'Smart Generation' : 'Generación Inteligente'}</span>
               </div>
 
-              <h3 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900">
+              <h3 className="text-lg sm:text-xl font-bold font-serif-recipe text-stone-900 leading-snug">
                 {isEn ? 'Choose how to process your recipe' : 'Elige cómo procesar tu receta'}
               </h3>
 
-              <p className="text-xs sm:text-sm text-stone-600 max-w-sm mx-auto leading-relaxed">
+              <p className="text-xs text-stone-600 max-w-sm mx-auto leading-tight">
                 {isEn
-                  ? 'You have used your direct recipes for this month. Choose your experience to continue:'
+                  ? 'You have used your direct recipes this month. Choose your experience to continue:'
                   : 'Has disfrutado de tus recetas directas del mes. Elige tu experiencia para continuar:'}
               </p>
             </div>
 
             {/* Aviso en caso de descarte anticipado del vídeo bonificado */}
             {dismissWarning && (
-              <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs sm:text-sm font-medium flex items-center gap-2.5 animate-fade-in text-left">
-                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+              <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-medium flex items-center gap-2 animate-fade-in text-left">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                 <span>{dismissWarning}</span>
               </div>
             )}
 
             {/* Tarjeta A: Opción PRO (Prioritaria y destacada) */}
-            <div className="relative p-4 sm:p-5 rounded-2xl border-2 border-brand-primary bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white space-y-3.5 shadow-sm hover:shadow-md transition">
+            <div className="relative p-3 sm:p-3.5 rounded-2xl border-2 border-brand-primary bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white space-y-2 shadow-xs">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-brand-primary/10 text-brand-primary flex items-center justify-center">
-                    <Crown className="w-4 h-4 text-brand-primary" />
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-6 rounded-lg bg-brand-primary/10 text-brand-primary flex items-center justify-center">
+                    <Crown className="w-3.5 h-3.5 text-brand-primary" />
                   </div>
-                  <span className="font-bold text-sm sm:text-base text-stone-900">
+                  <span className="font-bold text-xs sm:text-sm text-stone-900">
                     {isEn ? 'Miga PRO Experience' : 'Experiencia Miga PRO'}
                   </span>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-brand-primary text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
+                <span className="px-2 py-0.5 rounded-full bg-brand-primary text-white text-[9px] font-bold uppercase tracking-wider shadow-2xs">
                   {isEn ? 'Recommended' : 'Recomendado'}
                 </span>
               </div>
 
-              <ul className="text-xs text-stone-700 space-y-2 pl-0.5">
-                <li className="flex items-start gap-2">
-                  <Check className="w-3.5 h-3.5 text-brand-primary shrink-0 mt-0.5" />
-                  <span>
-                    <strong>{isEn ? 'Instant extraction' : 'Extracción instantánea'}</strong>{' '}
-                    {isEn ? 'without waits or ads.' : 'sin esperas ni anuncios.'}
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-3.5 h-3.5 text-brand-primary shrink-0 mt-0.5" />
-                  <span>
-                    <strong>{isEn ? 'Up to 150 AI recipes/month' : 'Hasta 150 recetas con IA/mes'}</strong>{' '}
-                    {isEn ? 'and technical culinary calibration.' : 'y calibración técnica avanzada.'}
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-3.5 h-3.5 text-brand-primary shrink-0 mt-0.5" />
-                  <span>
-                    <strong>{isEn ? 'Weekly Meal Planner & PDF' : 'Planificador Semanal y PDF'}</strong>{' '}
-                    {isEn ? 'with designer themes and editorial export.' : 'editorial con estilos visuales gourmet.'}
-                  </span>
-                </li>
-              </ul>
+              {/* 3 líneas ultra compactas */}
+              <div className="space-y-1 text-xs text-stone-700 font-medium pl-0.5">
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+                  <span>{isEn ? 'Unlimited instant extraction' : 'Extracción ilimitada e instantánea'}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+                  <span>{isEn ? 'Up to 150 recipes/month with advanced AI' : 'Hasta 150 recetas/mes con IA avanzada'}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+                  <span>{isEn ? 'Weekly planner & PDF export' : 'Planificador semanal y exportación PDF'}</span>
+                </div>
+              </div>
 
               {!isNativeAndroid ? (
                 <button
@@ -511,24 +503,24 @@ export function AdInterstitialModal({
                       onSelectPro();
                     }
                   }}
-                  className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full min-h-[40px] py-2 px-3 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs shadow-sm hover:shadow transition flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4 text-amber-200" />
+                  <Sparkles className="w-3.5 h-3.5 text-amber-200" />
                   <span>{isEn ? 'Get PRO & extract instantly' : 'Hazte PRO y extrae al instante'}</span>
                 </button>
               ) : (
                 /* Bloque informativo de gestión externa (Cumplimiento de Política de Pagos de Google Play) */
-                <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-stone-700 space-y-2 text-left animate-fade-in">
-                  <div className="flex items-center gap-2 font-semibold text-stone-900">
-                    <Globe className="w-4 h-4 text-brand-primary shrink-0" />
+                <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-stone-700 space-y-1 text-left animate-fade-in">
+                  <div className="flex items-center gap-1.5 font-semibold text-stone-900 text-xs">
+                    <Globe className="w-3.5 h-3.5 text-brand-primary shrink-0" />
                     <span>{isEn ? 'Web Subscription' : 'Suscripción en Web'}</span>
                   </div>
-                  <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                  <p className="text-stone-600 leading-tight text-xs">
                     {isEn
-                      ? 'Manage or activate your PRO subscription from our official website migaapp.com signing in with this account:'
-                      : 'Gestiona o activa tu suscripción PRO desde nuestra web oficial migaapp.com iniciando sesión con esta misma cuenta:'}
+                      ? 'Activa PRO desde nuestra web migaapp.com iniciando con:'
+                      : 'Activa PRO desde nuestra web migaapp.com iniciando con:'}
                   </p>
-                  <div className="font-mono text-[11px] font-semibold text-stone-900 bg-white px-2.5 py-1 rounded-lg border border-stone-200 break-all shadow-2xs">
+                  <div className="font-mono text-xs font-semibold text-stone-900 bg-white px-2 py-0.5 rounded border border-stone-200 w-fit break-all shadow-2xs">
                     {userEmailDisplay}
                   </div>
                 </div>
@@ -536,17 +528,17 @@ export function AdInterstitialModal({
             </div>
 
             {/* Tarjeta B: Opción Gratuita según plataforma */}
-            <div className="relative p-4 sm:p-5 rounded-2xl border-2 border-[#e7dfd5] bg-gradient-to-br from-white via-[#faf7f2] to-[#f4efe6]/60 space-y-4 shadow-sm hover:shadow-md transition">
+            <div className="relative p-3 sm:p-3.5 rounded-2xl border-2 border-[#e7dfd5] bg-gradient-to-br from-white via-[#faf7f2] to-[#f4efe6]/60 space-y-2.5 shadow-xs">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-stone-100 border border-stone-200 text-stone-700 flex items-center justify-center">
-                    <PlayCircle className="w-4 h-4 text-stone-700" />
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-6 rounded-lg bg-stone-100 border border-stone-200 text-stone-700 flex items-center justify-center">
+                    <PlayCircle className="w-3.5 h-3.5 text-stone-700" />
                   </div>
                   <div>
-                    <span className="font-bold text-sm sm:text-base text-stone-900 block leading-tight">
+                    <span className="font-bold text-xs sm:text-sm text-stone-900 block leading-tight">
                       {isEn ? 'Free Option' : 'Opción Gratuita'}
                     </span>
-                    <span className="text-[11px] text-stone-500 font-medium">
+                    <span className="text-[10px] text-stone-500 font-medium">
                       {isNativeAndroid
                         ? (isEn ? 'Sponsored short ad' : 'Vídeo patrocinado')
                         : platform === 'ios'
@@ -557,7 +549,7 @@ export function AdInterstitialModal({
                 </div>
 
                 {/* Badge visible de recetas restantes */}
-                <span className="px-2.5 py-1 rounded-full bg-emerald-100/90 border border-emerald-300 text-emerald-950 text-[11px] font-bold tracking-tight whitespace-nowrap shadow-2xs">
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100/90 border border-emerald-300 text-emerald-950 text-[10px] sm:text-[11px] font-bold tracking-tight whitespace-nowrap shadow-2xs">
                   {isEn
                     ? `${recetasRestantes} of 20 left`
                     : `${recetasRestantes} de 20 restantes`}
@@ -565,8 +557,8 @@ export function AdInterstitialModal({
               </div>
 
               {/* Banner explicativo de cupo mensual */}
-              <div className="p-2.5 sm:p-3 rounded-xl bg-amber-50/90 border border-amber-200/90 text-amber-950 text-xs font-medium flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-brand-primary shrink-0" />
+              <div className="p-2 rounded-xl bg-amber-50/90 border border-amber-200/90 text-amber-950 text-xs font-medium flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-brand-primary shrink-0" />
                 <span className="leading-tight">
                   {isEn
                     ? `You have ${recetasRestantes} free recipes left this month (out of 20).`
@@ -576,11 +568,11 @@ export function AdInterstitialModal({
 
               {/* Caso 1: Android Nativo (Botón sólido para ver anuncio de AdMob) */}
               {isNativeAndroid && (
-                <>
-                  <p className="text-xs text-stone-600 leading-relaxed">
+                <div className="space-y-1.5 pt-0.5">
+                  <p className="text-xs text-stone-600 leading-tight">
                     {isEn
-                      ? 'Watch a short sponsored video from our partners to process this recipe without charge.'
-                      : 'Visualiza un breve anuncio de nuestros patrocinadores para procesar esta receta sin coste.'}
+                      ? 'Watch a short sponsored video to process this recipe without charge.'
+                      : 'Visualiza un breve anuncio para procesar esta receta sin coste.'}
                   </p>
 
                   <button
@@ -589,24 +581,24 @@ export function AdInterstitialModal({
                       setDismissWarning(null);
                       setViewState('playing');
                     }}
-                    className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 active:scale-[0.99] text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 active:scale-[0.99] text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Play className="w-4 h-4 text-amber-300 fill-current" />
                     <span>{isEn ? 'Watch ad and continue' : 'Ver anuncio y continuar'}</span>
                   </button>
-                </>
+                </div>
               )}
 
               {/* Caso 2: PC / Navegador Web de Escritorio (!isNativeAndroid) */}
               {!isNativeAndroid && platform === 'desktop_web' && (
-                <div className="space-y-3.5 pt-0.5 text-left">
+                <div className="space-y-3 pt-0.5 text-left">
                   {/* Paso Previo Interactivo: Solicitud de Desbloqueo en Móvil */}
                   {!isUnlockRequested ? (
                     <button
                       type="button"
                       onClick={handleRequestMobileUnlock}
                       disabled={isRequestingUnlock}
-                      className="w-full min-h-[46px] bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs sm:text-sm shadow-sm py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-70"
+                      className="w-full min-h-[44px] bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs sm:text-sm shadow-sm py-2 px-3.5 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-70"
                     >
                       {isRequestingUnlock ? (
                         <Loader2 className="w-4 h-4 text-white animate-spin" />
@@ -620,8 +612,8 @@ export function AdInterstitialModal({
                       </span>
                     </button>
                   ) : (
-                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-medium flex items-center gap-2.5 animate-fade-in">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-medium flex items-center gap-2 animate-fade-in">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>
                         {isEn
                           ? 'Request sent! Open the Miga app on your phone to watch the ad.'
@@ -631,15 +623,15 @@ export function AdInterstitialModal({
                   )}
 
                   {/* Guía Numerada Clara */}
-                  <div className="space-y-2 text-xs text-stone-700 bg-[#f4efe6] p-3.5 rounded-xl border border-[#e7dfd5]">
-                    <p className="font-semibold text-stone-900 text-xs sm:text-sm flex items-center gap-1.5">
-                      <Smartphone className="w-4 h-4 text-brand-primary" />
+                  <div className="space-y-1.5 text-xs text-stone-700 bg-[#f4efe6] p-2.5 rounded-xl border border-[#e7dfd5]">
+                    <p className="font-semibold text-stone-900 text-xs flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5 text-brand-primary" />
                       <span>{isEn ? 'Steps to unlock from mobile:' : 'Pasos para desbloquear desde el móvil:'}</span>
                     </p>
-                    <ol className="space-y-2 list-decimal list-inside pl-0.5 leading-relaxed text-stone-700">
+                    <ol className="space-y-1 list-decimal list-inside pl-0.5 leading-relaxed text-stone-700 text-[11px] sm:text-xs">
                       <li>
                         <span>{isEn ? 'Open MigaApp on your Android phone with this account: ' : 'Abre MigaApp en tu móvil Android con esta cuenta: '}</span>
-                        <strong className="text-stone-900 break-all font-mono text-[11px] bg-white px-1.5 py-0.5 rounded border border-stone-200">
+                        <strong className="text-stone-900 break-all font-mono text-[10px] sm:text-[11px] bg-white px-1.5 py-0.2 rounded border border-stone-200">
                           {userEmailDisplay}
                         </strong>
                       </li>
@@ -654,15 +646,15 @@ export function AdInterstitialModal({
 
                   {/* Alerta de Estado del Chequeo de Saldo */}
                   {balanceCheckStatus === 'success' && (
-                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-medium flex items-center gap-2.5 animate-fade-in">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-medium flex items-center gap-2 animate-fade-in">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>{balanceCheckMessage || (isEn ? 'Balance detected! Unlocking recipe...' : '¡Saldo detectado! Desbloqueando receta...')}</span>
                     </div>
                   )}
 
                   {(balanceCheckStatus === 'not_found' || balanceCheckStatus === 'error') && (
-                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-medium flex items-center gap-2.5 animate-fade-in">
-                      <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-medium flex items-center gap-2 animate-fade-in">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                       <span>{balanceCheckMessage}</span>
                     </div>
                   )}
@@ -672,7 +664,7 @@ export function AdInterstitialModal({
                     type="button"
                     onClick={handleCheckBalance}
                     disabled={isCheckingBalance || balanceCheckStatus === 'success'}
-                    className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-75 disabled:cursor-not-allowed text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2.5 cursor-pointer"
+                    className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-75 disabled:cursor-not-allowed text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <RefreshCw className={`w-4 h-4 text-amber-300 ${isCheckingBalance ? 'animate-spin' : ''}`} />
                     <span>
@@ -683,7 +675,7 @@ export function AdInterstitialModal({
                   </button>
 
                   {/* Enlace Secundario: Google Play */}
-                  <div className="text-center pt-1">
+                  <div className="text-center pt-0.5">
                     <a
                       href="https://play.google.com/store/apps/details?id=com.migaapp.app"
                       target="_blank"
