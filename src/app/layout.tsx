@@ -5,6 +5,7 @@ import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt';
 import { AuthInitializer } from '@/components/auth/AuthInitializer';
 import { AppLifecycleProvider } from '@/components/layout/AppLifecycleProvider';
 import { BottomNavigation } from '@/components/layout/BottomNavigation';
+import { CinematicSplash } from '@/components/ui/CinematicSplash';
 import './globals.css';
 
 const serifFont = Playfair_Display({
@@ -74,6 +75,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#faf7f2" />
       </head>
       <body className="min-h-screen bg-[#faf7f2] text-stone-900 font-sans antialiased selection:bg-amber-200 selection:text-amber-950 pb-20 md:pb-0">
+        <CinematicSplash />
         <AppLifecycleProvider />
         <ServiceWorkerRegister />
         <PwaInstallPrompt />
