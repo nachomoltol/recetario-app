@@ -6,15 +6,14 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
  * Componente CinematicSplash para Miga.
  * Bienvenida gastronómica estilo Netflix/Disney+:
  * - Capa fija en pantalla completa (`#FAF8F5`).
- * - Logo con zoom suave y destello (shimmer) dorado/ámbar.
+ * - Logo con zoom suave y destello (shimmer) dorado/ámbar ralentizado a 1.8s.
  * - Tipografía editorial con animación fluida y equilibrada.
- * - Efecto sonoro de crujido crujiente (`/sounds/miga-crunch.mp3`, vol: 0.55, preload='auto').
- * - Se ejecuta solo la primera vez por sesión (`sessionStorage`).
- * - Presencia visual calibrada a 3.0 segundos totales:
+ * - Efecto sonoro de crujido crujiente (`/sounds/miga-crunch.mp3`, vol: 0.75, preload='auto').
+ * - Desbloqueo interactivo táctil si las políticas del navegador bloquean el autoplay.
+ * - Ciclo de vida calibrado a 3.0 segundos totales:
  *   * Timer 1 (Fade out): 2500ms (`setIsFadingOut(true)` con `duration-500 ease-out`).
  *   * Timer 2 (Desmontaje del DOM): 3000ms (`setIsMounted(false)`).
- * - Reproducción de audio blindada: no se interrumpe en cleanups de re-render intermedio,
- *   solo se pausa/corta al iniciar el fade-out (2500ms) o al interactuar el usuario (dismissSplash).
+ * - Sincronización auditiva: silencia y pausa el audio al iniciar el fade-out (2500ms) o al saltar (`dismissSplash`).
  */
 export function CinematicSplash() {
   const [isMounted, setIsMounted] = useState(false);
@@ -63,23 +62,35 @@ export function CinematicSplash() {
     };
   }, [isMounted]);
 
-  // 3. Audio gastronómico blindado contra desmontajes/falsos re-renders
+  // 3. Audio gastronómico blindado con disparador robusto y desbloqueo táctil
   useEffect(() => {
     if (!isMounted || audioStartedRef.current) return;
     audioStartedRef.current = true;
 
-    try {
-      const audio = new Audio('/sounds/miga-crunch.mp3');
-      audio.preload = 'auto';
-      audio.volume = 0.55;
-      audioRef.current = audio;
-
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          // Políticas de autoplay del navegador gestionadas silenciosamente
+    const playAudio = () => {
+      if (!audioRef.current) {
+        audioRef.current = new Audio('/sounds/miga-crunch.mp3');
+        audioRef.current.volume = 0.75;
+        audioRef.current.preload = 'auto';
+      }
+      const promise = audioRef.current.play();
+      if (promise !== undefined) {
+        promise.catch((err) => {
+          console.warn('[Splash] Autoplay inicial bloqueado, esperando interacción:', err);
+          // Si el navegador bloquea el autoplay, desbloquea al primer toque en la pantalla
+          const unlockAudio = () => {
+            audioRef.current?.play().catch(() => {});
+            window.removeEventListener('touchstart', unlockAudio);
+            window.removeEventListener('click', unlockAudio);
+          };
+          window.addEventListener('touchstart', unlockAudio, { once: true });
+          window.addEventListener('click', unlockAudio, { once: true });
         });
       }
+    };
+
+    try {
+      playAudio();
     } catch {
       // Fallo de audio aislado sin afectar la animación visual ni fps
     }
@@ -130,7 +141,7 @@ export function CinematicSplash() {
           0% {
             transform: translateX(-150%) skewX(-20deg);
           }
-          60%, 100% {
+          100% {
             transform: translateX(200%) skewX(-20deg);
           }
         }
@@ -151,7 +162,7 @@ export function CinematicSplash() {
         }
 
         .animate-shimmer-sweep {
-          animation: shimmerSweep 1.4s cubic-bezier(0.4, 0, 0.2, 1) 0.3s forwards;
+          animation: shimmerSweep 1.8s ease-in-out 0.4s forwards;
         }
 
         .animate-editorial-fade {
@@ -172,7 +183,7 @@ export function CinematicSplash() {
             className="w-full h-full object-cover rounded-2xl"
           />
 
-          {/* Destello Shimmer dorado / ámbar que recorre el icono */}
+          {/* Destello Shimmer dorado / ámbar que recorre suavemente el icono durante 1.8s */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-200/50 to-transparent -translate-x-full animate-shimmer-sweep pointer-events-none" />
         </div>
 
