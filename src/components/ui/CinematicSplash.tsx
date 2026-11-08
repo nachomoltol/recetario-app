@@ -10,15 +10,17 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
  * - Tipografía editorial con animación fluida y equilibrada.
  * - Efecto sonoro de crujido crujiente (`/sounds/miga-crunch.mp3`, vol: 0.55, preload='auto').
  * - Se ejecuta solo la primera vez por sesión (`sessionStorage`).
- * - Presencia visual calibrada a 2.5 segundos:
- *   * Timer 1 (Fade out): 2100ms (`setIsFadingOut(true)` con `duration-400`).
- *   * Timer 2 (Desmontaje del DOM): 2500ms (`setIsMounted(false)`).
- * - Sincronización estricta de audio: pausa y corte inmediato (`currentTime = 0`) en fade-out o tap.
+ * - Presencia visual calibrada a 3.0 segundos totales:
+ *   * Timer 1 (Fade out): 2500ms (`setIsFadingOut(true)` con `duration-500 ease-out`).
+ *   * Timer 2 (Desmontaje del DOM): 3000ms (`setIsMounted(false)`).
+ * - Reproducción de audio blindada: no se interrumpe en cleanups de re-render intermedio,
+ *   solo se pausa/corta al iniciar el fade-out (2500ms) o al interactuar el usuario (dismissSplash).
  */
 export function CinematicSplash() {
   const [isMounted, setIsMounted] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioStartedRef = useRef(false);
 
   // 1. Verificación inicial de sesión
   useEffect(() => {
@@ -32,11 +34,11 @@ export function CinematicSplash() {
     }
   }, []);
 
-  // 2. Temporizadores dedicados e incondicionales para fade out (2100ms) y desmontaje (2500ms)
+  // 2. Temporizadores dedicados para fade out (2500ms) y desmontaje (3000ms)
   useEffect(() => {
     if (!isMounted) return;
 
-    // Timer 1: Iniciar fade out a los 2100ms y cortar audio de inmediato
+    // Timer 1: Iniciar fade out a los 2500ms y detener audio en el fundido
     const fadeTimer = setTimeout(() => {
       setIsFadingOut(true);
       if (audioRef.current) {
@@ -45,15 +47,15 @@ export function CinematicSplash() {
           audioRef.current.currentTime = 0;
         } catch {}
       }
-    }, 2100);
+    }, 2500);
 
-    // Timer 2: Desmontar del DOM incondicionalmente a los 2500ms
+    // Timer 2: Desmontar del DOM incondicionalmente a los 3000ms
     const unmountTimer = setTimeout(() => {
       setIsMounted(false);
       try {
         sessionStorage.setItem('miga_splash_shown', 'true');
       } catch {}
-    }, 2500);
+    }, 3000);
 
     return () => {
       clearTimeout(fadeTimer);
@@ -61,9 +63,10 @@ export function CinematicSplash() {
     };
   }, [isMounted]);
 
-  // 3. Audio gastronómico con precarga explícita inmediata y corte estricto
+  // 3. Audio gastronómico blindado contra desmontajes/falsos re-renders
   useEffect(() => {
-    if (!isMounted) return;
+    if (!isMounted || audioStartedRef.current) return;
+    audioStartedRef.current = true;
 
     try {
       const audio = new Audio('/sounds/miga-crunch.mp3');
@@ -78,17 +81,8 @@ export function CinematicSplash() {
         });
       }
     } catch {
-      // Fallo de audio aislado sin afectar temporizadores
+      // Fallo de audio aislado sin afectar la animación visual ni fps
     }
-
-    return () => {
-      if (audioRef.current) {
-        try {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-        } catch {}
-      }
-    };
   }, [isMounted]);
 
   // Manejador de salto manual inmediato al tocar cualquier punto de la pantalla
@@ -113,7 +107,7 @@ export function CinematicSplash() {
       role="presentation"
       aria-hidden="true"
       onClick={dismissSplash}
-      className={`fixed inset-0 z-[9999] bg-[#FAF8F5] flex flex-col items-center justify-center select-none cursor-pointer transition-opacity duration-400 ease-out ${
+      className={`fixed inset-0 z-[9999] bg-[#FAF8F5] flex flex-col items-center justify-center select-none cursor-pointer transition-opacity duration-500 ease-out ${
         isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
       }`}
     >
@@ -153,15 +147,15 @@ export function CinematicSplash() {
         }
 
         .animate-cinematic-zoom {
-          animation: cinematicZoomIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation: cinematicZoomIn 1.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         .animate-shimmer-sweep {
-          animation: shimmerSweep 1.3s cubic-bezier(0.4, 0, 0.2, 1) 0.3s forwards;
+          animation: shimmerSweep 1.4s cubic-bezier(0.4, 0, 0.2, 1) 0.3s forwards;
         }
 
         .animate-editorial-fade {
-          animation: editorialFadeIn 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
+          animation: editorialFadeIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
         }
       `}</style>
 
