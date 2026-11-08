@@ -15,10 +15,12 @@ import {
   CalendarDays,
   Palette,
   FileDown,
+  Globe,
 } from 'lucide-react';
 import { redeemVipCodeAction } from '@/app/actions/subscription';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
+import { isNativeAndroidPlatform } from '@/lib/admob/admobService';
 
 export interface ProSubscriptionModalProps {
   isOpen?: boolean;
@@ -55,6 +57,11 @@ export function ProSubscriptionModal({
   const [vipError, setVipError] = useState<string | null>(null);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [isNativeAndroid, setIsNativeAndroid] = useState(false);
+
+  useEffect(() => {
+    setIsNativeAndroid(isNativeAndroidPlatform());
+  }, []);
 
   useEffect(() => {
     setVipSuccess(
@@ -130,6 +137,10 @@ export function ProSubscriptionModal({
   };
 
   const handleSubscribeClick = async () => {
+    if (isNativeAndroid) {
+      return;
+    }
+
     if (onSubscribe) {
       onSubscribe();
       return;
@@ -294,6 +305,28 @@ export function ProSubscriptionModal({
               <CheckCircle2 className="w-5 h-5 text-emerald-700" />
               <span>{t('billing_vip_active_banner')}</span>
             </div>
+          ) : isNativeAndroid ? (
+            <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200/90 text-left space-y-2.5">
+              <div className="flex items-center gap-2 text-stone-900 font-semibold text-xs sm:text-sm">
+                <Globe className="w-4 h-4 text-brand-primary shrink-0" />
+                <span>
+                  {language === 'en'
+                    ? 'Subscription Management via Web'
+                    : 'Gestión de suscripción vía Web'}
+                </span>
+              </div>
+              <p className="text-xs text-stone-700 leading-relaxed font-light">
+                {language === 'en'
+                  ? 'Manage or activate your PRO subscription on our official website migaapp.com by signing in with this account.'
+                  : 'Gestiona o activa tu suscripción PRO desde nuestra web oficial migaapp.com iniciando sesión con esta misma cuenta.'}
+              </p>
+              {profileFromStore?.email && (
+                <div className="pt-1 flex items-center gap-1.5 text-[11px] text-stone-600 font-mono bg-white/90 px-2.5 py-1 rounded-lg border border-stone-200/80 w-fit max-w-full truncate">
+                  <span className="text-stone-400">Email:</span>
+                  <span className="font-semibold text-stone-800 truncate">{profileFromStore.email}</span>
+                </div>
+              )}
+            </div>
           ) : (
             <button
               type="button"
@@ -322,10 +355,12 @@ export function ProSubscriptionModal({
             </div>
           )}
 
-          <div className="flex items-center justify-center gap-1.5 text-xs text-stone-500 pt-0.5">
-            <Lock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-            <span>{t('billing_cancel_anytime')}</span>
-          </div>
+          {!isNativeAndroid && (
+            <div className="flex items-center justify-center gap-1.5 text-xs text-stone-500 pt-0.5">
+              <Lock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+              <span>{t('billing_cancel_anytime')}</span>
+            </div>
+          )}
         </div>
 
         {/* 3º. CANJE DE CÓDIGO VIP / PROMO */}

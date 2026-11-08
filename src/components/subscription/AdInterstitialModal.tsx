@@ -18,6 +18,7 @@ import {
   Smartphone,
   RefreshCw,
   PartyPopper,
+  Globe,
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useLanguageStore } from '@/stores/useLanguageStore';
@@ -502,18 +503,36 @@ export function AdInterstitialModal({
                 </li>
               </ul>
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (onSelectPro) {
-                    onSelectPro();
-                  }
-                }}
-                className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4 text-amber-200" />
-                <span>{isEn ? 'Get PRO & extract instantly' : 'Hazte PRO y extrae al instante'}</span>
-              </button>
+              {!isNativeAndroid ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSelectPro) {
+                      onSelectPro();
+                    }
+                  }}
+                  className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-200" />
+                  <span>{isEn ? 'Get PRO & extract instantly' : 'Hazte PRO y extrae al instante'}</span>
+                </button>
+              ) : (
+                /* Bloque informativo de gestión externa (Cumplimiento de Política de Pagos de Google Play) */
+                <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-stone-700 space-y-2 text-left animate-fade-in">
+                  <div className="flex items-center gap-2 font-semibold text-stone-900">
+                    <Globe className="w-4 h-4 text-brand-primary shrink-0" />
+                    <span>{isEn ? 'Web Subscription' : 'Suscripción en Web'}</span>
+                  </div>
+                  <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                    {isEn
+                      ? 'Manage or activate your PRO subscription from our official website migaapp.com signing in with this account:'
+                      : 'Gestiona o activa tu suscripción PRO desde nuestra web oficial migaapp.com iniciando sesión con esta misma cuenta:'}
+                  </p>
+                  <div className="font-mono text-[11px] font-semibold text-stone-900 bg-white px-2.5 py-1 rounded-lg border border-stone-200 break-all shadow-2xs">
+                    {userEmailDisplay}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Tarjeta B: Opción Gratuita según plataforma */}

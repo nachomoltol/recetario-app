@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Settings,
   X,
+  Globe,
 } from 'lucide-react';
 import { Drawer } from 'vaul';
 import { updateUserProfileAction } from '@/app/actions/userPreferences';
@@ -26,6 +27,7 @@ import { useProfileStore } from '@/stores/useProfileStore';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
 import { FeatureInfoTrigger } from '@/components/ui/FeatureInfoTrigger';
+import { isNativeAndroidPlatform } from '@/lib/admob/admobService';
 import {
   OBJETIVOS_CLINICOS,
   PATRONES_ALIMENTARIOS,
@@ -92,6 +94,11 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
   const [showProModal, setShowProModal] = useState(false);
   const [isClinicalDrawerOpen, setIsClinicalDrawerOpen] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  const [isNativeAndroid, setIsNativeAndroid] = useState(false);
+
+  useEffect(() => {
+    setIsNativeAndroid(isNativeAndroidPlatform());
+  }, []);
 
   const resolvedPlan = (
     currentStoreProfile?.plan_suscripcion ||
@@ -272,6 +279,11 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
 
   // Redirección directa al flujo de pago de Stripe / Miga Pro
   const handleUpgradeToPro = async () => {
+    if (isNativeAndroid) {
+      setShowProModal(true);
+      return;
+    }
+
     setIsCheckoutLoading(true);
     try {
       const res = await fetch('/api/stripe/checkout', {
@@ -835,24 +847,50 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                   <span>{t('profile_unlock_unlimited')}</span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleUpgradeToPro}
-                  disabled={isCheckoutLoading}
-                  className="min-h-[44px] px-6 py-2.5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-[#a86224] to-[#c27835] hover:from-[#8e511c] hover:to-[#a86224] transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  {isCheckoutLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{t('profile_connecting_stripe')}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 text-amber-200" />
-                      <span>{t('clinical_upgrade_btn')}</span>
-                    </>
-                  )}
-                </button>
+                {isNativeAndroid ? (
+                  <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/90 text-left space-y-2 max-w-sm">
+                    <div className="flex items-center gap-1.5 text-stone-900 font-semibold text-xs">
+                      <Globe className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+                      <span>
+                        {language === 'en'
+                          ? 'PRO Subscription via Web'
+                          : 'Suscripción PRO vía Web'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-700 leading-relaxed font-light">
+                      {language === 'en'
+                        ? 'Manage or activate your PRO subscription on our website migaapp.com with this account.'
+                        : 'Gestiona o activa tu suscripción PRO desde nuestra web oficial migaapp.com iniciando sesión con esta misma cuenta.'}
+                    </p>
+                    {(initialProfile.email || currentStoreProfile?.email) && (
+                      <div className="pt-0.5 flex items-center gap-1 text-[10px] text-stone-600 font-mono bg-white/90 px-2 py-0.5 rounded border border-stone-200/80 w-fit max-w-full truncate">
+                        <span className="text-stone-400">Email:</span>
+                        <span className="font-semibold text-stone-800 truncate">
+                          {initialProfile.email || currentStoreProfile?.email}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleUpgradeToPro}
+                    disabled={isCheckoutLoading}
+                    className="min-h-[44px] px-6 py-2.5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-[#a86224] to-[#c27835] hover:from-[#8e511c] hover:to-[#a86224] transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isCheckoutLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>{t('profile_connecting_stripe')}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-amber-200" />
+                        <span>{t('clinical_upgrade_btn')}</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -891,7 +929,11 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
             <div className="p-3 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-950 text-xs flex items-center gap-2.5 animate-fade-in">
               <Lock className="w-4 h-4 text-brand-primary shrink-0" />
               <span>
-                {language === 'en'
+                {isNativeAndroid
+                  ? language === 'en'
+                    ? 'You have selected Miga Pro features. Activate your subscription on migaapp.com to use these clinical settings.'
+                    : 'Has seleccionado funciones exclusivas de Miga Pro. Activa tu suscripción en migaapp.com para aplicar esta configuración.'
+                  : language === 'en'
                   ? 'You have selected Miga Pro features (culinary level or clinical conditions). Clicking "Save changes" will redirect you to Miga Pro.'
                   : 'Has seleccionado funciones exclusivas de Miga Pro (nivel culinario o patologías clínicas). Al pulsar "Guardar cambios" pasarás a la suscripción Miga Pro.'}
               </span>

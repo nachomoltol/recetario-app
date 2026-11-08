@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
@@ -10,8 +10,11 @@ import {
   X,
   Calendar,
   Loader2,
+  Globe,
 } from 'lucide-react';
 import { useLanguageStore } from '@/stores/useLanguageStore';
+import { useProfileStore } from '@/stores/useProfileStore';
+import { isNativeAndroidPlatform } from '@/lib/admob/admobService';
 
 export type HardLimitType = 'FREE_LIMIT_REACHED' | 'DEVICE_LIMIT_REACHED' | 'PRO_LIMIT_REACHED';
 
@@ -24,8 +27,14 @@ interface HardLimitModalProps {
 export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
   const router = useRouter();
   const language = useLanguageStore((s) => s.language);
+  const userProfile = useProfileStore((s) => s.profile);
   const isEn = language === 'en';
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  const [isNativeAndroid, setIsNativeAndroid] = useState(false);
+
+  useEffect(() => {
+    setIsNativeAndroid(isNativeAndroidPlatform());
+  }, []);
 
   if (!isOpen || !type) return null;
 
@@ -33,6 +42,10 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
   const isDeviceLimit = type === 'DEVICE_LIMIT_REACHED';
 
   const handleUpgrade = async () => {
+    if (isNativeAndroid) {
+      return;
+    }
+
     setIsCheckoutLoading(true);
     try {
       const res = await fetch('/api/stripe/checkout', {
@@ -156,49 +169,85 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
           </div>
         )}
 
-        {/* Botones de acción */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-2">
-          {!isProLimit ? (
-            <>
-              <button
-                type="button"
-                onClick={handleUpgrade}
-                disabled={isCheckoutLoading}
-                className="flex-1 py-3 px-5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-[#a86224] to-[#c27835] hover:from-[#8e511c] hover:to-[#a86224] transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-              >
-                {isCheckoutLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>
-                      {isEn ? 'Connecting to Stripe...' : 'Conectando con Stripe...'}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span>{isEn ? 'Upgrade to PRO' : 'Mejorar a PRO'}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
+        {/* Botones de acción / Bloque Android */}
+        <div className="space-y-3 pt-2">
+          {!isProLimit && isNativeAndroid && (
+            <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 text-left space-y-2">
+              <div className="flex items-center gap-2 text-stone-900 font-semibold text-xs sm:text-sm">
+                <Globe className="w-4 h-4 text-brand-primary shrink-0" />
+                <span>
+                  {isEn
+                    ? 'Subscription Management via Web'
+                    : 'Gestión de suscripción vía Web'}
+                </span>
+              </div>
+              <p className="text-xs text-stone-700 leading-relaxed font-light">
+                {isEn
+                  ? 'Manage or activate your PRO subscription on our official website migaapp.com by signing in with this account.'
+                  : 'Gestiona o activa tu suscripción PRO desde nuestra web oficial migaapp.com iniciando sesión con esta misma cuenta.'}
+              </p>
+              {userProfile?.email && (
+                <div className="pt-0.5 flex items-center gap-1.5 text-[11px] text-stone-600 font-mono bg-white/90 px-2.5 py-1 rounded-lg border border-stone-200/80 w-fit max-w-full truncate">
+                  <span className="text-stone-400">Email:</span>
+                  <span className="font-semibold text-stone-800 truncate">{userProfile.email}</span>
+                </div>
+              )}
+            </div>
+          )}
 
+          <div className="flex flex-col sm:flex-row gap-3">
+            {!isProLimit ? (
+              isNativeAndroid ? (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full py-3 px-5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-brand-primary hover:bg-brand-hover transition-all shadow-sm active:scale-95 text-center cursor-pointer"
+                >
+                  {isEn ? 'Understood' : 'Entendido'}
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleUpgrade}
+                    disabled={isCheckoutLoading}
+                    className="flex-1 py-3 px-5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-[#a86224] to-[#c27835] hover:from-[#8e511c] hover:to-[#a86224] transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                  >
+                    {isCheckoutLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>
+                          {isEn ? 'Connecting to Stripe...' : 'Conectando con Stripe...'}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span>{isEn ? 'Upgrade to PRO' : 'Mejorar a PRO'}</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    disabled={isCheckoutLoading}
+                    className="py-3 px-5 rounded-2xl font-semibold text-xs sm:text-sm text-stone-600 hover:text-stone-900 bg-white hover:bg-stone-100 border border-[#e7dfd5] transition-all cursor-pointer text-center disabled:opacity-50"
+                  >
+                    {isEn ? 'Wait until 1st' : 'Esperar al día 1'}
+                  </button>
+                </>
+              )
+            ) : (
               <button
                 type="button"
                 onClick={onClose}
-                disabled={isCheckoutLoading}
-                className="py-3 px-5 rounded-2xl font-semibold text-xs sm:text-sm text-stone-600 hover:text-stone-900 bg-white hover:bg-stone-100 border border-[#e7dfd5] transition-all cursor-pointer text-center disabled:opacity-50"
+                className="w-full py-3 px-5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-brand-primary hover:bg-brand-hover transition-all shadow-sm active:scale-95 text-center cursor-pointer"
               >
-                {isEn ? 'Wait until 1st' : 'Esperar al día 1'}
+                {isEn ? 'Understood' : 'Entendido'}
               </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full py-3 px-5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-brand-primary hover:bg-brand-hover transition-all shadow-sm active:scale-95 text-center cursor-pointer"
-            >
-              {isEn ? 'Understood' : 'Entendido'}
-            </button>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

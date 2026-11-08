@@ -20,6 +20,28 @@ export function isNativePlatform(): boolean {
 }
 
 /**
+ * Detecta si la aplicación se está ejecutando específicamente en entorno nativo Android
+ * a través de Capacitor o User-Agent embebido de la app oficial de Google Play.
+ */
+export function isNativeAndroidPlatform(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const isCapNative = Capacitor.isNativePlatform();
+    const capPlatform = Capacitor.getPlatform();
+    if (isCapNative && capPlatform === 'android') return true;
+
+    // Fallback complementario por User-Agent / WebView nativa Android de Capacitor
+    const ua = navigator.userAgent || '';
+    if (/Capacitor|com\.migaapp\.app/i.test(ua) && /Android/i.test(ua)) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Obtiene el ID del bloque de anuncios de vídeo bonificado (Rewarded Video).
  * Si la variable de entorno indica que estamos en producción (process.env.NODE_ENV === 'production'),
  * utiliza el Ad Unit ID oficial: ca-app-pub-8525131609099761/6495393562.
