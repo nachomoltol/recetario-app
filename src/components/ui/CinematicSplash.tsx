@@ -1,25 +1,22 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 /**
  * Componente CinematicSplash para Miga.
  * Bienvenida gastronómica estilo Netflix/Disney+:
+ * - Experiencia visual cinematográfica, fluida y silenciosa.
  * - Capa fija en pantalla completa (`#FAF8F5`).
- * - Logo con zoom suave y destello (shimmer) dorado/ámbar ralentizado a 1.8s.
+ * - Logo con zoom suave y destello (shimmer) dorado/ámbar suave de 1.8s.
  * - Tipografía editorial con animación fluida y equilibrada.
- * - Efecto sonoro de crujido crujiente (`/sounds/miga-crunch.mp3`, vol: 0.75, preload='auto').
- * - Desbloqueo interactivo táctil si las políticas del navegador bloquean el autoplay.
- * - Ciclo de vida calibrado a 3.0 segundos totales:
+ * - Se ejecuta solo la primera vez por sesión (`sessionStorage`).
+ * - Presencia visual calibrada a 3.0 segundos totales:
  *   * Timer 1 (Fade out): 2500ms (`setIsFadingOut(true)` con `duration-500 ease-out`).
  *   * Timer 2 (Desmontaje del DOM): 3000ms (`setIsMounted(false)`).
- * - Sincronización auditiva: silencia y pausa el audio al iniciar el fade-out (2500ms) o al saltar (`dismissSplash`).
  */
 export function CinematicSplash() {
   const [isMounted, setIsMounted] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioStartedRef = useRef(false);
 
   // 1. Verificación inicial de sesión
   useEffect(() => {
@@ -37,15 +34,9 @@ export function CinematicSplash() {
   useEffect(() => {
     if (!isMounted) return;
 
-    // Timer 1: Iniciar fade out a los 2500ms y detener audio en el fundido
+    // Timer 1: Iniciar fade out a los 2500ms
     const fadeTimer = setTimeout(() => {
       setIsFadingOut(true);
-      if (audioRef.current) {
-        try {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-        } catch {}
-      }
     }, 2500);
 
     // Timer 2: Desmontar del DOM incondicionalmente a los 3000ms
@@ -62,48 +53,8 @@ export function CinematicSplash() {
     };
   }, [isMounted]);
 
-  // 3. Audio gastronómico blindado con disparador robusto y desbloqueo táctil
-  useEffect(() => {
-    if (!isMounted || audioStartedRef.current) return;
-    audioStartedRef.current = true;
-
-    const playAudio = () => {
-      if (!audioRef.current) {
-        audioRef.current = new Audio('/sounds/miga-crunch.mp3');
-        audioRef.current.volume = 0.75;
-        audioRef.current.preload = 'auto';
-      }
-      const promise = audioRef.current.play();
-      if (promise !== undefined) {
-        promise.catch((err) => {
-          console.warn('[Splash] Autoplay inicial bloqueado, esperando interacción:', err);
-          // Si el navegador bloquea el autoplay, desbloquea al primer toque en la pantalla
-          const unlockAudio = () => {
-            audioRef.current?.play().catch(() => {});
-            window.removeEventListener('touchstart', unlockAudio);
-            window.removeEventListener('click', unlockAudio);
-          };
-          window.addEventListener('touchstart', unlockAudio, { once: true });
-          window.addEventListener('click', unlockAudio, { once: true });
-        });
-      }
-    };
-
-    try {
-      playAudio();
-    } catch {
-      // Fallo de audio aislado sin afectar la animación visual ni fps
-    }
-  }, [isMounted]);
-
   // Manejador de salto manual inmediato al tocar cualquier punto de la pantalla
   const dismissSplash = useCallback(() => {
-    if (audioRef.current) {
-      try {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      } catch {}
-    }
     setIsFadingOut(true);
     setIsMounted(false);
     try {

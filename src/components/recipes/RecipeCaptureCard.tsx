@@ -33,6 +33,7 @@ import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { getDeviceIdentifier } from '@/lib/device/deviceIdentifier';
 import { Usuario } from '@/types/recipe';
+import { playCrunchFeedback } from '@/lib/utils/audioFeedback';
 
 interface LoadingStage {
   seconds: number;
@@ -455,6 +456,9 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                 capturas_mes_actual: capturas + 1,
               });
             }
+
+            // Reproducir crujido de pan al completar con éxito la generación
+            playCrunchFeedback();
 
             setSuccess(t('capture_success'));
             setCreatedRecetaId(res.recetaId || null);
