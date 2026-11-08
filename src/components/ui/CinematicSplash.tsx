@@ -1,23 +1,26 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * Componente CinematicSplash para Miga.
  * Bienvenida gastronómica estilo Netflix/Disney+:
  * - Capa fija en pantalla completa (`#FAF8F5`).
  * - Logo con zoom suave y destello (shimmer) dorado/ámbar.
- * - Tipografía editorial con animación fluida.
- * - Efecto sonoro de crujido crujiente (`/sounds/miga-crunch.mp3`, vol: 0.55).
+ * - Tipografía editorial con animación fluida y equilibrada.
+ * - Efecto sonoro de crujido crujiente (`/sounds/miga-crunch.mp3`, vol: 0.55, preload='auto').
  * - Se ejecuta solo la primera vez por sesión (`sessionStorage`).
- * - Temporizadores incondicionales: fade-out a los 1200ms, desmontaje definitivo a los 1500ms.
- * - Descarte manual inmediato por pulsación en pantalla (`onClick={dismissSplash}`).
+ * - Presencia visual calibrada a 2.5 segundos:
+ *   * Timer 1 (Fade out): 2100ms (`setIsFadingOut(true)` con `duration-400`).
+ *   * Timer 2 (Desmontaje del DOM): 2500ms (`setIsMounted(false)`).
+ * - Sincronización estricta de audio: pausa y corte inmediato (`currentTime = 0`) en fade-out o tap.
  */
 export function CinematicSplash() {
   const [isMounted, setIsMounted] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // 1. Verificación inicial de sesión: solo se activa si no se ha mostrado en la sesión
+  // 1. Verificación inicial de sesión
   useEffect(() => {
     try {
       if (sessionStorage.getItem('miga_splash_shown')) {
@@ -29,22 +32,28 @@ export function CinematicSplash() {
     }
   }, []);
 
-  // 2. Temporizadores dedicados e incondicionales para fade out y desmontaje
+  // 2. Temporizadores dedicados e incondicionales para fade out (2100ms) y desmontaje (2500ms)
   useEffect(() => {
     if (!isMounted) return;
 
-    // Timer 1: Iniciar fade out a los 1200ms
+    // Timer 1: Iniciar fade out a los 2100ms y cortar audio de inmediato
     const fadeTimer = setTimeout(() => {
       setIsFadingOut(true);
-    }, 1200);
+      if (audioRef.current) {
+        try {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        } catch {}
+      }
+    }, 2100);
 
-    // Timer 2: Desmontar del DOM incondicionalmente a los 1500ms
+    // Timer 2: Desmontar del DOM incondicionalmente a los 2500ms
     const unmountTimer = setTimeout(() => {
       setIsMounted(false);
       try {
         sessionStorage.setItem('miga_splash_shown', 'true');
       } catch {}
-    }, 1500);
+    }, 2500);
 
     return () => {
       clearTimeout(fadeTimer);
@@ -52,13 +61,16 @@ export function CinematicSplash() {
     };
   }, [isMounted]);
 
-  // 3. Audio gastronómico completamente aislado en su propio useEffect
+  // 3. Audio gastronómico con precarga explícita inmediata y corte estricto
   useEffect(() => {
     if (!isMounted) return;
 
     try {
       const audio = new Audio('/sounds/miga-crunch.mp3');
+      audio.preload = 'auto';
       audio.volume = 0.55;
+      audioRef.current = audio;
+
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.catch(() => {
@@ -68,9 +80,25 @@ export function CinematicSplash() {
     } catch {
       // Fallo de audio aislado sin afectar temporizadores
     }
+
+    return () => {
+      if (audioRef.current) {
+        try {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        } catch {}
+      }
+    };
   }, [isMounted]);
 
+  // Manejador de salto manual inmediato al tocar cualquier punto de la pantalla
   const dismissSplash = useCallback(() => {
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      } catch {}
+    }
     setIsFadingOut(true);
     setIsMounted(false);
     try {
@@ -85,7 +113,7 @@ export function CinematicSplash() {
       role="presentation"
       aria-hidden="true"
       onClick={dismissSplash}
-      className={`fixed inset-0 z-[9999] bg-[#FAF8F5] flex flex-col items-center justify-center select-none cursor-pointer transition-opacity duration-300 ease-out ${
+      className={`fixed inset-0 z-[9999] bg-[#FAF8F5] flex flex-col items-center justify-center select-none cursor-pointer transition-opacity duration-400 ease-out ${
         isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
       }`}
     >
@@ -125,15 +153,15 @@ export function CinematicSplash() {
         }
 
         .animate-cinematic-zoom {
-          animation: cinematicZoomIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation: cinematicZoomIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         .animate-shimmer-sweep {
-          animation: shimmerSweep 1s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
+          animation: shimmerSweep 1.3s cubic-bezier(0.4, 0, 0.2, 1) 0.3s forwards;
         }
 
         .animate-editorial-fade {
-          animation: editorialFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s forwards;
+          animation: editorialFadeIn 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
         }
       `}</style>
 
