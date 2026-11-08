@@ -19,7 +19,7 @@ import {
 import { redeemVipCodeAction } from '@/app/actions/subscription';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
-import { isNativeAndroidPlatform } from '@/lib/admob/admobService';
+import { isNativeMobilePlatform } from '@/lib/admob/admobService';
 
 export function BillingHeaderTitle() {
   const t = useLanguageStore((s) => s.t);
@@ -60,10 +60,10 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
   const [vipError, setVipError] = useState<string | null>(null);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [isNativeAndroid, setIsNativeAndroid] = useState(false);
+  const [isNativeMobile, setIsNativeMobile] = useState(false);
 
   useEffect(() => {
-    setIsNativeAndroid(isNativeAndroidPlatform());
+    setIsNativeMobile(isNativeMobilePlatform());
   }, []);
 
   useEffect(() => {
@@ -120,7 +120,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
   };
 
   const handleSubscribe = async () => {
-    if (isNativeAndroid) {
+    if (isNativeMobile) {
       return;
     }
 
@@ -203,7 +203,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
             <CheckCircle2 className="w-5 h-5 text-emerald-700" />
             <span>{t('billing_vip_active_banner')}</span>
           </div>
-        ) : isNativeAndroid ? (
+        ) : isNativeMobile ? (
           <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200/90 text-left space-y-2.5">
             <div className="flex items-center gap-2 text-stone-900 font-semibold text-xs sm:text-sm">
               <Globe className="w-4 h-4 text-brand-primary shrink-0" />
@@ -253,7 +253,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
           </div>
         )}
 
-        {!isNativeAndroid && (
+        {!isNativeMobile && (
           <div className="flex items-center justify-center gap-1.5 text-xs text-stone-500 pt-0.5">
             <Lock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
             <span>{t('billing_cancel_anytime')}</span>

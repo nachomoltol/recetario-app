@@ -42,11 +42,39 @@ export function isNativeAndroidPlatform(): boolean {
 }
 
 /**
+ * Detecta si la aplicación se está ejecutando en una plataforma móvil nativa oficial
+ * (tanto Android como iOS), ya sea a través de Capacitor nativo o WebView oficial.
+ */
+export function isNativeMobilePlatform(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const platform = Capacitor.getPlatform();
+      if (platform === 'android' || platform === 'ios') {
+        return true;
+      }
+    }
+
+    // Fallback complementario por User-Agent / WebView nativa
+    const ua = navigator.userAgent || '';
+    if (/Capacitor|com\.migaapp\.app/i.test(ua) && /Android|iPhone|iPad|iPod/i.test(ua)) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Obtiene el ID del bloque de anuncios de vídeo bonificado (Rewarded Video).
  * Si la variable de entorno indica que estamos en producción (process.env.NODE_ENV === 'production'),
- * utiliza el Ad Unit ID oficial: ca-app-pub-8525131609099761/6495393562.
+ * utiliza el Ad Unit ID oficial para cada plataforma:
+ * - Android: ca-app-pub-8525131609099761/6495393562
+ * - iOS: ca-app-pub-8525131609099761/3729572928
  * En cualquier otro caso (desarrollo o testing), utiliza el ID oficial de pruebas de Google:
- * ca-app-pub-3940256099942544/5224354917.
+ * - Android: ca-app-pub-3940256099942544/5224354917
+ * - iOS: ca-app-pub-3940256099942544/1712485313
  */
 export function getRewardedAdUnitId(): string {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -57,7 +85,7 @@ export function getRewardedAdUnitId(): string {
       return (
         process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID_IOS ||
         process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID ||
-        'ca-app-pub-8525131609099761/6495393562'
+        'ca-app-pub-8525131609099761/3729572928'
       );
     }
 

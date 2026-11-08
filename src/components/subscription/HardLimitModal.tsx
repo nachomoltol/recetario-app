@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
-import { isNativeAndroidPlatform } from '@/lib/admob/admobService';
+import { isNativeMobilePlatform } from '@/lib/admob/admobService';
 
 export type HardLimitType = 'FREE_LIMIT_REACHED' | 'DEVICE_LIMIT_REACHED' | 'PRO_LIMIT_REACHED';
 
@@ -30,10 +30,10 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
   const userProfile = useProfileStore((s) => s.profile);
   const isEn = language === 'en';
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
-  const [isNativeAndroid, setIsNativeAndroid] = useState(false);
+  const [isNativeMobile, setIsNativeMobile] = useState(false);
 
   useEffect(() => {
-    setIsNativeAndroid(isNativeAndroidPlatform());
+    setIsNativeMobile(isNativeMobilePlatform());
   }, []);
 
   if (!isOpen || !type) return null;
@@ -42,7 +42,7 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
   const isDeviceLimit = type === 'DEVICE_LIMIT_REACHED';
 
   const handleUpgrade = async () => {
-    if (isNativeAndroid) {
+    if (isNativeMobile) {
       return;
     }
 
@@ -169,9 +169,9 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
           </div>
         )}
 
-        {/* Botones de acción / Bloque Android */}
+        {/* Botones de acción / Bloque Nativo Móvil */}
         <div className="space-y-3 pt-2">
-          {!isProLimit && isNativeAndroid && (
+          {!isProLimit && isNativeMobile && (
             <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 text-left space-y-2">
               <div className="flex items-center gap-2 text-stone-900 font-semibold text-xs sm:text-sm">
                 <Globe className="w-4 h-4 text-brand-primary shrink-0" />
@@ -197,7 +197,7 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
 
           <div className="flex flex-col sm:flex-row gap-3">
             {!isProLimit ? (
-              isNativeAndroid ? (
+              isNativeMobile ? (
                 <button
                   type="button"
                   onClick={onClose}

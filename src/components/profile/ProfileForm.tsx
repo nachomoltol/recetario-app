@@ -27,7 +27,7 @@ import { useProfileStore } from '@/stores/useProfileStore';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
 import { FeatureInfoTrigger } from '@/components/ui/FeatureInfoTrigger';
-import { isNativeAndroidPlatform } from '@/lib/admob/admobService';
+import { isNativeMobilePlatform } from '@/lib/admob/admobService';
 import {
   OBJETIVOS_CLINICOS,
   PATRONES_ALIMENTARIOS,
@@ -94,10 +94,10 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
   const [showProModal, setShowProModal] = useState(false);
   const [isClinicalDrawerOpen, setIsClinicalDrawerOpen] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
-  const [isNativeAndroid, setIsNativeAndroid] = useState(false);
+  const [isNativeMobile, setIsNativeMobile] = useState(false);
 
   useEffect(() => {
-    setIsNativeAndroid(isNativeAndroidPlatform());
+    setIsNativeMobile(isNativeMobilePlatform());
   }, []);
 
   const resolvedPlan = (
@@ -279,7 +279,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
 
   // Redirección directa al flujo de pago de Stripe / Miga Pro
   const handleUpgradeToPro = async () => {
-    if (isNativeAndroid) {
+    if (isNativeMobile) {
       setShowProModal(true);
       return;
     }
@@ -847,7 +847,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                   <span>{t('profile_unlock_unlimited')}</span>
                 </div>
 
-                {isNativeAndroid ? (
+                {isNativeMobile ? (
                   <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/90 text-left space-y-2 max-w-sm">
                     <div className="flex items-center gap-1.5 text-stone-900 font-semibold text-xs">
                       <Globe className="w-3.5 h-3.5 text-brand-primary shrink-0" />
@@ -929,7 +929,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
             <div className="p-3 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-950 text-xs flex items-center gap-2.5 animate-fade-in">
               <Lock className="w-4 h-4 text-brand-primary shrink-0" />
               <span>
-                {isNativeAndroid
+                {isNativeMobile
                   ? language === 'en'
                     ? 'You have selected Miga Pro features. Activate your subscription on migaapp.com to use these clinical settings.'
                     : 'Has seleccionado funciones exclusivas de Miga Pro. Activa tu suscripción en migaapp.com para aplicar esta configuración.'

@@ -25,7 +25,11 @@ import { Capacitor } from '@capacitor/core';
 import { ingestRecipeAction } from '@/app/actions/recipeIngest';
 import { checkUserBalanceAction } from '@/app/actions/checkUserBalanceAction';
 import { claimAdRewardAction } from '@/app/actions/claimAdRewardAction';
-import { showRewardVideoAdFlow, preloadRewardedAd } from '@/lib/admob/admobService';
+import {
+  showRewardVideoAdFlow,
+  preloadRewardedAd,
+  isNativeMobilePlatform,
+} from '@/lib/admob/admobService';
 import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
 import { AdInterstitialModal } from '@/components/subscription/AdInterstitialModal';
 import { HardLimitModal, HardLimitType } from '@/components/subscription/HardLimitModal';
@@ -199,8 +203,8 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const hasAutoStarted = useRef(false);
 
-  // Estados de solicitud de recarga pendiente desde PC (Exclusivo Android Nativo)
-  const [isNativeAndroid, setIsNativeAndroid] = useState(false);
+  // Estados de solicitud de recarga pendiente desde PC (Plataformas Móviles Nativas: Android e iOS)
+  const [isNativeMobile, setIsNativeMobile] = useState(false);
   const [hasPendingPcRequest, setHasPendingPcRequest] = useState(false);
   const [pendingPcUrl, setPendingPcUrl] = useState<string | null>(null);
   const [isPlayingPcUnlockAd, setIsPlayingPcUnlockAd] = useState(false);
@@ -211,16 +215,10 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    let nativeAndroid = false;
-    try {
-      nativeAndroid =
-        Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
-    } catch {
-      nativeAndroid = false;
-    }
-    setIsNativeAndroid(nativeAndroid);
+    const isMobile = isNativeMobilePlatform();
+    setIsNativeMobile(isMobile);
 
-    if (!nativeAndroid) return;
+    if (!isMobile) return;
 
     const verifyPendingPcRequest = async () => {
       try {
@@ -708,8 +706,8 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         </div>
       </div>
 
-      {/* Tarjeta Banner de Solicitud de Desbloqueo Pendiente desde PC (Exclusivo Android Nativo < 30 min) */}
-      {isNativeAndroid && hasPendingPcRequest && (
+      {/* Tarjeta Banner de Solicitud de Desbloqueo Pendiente desde PC (Móvil Nativo: Android e iOS < 30 min) */}
+      {isNativeMobile && hasPendingPcRequest && (
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-50 via-orange-50/60 to-white border-2 border-brand-primary shadow-sm space-y-3.5 animate-fade-in">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-brand-primary/15 text-brand-primary flex items-center justify-center shrink-0">
@@ -747,8 +745,8 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         </div>
       )}
 
-      {/* Feedback tras reproducir el vídeo para PC en Android */}
-      {isNativeAndroid && pcUnlockFeedback && (
+      {/* Feedback tras reproducir el vídeo para PC en Móvil Nativo */}
+      {isNativeMobile && pcUnlockFeedback && (
         <div
           className={`p-4 rounded-2xl text-xs sm:text-sm font-medium space-y-3 animate-fade-in ${
             pcUnlockFeedback.type === 'success'

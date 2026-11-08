@@ -26,6 +26,7 @@ import { useProfileStore } from '@/stores/useProfileStore';
 import { createClient } from '@/lib/supabase/client';
 import {
   isNativePlatform,
+  isNativeMobilePlatform,
   showRewardVideoAdFlow,
   preloadRewardedAd,
 } from '@/lib/admob/admobService';
@@ -42,7 +43,7 @@ export interface AdInterstitialModalProps {
   isCrossDeviceRequest?: boolean;
 }
 
-type PlatformType = 'android_native' | 'ios' | 'desktop_web';
+type PlatformType = 'android_native' | 'ios_native' | 'ios_web' | 'desktop_web';
 type ViewStateType = 'choice' | 'playing' | 'reward_credited';
 
 export function AdInterstitialModal({
@@ -107,8 +108,10 @@ export function AdInterstitialModal({
 
       if (isNative && capPlatform === 'android') {
         setPlatform('android_native');
+      } else if (isNative && capPlatform === 'ios') {
+        setPlatform('ios_native');
       } else if (isApple) {
-        setPlatform('ios');
+        setPlatform('ios_web');
       } else {
         setPlatform('desktop_web');
       }
@@ -133,6 +136,7 @@ export function AdInterstitialModal({
 
   const userEmailDisplay = userEmail || (isEn ? 'your account' : 'tu cuenta');
   const isNativeAndroid = platform === 'android_native';
+  const isNativeMobile = platform === 'android_native' || platform === 'ios_native';
 
   // Precarga automática del anuncio bonificado al abrir el modal en Android nativo
   useEffect(() => {
@@ -495,7 +499,7 @@ export function AdInterstitialModal({
                 </div>
               </div>
 
-              {!isNativeAndroid ? (
+              {!isNativeMobile ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -509,7 +513,7 @@ export function AdInterstitialModal({
                   <span>{isEn ? 'Get PRO & extract instantly' : 'Hazte PRO y extrae al instante'}</span>
                 </button>
               ) : (
-                /* Bloque informativo de gestión externa (Cumplimiento de Política de Pagos de Google Play) */
+                /* Bloque informativo de soporte (Cumplimiento de Políticas de Google Play y Apple App Store Guideline 3.1.1) */
                 <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-stone-700 space-y-1 text-left animate-fade-in">
                   <div className="flex items-center gap-1.5 font-semibold text-stone-900 text-xs">
                     <Globe className="w-3.5 h-3.5 text-brand-primary shrink-0" />
@@ -517,8 +521,8 @@ export function AdInterstitialModal({
                   </div>
                   <p className="text-stone-600 leading-tight text-xs">
                     {isEn
-                      ? 'Activa PRO desde nuestra web migaapp.com iniciando con:'
-                      : 'Activa PRO desde nuestra web migaapp.com iniciando con:'}
+                      ? 'Gestiona tu suscripción en migaapp.com iniciando con:'
+                      : 'Gestiona tu suscripción en migaapp.com iniciando con:'}
                   </p>
                   <div className="font-mono text-xs font-semibold text-stone-900 bg-white px-2 py-0.5 rounded border border-stone-200 w-fit break-all shadow-2xs">
                     {userEmailDisplay}
@@ -539,11 +543,11 @@ export function AdInterstitialModal({
                       {isEn ? 'Free Option' : 'Opción Gratuita'}
                     </span>
                     <span className="text-[10px] text-stone-500 font-medium">
-                      {isNativeAndroid
+                      {isNativeMobile
                         ? (isEn ? 'Sponsored short ad' : 'Vídeo patrocinado')
-                        : platform === 'ios'
-                        ? (isEn ? 'iOS in progress' : 'Próximamente en iOS')
-                        : (isEn ? 'Via Android App' : 'Vía App Android')}
+                        : platform === 'ios_web'
+                        ? (isEn ? 'iOS Web' : 'iOS Web')
+                        : (isEn ? 'Via Mobile App' : 'Vía App Móvil')}
                     </span>
                   </div>
                 </div>
@@ -566,8 +570,8 @@ export function AdInterstitialModal({
                 </span>
               </div>
 
-              {/* Caso 1: Android Nativo (Botón sólido para ver anuncio de AdMob) */}
-              {isNativeAndroid && (
+              {/* Caso 1: Android Nativo o iOS Nativo (Botón sólido para ver anuncio de AdMob) */}
+              {isNativeMobile && (
                 <div className="space-y-1.5 pt-0.5">
                   <p className="text-xs text-stone-600 leading-tight">
                     {isEn
@@ -589,8 +593,8 @@ export function AdInterstitialModal({
                 </div>
               )}
 
-              {/* Caso 2: PC / Navegador Web de Escritorio (!isNativeAndroid) */}
-              {!isNativeAndroid && platform === 'desktop_web' && (
+              {/* Caso 2: PC / Navegador Web de Escritorio (!isNativeMobile) */}
+              {!isNativeMobile && platform === 'desktop_web' && (
                 <div className="space-y-3 pt-0.5 text-left">
                   {/* Paso Previo Interactivo: Solicitud de Desbloqueo en Móvil */}
                   {!isUnlockRequested ? (
@@ -689,8 +693,8 @@ export function AdInterstitialModal({
                 </div>
               )}
 
-              {/* Caso 3: iPhone / iOS (Safari o PWA) */}
-              {platform === 'ios' && (
+              {/* Caso 3: iPhone / iOS Web (Safari o PWA) */}
+              {!isNativeMobile && platform === 'ios_web' && (
                 <div className="space-y-3 pt-0.5">
                   <div className="p-3.5 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-700 leading-relaxed space-y-1 text-left">
                     <p className="font-medium text-stone-900">
