@@ -42,7 +42,15 @@ export interface ConsolidatedShoppingItem {
 export interface CanonicalIngredient {
   key: string;
   displayName: string;
+  hasCommercialForm?: boolean;
 }
+
+/**
+ * Formatos de producto comercial procesado o en conserva que DEBEN preservarse en la lista de compra
+ * para evitar convertirlos erróneamente a piezas frescas (ej: "Tomate triturado" vs "Tomate").
+ */
+export const COMMERCIAL_PRESERVED_FORMATS_REGEX =
+  /\b(triturad[oa]s?|en\s+conserva|de\s+bote|en\s+polvo|cocid[oa]s?|concentrad[oa]s?|frit[oa]s?|sec[oa]s?|deshidratad[oa]s?|en\s+vinagre|en\s+alm[ií]bar|ahumad[oa]s?)\b/i;
 
 /**
  * Lematizador de palabras individuales en español (singularización).
@@ -140,7 +148,7 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   // Fase A - Sanitización de Entrada:
   // Erradicar cantidades y unidades incrustadas en el nombre del ingrediente
   cleanedOriginal = cleanedOriginal
-    .replace(/^(\d+[\d.,/]*\s*(g|gr|grs|gramo|gramos|kg|kgs|kilo|kilos|ml|mls|l|lt|lts|litro|litros|cda|cdas|cdta|cdtas|cucharada|cucharadas|cucharadita|cucharaditas|diente|dientes|unidad|unidades|ud|uds|pieza|piezas|pizca|pizcas|punado|puñado|punados|puñados)?\s*(de\s+)?)/i, '')
+    .replace(/^(\d+[\d.,/]*\s*(g|gr|grs|gramo|gramos|kg|kgs|kilo|kilos|ml|mls|l|lt|lts|litro|litros|cda|cdas|cdta|cdtas|cucharada|cucharadas|cucharadita|cucharaditas|diente|dientes|unidad|unidades|ud|uds|pieza|piezas|bote|botes|lata|latas|pizca|pizcas|punado|puñado|punados|puñados)?\s*(de\s+)?)/i, '')
     .replace(/^(un|una|unos|unas)\s+(de\s+)?/i, '')
     .trim();
 
@@ -157,12 +165,13 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     .replace(/\b(al gusto|opcional|para decorar|para servir|para acompanar)\b/gi, '')
     .trim();
 
-  // Fase B - Eliminación de modificadores de estado, temperatura y corte para unificación de identidad
+  // Fase B - Eliminación de modificadores descartables (corte, forma física, temperatura)
+  // NOTA: Se preservan explícitamente formatos de producto comercial (triturado, en conserva, de bote, en polvo, cocido, etc.)
   cleanedOriginal = cleanedOriginal
     .replace(/\b(sin|con)\s+(sal|azucar|gluten|lactosa)\b/gi, '')
     .replace(/\b(en\s+dados|en\s+cubos|en\s+trozos|en\s+tiras|en\s+rodajas|en\s+pomada|punto\s+pomada|pomada|a\s+temperatura\s+ambiente|fundid[oa]s?|derretid[oa]s?|ablandad[oa]s?)\b/gi, '')
-    .replace(/\b(fresc[oa]s?|molid[oa]s?|en\s+polvo|en\s+conserva|de\s+bote|cocid[oa]s?|de\s+abeja)\b/gi, '')
-    .replace(/\b(picad[oa]s?|trocead[oa]s?|cortad[oa]s?|rallad[oa]s?|pelad[oa]s?|triturad[oa]s?|machacad[oa]s?|laminad[oa]s?|desmenuzad[oa]s?)\b/gi, '')
+    .replace(/\b(fresc[oa]s?|de\s+abeja)\b/gi, '')
+    .replace(/\b(picad[oa]s?|trocead[oa]s?|cortad[oa]s?|rallad[oa]s?|pelad[oa]s?|machacad[oa]s?|laminad[oa]s?|desmenuzad[oa]s?)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -176,11 +185,11 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   // Limpiar caracteres especiales de puntuación
   norm = norm.replace(/[.,;:"'()\[\]{}*!¡?¿/\\-]/g, ' ').replace(/\s+/g, ' ').trim();
 
-  // Erradicar calibres o clases secundarias en huevos y básicos
+  // Erradicar calibres o clases secundarias en huevos y básicos (sin descartar formatos comerciales)
   norm = norm
     .replace(/\b(tamano|talla|calibre|clase)\s+(xl|l|m|s)\b/gi, '')
     .replace(/\b(xl|l|m|s)\b/gi, '')
-    .replace(/\b(fresc[oa]s?|grandes?|medianos?|pequenos?|camperos?|ecologicos?|blancos?|morenos?|molid[oa]s?|en\s+polvo|en\s+conserva|de\s+bote|cocid[oa]s?|de\s+abeja|picad[oa]s?|trocead[oa]s?|cortad[oa]s?|rallad[oa]s?|pelad[oa]s?|triturad[oa]s?|machacad[oa]s?|laminad[oa]s?|desmenuzad[oa]s?)\b/gi, '')
+    .replace(/\b(fresc[oa]s?|grandes?|medianos?|pequenos?|camperos?|ecologicos?|blancos?|morenos?|de\s+abeja|picad[oa]s?|trocead[oa]s?|cortad[oa]s?|rallad[oa]s?|pelad[oa]s?|machacad[oa]s?|laminad[oa]s?|desmenuzad[oa]s?)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -291,10 +300,25 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'cominos': { key: 'comino', displayName: 'Comino' },
     'miel': { key: 'miel', displayName: 'Miel' },
     'mieles': { key: 'miel', displayName: 'Miel' },
+
+    // Derivados y conservas de tomate
+    'tomate triturado': { key: 'tomate triturado', displayName: 'Tomate triturado' },
+    'tomates triturados': { key: 'tomate triturado', displayName: 'Tomate triturado' },
+    'tomate frito': { key: 'tomate frito', displayName: 'Tomate frito' },
+    'tomate concentrado': { key: 'tomate concentrado', displayName: 'Tomate concentrado' },
+    'pasta de tomate': { key: 'tomate concentrado', displayName: 'Tomate concentrado' },
   };
 
+  const isCommercial =
+    COMMERCIAL_PRESERVED_FORMATS_REGEX.test(norm) ||
+    COMMERCIAL_PRESERVED_FORMATS_REGEX.test(cleanedOriginal);
+
   if (SYNONYMS[norm]) {
-    return SYNONYMS[norm];
+    const syn = SYNONYMS[norm];
+    return {
+      ...syn,
+      hasCommercialForm: isCommercial || COMMERCIAL_PRESERVED_FORMATS_REGEX.test(syn.key),
+    };
   }
 
   const lemmaKey = lemmatizeSpanishWord(norm);
@@ -309,6 +333,7 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   return {
     key: lemmaKey,
     displayName,
+    hasCommercialForm: isCommercial || COMMERCIAL_PRESERVED_FORMATS_REGEX.test(lemmaKey),
   };
 }
 
@@ -469,19 +494,40 @@ export function consolidateShoppingItems(
       Number(item.gramos_escalados !== undefined ? item.gramos_escalados : item.gramos_calculados) || 0;
 
     // 1. Especias y condimentos: marcar como despensa
-    if (isPantrySpice(canon.key) || /^(al\s+gusto|a\s+gusto|to\s+taste|c\/n|c\.n\.|cn)$/i.test(uRaw)) {
+    // Si aporta una cantidad de peso/volumen medible con formato comercial (ej: 50 g Ajo en polvo),
+    // se preserva la cantidad real y no se anula a despensa vacía
+    const isExplicitlyCommercialMeasure =
+      Boolean(canon.hasCommercialForm) &&
+      cant > 0 &&
+      (canonicalUnitKey === 'g' ||
+        canonicalUnitKey === 'ml' ||
+        canonicalUnitKey === 'bote' ||
+        canonicalUnitKey === 'lata' ||
+        canonicalUnitKey === 'paquete');
+
+    if (
+      !isExplicitlyCommercialMeasure &&
+      (isPantrySpice(canon.key) || /^(al\s+gusto|a\s+gusto|to\s+taste|c\/n|c\.n\.|cn)$/i.test(uRaw))
+    ) {
       canonicalUnitKey = 'despensa';
       cant = 0;
       gramos = 0;
     }
     // 2. Aceite de oliva
     else if (canon.key === 'aceite de oliva virgen extra') {
-      canonicalUnitKey = 'botella';
-      cant = 1;
-      gramos = 0;
+      const isMeasurable =
+        cant > 0 &&
+        !/^(al\s+gusto|a\s+gusto|to\s+taste|c\/n|c\.n\.|cn|despensa)$/i.test(uRaw) &&
+        canonicalUnitKey !== 'despensa';
+
+      if (!isMeasurable) {
+        canonicalUnitKey = 'botella';
+        cant = 1;
+        gramos = 0;
+      }
     }
-    // 3. Ajos
-    else if (canon.key === 'diente de ajo') {
+    // 3. Ajos frescos
+    else if (canon.key === 'diente de ajo' && !canon.hasCommercialForm) {
       if (canonicalUnitKey === 'unidad' || canonicalUnitKey === 'diente') {
         canonicalUnitKey = 'diente';
       } else if (canonicalUnitKey === 'g') {
@@ -493,8 +539,8 @@ export function consolidateShoppingItems(
     else if (canon.key === 'huevo') {
       canonicalUnitKey = 'unidad';
     }
-    // 5. Cítricos
-    else if (canon.key === 'limon' || canon.key === 'lima') {
+    // 5. Cítricos frescos
+    else if ((canon.key === 'limon' || canon.key === 'lima') && !canon.hasCommercialForm) {
       if (canonicalUnitKey === 'ml') {
         cant = cant / 35;
         canonicalUnitKey = 'unidad';
@@ -514,10 +560,10 @@ export function consolidateShoppingItems(
         gramos = cant;
       }
     }
-    // 7. Puente de conversión peso/pieza
+    // 7. Puente de conversión peso/pieza (restringido exclusivamente a alimentos frescos sin formato comercial procesado)
     else {
       const pieceWeightG = FRESH_PIECE_WEIGHT_G[canon.key];
-      if (pieceWeightG) {
+      if (pieceWeightG && !canon.hasCommercialForm) {
         if (PREFER_GRAMS_INGREDIENTS.has(canon.key)) {
           if (canonicalUnitKey === 'unidad') {
             cant = cant * pieceWeightG;
@@ -550,6 +596,10 @@ export function consolidateShoppingItems(
       unidad: item.unidad || '',
     };
 
+    const despensaNote = 'Revisar despensa';
+    const isOliveOilMeasurable =
+      canon.key === 'aceite de oliva virgen extra' && canonicalUnitKey !== 'botella';
+
     if (consolidated.has(key)) {
       const existing = consolidated.get(key)!;
       existing.rawCantidad += cant;
@@ -563,11 +613,19 @@ export function consolidateShoppingItems(
       if (item.notas && !existing.notas.includes(item.notas)) {
         existing.notas.push(item.notas);
       }
+      if (isOliveOilMeasurable && !existing.notas.includes(despensaNote)) {
+        existing.notas.push(despensaNote);
+      }
       if (item.explicacion_culinaria && !existing.explicaciones.includes(item.explicacion_culinaria)) {
         existing.explicaciones.push(item.explicacion_culinaria);
       }
       existing.desglose.push(breakdownItem);
     } else {
+      const initialNotas = item.notas ? [item.notas] : [];
+      if (isOliveOilMeasurable && !initialNotas.includes(despensaNote)) {
+        initialNotas.push(despensaNote);
+      }
+
       consolidated.set(key, {
         key,
         sourceIds: item.id ? [item.id] : [],
@@ -577,7 +635,7 @@ export function consolidateShoppingItems(
         unidad: canonicalUnitKey,
         pasillo_supermercado: pasillo,
         recetasNombres: [recetaNombre],
-        notas: item.notas ? [item.notas] : [],
+        notas: initialNotas,
         desglose: [breakdownItem],
         explicaciones: item.explicacion_culinaria ? [item.explicacion_culinaria] : [],
       });
@@ -587,9 +645,9 @@ export function consolidateShoppingItems(
   // =========================================================================
   // Pase de Prevalencia de Materia (Absorción de Despensa):
   // Si para un mismo canon.key existen entradas con magnitud física real (g, ml, unidad...)
-  // Y además una entrada '___despensa', absorbemos la despensa dentro de la magnitud física
+  // Y además una entrada '___despensa' o '___botella', absorbemos la despensa dentro de la magnitud física
   // principal (transfiriendo sourceIds, recetas, desglose, notas) y eliminamos la de despensa.
-  // Solo si un ingrediente ÚNICAMENTE tiene apariciones como 'despensa' se mantiene.
+  // Solo si un ingrediente ÚNICAMENTE tiene apariciones como 'despensa' o 'botella' se mantiene.
   // =========================================================================
   const groupsByCanonKey = new Map<string, ConsolidatedAcc[]>();
   for (const acc of consolidated.values()) {
@@ -601,14 +659,16 @@ export function consolidateShoppingItems(
   }
 
   for (const [, group] of groupsByCanonKey.entries()) {
-    const despensaEntry = group.find((item) => item.unidad === 'despensa');
-    const physicalEntries = group.filter((item) => item.unidad !== 'despensa');
+    const despensaEntry = group.find((item) => item.unidad === 'despensa' || item.unidad === 'botella');
+    const physicalEntries = group.filter((item) => item.unidad !== 'despensa' && item.unidad !== 'botella');
 
     if (despensaEntry && physicalEntries.length > 0) {
-      // Ordenar para elegir la magnitud principal (priorizar gramos, luego unidad, luego mayor cantidad)
+      // Ordenar para elegir la magnitud principal (priorizar gramos, luego ml, luego unidad, luego mayor cantidad)
       physicalEntries.sort((a, b) => {
         if (a.unidad === 'g' && b.unidad !== 'g') return -1;
         if (b.unidad === 'g' && a.unidad !== 'g') return 1;
+        if (a.unidad === 'ml' && b.unidad !== 'ml') return -1;
+        if (b.unidad === 'ml' && a.unidad !== 'ml') return 1;
         if (a.unidad === 'unidad' && b.unidad !== 'unidad') return -1;
         if (b.unidad === 'unidad' && a.unidad !== 'unidad') return 1;
         return (b.rawGramos || b.rawCantidad) - (a.rawGramos || a.rawCantidad);
