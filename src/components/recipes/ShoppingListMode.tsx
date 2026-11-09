@@ -356,7 +356,7 @@ export function ShoppingListMode({
                         <div
                           key={item.key}
                           onClick={() => handleToggleItem(item)}
-                          className={`min-h-[54px] p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer select-none flex items-center gap-3.5 active:scale-[0.99] ${
+                          className={`min-h-[54px] p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer select-none flex items-start sm:items-center gap-3.5 active:scale-[0.99] ${
                             isChecked
                               ? 'bg-[#f7f5f0] border-[#e2dbce] opacity-75'
                               : 'bg-white hover:bg-[#faf7f2] border-[#e7dfd5] shadow-2xs'
@@ -364,7 +364,7 @@ export function ShoppingListMode({
                         >
                           {/* Casilla táctil grande */}
                           <div
-                            className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-colors ${
+                            className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-colors mt-0.5 sm:mt-0 ${
                               isChecked
                                 ? 'bg-[#2e6b3e] border-[#2e6b3e] text-white shadow-2xs'
                                 : 'border-[#cbbfae] bg-[#fbf9f5]'
@@ -374,10 +374,10 @@ export function ShoppingListMode({
                           </div>
 
                           {/* Detalle del ingrediente consolidado */}
-                          <div className="flex-1 min-w-0 flex items-baseline justify-between gap-3">
-                            <div className="min-w-0 space-y-0.5">
+                          <div className="flex-1 min-w-0 flex items-start sm:items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1 space-y-0.5">
                               <span
-                                className={`text-base font-semibold block truncate ${
+                                className={`text-sm sm:text-base font-semibold block break-words whitespace-normal leading-snug ${
                                   isChecked
                                     ? 'line-through text-stone-400 font-normal'
                                     : 'text-stone-900'
@@ -405,14 +405,14 @@ export function ShoppingListMode({
                               )}
 
                               {item.explicaciones && item.explicaciones.length > 0 && !isChecked && (
-                                <span className="text-[10px] text-brand-primary block truncate font-medium">
+                                <span className="text-[10px] text-brand-primary block break-words whitespace-normal font-medium leading-tight">
                                   ✦ <FormattedText text={item.explicaciones.join(' · ')} />
                                 </span>
                               )}
 
                               {item.notas && item.notas.length > 0 && (
                                 <span
-                                  className={`text-xs block truncate ${
+                                  className={`text-xs block break-words whitespace-normal leading-tight ${
                                     isChecked ? 'line-through text-stone-300' : 'text-stone-500 italic'
                                   }`}
                                 >
@@ -422,7 +422,7 @@ export function ShoppingListMode({
                             </div>
 
                             <span
-                              className={`text-sm sm:text-base font-bold shrink-0 tabular-nums ${
+                              className={`text-sm sm:text-base font-bold shrink-0 text-right tabular-nums self-start sm:self-center pt-0.5 sm:pt-0 ${
                                 isChecked ? 'line-through text-stone-400' : 'text-brand-primary'
                               }`}
                             >
