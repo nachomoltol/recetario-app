@@ -136,6 +136,7 @@ interface RecipeInteractiveSectionsProps {
   categoriasGastronomicas?: string[] | null;
   onServingsChange?: (servings: number) => void;
   onLevelChange?: (level: NivelCulinarioUI | null) => void;
+  onStepsUpdated?: (newSteps: Paso[]) => void;
 }
 
 export function RecipeInteractiveSections({
@@ -153,6 +154,7 @@ export function RecipeInteractiveSections({
   categoriasGastronomicas,
   onServingsChange,
   onLevelChange,
+  onStepsUpdated,
 }: RecipeInteractiveSectionsProps) {
   const t = useLanguageStore((s) => s.t);
   const searchParams = useSearchParams();
@@ -327,8 +329,22 @@ export function RecipeInteractiveSections({
     .toLowerCase();
   const isPro = resolvedPlan === 'pro' || Boolean(userProfile?.is_pro);
 
-  // El nivel activo inicia siempre en 'intermedio' (la versión canónica original)
-  const [activeLevel, setActiveLevel] = useState<CulinaryLevel>('intermedio');
+  // El nivel activo lee prioritariamente de localStorage para esta receta o del perfil del usuario
+  const [activeLevel, setActiveLevel] = useState<CulinaryLevel>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`miga_recipe_level_${recetaId}`);
+        if (stored) {
+          const normStored = normalizeNivelCulinario(stored);
+          if (normStored) return normStored;
+        }
+      } catch (e) {
+        // Ignorar fallos de acceso a localStorage en modo privado/incógnito
+      }
+    }
+    const profileLevel = userProfile?.nivel_culinario || profileFromStore?.nivel_culinario;
+    return profileLevel ? normalizeNivelCulinario(profileLevel) : 'intermedio';
+  });
 
   const effectiveActiveLevel: CulinaryLevel = isPro ? activeLevel : 'intermedio';
 
@@ -347,6 +363,15 @@ export function RecipeInteractiveSections({
     if (!isPro && targetLevel !== 'intermedio') {
       setShowProLevelModal(true);
       return;
+    }
+
+    // Persistir elección en localStorage para que se mantenga al recargar o volver
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`miga_recipe_level_${recetaId}`, targetLevel);
+      } catch (e) {
+        // Ignorar
+      }
     }
 
     if (targetLevel === 'intermedio') {
@@ -381,24 +406,25 @@ export function RecipeInteractiveSections({
       });
 
       if (res.success && Array.isArray(res.pasos)) {
-        setCurrentSteps((prevSteps) =>
-          res.pasos!.map((updated, idx) => {
-            const prev =
-              prevSteps.find((p) => p.id && updated.id && p.id === updated.id) ||
-              prevSteps[idx];
-            return {
-              ...prev,
-              ...updated,
-              orden: idx + 1,
-              instruccion_principiante:
-                updated.instruccion_principiante || prev?.instruccion_principiante || null,
-              instruccion_avanzada:
-                updated.instruccion_avanzada || prev?.instruccion_avanzada || null,
-              descriptor_sensorial:
-                updated.descriptor_sensorial || prev?.descriptor_sensorial || null,
-            };
-          })
-        );
+        const nextSteps = res.pasos!.map((updated, idx) => {
+          const prev =
+            currentSteps.find((p) => p.id && updated.id && p.id === updated.id) ||
+            currentSteps[idx];
+          return {
+            ...prev,
+            ...updated,
+            orden: idx + 1,
+            instruccion_principiante:
+              updated.instruccion_principiante || prev?.instruccion_principiante || null,
+            instruccion_avanzada:
+              updated.instruccion_avanzada || prev?.instruccion_avanzada || null,
+            descriptor_sensorial:
+              updated.descriptor_sensorial || prev?.descriptor_sensorial || null,
+          };
+        });
+
+        setCurrentSteps(nextSteps);
+        onStepsUpdated?.(nextSteps);
       }
     } catch (err) {
       console.error('Error generando nivel culinario on-demand:', err);

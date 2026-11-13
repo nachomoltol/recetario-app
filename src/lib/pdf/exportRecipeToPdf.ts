@@ -261,7 +261,21 @@ export async function exportRecipeToPdf(params: ExportRecipePdfParams): Promise<
   );
   currentY += 3;
 
-  const ingredientsBody = scaledIngredientes.map((ing) => {
+  // Detectar si existen subsecciones funcionales múltiples (ej. "Masa", "Salsa", "Relleno")
+  const uniqueSections: string[] = [];
+  const seenSections = new Set<string>();
+  for (const ing of scaledIngredientes) {
+    const sec = (ing.seccion || '').trim();
+    if (sec && !seenSections.has(sec.toLowerCase())) {
+      seenSections.add(sec.toLowerCase());
+      uniqueSections.push(sec);
+    }
+  }
+
+  const hasMultipleSections = uniqueSections.length > 1;
+  const ingredientsBody: any[] = [];
+
+  const mapIngredientToRow = (ing: any) => {
     const cleanName = sanitizeRecipePdfText(
       cleanIngredientName(ing.nombre_limpio || ing.nombre_crudo || '')
     );
@@ -274,7 +288,62 @@ export async function exportRecipeToPdf(params: ExportRecipePdfParams): Promise<
     const notesStr = sanitizeRecipePdfText(ing.notas || '');
 
     return ['[   ]', cleanName || '-', qtyStr, notesStr || '-'];
-  });
+  };
+
+  if (hasMultipleSections) {
+    for (const secName of uniqueSections) {
+      const sectionIngs = scaledIngredientes.filter(
+        (i) => (i.seccion || '').trim().toLowerCase() === secName.toLowerCase()
+      );
+      if (sectionIngs.length === 0) continue;
+
+      // Fila cabecera de subsección con estilo editorial Miga
+      ingredientsBody.push([
+        {
+          content: sanitizeRecipePdfText(secName).toUpperCase(),
+          colSpan: 4,
+          styles: {
+            fillColor: [244, 239, 230], // #f4efe6 (beige sutil)
+            textColor: COLOR_BRAND,
+            fontStyle: 'bold',
+            fontSize: 8.5,
+            cellPadding: 2.2,
+            halign: 'left',
+          },
+        },
+      ]);
+
+      for (const ing of sectionIngs) {
+        ingredientsBody.push(mapIngredientToRow(ing));
+      }
+    }
+
+    // Si existen ingredientes sin sección asignada en una receta mixta
+    const unassignedIngs = scaledIngredientes.filter((i) => !(i.seccion || '').trim());
+    if (unassignedIngs.length > 0) {
+      ingredientsBody.push([
+        {
+          content: isEn ? 'GENERAL' : 'PRINCIPAL',
+          colSpan: 4,
+          styles: {
+            fillColor: [244, 239, 230],
+            textColor: COLOR_BRAND,
+            fontStyle: 'bold',
+            fontSize: 8.5,
+            cellPadding: 2.2,
+            halign: 'left',
+          },
+        },
+      ]);
+      for (const ing of unassignedIngs) {
+        ingredientsBody.push(mapIngredientToRow(ing));
+      }
+    }
+  } else {
+    for (const ing of scaledIngredientes) {
+      ingredientsBody.push(mapIngredientToRow(ing));
+    }
+  }
 
   if (ingredientsBody.length > 0) {
     runAutoTable(doc, {

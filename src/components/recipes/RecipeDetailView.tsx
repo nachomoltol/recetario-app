@@ -1202,6 +1202,7 @@ export function RecipeDetailView({
           userProfile={userProfile}
           onServingsChange={setCurrentServings}
           onLevelChange={setCurrentCulinaryLevel}
+          onStepsUpdated={setCurrentPasos}
         />
       )}
 
