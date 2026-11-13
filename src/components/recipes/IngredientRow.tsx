@@ -22,6 +22,7 @@ import { RecetaIngrediente } from '@/types/recipe';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { formatCulinaryAmount, pluralizeCulinaryNoun, cleanIngredientName } from '@/lib/nutrition/formatQuantity';
+import { isCanonicalSpiceHerbSaltOrPepper } from '@/lib/gemini/schema';
 import { useProfileStore } from '@/stores/useProfileStore';
 
 interface IngredientRowProps {
@@ -181,12 +182,18 @@ export function IngredientRow({
         : appliedOption.cantidad_sugerida)
     : formatCulinaryAmount(baseCantidadNum, ingrediente?.unidad, language, nombreMostrado);
 
-  // Si ing.unidad === 'al gusto' (o 'to taste'), renderizar únicamente "al gusto" sin anteponer ningún número (1)
+  // Si ing.unidad === 'al gusto' (o 'to taste'), o si es una especia/hierba/sal/pimienta con gramajes obsoletos,
+  // renderizar únicamente "al gusto" sin anteponer ningún número (1) ni unidad en gramos.
   const effectiveUnitLower = (appliedOption?.unidad_ajustada || ingrediente?.unidad || '').toLowerCase().trim();
+  const isSpiceObsoleteAmount =
+    (baseCantidadNum <= 15 || /^(g|gr|grs|mg|cucharadita|cdita|tsp)$/i.test(effectiveUnitLower)) &&
+    isCanonicalSpiceHerbSaltOrPepper(nombreMostrado, ingrediente?.nombre_crudo);
+
   const isToTasteUnit =
     effectiveUnitLower === 'al gusto' ||
     effectiveUnitLower === 'a gusto' ||
     effectiveUnitLower === 'to taste' ||
+    isSpiceObsoleteAmount ||
     /^(1\s+)?(al\s+gusto|a\s+gusto|to\s+taste)$/i.test(String(rawCantidadMostrada || '').trim());
   const cantidadMostrada = isToTasteUnit
     ? (language === 'en' ? 'to taste' : 'al gusto')

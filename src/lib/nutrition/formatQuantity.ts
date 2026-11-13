@@ -1,4 +1,5 @@
 import { formatIngredientUnit } from '@/lib/culinary/aisles';
+import { isCanonicalSpiceHerbSaltOrPepper } from '@/lib/gemini/schema';
 
 /**
  * LEY UNIVERSAL DE MAGNITUD DE UNIDADES CULINARIAS:
@@ -186,6 +187,18 @@ export function formatCulinaryAmount(
     u === 'cn'
   ) {
     return lang === 'en' ? 'to taste' : 'al gusto';
+  }
+
+  // 0.1 GUARDA DEFENSIVA: ESPECIAS, HIERBAS Y CONDIMENTOS CON GRAMAJES OBSOLETOS (<= 15 g / ml / cucharadita)
+  // Fuerza a nivel visual "al gusto" / "to taste" ignorando valores numéricos heredados de recetas antiguas.
+  const isSmallMeasureUnit =
+    /^(g|gr|grs|gramo|gramos|gram|grams|mg|cucharadita|cucharaditas|cdita|cditas|tsp|teaspoon|teaspoons|cucharada|cucharadas|cda|cdas|tbsp|tablespoon|tablespoons)$/i.test(
+      u
+    );
+  if (isSmallMeasureUnit && amount <= 15 && ingredientName) {
+    if (isCanonicalSpiceHerbSaltOrPepper(ingredientName, ingredientName)) {
+      return lang === 'en' ? 'to taste' : 'al gusto';
+    }
   }
 
   // BARRERA: Pizcas
