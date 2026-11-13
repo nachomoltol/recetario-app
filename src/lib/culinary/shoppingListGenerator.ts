@@ -4,6 +4,7 @@ import {
   consolidateShoppingItems,
   ScaledShoppingInputItem,
   ConsolidatedShoppingItem,
+  ConsolidatedShoppingBreakdown,
   CanonicalIngredient,
   lemmatizeSpanishWord,
   FRESH_PIECE_WEIGHT_G,
@@ -24,7 +25,7 @@ export {
   roundShoppingListAmount,
   formatShoppingUnitPlural,
 };
-export type { ScaledShoppingInputItem, ConsolidatedShoppingItem, CanonicalIngredient };
+export type { ScaledShoppingInputItem, ConsolidatedShoppingItem, ConsolidatedShoppingBreakdown, CanonicalIngredient };
 
 export interface PlanSlotForShopping {
   fecha: string;
@@ -45,6 +46,8 @@ export interface ShoppingListItem {
   gramosTotal: number;
   pasillo_supermercado: string;
   recetasNombres: string[];
+  notas?: string[];
+  desglose?: ConsolidatedShoppingBreakdown[];
 }
 
 /**
@@ -108,5 +111,7 @@ export function generateShoppingListFromPlans(
     gramosTotal: item.gramosTotal,
     pasillo_supermercado: item.pasillo_supermercado,
     recetasNombres: item.recetasNombres,
+    notas: item.notas,
+    desglose: item.desglose,
   }));
 }

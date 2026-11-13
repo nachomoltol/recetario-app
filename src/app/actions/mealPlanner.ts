@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { PlanComida, Receta, RecetaIngrediente } from '@/types/recipe';
 import { classifyIngredientAisle } from '@/lib/culinary/aisles';
-import { generateShoppingListFromPlans } from '@/lib/culinary/shoppingListGenerator';
+import { generateShoppingListFromPlans, ConsolidatedShoppingBreakdown } from '@/lib/culinary/shoppingListGenerator';
 import { formatLocalDate, parseLocalDate, getMondayOfDate } from '@/lib/dateUtils';
 
 export type MealSlot = 'desayuno' | 'almuerzo' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre';
@@ -26,6 +26,8 @@ export interface UnifiedShoppingItem {
   gramosTotal: number;
   pasillo_supermercado: string;
   recetasNombres: string[];
+  notas?: string[];
+  desglose?: ConsolidatedShoppingBreakdown[];
 }
 
 export async function getWeeklyPlanAction(

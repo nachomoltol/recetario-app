@@ -1964,7 +1964,7 @@ export function MealPlannerView({
                   {groupedShoppingAisles.map((group) => {
                     const groupTotal = group.items.length;
                     const groupCompleted = group.items.filter((i) =>
-                      checkedShoppingItems.includes(i.nombre)
+                      checkedShoppingItems.includes(`${i.nombre}___${i.unidad}`)
                     ).length;
                     const isGroupCompleted = groupTotal > 0 && groupCompleted === groupTotal;
 
@@ -1992,16 +1992,17 @@ export function MealPlannerView({
                         {/* Lista de ítems en este pasillo */}
                         <div className="space-y-1.5">
                           {group.items.map((item, index) => {
-                            const isChecked = checkedShoppingItems.includes(item.nombre);
+                            const itemKey = `${item.nombre}___${item.unidad}`;
+                            const isChecked = checkedShoppingItems.includes(itemKey);
 
                             return (
                               <div
-                                key={`${item.nombre}___${item.unidad || 'ud'}___${index}`}
+                                key={`${itemKey}___${index}`}
                                 onClick={() => {
                                   setCheckedShoppingItems((prev) =>
-                                    prev.includes(item.nombre)
-                                      ? prev.filter((n) => n !== item.nombre)
-                                      : [...prev, item.nombre]
+                                    prev.includes(itemKey)
+                                      ? prev.filter((k) => k !== itemKey)
+                                      : [...prev, itemKey]
                                   );
                                 }}
                                 className={`min-h-[48px] p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
@@ -2032,6 +2033,11 @@ export function MealPlannerView({
                                     {item.recetasNombres && item.recetasNombres.length > 0 && (
                                       <span className="text-xs text-stone-500 block break-words mt-0.5 leading-tight">
                                         {t('planner_dishes')}: {item.recetasNombres.join(', ')}
+                                      </span>
+                                    )}
+                                    {item.notas && item.notas.length > 0 && (
+                                      <span className="text-[11px] text-amber-700 bg-amber-50/80 px-2 py-0.5 rounded-md inline-block mt-1 font-medium border border-amber-200/60">
+                                        {item.notas.join(' • ')}
                                       </span>
                                     )}
                                   </div>

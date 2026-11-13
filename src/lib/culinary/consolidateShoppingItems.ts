@@ -98,15 +98,20 @@ export const FRESH_PIECE_WEIGHT_G: Record<string, number> = {
 
   // Hortalizas y verduras
   cebolla: 150,
+  'cebolla morada': 150,
   cebolla_morada: 150,
   cebolleta: 60,
+  'diente de ajo': 5,
+  'diente ajo': 5,
   diente_ajo: 5,
   patata: 180,
   boniato: 250,
   zanahoria: 90,
   tomate: 140,
   pimiento: 160,
+  'pimiento verde': 140,
   pimiento_verde: 140,
+  'pimiento rojo': 200,
   pimiento_rojo: 200,
   calabacin: 250,
   berenjena: 280,
@@ -170,7 +175,7 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   cleanedOriginal = cleanedOriginal
     .replace(/\b(sin|con)\s+(sal|azucar|gluten|lactosa)\b/gi, '')
     .replace(/\b(en\s+dados|en\s+cubos|en\s+trozos|en\s+tiras|en\s+rodajas|en\s+pomada|punto\s+pomada|pomada|a\s+temperatura\s+ambiente|fundid[oa]s?|derretid[oa]s?|ablandad[oa]s?)\b/gi, '')
-    .replace(/\b(fresc[oa]s?|de\s+abeja)\b/gi, '')
+    .replace(/\b(fresc[oa]s?|natural|naturales|madur[oa]s?|de\s+temporada|de\s+abeja)\b/gi, '')
     .replace(/\b(picad[oa]s?|trocead[oa]s?|cortad[oa]s?|rallad[oa]s?|pelad[oa]s?|machacad[oa]s?|laminad[oa]s?|desmenuzad[oa]s?)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -189,7 +194,7 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   norm = norm
     .replace(/\b(tamano|talla|calibre|clase)\s+(xl|l|m|s)\b/gi, '')
     .replace(/\b(xl|l|m|s)\b/gi, '')
-    .replace(/\b(fresc[oa]s?|grandes?|medianos?|pequenos?|camperos?|ecologicos?|blancos?|morenos?|de\s+abeja|picad[oa]s?|trocead[oa]s?|cortad[oa]s?|rallad[oa]s?|pelad[oa]s?|machacad[oa]s?|laminad[oa]s?|desmenuzad[oa]s?)\b/gi, '')
+    .replace(/\b(fresc[oa]s?|natural|naturales|madur[oa]s?|de\s+temporada|grandes?|medianos?|pequenos?|camperos?|ecologicos?|blancos?|morenos?|de\s+abeja|picad[oa]s?|trocead[oa]s?|cortad[oa]s?|rallad[oa]s?|pelad[oa]s?|machacad[oa]s?|laminad[oa]s?|desmenuzad[oa]s?)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -493,28 +498,36 @@ export function consolidateShoppingItems(
     let gramos =
       Number(item.gramos_escalados !== undefined ? item.gramos_escalados : item.gramos_calculados) || 0;
 
-    // 1. Especias y condimentos: marcar como despensa
-    // Si aporta una cantidad de peso/volumen medible con formato comercial (ej: 50 g Ajo en polvo),
-    // se preserva la cantidad real y no se anula a despensa vacía
-    const isExplicitlyCommercialMeasure =
-      Boolean(canon.hasCommercialForm) &&
-      cant > 0 &&
-      (canonicalUnitKey === 'g' ||
-        canonicalUnitKey === 'ml' ||
-        canonicalUnitKey === 'bote' ||
-        canonicalUnitKey === 'lata' ||
-        canonicalUnitKey === 'paquete');
+    // 1. Especias y condimentos: marcar como despensa con prioridad absoluta.
+    // Toda especia, hierba seca, sal, pimienta o condimento (incluso si la receta tiene 3 g o 8 g)
+    // debe unificarse bajo la unidad 'despensa' para no sugerir compras absurdas de micro-gramos.
+    const spiceKeyRoot = canon.key
+      .replace(/\b(en\s+polvo|molido|molida|seco|seca|deshidratad[oa]|en\s+grano)\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
 
-    if (
-      !isExplicitlyCommercialMeasure &&
-      (isPantrySpice(canon.key) || /^(al\s+gusto|a\s+gusto|to\s+taste|c\/n|c\.n\.|cn)$/i.test(uRaw))
-    ) {
+    const isSpice =
+      isPantrySpice(canon.key) ||
+      (spiceKeyRoot ? isPantrySpice(spiceKeyRoot) : false) ||
+      /^(al\s+gusto|a\s+gusto|to\s+taste|c\/n|c\.n\.|cn)$/i.test(uRaw);
+
+    if (isSpice) {
       canonicalUnitKey = 'despensa';
       cant = 0;
       gramos = 0;
     }
-    // 2. Aceite de oliva
+    // 2. Aceite de oliva: convertir cucharadas y cucharaditas a ml para consolidación unificada
     else if (canon.key === 'aceite de oliva virgen extra') {
+      if (canonicalUnitKey === 'cucharada') {
+        cant = cant * 15;
+        canonicalUnitKey = 'ml';
+        if (gramos === 0) gramos = Math.round(cant * 0.92);
+      } else if (canonicalUnitKey === 'cucharadita') {
+        cant = cant * 5;
+        canonicalUnitKey = 'ml';
+        if (gramos === 0) gramos = Math.round(cant * 0.92);
+      }
+
       const isMeasurable =
         cant > 0 &&
         !/^(al\s+gusto|a\s+gusto|to\s+taste|c\/n|c\.n\.|cn|despensa)$/i.test(uRaw) &&
@@ -562,7 +575,9 @@ export function consolidateShoppingItems(
     }
     // 7. Puente de conversión peso/pieza (restringido exclusivamente a alimentos frescos sin formato comercial procesado)
     else {
-      const pieceWeightG = FRESH_PIECE_WEIGHT_G[canon.key];
+      const pieceWeightG =
+        FRESH_PIECE_WEIGHT_G[canon.key] ||
+        FRESH_PIECE_WEIGHT_G[canon.key.replace(/\s+/g, '_')];
       if (pieceWeightG && !canon.hasCommercialForm) {
         if (PREFER_GRAMS_INGREDIENTS.has(canon.key)) {
           if (canonicalUnitKey === 'unidad') {

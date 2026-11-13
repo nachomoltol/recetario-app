@@ -1,3 +1,5 @@
+import { isCanonicalSpiceHerbSaltOrPepper } from '@/lib/gemini/schema';
+
 export const SUPERMARKET_AISLES = [
   'Frutas y Verduras',
   'Carnes y Aves',
@@ -95,16 +97,30 @@ export const AISLE_CONFIGS: Record<SupermarketAisle, AisleConfig> = {
 };
 
 /**
+ * Expresión regular para detectar formatos deshidratados, secos, polvos y especias
+ * que NUNCA deben derivarse a Frutas y Verduras frescas.
+ */
+export const DRY_SPICE_FORMATS_REGEX =
+  /\b(en\s+polvo|molido|molida|molid[oa]s?|seco|seca|sec[oa]s?|deshidratad[oa]s?|especia|especias|extracto|esencia)\b/i;
+
+/**
  * Heurística de clasificación de pasillo para ingredientes sin asignar o heredados
  */
 export function classifyIngredientAisle(nombre?: string | null, existingAisle?: string | null): SupermarketAisle {
   try {
     const n = String(nombre || '').toLowerCase();
 
+    // Prioridad absoluta: condimentos secos, especias y formatos en polvo siempre van a Despensa y Especias
+    if (DRY_SPICE_FORMATS_REGEX.test(n) || isCanonicalSpiceHerbSaltOrPepper(n, n)) {
+      return 'Despensa y Especias';
+    }
+
     // Corrección estricta: si vino marcado erróneamente como Despensa, re-enrutar
     if (existingAisle && SUPERMARKET_AISLES.includes(existingAisle as SupermarketAisle)) {
       if (existingAisle === 'Despensa y Especias') {
         if (
+          !DRY_SPICE_FORMATS_REGEX.test(n) &&
+          !isCanonicalSpiceHerbSaltOrPepper(n, n) &&
           /tomate|cebolla|ajo|albahaca|limon|limón|lima|patata|papa|zanahoria|perejil|seta|champinon|champiñón|espinaca|lechuga|fruta|aguacate|calabacin|calabacín|berenjena|pimiento|brocoli|brócoli|col|manzana|platano|plátano|fresa|cilantro|romero|tomillo/i.test(
             n
           )
