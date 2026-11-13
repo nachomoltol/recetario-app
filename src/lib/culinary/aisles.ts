@@ -104,6 +104,13 @@ export const DRY_SPICE_FORMATS_REGEX =
   /\b(en\s+polvo|molido|molida|molid[oa]s?|seco|seca|sec[oa]s?|deshidratad[oa]s?|especia|especias|extracto|esencia)\b/i;
 
 /**
+ * Expresión regular para conservas, procesados y derivados de tomate que pertenecen
+ * incondicionalmente a Despensa y Especias (nunca a Frutas y Verduras frescas).
+ */
+export const CANNED_TOMATO_FORMATS_REGEX =
+  /\btomates?\b.*\b(triturad[oa]s?|frit[oa]s?|concentrad[oa]s?|en\s+conserva|de\s+bote|tamizad[oa]s?|passata|salsa(\s+de)?)\b/i;
+
+/**
  * Heurística de clasificación de pasillo para ingredientes sin asignar o heredados
  */
 export function classifyIngredientAisle(nombre?: string | null, existingAisle?: string | null): SupermarketAisle {
@@ -115,12 +122,18 @@ export function classifyIngredientAisle(nombre?: string | null, existingAisle?: 
       return 'Despensa y Especias';
     }
 
+    // Conservas y derivados de tomate (triturado, frito, concentrado, passata, salsa) van siempre a Despensa y Especias
+    if (CANNED_TOMATO_FORMATS_REGEX.test(n)) {
+      return 'Despensa y Especias';
+    }
+
     // Corrección estricta: si vino marcado erróneamente como Despensa, re-enrutar
     if (existingAisle && SUPERMARKET_AISLES.includes(existingAisle as SupermarketAisle)) {
       if (existingAisle === 'Despensa y Especias') {
         if (
           !DRY_SPICE_FORMATS_REGEX.test(n) &&
           !isCanonicalSpiceHerbSaltOrPepper(n, n) &&
+          !CANNED_TOMATO_FORMATS_REGEX.test(n) &&
           /tomate|cebolla|ajo|albahaca|limon|limón|lima|patata|papa|zanahoria|perejil|seta|champinon|champiñón|espinaca|lechuga|fruta|aguacate|calabacin|calabacín|berenjena|pimiento|brocoli|brócoli|col|manzana|platano|plátano|fresa|cilantro|romero|tomillo/i.test(
             n
           )
@@ -161,8 +174,9 @@ export function classifyIngredientAisle(nombre?: string | null, existingAisle?: 
     return 'Lácteos y Huevos';
   }
 
-  // 4. Frutas y Verduras
+  // 4. Frutas y Verduras (excluyendo derivados procesados de tomate)
   if (
+    !CANNED_TOMATO_FORMATS_REGEX.test(n) &&
     /tomate|cebolla|ajo|albahaca|limon|limón|lima|patata|papa|zanahoria|perejil|seta|champinon|champiñón|espinaca|lechuga|fruta|aguacate|calabacin|calabacín|berenjena|pimiento|brocoli|brócoli|col|manzana|platano|plátano|fresa|cilantro|romero|tomillo/i.test(
       n
     )

@@ -131,6 +131,34 @@ export const PREFER_GRAMS_INGREDIENTS = new Set([
 ]);
 
 /**
+ * Hierbas aromáticas frescas que en compra al por menor se adquieren por manojo, maceta o tarrina
+ */
+export const FRESH_HERBS_SET = new Set([
+  'cebollino',
+  'perejil',
+  'cilantro',
+  'albahaca',
+  'menta',
+  'hierbabuena',
+  'eneldo',
+]);
+
+/**
+ * Básicos secos a granel de despensa doméstica (harinas, azúcares, almidones, pan rallado).
+ * Cantidades minúsculas (<= 50 g) se consolidan como comprobación de despensa en vez de exigir paquetes ridículos.
+ */
+export const PANTRY_BULK_STAPLES = new Set([
+  'harina de trigo',
+  'harina',
+  'maicena',
+  'almidon de maiz',
+  'azucar',
+  'pan rallado',
+  'bicarbonato',
+  'levadura quimica',
+]);
+
+/**
  * Clasificación canónica de especias y condimentos mediante el extractor semántico universal.
  * Evalúa exclusivamente el núcleo rector culinario, evitando falsos positivos como 'mantequilla sin sal'.
  */
@@ -721,6 +749,53 @@ export function consolidateShoppingItems(
 
       // Eliminar la entrada de despensa del Map consolidado
       consolidated.delete(despensaEntry.key);
+    }
+  }
+
+  // =========================================================================
+  // Pase Post-Consolidación de Sentido Común Comercial:
+  // 1. Hierbas frescas (cebollino, perejil, cilantro, albahaca...) en peso/volumen <= 30 -> 1 manojo
+  // 2. Jengibre fresco en peso/volumen <= 40 g -> 1 trozo pequeño
+  // 3. Básicos de despensa seca a granel (harina, maicena, azúcar...) <= 50 g -> 'Comprobar despensa'
+  // =========================================================================
+  for (const [key, acc] of Array.from(consolidated.entries())) {
+    const canonKey = key.split('___')[0];
+    const isWeightOrVolume =
+      acc.unidad === 'g' ||
+      acc.unidad === 'ml' ||
+      acc.unidad === 'cucharada' ||
+      acc.unidad === 'cucharadita';
+
+    // 1. Hierbas frescas
+    if (FRESH_HERBS_SET.has(canonKey) && isWeightOrVolume && acc.rawCantidad <= 30) {
+      acc.rawCantidad = 1;
+      acc.unidad = 'manojo';
+      acc.rawGramos = Math.max(acc.rawGramos, 15);
+      const herbNote = '1 manojo fresco (o tarrina)';
+      if (!acc.notas.includes(herbNote)) {
+        acc.notas.push(herbNote);
+      }
+    }
+    // 2. Jengibre fresco
+    else if (canonKey === 'jengibre' && isWeightOrVolume && acc.rawCantidad <= 40) {
+      acc.rawCantidad = 1;
+      acc.unidad = 'trozo';
+      acc.rawGramos = Math.max(acc.rawGramos, 25);
+      const gingerNote = '1 trozo pequeño de jengibre';
+      if (!acc.notas.includes(gingerNote)) {
+        acc.notas.push(gingerNote);
+      }
+    }
+    // 3. Básicos de despensa seca
+    else if (PANTRY_BULK_STAPLES.has(canonKey) && isWeightOrVolume && acc.rawCantidad <= 50) {
+      const neededGrams = Math.round(acc.rawGramos || acc.rawCantidad);
+      const stapleNote = `Revisar despensa (necesitas solo ${neededGrams} g)`;
+      acc.rawCantidad = 0;
+      acc.rawGramos = 0;
+      acc.unidad = 'despensa';
+      if (!acc.notas.includes(stapleNote)) {
+        acc.notas.push(stapleNote);
+      }
     }
   }
 
