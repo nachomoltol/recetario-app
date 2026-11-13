@@ -19,7 +19,7 @@ import {
 import { redeemVipCodeAction } from '@/app/actions/subscription';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
-import { isNativeMobilePlatform } from '@/lib/admob/admobService';
+import { isNativeMobilePlatform, isNativeIosPlatform } from '@/lib/admob/admobService';
 
 export function BillingHeaderTitle() {
   const t = useLanguageStore((s) => s.t);
@@ -61,9 +61,11 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isNativeMobile, setIsNativeMobile] = useState(false);
+  const [isNativeIos, setIsNativeIos] = useState(false);
 
   useEffect(() => {
     setIsNativeMobile(isNativeMobilePlatform());
+    setIsNativeIos(isNativeIosPlatform());
   }, []);
 
   useEffect(() => {
@@ -208,17 +210,25 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
             <div className="flex items-center gap-2 text-stone-900 font-semibold text-xs sm:text-sm">
               <Globe className="w-4 h-4 text-brand-primary shrink-0" />
               <span>
-                {language === 'en'
+                {isNativeIos
+                  ? language === 'en'
+                    ? 'Extended Features Access'
+                    : 'Acceso a funciones ampliadas'
+                  : language === 'en'
                   ? 'Subscription Management via Web'
                   : 'Gestión de suscripción vía Web'}
               </span>
             </div>
             <p className="text-xs text-stone-700 leading-relaxed font-light">
-              {language === 'en'
+              {isNativeIos
+                ? language === 'en'
+                  ? 'Your account is synced across all your devices. In this version, you can unlock additional recipe extractions for free via rewarded ads.'
+                  : 'Tu cuenta está sincronizada en todos tus dispositivos. En esta versión puedes desbloquear extracciones adicionales de forma gratuita mediante anuncios recompensados.'
+                : language === 'en'
                 ? 'Manage or activate your PRO subscription on our official website migaapp.com by signing in with this account.'
                 : 'Gestiona o activa tu suscripción PRO desde nuestra web oficial migaapp.com iniciando sesión con esta misma cuenta.'}
             </p>
-            {(userEmail || profileFromStore?.email) && (
+            {!isNativeIos && (userEmail || profileFromStore?.email) && (
               <div className="pt-1 flex items-center gap-1.5 text-[11px] text-stone-600 font-mono bg-white/90 px-2.5 py-1 rounded-lg border border-stone-200/80 w-fit max-w-full truncate">
                 <span className="text-stone-400">Email:</span>
                 <span className="font-semibold text-stone-800 truncate">{userEmail || profileFromStore?.email}</span>
@@ -262,55 +272,57 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
       </div>
 
       {/* 2º LUGAR: MÓDULO CÓDIGO PROMOCIONAL O VIP */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-[#f4efe6] border border-[#e7dfd5]/80 space-y-2.5">
-        <div className="flex items-center gap-2">
-          <Ticket className="w-4 h-4 text-brand-primary" />
-          <h3 className="text-xs sm:text-sm font-bold text-stone-900">
-            {t('billing_vip_question')}
-          </h3>
-        </div>
-
-        {vipSuccess ? (
-          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-semibold flex items-center gap-2 animate-fade-in">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{t('billing_vip_success')}</span>
+      {!isNativeIos && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-[#f4efe6] border border-[#e7dfd5]/80 space-y-2.5">
+          <div className="flex items-center gap-2">
+            <Ticket className="w-4 h-4 text-brand-primary" />
+            <h3 className="text-xs sm:text-sm font-bold text-stone-900">
+              {t('billing_vip_question')}
+            </h3>
           </div>
-        ) : (
-          <form onSubmit={handleRedeemVip} className="space-y-2">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={vipCode}
-                onChange={(e) => {
-                  setVipCode(e.target.value);
-                  if (vipError) setVipError(null);
-                }}
-                placeholder={t('billing_vip_placeholder')}
-                className="flex-1 min-h-[42px] px-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary uppercase tracking-wider font-mono font-medium transition"
-                disabled={isVipValidating}
-              />
-              <button
-                type="submit"
-                disabled={isVipValidating || !vipCode.trim()}
-                className="min-h-[42px] px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white text-xs font-semibold transition cursor-pointer flex items-center justify-center shrink-0"
-              >
-                {isVipValidating ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  t('billing_vip_redeem')
-                )}
-              </button>
-            </div>
 
-            {vipError && (
-              <div className="flex items-center gap-1.5 text-xs text-rose-600 font-medium pt-0.5">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>{vipError}</span>
+          {vipSuccess ? (
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-semibold flex items-center gap-2 animate-fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{t('billing_vip_success')}</span>
+            </div>
+          ) : (
+            <form onSubmit={handleRedeemVip} className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={vipCode}
+                  onChange={(e) => {
+                    setVipCode(e.target.value);
+                    if (vipError) setVipError(null);
+                  }}
+                  placeholder={t('billing_vip_placeholder')}
+                  className="flex-1 min-h-[42px] px-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary uppercase tracking-wider font-mono font-medium transition"
+                  disabled={isVipValidating}
+                />
+                <button
+                  type="submit"
+                  disabled={isVipValidating || !vipCode.trim()}
+                  className="min-h-[42px] px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white text-xs font-semibold transition cursor-pointer flex items-center justify-center shrink-0"
+                >
+                  {isVipValidating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    t('billing_vip_redeem')
+                  )}
+                </button>
               </div>
-            )}
-          </form>
-        )}
-      </div>
+
+              {vipError && (
+                <div className="flex items-center gap-1.5 text-xs text-rose-600 font-medium pt-0.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{vipError}</span>
+                </div>
+              )}
+            </form>
+          )}
+        </div>
+      )}
 
       {/* 3º LUGAR: BLOQUE INFORMATIVO DE VENTAJAS DE LA MEMBRESÍA PRO */}
       <div className="p-5 sm:p-6 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-3.5">

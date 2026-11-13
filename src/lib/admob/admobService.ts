@@ -67,6 +67,24 @@ export function isNativeMobilePlatform(): boolean {
 }
 
 /**
+ * Detecta si la aplicación se está ejecutando específicamente en entorno nativo iOS
+ * a través de Capacitor o User-Agent embebido de la app oficial de iOS.
+ */
+export function isNativeIosPlatform(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const isCapNative = Capacitor.isNativePlatform();
+    const platform = Capacitor.getPlatform();
+    if (isCapNative && platform === 'ios') return true;
+
+    const ua = window.navigator.userAgent || '';
+    return /Capacitor|com\.migaapp\.app/i.test(ua) && /iPhone|iPad|iPod/i.test(ua);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Obtiene el ID del bloque de anuncios de vídeo bonificado (Rewarded Video).
  * Si la variable de entorno indica que estamos en producción (process.env.NODE_ENV === 'production'),
  * utiliza el Ad Unit ID oficial para cada plataforma:
