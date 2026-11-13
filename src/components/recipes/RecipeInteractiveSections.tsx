@@ -353,6 +353,7 @@ export function RecipeInteractiveSections({
 
     if (targetLevel === 'intermedio') {
       setActiveLevel('intermedio');
+      onStepsUpdated?.(currentSteps);
       return;
     }
 
@@ -365,6 +366,7 @@ export function RecipeInteractiveSections({
 
     if (alreadyHasLevel) {
       setActiveLevel(targetLevel);
+      onStepsUpdated?.(currentSteps);
       return;
     }
 
@@ -401,6 +403,7 @@ export function RecipeInteractiveSections({
         });
 
         setCurrentSteps(nextSteps);
+        onStepsUpdated?.(nextSteps);
       }
     } catch (err) {
       console.error('Error generando nivel culinario on-demand:', err);
@@ -590,13 +593,6 @@ export function RecipeInteractiveSections({
     basePorciones,
     isBaking,
   ]);
-
-  // Notificar al componente padre los pasos adaptados reactivos actuales para que el PDF y la vista sincronicen
-  useEffect(() => {
-    if (reactivePasos && reactivePasos.length > 0) {
-      onStepsUpdated?.(reactivePasos);
-    }
-  }, [reactivePasos, onStepsUpdated]);
 
   // Renderizado unificado de pasos interactivos
   const renderStepsList = () => {
