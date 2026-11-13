@@ -329,22 +329,8 @@ export function RecipeInteractiveSections({
     .toLowerCase();
   const isPro = resolvedPlan === 'pro' || Boolean(userProfile?.is_pro);
 
-  // El nivel activo lee prioritariamente de localStorage para esta receta o del perfil del usuario
-  const [activeLevel, setActiveLevel] = useState<CulinaryLevel>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem(`miga_recipe_level_${recetaId}`);
-        if (stored) {
-          const normStored = normalizeNivelCulinario(stored);
-          if (normStored) return normStored;
-        }
-      } catch (e) {
-        // Ignorar fallos de acceso a localStorage en modo privado/incógnito
-      }
-    }
-    const profileLevel = userProfile?.nivel_culinario || profileFromStore?.nivel_culinario;
-    return profileLevel ? normalizeNivelCulinario(profileLevel) : 'intermedio';
-  });
+  // El nivel activo inicia siempre en 'intermedio' por defecto al cargar la receta
+  const [activeLevel, setActiveLevel] = useState<CulinaryLevel>('intermedio');
 
   const effectiveActiveLevel: CulinaryLevel = isPro ? activeLevel : 'intermedio';
 
@@ -363,15 +349,6 @@ export function RecipeInteractiveSections({
     if (!isPro && targetLevel !== 'intermedio') {
       setShowProLevelModal(true);
       return;
-    }
-
-    // Persistir elección en localStorage para que se mantenga al recargar o volver
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(`miga_recipe_level_${recetaId}`, targetLevel);
-      } catch (e) {
-        // Ignorar
-      }
     }
 
     if (targetLevel === 'intermedio') {
@@ -424,7 +401,6 @@ export function RecipeInteractiveSections({
         });
 
         setCurrentSteps(nextSteps);
-        onStepsUpdated?.(nextSteps);
       }
     } catch (err) {
       console.error('Error generando nivel culinario on-demand:', err);
@@ -598,7 +574,7 @@ export function RecipeInteractiveSections({
         descriptor_sensorial: descriptorSensorial,
         potencia_fuego: (paso as any)?.potencia_fuego || null,
         tiempo_estimado_min: stepScaledTime ?? paso.tiempo_estimado_min,
-        consejo_pro: consejo,
+        consejo_pro: consejo ?? null,
       };
     });
   }, [
@@ -614,6 +590,13 @@ export function RecipeInteractiveSections({
     basePorciones,
     isBaking,
   ]);
+
+  // Notificar al componente padre los pasos adaptados reactivos actuales para que el PDF y la vista sincronicen
+  useEffect(() => {
+    if (reactivePasos && reactivePasos.length > 0) {
+      onStepsUpdated?.(reactivePasos);
+    }
+  }, [reactivePasos, onStepsUpdated]);
 
   // Renderizado unificado de pasos interactivos
   const renderStepsList = () => {
