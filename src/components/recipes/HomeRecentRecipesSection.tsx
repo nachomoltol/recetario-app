@@ -160,88 +160,135 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
         </div>
       </div>
 
-      {/* Tarjeta de previsualización de la receta seleccionada */}
-      <div className="group rounded-3xl bg-white border-2 border-[#e7dfd5] hover:border-brand-primary transition-all p-6 sm:p-7 shadow-xs space-y-5">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs font-semibold">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-1 rounded-xl bg-[#f4efe6] text-brand-primary border border-[#e7dfd5] font-bold uppercase tracking-wider text-[10px]">
-                {recipeToShow.fuente_tipo}
-              </span>
-              <span className="px-2.5 py-1 rounded-xl bg-stone-100 text-stone-700 capitalize text-[11px]">
-                {recipeToShow.dificultad}
-              </span>
-              {activeTab === 'vista' && ultimaVista && (
-                <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
-                  <Eye className="w-3 h-3" /> {t('home_visited_badge')}
-                </span>
-              )}
-            </div>
+      {/* Tarjeta de previsualización de la receta seleccionada (diseño híbrido) */}
+      {(() => {
+        const tieneFoto = Boolean(recipeToShow.foto_url || recipeToShow.imagen_portada_url);
+        const fotoSrc = recipeToShow.foto_url || recipeToShow.imagen_portada_url;
 
-            <DeleteRecipeButton
-              recipeId={recipeToShow.id}
-              recipeTitle={recipeToShow.titulo}
-              variant="icon"
-              className="w-8 h-8 rounded-xl"
-            />
-          </div>
+        return (
+          <div className="group rounded-3xl bg-white border-2 border-[#e7dfd5] hover:border-brand-primary transition-all overflow-hidden shadow-xs flex flex-col justify-between">
+            {/* Cabecera fotográfica si existe foto */}
+            {tieneFoto && (
+              <div className="relative w-full aspect-[4/3] sm:aspect-[16/9] max-h-[380px] overflow-hidden bg-stone-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={fotoSrc!}
+                  alt={recipeToShow.titulo}
+                  className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-500 ease-out"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
 
-          <Link
-            href={recipeHref}
-            className="block group-hover:text-brand-primary transition-colors"
-          >
-            <h2 className="font-bold text-stone-900 font-serif-recipe text-2xl sm:text-3xl leading-snug">
-              {recipeToShow.titulo}
-            </h2>
-          </Link>
+                <div className="absolute top-4 left-4 right-4 flex items-center justify-between gap-2 pointer-events-auto">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-xl bg-black/60 text-white backdrop-blur-md font-bold uppercase tracking-wider text-[10px]">
+                      {recipeToShow.fuente_tipo}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-xl bg-black/50 text-stone-200 backdrop-blur-md capitalize text-[11px]">
+                      {recipeToShow.dificultad}
+                    </span>
+                    {activeTab === 'vista' && ultimaVista && (
+                      <span className="px-2.5 py-1 rounded-xl bg-emerald-500/80 text-white backdrop-blur-md text-[10px] font-bold flex items-center gap-1">
+                        <Eye className="w-3 h-3" /> {t('home_visited_badge')}
+                      </span>
+                    )}
+                  </div>
 
-          {recipeToShow.descripcion && (
-            <p className="text-xs sm:text-sm text-stone-600 line-clamp-2 leading-relaxed font-light">
-              {recipeToShow.descripcion}
-            </p>
-          )}
+                  <DeleteRecipeButton
+                    recipeId={recipeToShow.id}
+                    recipeTitle={recipeToShow.titulo}
+                    variant="icon"
+                    className="w-8 h-8 rounded-xl bg-black/50 text-white hover:bg-rose-600 backdrop-blur-md border border-white/10"
+                  />
+                </div>
+              </div>
+            )}
 
-          {/* Categorías y etiquetas */}
-          {recipeToShow.etiquetas && recipeToShow.etiquetas.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {recipeToShow.etiquetas.slice(0, 4).map((tag) => (
-                <span
-                  key={tag}
-                  className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#faf7f2] text-stone-700 border border-[#e7dfd5]"
+            <div className="p-6 sm:p-7 space-y-5">
+              <div className="space-y-3">
+                {!tieneFoto && (
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-xl bg-[#f4efe6] text-brand-primary border border-[#e7dfd5] font-bold uppercase tracking-wider text-[10px]">
+                        {recipeToShow.fuente_tipo}
+                      </span>
+                      <span className="px-2.5 py-1 rounded-xl bg-stone-100 text-stone-700 capitalize text-[11px]">
+                        {recipeToShow.dificultad}
+                      </span>
+                      {activeTab === 'vista' && ultimaVista && (
+                        <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
+                          <Eye className="w-3 h-3" /> {t('home_visited_badge')}
+                        </span>
+                      )}
+                    </div>
+
+                    <DeleteRecipeButton
+                      recipeId={recipeToShow.id}
+                      recipeTitle={recipeToShow.titulo}
+                      variant="icon"
+                      className="w-8 h-8 rounded-xl"
+                    />
+                  </div>
+                )}
+
+                <Link
+                  href={recipeHref}
+                  className="block group-hover:text-brand-primary transition-colors"
                 >
-                  {tag}
-                </span>
-              ))}
-              {recipeToShow.etiquetas.length > 4 && (
-                <span className="text-[11px] text-stone-400 font-medium self-center">
-                  +{recipeToShow.etiquetas.length - 4} {t('home_more_tags')}
-                </span>
-              )}
+                  <h2 className="font-bold text-stone-900 font-serif-recipe text-2xl sm:text-3xl leading-snug">
+                    {recipeToShow.titulo}
+                  </h2>
+                </Link>
+
+                {recipeToShow.descripcion && (
+                  <p className="text-xs sm:text-sm text-stone-600 line-clamp-2 leading-relaxed font-light">
+                    {recipeToShow.descripcion}
+                  </p>
+                )}
+
+                {/* Categorías y etiquetas */}
+                {recipeToShow.etiquetas && recipeToShow.etiquetas.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {recipeToShow.etiquetas.slice(0, 4).map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#faf7f2] text-stone-700 border border-[#e7dfd5]"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {recipeToShow.etiquetas.length > 4 && (
+                      <span className="text-[11px] text-stone-400 font-medium self-center">
+                        +{recipeToShow.etiquetas.length - 4} {t('home_more_tags')}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Barra de acción rápida mobile-first */}
+              <div className="pt-4 border-t border-[#f4efe6] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4 text-xs sm:text-sm text-stone-500 font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-brand-primary" /> {recipeToShow.tiempo_total_min || 15} min
+                  </span>
+                  <span>·</span>
+                  <span className="flex items-center gap-1.5">
+                    <Utensils className="w-4 h-4 text-brand-primary" /> {recipeToShow.porciones} {t('home_servings')}
+                  </span>
+                </div>
+
+                <Link
+                  href={recipeHref}
+                  className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+                >
+                  <span>{t('home_view_in_kitchen')}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
             </div>
-          )}
-        </div>
-
-        {/* Barra de acción rápida mobile-first */}
-        <div className="pt-4 border-t border-[#f4efe6] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4 text-xs sm:text-sm text-stone-500 font-medium">
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-brand-primary" /> {recipeToShow.tiempo_total_min || 15} min
-            </span>
-            <span>·</span>
-            <span className="flex items-center gap-1.5">
-              <Utensils className="w-4 h-4 text-brand-primary" /> {recipeToShow.porciones} {t('home_servings')}
-            </span>
           </div>
-
-          <Link
-            href={recipeHref}
-            className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
-          >
-            <span>{t('home_view_in_kitchen')}</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-      </div>
+        );
+      })()}
     </section>
   );
 }

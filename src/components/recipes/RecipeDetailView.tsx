@@ -809,12 +809,12 @@ export function RecipeDetailView({
 
       {/* FOTOGRAFÍA CORONANDO LA RECETA (solo si existe foto_url) */}
       {currentFotoUrl && (
-        <div className="relative w-full h-64 sm:h-80 md:h-[420px] rounded-3xl overflow-hidden border border-[#e7dfd5] shadow-sm group bg-[#f4efe6]">
+        <div className="relative w-full aspect-[4/3] max-h-[460px] rounded-3xl overflow-hidden border border-[#e7dfd5] shadow-sm group bg-[#f4efe6]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={currentFotoUrl}
             alt={currentTitulo}
-            className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500"
+            className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
           <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6">
@@ -1241,9 +1241,9 @@ export function RecipeDetailView({
           imageSrc={cropImageSrc}
           onClose={handleCloseCropModal}
           onCropComplete={handleCropComplete}
-          aspectRatio={16 / 9}
+          aspectRatio={4 / 3}
           outputWidth={1600}
-          outputHeight={900}
+          outputHeight={1200}
           title="Encuadra tu plato"
           subtitle="Arrastra con el dedo y usa el zoom para centrar tu creación"
         />

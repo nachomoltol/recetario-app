@@ -8,9 +8,9 @@ export interface PhotoCropModalProps {
   imageSrc: string | null;
   onClose: () => void;
   onCropComplete: (croppedBlob: Blob) => void | Promise<void>;
-  aspectRatio?: number; // Relación ancho / alto (por defecto 16 / 9)
+  aspectRatio?: number; // Relación ancho / alto (por defecto 4 / 3)
   outputWidth?: number; // Ancho del canvas de salida (por defecto 1600)
-  outputHeight?: number; // Alto del canvas de salida (por defecto 900)
+  outputHeight?: number; // Alto del canvas de salida (por defecto 1200)
   title?: string;
   subtitle?: string;
 }
@@ -20,9 +20,9 @@ export function PhotoCropModal({
   imageSrc,
   onClose,
   onCropComplete,
-  aspectRatio = 16 / 9,
+  aspectRatio = 4 / 3,
   outputWidth = 1600,
-  outputHeight = 900,
+  outputHeight = 1200,
   title = 'Encuadra tu plato',
   subtitle = 'Arrastra con el dedo y usa el zoom para centrar tu creación',
 }: PhotoCropModalProps) {
@@ -128,9 +128,9 @@ export function PhotoCropModal({
     const displayedW = curImgW * currentScale;
     const displayedH = curImgH * currentScale;
 
-    // Límites de arrastre para no dejar huecos negros en los bordes
-    const maxOffsetX = Math.max(0, (displayedW - curCW) / 2);
-    const maxOffsetY = Math.max(0, (displayedH - curCH) / 2);
+    // Límites de arrastre permitiendo libertad con zoom out sin cortes forzados
+    const maxOffsetX = Math.max(20, Math.abs(displayedW - curCW) / 2);
+    const maxOffsetY = Math.max(20, Math.abs(displayedH - curCH) / 2);
 
     return { containerW: curCW, containerH: curCH, baseScale: bScale, scale: currentScale, maxOffsetX, maxOffsetY };
   }, [containerSize.width, containerSize.height, imageElement, zoom]);
@@ -201,7 +201,7 @@ export function PhotoCropModal({
         e.touches[0].clientY - e.touches[1].clientY
       );
       const ratio = dist / initialPinchDistRef.current;
-      const newZoom = Math.max(1, Math.min(3, Math.round(initialZoomRef.current * ratio * 100) / 100));
+      const newZoom = Math.max(0.7, Math.min(3, Math.round(initialZoomRef.current * ratio * 100) / 100));
       setZoom(newZoom);
     }
   };
@@ -216,7 +216,7 @@ export function PhotoCropModal({
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = -e.deltaY * 0.0015;
-    setZoom((prev) => Math.max(1, Math.min(3, Math.round((prev + delta) * 100) / 100)));
+    setZoom((prev) => Math.max(0.7, Math.min(3, Math.round((prev + delta) * 100) / 100)));
   };
 
   // Generación final del recorte con Canvas nativo de alta resolución
@@ -398,8 +398,8 @@ export function PhotoCropModal({
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setZoom((prev) => Math.max(1, Math.round((prev - 0.2) * 100) / 100))}
-              disabled={zoom <= 1 || isProcessing}
+              onClick={() => setZoom((prev) => Math.max(0.7, Math.round((prev - 0.15) * 100) / 100))}
+              disabled={zoom <= 0.7 || isProcessing}
               className="w-8 h-8 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40"
               title="Alejar"
             >
@@ -407,7 +407,7 @@ export function PhotoCropModal({
             </button>
             <input
               type="range"
-              min="1"
+              min="0.7"
               max="3"
               step="0.05"
               value={zoom}
@@ -417,7 +417,7 @@ export function PhotoCropModal({
             />
             <button
               type="button"
-              onClick={() => setZoom((prev) => Math.min(3, Math.round((prev + 0.2) * 100) / 100))}
+              onClick={() => setZoom((prev) => Math.min(3, Math.round((prev + 0.15) * 100) / 100))}
               disabled={zoom >= 3 || isProcessing}
               className="w-8 h-8 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40"
               title="Acercar"
