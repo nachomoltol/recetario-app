@@ -27,6 +27,7 @@ import {
   Utensils,
   ChevronLeft,
   ChevronRight,
+  Star,
 } from 'lucide-react';
 import { Receta } from '@/types/recipe';
 import { MomentoDia, RolPlato } from '@/types/database';
@@ -538,6 +539,10 @@ export function RecipeCollectionOrganizer({
   const assignSlotParam = searchParams?.get('assignSlot') as MealSlot | null;
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 25;
+  const listTopRef = useRef<HTMLDivElement>(null);
+
   const [filtroMomento, setFiltroMomento] = useState<ContextualMomentoFilter>(() => {
     if (momentoParam) {
       if (['desayuno', 'primero', 'almuerzo', 'cena', 'snack_postre'].includes(momentoParam)) {
@@ -553,6 +558,11 @@ export function RecipeCollectionOrganizer({
     return 'todos';
   });
   const [filtroActivo, setFiltroActivo] = useState<string>('Todas');
+
+  // Reseteo automático de página al filtrar o buscar
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filtroMomento, filtroActivo]);
 
   // Refs y estados para navegación horizontal con flechas y scroll en PC
   const categoriesScrollRef = useRef<HTMLDivElement>(null);
@@ -702,6 +712,12 @@ export function RecipeCollectionOrganizer({
                 <span className="px-1.5 py-0.5 rounded-lg bg-black/50 backdrop-blur-md text-stone-200 capitalize text-[9px] truncate">
                   {r.dificultad}
                 </span>
+                {Number(r.puntuacion) > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-lg bg-black/60 backdrop-blur-md text-amber-400 font-bold text-[9px] flex items-center gap-0.5 border border-amber-400/20 shadow-2xs">
+                    <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                    <span>{Number(r.puntuacion).toFixed(1)}</span>
+                  </span>
+                )}
               </div>
               <DeleteRecipeButton
                 recipeId={r.id}
@@ -725,6 +741,12 @@ export function RecipeCollectionOrganizer({
                   <span className="px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-stone-100 text-stone-600 capitalize text-[9px] sm:text-[11px] truncate">
                     {r.dificultad}
                   </span>
+                  {Number(r.puntuacion) > 0 && (
+                    <span className="px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-amber-50 text-amber-800 border border-amber-200/80 text-[9px] sm:text-[10px] font-bold flex items-center gap-0.5 sm:gap-1 shadow-2xs">
+                      <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                      <span>{Number(r.puntuacion).toFixed(1)}</span>
+                    </span>
+                  )}
                   {tieneAdaptacionClinica && (
                     <span
                       className="px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-amber-50 text-brand-primary border border-amber-200/80 text-[9px] sm:text-[10px] font-semibold flex items-center gap-0.5 sm:gap-1 shadow-2xs"
@@ -1057,15 +1079,99 @@ export function RecipeCollectionOrganizer({
           )}
         </div>
       )}
+      {/* Anchor para scroll suave al paginar */}
+      <div ref={listTopRef} className="scroll-mt-20" />
+
       {/* ============================================================== */}
       {/* 4. CONDICIONAL ESTRICTO: VISTA 'TODAS' vs VISTA POR CATEGORÍA */}
       {/* ============================================================== */}
       {filteredRecipes.length > 0 && (
         filtroActivo === 'Todas' ? (
-          /* REGLA 1: Renderizar UN SOLO <div className="columns-..."> mapeando allSortedRecipes con fluidez Masonry */
-          <div className="columns-2 md:columns-3 lg:columns-4 gap-3 sm:gap-4 animate-fade-in">
-            {allSortedRecipes.map((r) => renderRecipeCard(r))}
-          </div>
+          (() => {
+            const totalRecipesCount = allSortedRecipes.length;
+            const totalPages = Math.ceil(totalRecipesCount / ITEMS_PER_PAGE) || 1;
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const paginatedRecipes = allSortedRecipes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+            const handlePageChange = (newPage: number) => {
+              setCurrentPage(newPage);
+              if (listTopRef.current) {
+                listTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            };
+
+            return (
+              <div className="space-y-6 animate-fade-in">
+                {/* Cuadrícula Masonry paginada */}
+                <div className="columns-2 md:columns-3 lg:columns-4 gap-3 sm:gap-4">
+                  {paginatedRecipes.map((r) => renderRecipeCard(r))}
+                </div>
+
+                {/* Controles de Paginación */}
+                {totalPages > 1 && (
+                  <div className="pt-4 border-t border-[#e7dfd5] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                    <span className="text-stone-500 font-medium order-2 sm:order-1">
+                      {language === 'en'
+                        ? `Showing ${startIndex + 1}–${Math.min(startIndex + ITEMS_PER_PAGE, totalRecipesCount)} of ${totalRecipesCount} recipes`
+                        : `Mostrando ${startIndex + 1}–${Math.min(startIndex + ITEMS_PER_PAGE, totalRecipesCount)} de ${totalRecipesCount} recetas`}
+                    </span>
+
+                    <div className="flex items-center gap-1.5 order-1 sm:order-2">
+                      <button
+                        type="button"
+                        onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                        disabled={currentPage <= 1}
+                        className="h-8 px-2.5 rounded-xl border border-[#e7dfd5] bg-white hover:bg-stone-50 disabled:opacity-30 disabled:cursor-not-allowed text-stone-700 font-semibold flex items-center gap-1 transition shadow-2xs"
+                        title={language === 'en' ? 'Previous page' : 'Página anterior'}
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span className="hidden xs:inline">{language === 'en' ? 'Prev' : 'Anterior'}</span>
+                      </button>
+
+                      {/* Números de página */}
+                      <div className="flex items-center gap-1 px-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                          .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                          .map((pageNum, idx, arr) => {
+                            const prev = arr[idx - 1];
+                            const showEllipsis = prev && pageNum - prev > 1;
+                            const isActive = pageNum === currentPage;
+
+                            return (
+                              <div key={pageNum} className="flex items-center gap-1">
+                                {showEllipsis && <span className="text-stone-400 px-0.5">…</span>}
+                                <button
+                                  type="button"
+                                  onClick={() => handlePageChange(pageNum)}
+                                  className={`w-8 h-8 rounded-xl font-bold font-serif-recipe text-xs transition cursor-pointer shadow-2xs ${
+                                    isActive
+                                      ? 'bg-brand-primary text-white'
+                                      : 'bg-white border border-[#e7dfd5] text-stone-700 hover:bg-[#faf7f2]'
+                                  }`}
+                                >
+                                  {pageNum}
+                                </button>
+                              </div>
+                            );
+                          })}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage >= totalPages}
+                        className="h-8 px-2.5 rounded-xl border border-[#e7dfd5] bg-white hover:bg-stone-50 disabled:opacity-30 disabled:cursor-not-allowed text-stone-700 font-semibold flex items-center gap-1 transition shadow-2xs"
+                        title={language === 'en' ? 'Next page' : 'Página siguiente'}
+                      >
+                        <span className="hidden xs:inline">{language === 'en' ? 'Next' : 'Siguiente'}</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()
         ) : (
           /* VISTA DE SECCIÓN POR CATEGORÍA SELECCIONADA */
           (() => {
@@ -1089,6 +1195,18 @@ export function RecipeCollectionOrganizer({
               );
             }
             const IconComponent = activeGroup.category.icono;
+            const totalCategoryRecipes = activeGroup.recetas.length;
+            const totalPagesCat = Math.ceil(totalCategoryRecipes / ITEMS_PER_PAGE) || 1;
+            const startIdxCat = (currentPage - 1) * ITEMS_PER_PAGE;
+            const paginatedCategoryRecipes = activeGroup.recetas.slice(startIdxCat, startIdxCat + ITEMS_PER_PAGE);
+
+            const handleCatPageChange = (newPage: number) => {
+              setCurrentPage(newPage);
+              if (listTopRef.current) {
+                listTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            };
+
             return (
               <section className="space-y-4 animate-fade-in">
                 {/* Encabezado visible únicamente en la vista de categoría */}
@@ -1108,13 +1226,74 @@ export function RecipeCollectionOrganizer({
                   <span
                     className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${activeGroup.category.badgeColor}`}
                   >
-                    {activeGroup.recetas.length}{' '}
-                    {activeGroup.recetas.length === 1 ? t('collection_recipe_singular') : t('collection_recipe_plural')}
+                    {totalCategoryRecipes}{' '}
+                    {totalCategoryRecipes === 1 ? t('collection_recipe_singular') : t('collection_recipe_plural')}
                   </span>
                 </div>
+
                 <div className="columns-2 md:columns-3 lg:columns-4 gap-3 sm:gap-4">
-                  {activeGroup.recetas.map((r) => renderRecipeCard(r))}
+                  {paginatedCategoryRecipes.map((r) => renderRecipeCard(r))}
                 </div>
+
+                {/* Controles de Paginación en Categoría */}
+                {totalPagesCat > 1 && (
+                  <div className="pt-4 border-t border-[#e7dfd5] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                    <span className="text-stone-500 font-medium order-2 sm:order-1">
+                      {language === 'en'
+                        ? `Showing ${startIdxCat + 1}–${Math.min(startIdxCat + ITEMS_PER_PAGE, totalCategoryRecipes)} of ${totalCategoryRecipes} recipes`
+                        : `Mostrando ${startIdxCat + 1}–${Math.min(startIdxCat + ITEMS_PER_PAGE, totalCategoryRecipes)} de ${totalCategoryRecipes} recetas`}
+                    </span>
+
+                    <div className="flex items-center gap-1.5 order-1 sm:order-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCatPageChange(Math.max(1, currentPage - 1))}
+                        disabled={currentPage <= 1}
+                        className="h-8 px-2.5 rounded-xl border border-[#e7dfd5] bg-white hover:bg-stone-50 disabled:opacity-30 disabled:cursor-not-allowed text-stone-700 font-semibold flex items-center gap-1 transition shadow-2xs"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span className="hidden xs:inline">{language === 'en' ? 'Prev' : 'Anterior'}</span>
+                      </button>
+
+                      <div className="flex items-center gap-1 px-1">
+                        {Array.from({ length: totalPagesCat }, (_, i) => i + 1)
+                          .filter((p) => p === 1 || p === totalPagesCat || Math.abs(p - currentPage) <= 1)
+                          .map((pageNum, idx, arr) => {
+                            const prev = arr[idx - 1];
+                            const showEllipsis = prev && pageNum - prev > 1;
+                            const isActive = pageNum === currentPage;
+
+                            return (
+                              <div key={pageNum} className="flex items-center gap-1">
+                                {showEllipsis && <span className="text-stone-400 px-0.5">…</span>}
+                                <button
+                                  type="button"
+                                  onClick={() => handleCatPageChange(pageNum)}
+                                  className={`w-8 h-8 rounded-xl font-bold font-serif-recipe text-xs transition cursor-pointer shadow-2xs ${
+                                    isActive
+                                      ? 'bg-brand-primary text-white'
+                                      : 'bg-white border border-[#e7dfd5] text-stone-700 hover:bg-[#faf7f2]'
+                                  }`}
+                                >
+                                  {pageNum}
+                                </button>
+                              </div>
+                            );
+                          })}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCatPageChange(Math.min(totalPagesCat, currentPage + 1))}
+                        disabled={currentPage >= totalPagesCat}
+                        className="h-8 px-2.5 rounded-xl border border-[#e7dfd5] bg-white hover:bg-stone-50 disabled:opacity-30 disabled:cursor-not-allowed text-stone-700 font-semibold flex items-center gap-1 transition shadow-2xs"
+                      >
+                        <span className="hidden xs:inline">{language === 'en' ? 'Next' : 'Siguiente'}</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </section>
             );
           })()

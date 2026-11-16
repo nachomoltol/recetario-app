@@ -63,7 +63,7 @@ export async function updateRatingAction(
       return { success: false, error: 'No autenticado' };
     }
 
-    const cleanScore = Math.max(0, Math.min(5, Math.round(puntuacion)));
+    const cleanScore = Math.max(0, Math.min(5, Math.round(puntuacion * 2) / 2));
 
     const { error } = await supabase
       .from('recetas')

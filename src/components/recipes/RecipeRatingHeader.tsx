@@ -41,8 +41,22 @@ export function RecipeRatingHeader({
     });
   };
 
+  const handleStarMouseMove = (e: React.MouseEvent<HTMLButtonElement>, starIndex: number) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isLeftHalf = e.clientX - rect.left < rect.width / 2;
+    setHoverRating(isLeftHalf ? starIndex - 0.5 : starIndex);
+  };
+
+  const handleStarMouseClick = (e: React.MouseEvent<HTMLButtonElement>, starIndex: number) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isLeftHalf = e.clientX - rect.left < rect.width / 2;
+    const targetScore = isLeftHalf ? starIndex - 0.5 : starIndex;
+    handleStarClick(targetScore);
+  };
+
   const handleCycleRatingMobile = () => {
-    const nextRating = rating >= 5 ? 0 : rating + 1;
+    // Cicla de 0 a 5.0 en incrementos de 0.5 (0 -> 0.5 -> 1.0 -> ... -> 5.0 -> 0)
+    const nextRating = rating >= 5 ? 0 : Math.round((rating + 0.5) * 10) / 10;
     setRating(nextRating);
     startTransition(async () => {
       await updateRatingAction(recetaId, nextRating);
@@ -73,12 +87,12 @@ export function RecipeRatingHeader({
 
       <span className="h-4 w-px bg-[#e7dfd5]" />
 
-      {/* Vista Móvil (< sm): Microbadge táctil de valoración */}
+      {/* Vista Móvil (< sm): Microbadge táctil de valoración por medios puntos */}
       <button
         type="button"
         onClick={handleCycleRatingMobile}
         className="flex sm:hidden items-center gap-1 px-1.5 py-0.5 rounded-lg hover:bg-[#faf7f2] transition cursor-pointer"
-        title="Toca para valorar (1-5)"
+        title="Toca para valorar (0.5 a 5.0)"
       >
         <Star
           className={`w-3.5 h-3.5 ${
@@ -86,37 +100,49 @@ export function RecipeRatingHeader({
           }`}
         />
         <span className="text-xs font-bold text-stone-700 font-serif-recipe">
-          {rating > 0 ? `${rating}.0` : '·'}
+          {rating > 0 ? Number(rating).toFixed(1) : '·'}
         </span>
       </button>
 
-      {/* Vista Escritorio (>= sm): 5 Estrellas Interactivas (0-5) */}
+      {/* Vista Escritorio (>= sm): 5 Estrellas Interactivas con Medias Estrellas */}
       <div className="hidden sm:flex items-center gap-0.5" onMouseLeave={() => setHoverRating(null)}>
         {[1, 2, 3, 4, 5].map((star) => {
-          const isFilled = star <= currentDisplayRating;
+          const isFullyFilled = currentDisplayRating >= star;
+          const isHalfFilled = !isFullyFilled && currentDisplayRating >= star - 0.5;
+
           return (
             <button
               key={star}
               type="button"
-              onClick={() => handleStarClick(star)}
-              onMouseEnter={() => setHoverRating(star)}
+              onClick={(e) => handleStarMouseClick(e, star)}
+              onMouseMove={(e) => handleStarMouseMove(e, star)}
               title={`${t('recipe_rate_stars')} ${star} ${t('recipe_of_5_stars')}`}
-              className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-[#faf7f2] transition-colors cursor-pointer active:scale-95"
+              className="relative w-6 h-6 flex items-center justify-center rounded-md hover:bg-[#faf7f2] transition-colors cursor-pointer active:scale-95"
             >
+              {/* Estrella base vacía */}
               <Star
                 className={`w-3.5 h-3.5 transition-all ${
-                  isFilled
+                  isFullyFilled
                     ? 'text-amber-500 fill-amber-400 scale-105'
                     : 'text-stone-300 hover:text-amber-300'
                 }`}
               />
+
+              {/* Superposición exacta de Media Estrella */}
+              {isHalfFilled && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-[12px] h-full overflow-hidden mr-auto pl-[5px] flex items-center">
+                    <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400 max-w-none" />
+                  </div>
+                </div>
+              )}
             </button>
           );
         })}
 
         {rating > 0 && (
           <span className="text-xs font-bold text-stone-700 tabular-nums font-serif-recipe pl-1">
-            {rating}.0
+            {Number(rating).toFixed(1)}
           </span>
         )}
       </div>

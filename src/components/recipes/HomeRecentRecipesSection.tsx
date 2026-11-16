@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Sparkles, Eye, Clock, Utensils, ArrowRight, BookOpen } from 'lucide-react';
+import { Sparkles, Eye, Clock, Utensils, ArrowRight, BookOpen, Star } from 'lucide-react';
 import { Receta } from '@/types/recipe';
 import { DeleteRecipeButton } from './DeleteRecipeButton';
 import { useLanguageStore } from '@/stores/useLanguageStore';
@@ -186,6 +186,11 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
                     <span className="px-2.5 py-1 rounded-xl bg-black/50 text-stone-200 backdrop-blur-md capitalize text-[11px]">
                       {recipeToShow.dificultad}
                     </span>
+                    {Number(recipeToShow.puntuacion) > 0 && (
+                      <span className="px-2.5 py-1 rounded-xl bg-black/60 text-amber-400 backdrop-blur-md text-[10px] font-bold flex items-center gap-1 border border-amber-400/20">
+                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {Number(recipeToShow.puntuacion).toFixed(1)}
+                      </span>
+                    )}
                     {activeTab === 'vista' && ultimaVista && (
                       <span className="px-2.5 py-1 rounded-xl bg-emerald-500/80 text-white backdrop-blur-md text-[10px] font-bold flex items-center gap-1">
                         <Eye className="w-3 h-3" /> {t('home_visited_badge')}
@@ -214,6 +219,11 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
                       <span className="px-2.5 py-1 rounded-xl bg-stone-100 text-stone-700 capitalize text-[11px]">
                         {recipeToShow.dificultad}
                       </span>
+                      {Number(recipeToShow.puntuacion) > 0 && (
+                        <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold flex items-center gap-1">
+                          <Star className="w-3 h-3 fill-amber-500 text-amber-500" /> {Number(recipeToShow.puntuacion).toFixed(1)}
+                        </span>
+                      )}
                       {activeTab === 'vista' && ultimaVista && (
                         <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
                           <Eye className="w-3 h-3" /> {t('home_visited_badge')}
