@@ -192,6 +192,31 @@ export async function updateRecipePhotoAction({
       return { error: 'Debes iniciar sesión para actualizar la fotografía.' };
     }
 
+    // 1. Obtener la foto previa para eliminarla si procede de 'recetas_fotos' y es distinta
+    const { data: recetaActual } = await supabase
+      .from('recetas')
+      .select('foto_url')
+      .eq('id', recetaId)
+      .eq('usuario_id', user.id)
+      .single();
+
+    const fotoAnterior = recetaActual?.foto_url;
+    if (
+      fotoAnterior &&
+      fotoAnterior !== fotoUrl &&
+      fotoAnterior.includes('/recetas_fotos/')
+    ) {
+      try {
+        const parts = fotoAnterior.split('/recetas_fotos/');
+        if (parts[1]) {
+          const oldFilePath = decodeURIComponent(parts[1]);
+          await supabase.storage.from('recetas_fotos').remove([oldFilePath]);
+        }
+      } catch (storageErr) {
+        console.warn('Aviso: no se pudo eliminar la foto anterior de recetas_fotos:', storageErr);
+      }
+    }
+
     const { error: errUpdate } = await supabase
       .from('recetas')
       .update({

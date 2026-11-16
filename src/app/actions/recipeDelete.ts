@@ -31,7 +31,40 @@ export async function deleteRecipeAction(recipeId: string): Promise<DeleteRecipe
     if (authError || !user) {
       return { success: false, error: 'Debes iniciar sesión para eliminar recetas.' };
     }
-    // 1. Localizar fotografías del diario culinario vinculadas a la receta para borrarlas del bucket
+    // 1. Localizar fotografías vinculadas a la receta en Storage para purgarlas
+    // A) Portada de la receta en el bucket 'recetas_fotos'
+    const { data: recetaData } = await supabase
+      .from('recetas')
+      .select('foto_url, imagen_portada_url')
+      .eq('id', recipeId)
+      .eq('usuario_id', user.id)
+      .single();
+
+    if (recetaData) {
+      const recetaPathsToDelete: string[] = [];
+      const urlsToCheck = [recetaData.foto_url, recetaData.imagen_portada_url].filter(Boolean) as string[];
+
+      for (const url of urlsToCheck) {
+        if (url.includes('/recetas_fotos/')) {
+          const parts = url.split('/recetas_fotos/');
+          if (parts[1]) {
+            recetaPathsToDelete.push(decodeURIComponent(parts[1]));
+          }
+        }
+      }
+
+      if (recetaPathsToDelete.length > 0) {
+        const { error: errRecetasStorage } = await supabase.storage
+          .from('recetas_fotos')
+          .remove(recetaPathsToDelete);
+
+        if (errRecetasStorage) {
+          console.warn('Aviso: no se pudieron eliminar fotos del bucket recetas_fotos:', errRecetasStorage);
+        }
+      }
+    }
+
+    // B) Fotografías del diario culinario vinculadas a la receta en el bucket 'cooking-diary'
     const { data: diarioEntries } = await supabase
       .from('diario_cocinados')
       .select('foto_resultado_url')
