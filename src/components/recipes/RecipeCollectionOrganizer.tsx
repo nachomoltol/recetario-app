@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
@@ -537,9 +537,17 @@ export function RecipeCollectionOrganizer({
   const momentoParam = searchParams?.get('momento');
   const assignDateParam = searchParams?.get('assignDate');
   const assignSlotParam = searchParams?.get('assignSlot') as MealSlot | null;
+  const pageParam = searchParams?.get('page');
+  const catParam = searchParams?.get('cat');
+
+  const initialPage = useMemo(() => {
+    if (!pageParam) return 1;
+    const p = parseInt(pageParam, 10);
+    return !isNaN(p) && p > 0 ? p : 1;
+  }, [pageParam]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const ITEMS_PER_PAGE = 25;
   const listTopRef = useRef<HTMLDivElement>(null);
 
@@ -557,12 +565,88 @@ export function RecipeCollectionOrganizer({
     }
     return 'todos';
   });
-  const [filtroActivo, setFiltroActivo] = useState<string>('Todas');
+  const [filtroActivo, setFiltroActivo] = useState<string>(() => {
+    return catParam || 'Todas';
+  });
 
-  // Reseteo automático de página al filtrar o buscar
+  const handlePageChange = useCallback((newPage: number, pushHistory = true) => {
+    setCurrentPage(newPage);
+    if (typeof window !== 'undefined' && pushHistory) {
+      const url = new URL(window.location.href);
+      if (newPage > 1) {
+        url.searchParams.set('page', String(newPage));
+      } else {
+        url.searchParams.delete('page');
+      }
+      window.history.pushState({}, '', url.toString());
+    }
+    if (listTopRef.current) {
+      listTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
+
+  // Soportar retroceso y avance en el historial del navegador o móvil (evento popstate)
   useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const rawPage = params.get('page');
+      const p = rawPage ? parseInt(rawPage, 10) : 1;
+      const validPage = !isNaN(p) && p > 0 ? p : 1;
+      setCurrentPage(validPage);
+      if (listTopRef.current) {
+        listTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Interceptar evento personalizado del botón 'Volver' en la cabecera
+  useEffect(() => {
+    const handleCollectionBack = (e: Event) => {
+      if (currentPage > 1) {
+        e.preventDefault();
+        handlePageChange(currentPage - 1);
+      }
+    };
+
+    window.addEventListener('miga:collection-back', handleCollectionBack);
+    return () => window.removeEventListener('miga:collection-back', handleCollectionBack);
+  }, [currentPage, handlePageChange]);
+
+  const isFirstRender = useRef(true);
+  // Reseteo automático de página al filtrar o buscar interactivamente
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     setCurrentPage(1);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('page');
+      window.history.replaceState({}, '', url.toString());
+    }
   }, [searchQuery, filtroMomento, filtroActivo]);
+
+  const buildRecipeDetailUrl = useCallback(
+    (recipeId: string) => {
+      const params = new URLSearchParams();
+      params.set('from', 'collection');
+      if (currentPage > 1) {
+        params.set('page', String(currentPage));
+      }
+      if (filtroActivo && filtroActivo !== 'Todas') {
+        params.set('cat', filtroActivo);
+      }
+      if (filtroMomento && filtroMomento !== 'todos') {
+        params.set('momento', filtroMomento);
+      }
+      return `/recipes/${recipeId}?${params.toString()}`;
+    },
+    [currentPage, filtroActivo, filtroMomento]
+  );
 
   // Refs y estados para navegación horizontal con flechas y scroll en PC
   const categoriesScrollRef = useRef<HTMLDivElement>(null);
@@ -694,14 +778,19 @@ export function RecipeCollectionOrganizer({
         {/* Cabecera fotográfica (solo si la receta tiene imagen asignada) */}
         {tieneFoto && (
           <div className="relative w-full aspect-[4/3] overflow-hidden bg-stone-100">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={fotoSrc!}
-              alt={r.titulo}
-              loading="lazy"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent pointer-events-none" />
+            <Link
+              href={buildRecipeDetailUrl(r.id)}
+              className="block w-full h-full cursor-pointer"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={fotoSrc!}
+                alt={r.titulo}
+                loading="lazy"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent pointer-events-none" />
+            </Link>
 
             {/* Badges y acciones superpuestas con efecto glassmorphism */}
             <div className="absolute top-2 left-2 right-2 flex items-center justify-between gap-1 pointer-events-auto">
@@ -772,7 +861,7 @@ export function RecipeCollectionOrganizer({
             )}
 
             <Link
-              href={`/recipes/${r.id}?from=recipes`}
+              href={buildRecipeDetailUrl(r.id)}
               className="block group-hover:text-brand-primary transition-colors"
             >
               <h3 className="font-semibold sm:font-bold text-stone-900 font-serif-recipe text-xs sm:text-base leading-snug line-clamp-2">
@@ -823,7 +912,7 @@ export function RecipeCollectionOrganizer({
               </button>
             ) : (
               <Link
-                href={`/recipes/${r.id}?from=recipes`}
+                href={buildRecipeDetailUrl(r.id)}
                 className="text-brand-primary hover:text-[#8e511c] font-semibold inline-flex items-center gap-0.5 sm:gap-1 transition-colors text-[10px] sm:text-xs"
               >
                 <span className="hidden xs:inline">{t('collection_open_recipe')}</span>
@@ -1093,13 +1182,6 @@ export function RecipeCollectionOrganizer({
             const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
             const paginatedRecipes = allSortedRecipes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-            const handlePageChange = (newPage: number) => {
-              setCurrentPage(newPage);
-              if (listTopRef.current) {
-                listTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-            };
-
             return (
               <div className="space-y-6 animate-fade-in">
                 {/* Cuadrícula Masonry paginada */}
@@ -1200,13 +1282,6 @@ export function RecipeCollectionOrganizer({
             const startIdxCat = (currentPage - 1) * ITEMS_PER_PAGE;
             const paginatedCategoryRecipes = activeGroup.recetas.slice(startIdxCat, startIdxCat + ITEMS_PER_PAGE);
 
-            const handleCatPageChange = (newPage: number) => {
-              setCurrentPage(newPage);
-              if (listTopRef.current) {
-                listTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-            };
-
             return (
               <section className="space-y-4 animate-fade-in">
                 {/* Encabezado visible únicamente en la vista de categoría */}
@@ -1247,7 +1322,7 @@ export function RecipeCollectionOrganizer({
                     <div className="flex items-center gap-1.5 order-1 sm:order-2">
                       <button
                         type="button"
-                        onClick={() => handleCatPageChange(Math.max(1, currentPage - 1))}
+                        onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                         disabled={currentPage <= 1}
                         className="h-8 px-2.5 rounded-xl border border-[#e7dfd5] bg-white hover:bg-stone-50 disabled:opacity-30 disabled:cursor-not-allowed text-stone-700 font-semibold flex items-center gap-1 transition shadow-2xs"
                       >
@@ -1268,7 +1343,7 @@ export function RecipeCollectionOrganizer({
                                 {showEllipsis && <span className="text-stone-400 px-0.5">…</span>}
                                 <button
                                   type="button"
-                                  onClick={() => handleCatPageChange(pageNum)}
+                                  onClick={() => handlePageChange(pageNum)}
                                   className={`w-8 h-8 rounded-xl font-bold font-serif-recipe text-xs transition cursor-pointer shadow-2xs ${
                                     isActive
                                       ? 'bg-brand-primary text-white'
@@ -1284,7 +1359,7 @@ export function RecipeCollectionOrganizer({
 
                       <button
                         type="button"
-                        onClick={() => handleCatPageChange(Math.min(totalPagesCat, currentPage + 1))}
+                        onClick={() => handlePageChange(Math.min(totalPagesCat, currentPage + 1))}
                         disabled={currentPage >= totalPagesCat}
                         className="h-8 px-2.5 rounded-xl border border-[#e7dfd5] bg-white hover:bg-stone-50 disabled:opacity-30 disabled:cursor-not-allowed text-stone-700 font-semibold flex items-center gap-1 transition shadow-2xs"
                       >

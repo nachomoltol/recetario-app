@@ -34,9 +34,14 @@ export function RecipeDetailHeader({
   const effectiveDate = returnDate || searchParams.get('date');
 
   const isFromPlanner = effectiveFrom === 'planner';
+  const isFromCollection =
+    effectiveFrom === 'collection' ||
+    (typeof window !== 'undefined' && Boolean(document.referrer && document.referrer.includes('/recipes/collection')));
   const isFromRecipes =
-    effectiveFrom === 'recipes' ||
-    (typeof window !== 'undefined' && document.referrer && document.referrer.includes('/recipes'));
+    !isFromCollection && (
+      effectiveFrom === 'recipes' ||
+      (typeof window !== 'undefined' && Boolean(document.referrer && document.referrer.includes('/recipes')))
+    );
 
   const handleBack = () => {
     // 1. Si la navegación procede del planificador de comidas, retornar al planificador
@@ -46,13 +51,29 @@ export function RecipeDetailHeader({
       return;
     }
 
-    // 2. Si el usuario entró navegando desde el Recetario (/recipes), llevar de vuelta a /recipes
+    // 2. Si el usuario procede del Recetario (/recipes/collection), preservar página y filtros
+    if (isFromCollection) {
+      const page = searchParams.get('page');
+      const cat = searchParams.get('cat');
+      const momento = searchParams.get('momento');
+
+      const params = new URLSearchParams();
+      if (page && page !== '1') params.set('page', page);
+      if (cat && cat !== 'Todas') params.set('cat', cat);
+      if (momento && momento !== 'todos') params.set('momento', momento);
+
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      router.push(`/recipes/collection${qs}`);
+      return;
+    }
+
+    // 3. Si el usuario entró navegando desde el capturador / ingesta (/recipes), llevar de vuelta a /recipes
     if (isFromRecipes) {
       router.push('/recipes');
       return;
     }
 
-    // 3. Si se accede directamente sin referer/origen, redirige a / (Inicio)
+    // 4. Si se accede directamente sin referer/origen, redirige a / (Inicio)
     router.push('/');
   };
 
@@ -61,8 +82,10 @@ export function RecipeDetailHeader({
     : (t('btn_back') || (language === 'en' ? 'Back' : 'Volver'));
   const backTitle = isFromPlanner
     ? (language === 'en' ? 'Back to meal planner' : 'Volver al planificador')
-    : isFromRecipes
+    : isFromCollection
     ? (language === 'en' ? 'Back to cookbook' : 'Volver al recetario')
+    : isFromRecipes
+    ? (language === 'en' ? 'Back to recipes' : 'Volver a recetas')
     : (language === 'en' ? 'Back to home' : 'Volver a inicio');
 
   const isVideoSource = fuenteTipo !== 'web' && fuenteTipo !== 'manual';

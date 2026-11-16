@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ChefHat, ArrowLeft, BookOpen, Clock, ArrowRight, Utensils, Sparkles } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
-import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
+import { RecipeCollectionBackButton } from '@/components/recipes/RecipeCollectionBackButton';
 import { HeaderHomeButton } from '@/components/layout/HeaderHomeButton';
 import { RecipeCollectionOrganizer } from '@/components/recipes/RecipeCollectionOrganizer';
 import { CollectionHeroHeader } from '@/components/recipes/CollectionHeaderComponents';
@@ -65,7 +65,7 @@ export default async function RecipeCollectionPage() {
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
-            <HeaderBackButton fallbackUrl="/" />
+            <RecipeCollectionBackButton fallbackUrl="/recipes" />
             <HeaderHomeButton />
           </div>
 
