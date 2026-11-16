@@ -1,4 +1,4 @@
-import { getAdminClient } from '@/lib/supabase/server';
+import { createClient, getAdminClient } from '@/lib/supabase/server';
 import Stripe from 'stripe';
 
 export interface SyncResult {
@@ -35,23 +35,18 @@ export function isNewMonth(lastResetDateStr: string | null | undefined): boolean
  * Sincroniza atómicamente el estado del usuario:
  * 1. Reinicio mensual de capturas y créditos de anuncio al cambiar de mes.
  * 2. Comprobación de caducidad y estado en Stripe para usuarios PRO.
- * 3. Ejecución segura mediante cliente administrativo con service_role.
+ * 3. Ejecución segura mediante cliente administrativo con service_role o RPCs seguras.
  */
 export async function ensureMonthlyResetAndPlanSync(
   userId: string,
   deviceId?: string | null
 ): Promise<SyncResult> {
   const adminClient = getAdminClient();
-  if (!adminClient) {
-    console.warn(
-      '[ensureMonthlyResetAndPlanSync] adminClient no disponible (falta SUPABASE_SERVICE_ROLE_KEY). Omitiendo sync administrativa.'
-    );
-    return { usuario: null, wasReset: false, wasDowngraded: false };
-  }
+  const client = adminClient || (await createClient());
 
   try {
     // 1. Obtener estado actual del usuario
-    const { data: usuario, error } = await adminClient
+    const { data: usuario, error } = await client
       .from('usuarios')
       .select(
         'id, plan_suscripcion, capturas_mes_actual, creditos_anuncio, antiguedad_ciclos_mes, fecha_ultimo_reinicio, pro_expires_at, stripe_subscription_id'
@@ -88,7 +83,7 @@ export async function ensureMonthlyResetAndPlanSync(
       );
 
       // Reiniciar también cuota de dispositivo físico si se proporciona
-      if (deviceId && deviceId.trim().length >= 6) {
+      if (adminClient && deviceId && deviceId.trim().length >= 6) {
         await adminClient
           .from('dispositivos_cuotas')
           .update({
@@ -169,18 +164,27 @@ export async function ensureMonthlyResetAndPlanSync(
       currentPlan !== usuario.plan_suscripcion;
 
     if (needsUpdate) {
-      await adminClient
-        .from('usuarios')
-        .update({
-          plan_suscripcion: currentPlan,
-          capturas_mes_actual: currentCapturas,
-          creditos_anuncio: currentCreditos,
-          antiguedad_ciclos_mes: currentCiclos,
-          fecha_ultimo_reinicio: currentFechaReinicio,
-          pro_expires_at: currentProExpiresAt,
-          updated_at: now.toISOString(),
-        })
-        .eq('id', userId);
+      if (adminClient) {
+        await adminClient
+          .from('usuarios')
+          .update({
+            plan_suscripcion: currentPlan,
+            capturas_mes_actual: currentCapturas,
+            creditos_anuncio: currentCreditos,
+            antiguedad_ciclos_mes: currentCiclos,
+            fecha_ultimo_reinicio: currentFechaReinicio,
+            pro_expires_at: currentProExpiresAt,
+            updated_at: now.toISOString(),
+          })
+          .eq('id', userId);
+      } else if (wasReset) {
+        // En entorno sin service_role_key, ejecutar reseteo a través de la función SECURITY DEFINER
+        await client.rpc('reset_monthly_user_quotas', {
+          p_user_id: userId,
+          p_new_cycles: currentCiclos,
+          p_device_id: deviceId && deviceId.trim().length >= 6 ? deviceId : null,
+        });
+      }
     }
 
     return {

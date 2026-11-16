@@ -20,6 +20,8 @@ export interface IngestRecipeResult {
   recetaId?: string;
   error?: string;
   message?: string;
+  nuevoConteoCapturas?: number;
+  nuevoSaldoCreditos?: number;
 }
 
 export async function ingestRecipeAction(formData: FormData): Promise<IngestRecipeResult> {
@@ -176,7 +178,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       console.warn(`[recipeIngest] REQUISITO DE ANUNCIO: Usuario ${user.id} necesita anuncio (capturas=${capturasMesActual}, ciclo=${antiguedadCiclos}, créditos=${creditosAnuncio}).`);
       return {
         success: false,
-        error: 'AD_REQUIRED',
+        error: 'AD_REQUIRED_FOR_EXTRACTION',
         message: antiguedadCiclos === 0
           ? 'Has disfrutado de tus 3 recetas gratis del mes. Para extraer la 4.ª, visualiza un breve anuncio desde la app móvil o pásate a PRO.'
           : 'Para seguir extrayendo recetas gratis este mes, visualiza un breve anuncio desde la app móvil o pásate a PRO.',
@@ -331,41 +333,63 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
           const requiereAnuncioEstaReceta = !isPro && (antiguedadCiclos === 0 ? conteoBase >= 3 : true);
           const usoCreditoAnuncio = requiereAnuncioEstaReceta && frescoCreditos > 0;
           const nuevoConteo = conteoBase + 1;
-
-          const updateUsuarioPayload = {
-            capturas_mes_actual: nuevoConteo,
-            updated_at: new Date().toISOString(),
-            ...(usoCreditoAnuncio
-              ? { creditos_anuncio: Math.max(0, frescoCreditos - 1) }
-              : {}),
-          };
+          let saldoFinalCreditos = usoCreditoAnuncio ? Math.max(0, frescoCreditos - 1) : frescoCreditos;
+          let conteoFinalCapturas = nuevoConteo;
 
           if (usoCreditoAnuncio) {
             console.log(
-              `[recipeIngest] Caché semántica: Crédito por anuncio consumido (-1). Saldo restante: ${Math.max(0, frescoCreditos - 1)} para usuario ${user.id}.`
+              `[recipeIngest] Caché semántica: Crédito por anuncio consumido (-1). Saldo restante: ${saldoFinalCreditos} para usuario ${user.id}.`
             );
           }
 
-          await db
-            .from('usuarios')
-            .update(updateUsuarioPayload)
-            .eq('id', user.id);
+          if (adminClient) {
+            const updateUsuarioPayload = {
+              capturas_mes_actual: nuevoConteo,
+              updated_at: new Date().toISOString(),
+              ...(usoCreditoAnuncio
+                ? { creditos_anuncio: saldoFinalCreditos }
+                : {}),
+            };
 
-          if (isValidoDeviceId) {
-            const { data: dispFresco } = await db
-              .from('dispositivos_cuotas')
-              .select('capturas_mes_actual')
-              .eq('device_id', rawDeviceId)
-              .maybeSingle();
+            const { error: errUpdateCuota } = await adminClient
+              .from('usuarios')
+              .update(updateUsuarioPayload)
+              .eq('id', user.id);
 
-            const conteoBaseDisp = Number(dispFresco?.capturas_mes_actual) || capturasDispositivo;
-            await db
-              .from('dispositivos_cuotas')
-              .update({
-                capturas_mes_actual: conteoBaseDisp + 1,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('device_id', rawDeviceId);
+            if (errUpdateCuota) {
+              console.error('[recipeIngest] ERROR al actualizar cuota con adminClient (cache):', errUpdateCuota);
+            }
+
+            if (isValidoDeviceId) {
+              const { data: dispFresco } = await adminClient
+                .from('dispositivos_cuotas')
+                .select('capturas_mes_actual')
+                .eq('device_id', rawDeviceId)
+                .maybeSingle();
+
+              const conteoBaseDisp = Number(dispFresco?.capturas_mes_actual) || capturasDispositivo;
+              await adminClient
+                .from('dispositivos_cuotas')
+                .update({
+                  capturas_mes_actual: conteoBaseDisp + 1,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('device_id', rawDeviceId);
+            }
+          } else {
+            // Entorno local sin service_role_key: ejecutar RPC atómica SECURITY DEFINER
+            const { data: rpcRes, error: errRpc } = await supabase.rpc('increment_user_capturas', {
+              p_user_id: user.id,
+              p_use_ad_credit: usoCreditoAnuncio,
+              p_device_id: isValidoDeviceId ? rawDeviceId : null,
+            });
+
+            if (errRpc) {
+              console.error('[recipeIngest] ERROR en RPC increment_user_capturas (cache):', errRpc);
+            } else if (rpcRes && Array.isArray(rpcRes) && rpcRes.length > 0) {
+              conteoFinalCapturas = Number((rpcRes[0] as any).nuevo_conteo) || nuevoConteo;
+              saldoFinalCreditos = Number((rpcRes[0] as any).nuevo_creditos) || saldoFinalCreditos;
+            }
           }
 
           // Revalidación exhaustiva de Next.js
@@ -375,7 +399,12 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
           revalidatePath('/', 'layout');
 
           console.log(`[recipeIngest] Cache Hit Semántico (<150ms): Receta clonada exitosamente para ${user.id} desde plantilla ${cachedRecipe.id} (${nuevaRecetaClonada.id}) sin consumo de tokens de Gemini.`);
-          return { success: true, recetaId: nuevaRecetaClonada.id };
+          return {
+            success: true,
+            recetaId: nuevaRecetaClonada.id,
+            nuevoConteoCapturas: conteoFinalCapturas,
+            nuevoSaldoCreditos: saldoFinalCreditos,
+          };
         }
       }
     } catch (cacheLookupErr) {
@@ -703,51 +732,70 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     const requiereAnuncioEstaReceta = !isPro && (antiguedadCiclos === 0 ? conteoBase >= 3 : true);
     const usoCreditoAnuncio = requiereAnuncioEstaReceta && frescoCreditos > 0;
     const nuevoConteo = conteoBase + 1;
-
-    const updateUsuarioPayload = {
-      capturas_mes_actual: nuevoConteo,
-      updated_at: new Date().toISOString(),
-      ...(usoCreditoAnuncio
-        ? { creditos_anuncio: Math.max(0, frescoCreditos - 1) }
-        : {}),
-    };
+    let saldoFinalCreditos = usoCreditoAnuncio ? Math.max(0, frescoCreditos - 1) : frescoCreditos;
+    let conteoFinalCapturas = nuevoConteo;
 
     if (usoCreditoAnuncio) {
       console.log(
-        `[recipeIngest] Crédito por anuncio consumido (-1). Saldo restante: ${Math.max(0, frescoCreditos - 1)} para usuario ${user.id}.`
+        `[recipeIngest] Crédito por anuncio consumido (-1). Saldo restante: ${saldoFinalCreditos} para usuario ${user.id}.`
       );
     }
 
-    const { data: updatedRows, error: errUpdateCuota } = await db
-      .from('usuarios')
-      .update(updateUsuarioPayload)
-      .eq('id', user.id)
-      .select('id, capturas_mes_actual');
+    if (adminClient) {
+      const updateUsuarioPayload = {
+        capturas_mes_actual: nuevoConteo,
+        updated_at: new Date().toISOString(),
+        ...(usoCreditoAnuncio
+          ? { creditos_anuncio: saldoFinalCreditos }
+          : {}),
+      };
 
-    if (errUpdateCuota) {
-      console.error('[recipeIngest] ERROR al actualizar cuota y créditos de usuario:', errUpdateCuota);
+      const { error: errUpdateCuota } = await adminClient
+        .from('usuarios')
+        .update(updateUsuarioPayload)
+        .eq('id', user.id);
+
+      if (errUpdateCuota) {
+        console.error('[recipeIngest] ERROR al actualizar cuota con adminClient:', errUpdateCuota);
+      } else {
+        console.log(
+          `[recipeIngest] Cuota incrementada con éxito a ${nuevoConteo} para usuario ${user.id}.`
+        );
+      }
+
+      if (isValidoDeviceId) {
+        const { data: dispFresco } = await adminClient
+          .from('dispositivos_cuotas')
+          .select('capturas_mes_actual')
+          .eq('device_id', rawDeviceId)
+          .maybeSingle();
+
+        const conteoBaseDisp = Number(dispFresco?.capturas_mes_actual) || capturasDispositivo;
+        await adminClient
+          .from('dispositivos_cuotas')
+          .update({
+            capturas_mes_actual: conteoBaseDisp + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('device_id', rawDeviceId);
+      }
     } else {
-      console.log(
-        `[recipeIngest] Cuota de usuario incrementada con éxito a ${nuevoConteo} para usuario ${user.id}.`
-      );
-    }
+      // Fallback a RPC atómica SECURITY DEFINER
+      const { data: rpcRes, error: errRpc } = await supabase.rpc('increment_user_capturas', {
+        p_user_id: user.id,
+        p_use_ad_credit: usoCreditoAnuncio,
+        p_device_id: isValidoDeviceId ? rawDeviceId : null,
+      });
 
-    // Incrementar también el contador del dispositivo físico
-    if (isValidoDeviceId) {
-      const { data: dispFresco } = await db
-        .from('dispositivos_cuotas')
-        .select('capturas_mes_actual')
-        .eq('device_id', rawDeviceId)
-        .maybeSingle();
-
-      const conteoBaseDisp = Number(dispFresco?.capturas_mes_actual) || capturasDispositivo;
-      await db
-        .from('dispositivos_cuotas')
-        .update({
-          capturas_mes_actual: conteoBaseDisp + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('device_id', rawDeviceId);
+      if (errRpc) {
+        console.error('[recipeIngest] ERROR en RPC increment_user_capturas:', errRpc);
+      } else if (rpcRes && Array.isArray(rpcRes) && rpcRes.length > 0) {
+        conteoFinalCapturas = Number((rpcRes[0] as any).nuevo_conteo) || nuevoConteo;
+        saldoFinalCreditos = Number((rpcRes[0] as any).nuevo_creditos) || saldoFinalCreditos;
+        console.log(
+          `[recipeIngest] Cuota incrementada con éxito vía RPC a ${conteoFinalCapturas} para usuario ${user.id}.`
+        );
+      }
     }
 
     // 7. Revalidación exhaustiva de caché de Next.js
@@ -757,7 +805,12 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     revalidatePath('/', 'layout');
 
     console.log(`Receta guardada exitosamente: ${nuevaReceta.titulo} (${nuevaReceta.id})`);
-    return { success: true, recetaId: nuevaReceta.id };
+    return {
+      success: true,
+      recetaId: nuevaReceta.id,
+      nuevoConteoCapturas: conteoFinalCapturas,
+      nuevoSaldoCreditos: saldoFinalCreditos,
+    };
   } catch (error: any) {
     console.error('[recipeIngest] Fallo en Server Action ingestRecipeAction:', error);
     return {

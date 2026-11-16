@@ -42,6 +42,11 @@ export function getAdminClient(): SupabaseClient<Database> | null {
   });
 }
 
+/**
+ * Alias de getAdminClient para compatibilidad con módulos administrativos.
+ */
+export const createAdminClient = getAdminClient;
+
 export async function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';

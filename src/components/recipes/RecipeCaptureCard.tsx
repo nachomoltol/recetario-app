@@ -442,6 +442,13 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             } else if (res.error === 'PRO_LIMIT_REACHED') {
               setHardLimitModal('PRO_LIMIT_REACHED');
               setError(null);
+            } else if (
+              res.error === 'AD_REQUIRED' ||
+              res.error === 'AD_REQUIRED_FOR_EXTRACTION'
+            ) {
+              setPendingIngestParams({ mode: targetMode, value: targetValue });
+              setShowInterstitialModal(true);
+              setError(null);
             } else {
               setError(res.error);
             }
@@ -450,7 +457,8 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             if (currentProfile) {
               useProfileStore.getState().setProfile({
                 ...currentProfile,
-                capturas_mes_actual: capturas + 1,
+                capturas_mes_actual: res.nuevoConteoCapturas ?? (capturas + 1),
+                creditos_anuncio: res.nuevoSaldoCreditos ?? (currentProfile as any).creditos_anuncio,
               });
             }
 

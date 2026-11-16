@@ -296,11 +296,29 @@ export function AdInterstitialModal({
 
     try {
       const res = await checkUserBalanceAction();
-      if (res.success) {
-        setSyncedCapturas(res.capturas_mes_actual);
-        setSyncedCreditosAnuncio(res.creditos_anuncio);
+      if (!res.success) {
+        setBalanceCheckStatus('error');
+        setBalanceCheckMessage(
+          res.error ||
+            (isEn ? 'Error checking balance. Please try again.' : 'Error al comprobar saldo. Por favor, reinténtalo.')
+        );
+        return;
       }
-      if (res.success && res.creditos_anuncio > 0) {
+
+      setSyncedCapturas(res.capturas_mes_actual);
+      setSyncedCreditosAnuncio(res.creditos_anuncio);
+
+      // Sincronizar estado global de Zustand para que toda la interfaz refleje el saldo real
+      if (profile) {
+        useProfileStore.getState().setProfile({
+          ...profile,
+          capturas_mes_actual: res.capturas_mes_actual,
+          creditos_anuncio: res.creditos_anuncio,
+          plan_suscripcion: res.plan_suscripcion ?? profile.plan_suscripcion,
+        });
+      }
+
+      if (res.is_pro || res.puede_extraer || res.creditos_anuncio > 0) {
         setBalanceCheckStatus('success');
         setBalanceCheckMessage(
           isEn
@@ -314,7 +332,7 @@ export function AdInterstitialModal({
         setBalanceCheckStatus('not_found');
         setBalanceCheckMessage(
           isEn
-            ? 'No credited balance detected yet. Make sure you completed the video on your Android phone using this same account.'
+            ? 'No credited balance detected yet. Make sure you completed the video on your phone using this same account.'
             : 'Aún no se ha detectado saldo acreditado. Asegúrate de haber completado el vídeo en tu móvil con esta misma cuenta.'
         );
       }

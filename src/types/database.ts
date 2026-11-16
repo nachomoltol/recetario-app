@@ -547,6 +547,33 @@ export interface Database {
         };
         Returns: number;
       };
+      increment_user_capturas: {
+        Args: {
+          p_user_id: string;
+          p_use_ad_credit?: boolean;
+          p_device_id?: string | null;
+        };
+        Returns: {
+          nuevo_conteo: number;
+          nuevo_creditos: number;
+        }[];
+      };
+      claim_ad_reward_credit: {
+        Args: {
+          p_user_id: string;
+        };
+        Returns: {
+          nuevo_saldo: number;
+        }[];
+      };
+      reset_monthly_user_quotas: {
+        Args: {
+          p_user_id: string;
+          p_new_cycles: number;
+          p_device_id?: string | null;
+        };
+        Returns: void;
+      };
     };
     Enums: {
       dificultad_receta: DificultadReceta;

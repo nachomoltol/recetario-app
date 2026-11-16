@@ -9,6 +9,7 @@ export type CheckUserBalanceResult =
       creditos_anuncio: number;
       capturas_mes_actual: number;
       antiguedad_ciclos_mes: number;
+      plan_suscripcion: 'gratis' | 'pro';
       is_pro: boolean;
       limite_gratuito: number;
       puede_extraer: boolean;
@@ -20,6 +21,7 @@ export type CheckUserBalanceResult =
   | {
       success: false;
       error: string;
+      plan_suscripcion?: never;
       creditos_anuncio?: never;
       capturas_mes_actual?: never;
       antiguedad_ciclos_mes?: never;
@@ -51,8 +53,12 @@ export async function checkUserBalanceAction(): Promise<CheckUserBalanceResult> 
       };
     }
 
-    // Sincronización mensual y verificación de caducidad PRO
-    await ensureMonthlyResetAndPlanSync(user.id);
+    // Sincronización mensual y verificación de caducidad PRO (con aislamiento de errores)
+    try {
+      await ensureMonthlyResetAndPlanSync(user.id);
+    } catch (syncErr) {
+      console.warn('[checkUserBalanceAction] Error no fatal en ensureMonthlyResetAndPlanSync:', syncErr);
+    }
 
     const adminClient = getAdminClient();
     const db = adminClient || supabase;
@@ -109,6 +115,7 @@ export async function checkUserBalanceAction(): Promise<CheckUserBalanceResult> 
       creditos_anuncio: creditosAnuncio,
       capturas_mes_actual: capturas,
       antiguedad_ciclos_mes: antiguedadCiclos,
+      plan_suscripcion: isPro ? 'pro' : 'gratis',
       is_pro: isPro,
       limite_gratuito: 20,
       puede_extraer: puedeExtraer,

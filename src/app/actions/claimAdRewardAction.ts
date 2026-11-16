@@ -87,33 +87,51 @@ export async function claimAdRewardAction(): Promise<ClaimAdRewardResult> {
 
     const nuevoSaldo = currentCreditos + 1;
 
-    // 2. Persistir incremento mediante cliente administrativo
-    const { error: updateErr } = await db
-      .from('usuarios')
-      .update({
-        creditos_anuncio: nuevoSaldo,
-        solicitud_recarga_pc: false,
-        solicitud_recarga_pc_at: null,
-        solicitud_recarga_url: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id);
+    // 2. Persistir incremento mediante cliente administrativo o RPC atómica con SECURITY DEFINER
+    let saldoFinal = nuevoSaldo;
+    if (adminClient) {
+      const { error: updateErr } = await adminClient
+        .from('usuarios')
+        .update({
+          creditos_anuncio: nuevoSaldo,
+          solicitud_recarga_pc: false,
+          solicitud_recarga_pc_at: null,
+          solicitud_recarga_url: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
 
-    if (updateErr) {
-      console.error('[claimAdRewardAction] Error al persistir crédito de anuncio:', updateErr);
-      return {
-        success: false,
-        error: 'Error al persistir el crédito bonificado en la base de datos.',
-      };
+      if (updateErr) {
+        console.error('[claimAdRewardAction] Error al persistir crédito de anuncio con adminClient:', updateErr);
+        return {
+          success: false,
+          error: 'Error al persistir el crédito bonificado en la base de datos.',
+        };
+      }
+    } else {
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('claim_ad_reward_credit', {
+        p_user_id: user.id,
+      });
+
+      if (rpcErr) {
+        console.error('[claimAdRewardAction] Error al persistir crédito de anuncio con RPC:', rpcErr);
+        return {
+          success: false,
+          error: rpcErr.message || 'Error al persistir el crédito bonificado en la base de datos.',
+        };
+      }
+      if (rpcData && Array.isArray(rpcData) && rpcData.length > 0) {
+        saldoFinal = Number((rpcData[0] as any).nuevo_saldo) || nuevoSaldo;
+      }
     }
 
     console.log(
-      `[claimAdRewardAction] +1 crédito de anuncio otorgado a ${user.id}. Nuevo saldo: ${nuevoSaldo}.`
+      `[claimAdRewardAction] +1 crédito de anuncio otorgado a ${user.id}. Nuevo saldo: ${saldoFinal}.`
     );
 
     return {
       success: true,
-      nuevoSaldo,
+      nuevoSaldo: saldoFinal,
       message: '¡Crédito de anuncio añadido con éxito!',
     };
   } catch (err: unknown) {
