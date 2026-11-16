@@ -10,8 +10,11 @@ export interface ClaimAdRewardResult {
 }
 
 /**
- * Server Action para acreditar +1 crédito por anuncio bonificado (AdMob)
- * en la cuenta de usuario de Supabase, habilitando el saldo cruzado PC-Móvil.
+ * Server Action seguro para acreditar +1 crédito por anuncio bonificado (AdMob)
+ * en la cuenta de usuario de Supabase.
+ * - Requiere rol administrativo (service_role) o autenticación verificada.
+ * - Valida que el usuario es Free y que se encuentra en el rango de cuota requerido.
+ * - Limita el saldo máximo a 2 créditos para evitar acaparamiento masivo.
  */
 export async function claimAdRewardAction(): Promise<ClaimAdRewardResult> {
   try {
@@ -31,62 +34,60 @@ export async function claimAdRewardAction(): Promise<ClaimAdRewardResult> {
     const adminClient = getAdminClient();
     const db = adminClient || supabase;
 
-    // 1. Intento atómico mediante RPC increment_creditos_anuncio
-    try {
-      const { data: rpcSaldo, error: rpcError } = await (db.rpc as any)(
-        'increment_creditos_anuncio',
-        {
-          p_user_id: user.id,
-          p_amount: 1,
-        }
-      );
-
-      if (!rpcError && typeof rpcSaldo === 'number') {
-        await db
-          .from('usuarios')
-          .update({
-            solicitud_recarga_pc: false,
-            solicitud_recarga_pc_at: null,
-            solicitud_recarga_url: null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', user.id);
-
-        return {
-          success: true,
-          nuevoSaldo: rpcSaldo,
-          message: '¡Crédito de anuncio añadido con éxito!',
-        };
-      }
-
-      if (rpcError) {
-        console.warn(
-          '[claimAdRewardAction] RPC increment_creditos_anuncio no disponible, ejecutando fallback directo:',
-          rpcError.message
-        );
-      }
-    } catch (rpcErr) {
-      console.warn('[claimAdRewardAction] Excepción al invocar RPC:', rpcErr);
-    }
-
-    // 2. Fallback resiliente: Consulta directa y actualización de usuarios
-    const { data: userData, error: fetchErr } = await db
+    // 1. Obtener estado actual del usuario para validar elegibilidad
+    const { data: usuario, error: fetchErr } = await db
       .from('usuarios')
-      .select('creditos_anuncio')
+      .select('plan_suscripcion, capturas_mes_actual, antiguedad_ciclos_mes, creditos_anuncio')
       .eq('id', user.id)
       .single();
 
-    if (fetchErr) {
-      console.error('[claimAdRewardAction] Error al consultar usuario:', fetchErr);
+    if (fetchErr || !usuario) {
+      console.error('[claimAdRewardAction] Error consultando perfil de usuario:', fetchErr);
       return {
         success: false,
-        error: 'No se pudo consultar el saldo de créditos del usuario.',
+        error: 'No se pudo consultar el estado del usuario.',
       };
     }
 
-    const currentSaldo = Number(userData?.creditos_anuncio) || 0;
-    const nuevoSaldo = currentSaldo + 1;
+    const isPro = (usuario.plan_suscripcion || '').trim().toLowerCase() === 'pro';
+    if (isPro) {
+      return {
+        success: false,
+        error: 'Los usuarios PRO disfrutan de extracción directa sin necesidad de anuncios.',
+      };
+    }
 
+    const capturas = Number(usuario.capturas_mes_actual) || 0;
+    const antiguedadCiclos = Number(usuario.antiguedad_ciclos_mes) || 0;
+    const currentCreditos = Number(usuario.creditos_anuncio) || 0;
+
+    // A) Si ya alcanzó el límite mensual de 20 en Free, no puede acumular más créditos
+    if (capturas >= 20) {
+      return {
+        success: false,
+        error: 'Has alcanzado el límite mensual de 20 recetas gratis. Pásate a PRO para continuar.',
+      };
+    }
+
+    // B) Si está en el mes 1 y aún no ha alcanzado las 3 gratuitas directas
+    if (antiguedadCiclos === 0 && capturas < 3) {
+      return {
+        success: false,
+        error: 'Aún dispones de extracciones directas sin anuncio en tu primer mes.',
+      };
+    }
+
+    // C) Prevención de acaparamiento: máximo 2 créditos de anuncio acumulables
+    if (currentCreditos >= 2) {
+      return {
+        success: false,
+        error: 'Ya dispones de créditos de anuncio activos. Consúmelos antes de acumular más.',
+      };
+    }
+
+    const nuevoSaldo = currentCreditos + 1;
+
+    // 2. Persistir incremento mediante cliente administrativo
     const { error: updateErr } = await db
       .from('usuarios')
       .update({
@@ -99,12 +100,16 @@ export async function claimAdRewardAction(): Promise<ClaimAdRewardResult> {
       .eq('id', user.id);
 
     if (updateErr) {
-      console.error('[claimAdRewardAction] Error al actualizar créditos:', updateErr);
+      console.error('[claimAdRewardAction] Error al persistir crédito de anuncio:', updateErr);
       return {
         success: false,
         error: 'Error al persistir el crédito bonificado en la base de datos.',
       };
     }
+
+    console.log(
+      `[claimAdRewardAction] +1 crédito de anuncio otorgado a ${user.id}. Nuevo saldo: ${nuevoSaldo}.`
+    );
 
     return {
       success: true,

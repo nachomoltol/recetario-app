@@ -208,13 +208,20 @@ export async function batchAssignMealSlotsAction(
       return { success: false, error: 'No autenticado' };
     }
 
-    // 2. Respeto Estricto de los Comensales del Usuario (porciones):
-    // Leer número de porciones configurado en el perfil del usuario (perfil.raciones_defecto o comensales)
+    // 2. Respeto Estricto de los Comensales del Usuario (porciones) y Validación PRO:
     const { data: userProfile } = await supabase
       .from('usuarios')
-      .select('raciones_defecto')
+      .select('raciones_defecto, plan_suscripcion')
       .eq('id', user.id)
       .maybeSingle();
+
+    const isPro = (userProfile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
+    if (!isPro) {
+      return {
+        success: false,
+        error: 'El planificador semanal inteligente es una funcionalidad exclusiva de Miga PRO.',
+      };
+    }
 
     const userServings = (userProfile as any)?.porciones_por_defecto ?? userProfile?.raciones_defecto ?? 4;
 

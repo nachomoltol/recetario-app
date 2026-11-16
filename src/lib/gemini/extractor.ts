@@ -137,17 +137,27 @@ async function streamMediaUrlToFile(
     }
 
     const contentType = res.headers.get('content-type') || 'video/mp4';
+    const contentLength = Number(res.headers.get('content-length'));
+    const MAX_VIDEO_BYTES = 30 * 1024 * 1024; // Límite estricto de seguridad: 30 MB
+
+    if (contentLength && contentLength > MAX_VIDEO_BYTES) {
+      console.warn(`[streamMediaUrlToFile] Vídeo excede el límite de 30 MB (${contentLength} bytes). Omitiendo descarga.`);
+      return { success: false, mimeType: 'video/mp4' };
+    }
+
     const writeStream = fs.createWriteStream(targetFilePath);
     await pipeline(Readable.fromWeb(res.body as any), writeStream);
 
     const stats = fs.statSync(targetFilePath);
-    if (stats.size < 1024) {
+    if (stats.size < 1024 || stats.size > MAX_VIDEO_BYTES) {
       try {
         fs.unlinkSync(targetFilePath);
       } catch {}
+      if (stats.size > MAX_VIDEO_BYTES) {
+        console.warn(`[streamMediaUrlToFile] Fichero descargado supera 30 MB (${stats.size} bytes). Eliminado.`);
+      }
       return { success: false, mimeType: 'video/mp4' };
     }
-
     let mimeType = 'video/mp4';
     if (contentType.includes('webm')) mimeType = 'video/webm';
     else if (contentType.includes('audio') || contentType.includes('mp3') || contentType.includes('m4a')) {
@@ -1098,7 +1108,7 @@ async function executeYtDlpCombo(
       noWarnings: true,
       noCallHome: true,
       preferFreeFormats: true,
-      maxFilesize: '60M',
+      maxFilesize: '30M',
     };
     await youtubedl(url, flags);
 

@@ -134,23 +134,23 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
                   ? 'Device Limit Reached'
                   : 'Límite alcanzado en este dispositivo'
                 : isEn
-                  ? 'Monthly limit reached (50/50)'
-                  : 'Límite mensual alcanzado (50/50)'}
+                  ? 'Monthly limit reached (20/20)'
+                  : 'Límite mensual alcanzado (20/20)'}
           </h2>
 
           {/* Descripción */}
           <p className="text-xs sm:text-sm text-stone-600 leading-relaxed max-w-md">
             {isProLimit
               ? isEn
-                ? 'You have reached the monthly fair-use limit of 150 recipes for your PRO subscription. Your quota will automatically reset on the 1st of next month.'
-                : 'Has alcanzado el límite de 150 recetas de tu membresía PRO. Tu cuota se reiniciará automáticamente el día 1 del próximo mes.'
+                ? 'You have reached the monthly fair-use limit of 100 recipes for your PRO subscription. Your quota will automatically reset on the 1st of next month.'
+                : 'Has alcanzado el límite de 100 recetas de tu membresía PRO. Tu cuota se reiniciará automáticamente el día 1 del próximo mes.'
               : isDeviceLimit
                 ? isEn
-                  ? 'This physical device has reached the monthly quota of 50 free recipes. Quota resets on the 1st of each month, or you can unlock 150 recipes with a PRO membership.'
-                  : 'Este dispositivo físico ha alcanzado la cuota de 50 recetas gratuitas del mes. El día 1 se reiniciará tu contador, o puedes desbloquear 150 recetas con una cuenta PRO.'
+                  ? 'This physical device has reached the monthly quota of 20 free recipes. Quota resets on the 1st of each month, or you can unlock 100 recipes with a PRO membership.'
+                  : 'Este dispositivo físico ha alcanzado la cuota de 20 recetas gratuitas del mes. El día 1 se reiniciará tu contador, o puedes desbloquear 100 recetas con una cuenta PRO.'
                 : isEn
-                  ? 'Monthly limit reached (50/50). Your counter resets on the 1st of next month. Upgrade to PRO to get up to 150 recipes with zero ads or waiting.'
-                  : 'Límite mensual alcanzado (50/50). El día 1 se reiniciará tu contador. Mejora a PRO para obtener hasta 150 recetas sin esperas ni anuncios.'}
+                  ? 'Monthly limit reached (20/20). Your counter resets on the 1st of next month. Upgrade to PRO to get up to 100 recipes with zero ads or waiting.'
+                  : 'Límite mensual alcanzado (20/20). El día 1 se reiniciará tu contador. Mejora a PRO para obtener hasta 100 recetas sin esperas ni anuncios.'}
           </p>
         </div>
 
@@ -162,7 +162,7 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
               <span>{isEn ? 'Included in PRO:' : 'Ventajas del Plan PRO:'}</span>
             </div>
             <ul className="text-xs text-stone-700 space-y-1.5 list-disc pl-4">
-              <li>{isEn ? '150 recipes every month' : 'Hasta 150 recetas cada mes'}</li>
+              <li>{isEn ? '100 recipes every month' : 'Hasta 100 recetas cada mes'}</li>
               <li>{isEn ? 'Zero sponsor wait or interstitial ads' : 'Cero esperas de patrocinador ni anuncios'}</li>
               <li>{isEn ? 'Clinical nutritional adaptation engine' : 'Motor clínico de adaptación de dietas y alérgenos'}</li>
             </ul>

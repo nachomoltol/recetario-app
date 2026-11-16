@@ -2,6 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient, getAdminClient } from '@/lib/supabase/server';
+import { ensureMonthlyResetAndPlanSync } from '@/lib/quota/ensureMonthlyResetAndPlanSync';
+
+// Bloqueo de concurrencia activo por usuario para evitar extracciones paralelas fraudulentas
+const activeIngestUsers = new Set<string>();
 import { extractRecipeWithGemini, detectFuenteTipo, sanitizeRecipeUrl } from '@/lib/gemini/extractor';
 import { resolveCanonicalVideoSource, computeSourceUrlHash, repairBrokenTikTokUrl } from '@/lib/culinary/urlCanonicalizer';
 import { getClinicalExclusions } from '@/lib/clinicalDictionary';
@@ -19,6 +23,7 @@ export interface IngestRecipeResult {
 }
 
 export async function ingestRecipeAction(formData: FormData): Promise<IngestRecipeResult> {
+  let authenticatedUserId: string | null = null;
   try {
     const rawUrl = (formData.get('url') as string)?.trim() || undefined;
     const canonicalSource = rawUrl ? await resolveCanonicalVideoSource(rawUrl) : undefined;
@@ -39,6 +44,20 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       };
     }
 
+    // Límites estrictos de tamaño de entrada para prevenir DoS y costes descontrolados
+    if (file && file.size > 10 * 1024 * 1024) {
+      return {
+        success: false,
+        error: 'El archivo adjunto supera el tamaño máximo permitido de 10 MB.',
+      };
+    }
+    if (texto && texto.length > 15000) {
+      return {
+        success: false,
+        error: 'El texto introducido supera el límite máximo de 15.000 caracteres.',
+      };
+    }
+
     // 1. Validar autenticación de usuario
     const supabase = await createClient();
     const {
@@ -54,11 +73,24 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       };
     }
 
+    authenticatedUserId = user.id;
+
+    if (activeIngestUsers.has(user.id)) {
+      return {
+        success: false,
+        error: 'Ya tienes una extracción de receta en proceso. Por favor, espera unos segundos a que finalice.',
+      };
+    }
+    activeIngestUsers.add(user.id);
+
     // Cliente con permisos de administración para saltarse RLS al gestionar cuotas
     const adminClient = getAdminClient();
     const db = adminClient || supabase;
 
-  // 2. Control de Cuotas Freemium / Premium y Anti-Fraude ANTES de invocar a Gemini
+  // 2. Control de Cuotas Freemium / Premium y Anti-Fraude con Sincronización Mensual Compartida
+  // Sincronizar reinicio mensual y validar estado de suscripción PRO con Stripe
+  const syncRes = await ensureMonthlyResetAndPlanSync(user.id, rawDeviceId);
+
   const { data: perfilUsuario, error: perfilError } = await db
     .from('usuarios')
     .select(
@@ -71,53 +103,13 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     console.error('[recipeIngest] Error al obtener perfil de usuario:', perfilError);
   }
 
-  let capturasMesActual = Number(perfilUsuario?.capturas_mes_actual) || 0;
-  let creditosAnuncio = Number(perfilUsuario?.creditos_anuncio) || 0;
-  let antiguedadCiclos = Number(perfilUsuario?.antiguedad_ciclos_mes) || 0;
-  const rawPlan = (perfilUsuario?.plan_suscripcion || '').trim().toLowerCase();
+  let capturasMesActual = Number(syncRes.usuario?.capturas_mes_actual ?? perfilUsuario?.capturas_mes_actual) || 0;
+  let creditosAnuncio = Number(syncRes.usuario?.creditos_anuncio ?? perfilUsuario?.creditos_anuncio) || 0;
+  let antiguedadCiclos = Number(syncRes.usuario?.antiguedad_ciclos_mes ?? perfilUsuario?.antiguedad_ciclos_mes) || 0;
+  const rawPlan = (syncRes.usuario?.plan_suscripcion ?? perfilUsuario?.plan_suscripcion ?? '').trim().toLowerCase();
   const isPro = rawPlan === 'pro';
-  const tieneCreditoAnuncio = !isPro && creditosAnuncio > 0;
-  const ahora = new Date();
 
-  // Helper para detectar cambio de mes respecto a una fecha ISO
-  const esNuevoMes = (fechaIso?: string | null): boolean => {
-    if (!fechaIso) return true;
-    const f = new Date(fechaIso);
-    if (isNaN(f.getTime())) return true;
-    return (
-      f.getUTCFullYear() !== ahora.getUTCFullYear() ||
-      f.getUTCMonth() !== ahora.getUTCMonth()
-    );
-  };
-
-  // Hybrid-Reset (Pilar B): Si el usuario no se reinició por pg_cron en el nuevo mes, reiniciar al vuelo
-  if (perfilUsuario?.fecha_ultimo_reinicio) {
-    if (esNuevoMes(perfilUsuario.fecha_ultimo_reinicio)) {
-      antiguedadCiclos += 1;
-      capturasMesActual = 0;
-      await db
-        .from('usuarios')
-        .update({
-          capturas_mes_actual: 0,
-          antiguedad_ciclos_mes: antiguedadCiclos,
-          fecha_ultimo_reinicio: ahora.toISOString(),
-          updated_at: ahora.toISOString(),
-        })
-        .eq('id', user.id);
-      console.log(`[recipeIngest] Hybrid-Reset usuario: Cuota mensual reseteada a 0 para ${user.id} (ciclo ${antiguedadCiclos}).`);
-    }
-  } else {
-    await db
-      .from('usuarios')
-      .update({
-        fecha_ultimo_reinicio: ahora.toISOString(),
-        antiguedad_ciclos_mes: 0,
-        updated_at: ahora.toISOString(),
-      })
-      .eq('id', user.id);
-  }
-
-  // Anti-Fraude: Comprobación de cuota y hybrid-reset por dispositivo físico
+  // Anti-Fraude: Comprobación de cuota de dispositivo físico
   let capturasDispositivo = 0;
   const isValidoDeviceId = rawDeviceId && rawDeviceId !== 'web_unknown' && rawDeviceId !== 'server_fallback';
 
@@ -130,61 +122,66 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
 
     if (dispData) {
       capturasDispositivo = Number(dispData.capturas_mes_actual) || 0;
-      if (esNuevoMes(dispData.fecha_ultimo_reinicio)) {
-        capturasDispositivo = 0;
-        const nuevaAntiguedadDisp = (Number(dispData.antiguedad_ciclos_mes) || 0) + 1;
-        await db
-          .from('dispositivos_cuotas')
-          .update({
-            capturas_mes_actual: 0,
-            antiguedad_ciclos_mes: nuevaAntiguedadDisp,
-            fecha_ultimo_reinicio: ahora.toISOString(),
-            updated_at: ahora.toISOString(),
-          })
-          .eq('device_id', rawDeviceId);
-      }
     } else {
-      // Registrar primer contacto del dispositivo físico
       await db.from('dispositivos_cuotas').insert({
         device_id: rawDeviceId,
         capturas_mes_actual: 0,
-        fecha_ultimo_reinicio: ahora.toISOString(),
+        fecha_ultimo_reinicio: new Date().toISOString(),
         antiguedad_ciclos_mes: 0,
         primer_usuario_id: user.id,
-        created_at: ahora.toISOString(),
-        updated_at: ahora.toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
     }
   }
 
   // Cortafuegos de Límites Duros de Producción:
-  // A) Usuario PRO: Límite estricto de 150 recetas por mes calendario
-  if (isPro && capturasMesActual >= 150) {
-    console.warn(`[recipeIngest] BLOQUEO DURO PRO: Usuario ${user.id} alcanzó el límite mensual de 150 generaciones.`);
+  // A) Usuario PRO: Techo estricto de 100 recetas por mes calendario
+  if (isPro && capturasMesActual >= 100) {
+    console.warn(`[recipeIngest] BLOQUEO DURO PRO: Usuario ${user.id} alcanzó el techo mensual de 100 generaciones.`);
     return {
       success: false,
       error: 'PRO_LIMIT_REACHED',
+      message: 'Has alcanzado el límite mensual de 100 recetas en tu plan PRO. Tu cuota se reiniciará el día 1 del próximo mes.',
     };
   }
 
-  // B) Usuario GRATUITO: Límite estricto de 20 recetas por mes calendario (se omite si dispone de crédito por anuncio)
-  if (!isPro && capturasMesActual >= 20 && !tieneCreditoAnuncio) {
-    console.warn(`[recipeIngest] BLOQUEO DURO GRATUITO: Usuario ${user.id} alcanzó el límite mensual de 20 generaciones.`);
-    return {
-      success: false,
-      error: 'FREE_LIMIT_REACHED',
-      message: 'Has alcanzado el límite de 20 recetas gratis este mes. Pásate a PRO para continuar.',
-    };
-  }
+  // B) Usuario GRATUITO:
+  if (!isPro) {
+    // 1. Límite máximo inquebrantable de 20 recetas al mes
+    if (capturasMesActual >= 20) {
+      console.warn(`[recipeIngest] BLOQUEO DURO GRATUITO: Usuario ${user.id} alcanzó el límite mensual de 20 recetas.`);
+      return {
+        success: false,
+        error: 'FREE_LIMIT_REACHED',
+        message: 'Has alcanzado el límite máximo de 20 recetas gratis este mes. Pásate a PRO (3,50 €/mes) para continuar.',
+      };
+    }
 
-  // C) Anti-Fraude Dispositivo Físico: Límite de 20 recetas por mes en el mismo hardware (se omite si dispone de crédito por anuncio)
-  if (!isPro && isValidoDeviceId && capturasDispositivo >= 20 && !tieneCreditoAnuncio) {
-    console.warn(`[recipeIngest] BLOQUEO ANTI-FRAUDE DISPOSITIVO: Dispositivo ${rawDeviceId} alcanzó el límite de 20.`);
-    return {
-      success: false,
-      error: 'DEVICE_LIMIT_REACHED',
-      message: 'Este dispositivo ha alcanzado el límite máximo de recetas gratuitas este mes. Pásate a PRO para continuar.',
-    };
+    if (isValidoDeviceId && capturasDispositivo >= 20) {
+      console.warn(`[recipeIngest] BLOQUEO ANTI-FRAUDE DISPOSITIVO: Dispositivo ${rawDeviceId} alcanzó el límite de 20 recetas.`);
+      return {
+        success: false,
+        error: 'DEVICE_LIMIT_REACHED',
+        message: 'Este dispositivo ha alcanzado el límite máximo de 20 recetas gratuitas este mes. Pásate a PRO para continuar.',
+      };
+    }
+
+    // 2. Umbral de anuncios según antigüedad:
+    // Mes 1 (antiguedadCiclos === 0): recetas 1, 2, 3 (capturas < 3) son directas. A partir de la 4.ª (capturas >= 3), requiere anuncio.
+    // Mes 2+ (antiguedadCiclos > 0): requiere anuncio desde la 1.ª receta (capturas >= 0).
+    const requiereAnuncio = antiguedadCiclos === 0 ? capturasMesActual >= 3 : true;
+
+    if (requiereAnuncio && creditosAnuncio <= 0) {
+      console.warn(`[recipeIngest] REQUISITO DE ANUNCIO: Usuario ${user.id} necesita anuncio (capturas=${capturasMesActual}, ciclo=${antiguedadCiclos}, créditos=${creditosAnuncio}).`);
+      return {
+        success: false,
+        error: 'AD_REQUIRED',
+        message: antiguedadCiclos === 0
+          ? 'Has disfrutado de tus 3 recetas gratis del mes. Para extraer la 4.ª, visualiza un breve anuncio desde la app móvil o pásate a PRO.'
+          : 'Para seguir extrayendo recetas gratis este mes, visualiza un breve anuncio desde la app móvil o pásate a PRO.',
+      };
+    }
   }
 
   // Calcular restricciones clínicas del usuario únicamente para generar alertas informativas de compatibilidad
@@ -330,8 +327,9 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
             .single();
 
           const frescoCreditos = Number(usuarioFresco?.creditos_anuncio) || 0;
-          const usoCreditoAnuncio = !isPro && frescoCreditos > 0;
           const conteoBase = Number(usuarioFresco?.capturas_mes_actual) || capturasMesActual;
+          const requiereAnuncioEstaReceta = !isPro && (antiguedadCiclos === 0 ? conteoBase >= 3 : true);
+          const usoCreditoAnuncio = requiereAnuncioEstaReceta && frescoCreditos > 0;
           const nuevoConteo = conteoBase + 1;
 
           const updateUsuarioPayload = {
@@ -701,8 +699,9 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       .single();
 
     const frescoCreditos = Number(usuarioFresco?.creditos_anuncio) || 0;
-    const usoCreditoAnuncio = !isPro && frescoCreditos > 0;
     const conteoBase = Number(usuarioFresco?.capturas_mes_actual) || capturasMesActual;
+    const requiereAnuncioEstaReceta = !isPro && (antiguedadCiclos === 0 ? conteoBase >= 3 : true);
+    const usoCreditoAnuncio = requiereAnuncioEstaReceta && frescoCreditos > 0;
     const nuevoConteo = conteoBase + 1;
 
     const updateUsuarioPayload = {
@@ -768,5 +767,10 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
           ? error.message
           : 'Error interno del servidor al procesar y guardar la receta.',
     };
+  } finally {
+    // Liberar bloqueo de concurrencia del usuario
+    try {
+      if (authenticatedUserId) activeIngestUsers.delete(authenticatedUserId);
+    } catch {}
   }
 }

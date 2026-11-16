@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { ensureMonthlyResetAndPlanSync } from '@/lib/quota/ensureMonthlyResetAndPlanSync';
 import { BookOpen, Sparkles } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
@@ -30,6 +31,9 @@ export default async function RecipesDashboardPage(props: RecipesDashboardPagePr
   if (!user) {
     redirect('/login');
   }
+
+  // Sincronización mensual y verificación de caducidad PRO
+  await ensureMonthlyResetAndPlanSync(user.id);
 
   // Obtener perfil relacional de la tabla 'usuarios'
   const { data: profile } = await supabase

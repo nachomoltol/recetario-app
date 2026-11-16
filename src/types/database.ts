@@ -50,6 +50,7 @@ export interface Database {
           antiguedad_ciclos_mes: number;
           stripe_customer_id?: string | null;
           stripe_subscription_id?: string | null;
+          pro_expires_at?: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -73,6 +74,7 @@ export interface Database {
           antiguedad_ciclos_mes?: number;
           stripe_customer_id?: string | null;
           stripe_subscription_id?: string | null;
+          pro_expires_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -96,6 +98,7 @@ export interface Database {
           antiguedad_ciclos_mes?: number;
           stripe_customer_id?: string | null;
           stripe_subscription_id?: string | null;
+          pro_expires_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

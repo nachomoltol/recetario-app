@@ -274,14 +274,12 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
               : 'Debes ver el vídeo completo para desbloquear la receta en tu ordenador.',
         });
       } else {
-        await claimAdRewardAction();
-        setHasPendingPcRequest(false);
         setPcUnlockFeedback({
-          type: 'success',
+          type: 'warning',
           message:
             language === 'en'
-              ? 'Courtesy credit added! You can now unlock your recipe on your PC.'
-              : '¡Crédito de cortesía acreditado! Ya puedes desbloquear tu receta en tu ordenador.',
+              ? 'Could not load video ad right now. Please check your connection and try again.'
+              : 'No se pudo cargar el vídeo publicitario en este momento. Comprueba tu conexión e inténtalo de nuevo.',
         });
       }
     } catch (err) {
@@ -384,21 +382,22 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       const creditosAnuncio = Number((currentProfile as any)?.creditos_anuncio) || 0;
       const hasAdCredit = creditosAnuncio > 0 || skipInterstitialRef.current;
 
-      // 1. Bloqueo duro inmediato en cliente si ya superó el límite mensual y no dispone de crédito por anuncio
-      if (!isPro && capturas >= 20 && !hasAdCredit) {
+      // 1. Bloqueo duro inquebrantable en cliente:
+      // - Free: límite mensual absoluto de 20 recetas
+      if (!isPro && capturas >= 20) {
         setHardLimitModal('FREE_LIMIT_REACHED');
         return;
       }
-      if (isPro && capturas >= 150) {
+      // - PRO: techo de 100 recetas/mes
+      if (isPro && capturas >= 100) {
         setHardLimitModal('PRO_LIMIT_REACHED');
         return;
       }
 
-      // 2. Fricción por Intersticial de 5s:
-      // - Usuario PRO: Cero fricción (nunca se muestra).
-      // - Usuario Gratis Mes 1: Generaciones 1 a 5 directas; 6 a 20 con anuncio.
-      // - Usuario Gratis Mes 2+: Generaciones 1 a 20 con anuncio desde la 1ª.
-      const requiresInterstitial = !isPro && (!esPrimerMes || capturas >= 5);
+      // 2. Umbral de Anuncio Recompensado en Free:
+      // - Mes 1 (esPrimerMes): Recetas 1, 2, 3 directas (capturas < 3); a partir de la 4.ª (capturas >= 3) requiere anuncio.
+      // - Mes 2+ (!esPrimerMes): Requiere anuncio desde la 1.ª receta (capturas >= 0).
+      const requiresInterstitial = !isPro && (!esPrimerMes || capturas >= 3);
 
       if (requiresInterstitial && !hasAdCredit) {
         setPendingIngestParams({ mode: targetMode, value: targetValue });

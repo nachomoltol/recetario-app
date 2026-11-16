@@ -263,7 +263,7 @@ export const TRANSLATIONS = {
     billing_vip_success: '¡Nivel VIP desbloqueado! Generaciones ilimitadas activas.',
     billing_vip_active_banner: 'Suscripción PRO Activa con Código VIP',
     billing_advantages_title: 'Ventajas incluidas en tu membresía PRO',
-    billing_adv_1_title: 'Hasta 150 recetas con IA al mes',
+    billing_adv_1_title: 'Hasta 100 recetas con IA al mes',
     billing_adv_1_desc:
       'Procesamiento instantáneo sin esperas ni anuncios desde TikTok, Instagram, YouTube, enlaces web o texto libre.',
     billing_adv_2_title: 'Planificador Semanal Inteligente y Generador de Menús con IA',
@@ -855,7 +855,7 @@ export const TRANSLATIONS = {
     billing_vip_success: 'VIP unlocked! Unlimited generations active.',
     billing_vip_active_banner: 'PRO Subscription Active with VIP Code',
     billing_advantages_title: 'Benefits included in your PRO membership',
-    billing_adv_1_title: 'Up to 150 AI recipes per month',
+    billing_adv_1_title: 'Up to 100 AI recipes per month',
     billing_adv_1_desc:
       'Instant processing with zero waiting or ads from TikTok, Instagram, YouTube, web links, or raw text.',
     billing_adv_2_title: 'Smart Weekly Planner & AI Menu Generator',

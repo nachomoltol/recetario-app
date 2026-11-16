@@ -192,35 +192,15 @@ export function AdInterstitialModal({
       .catch(() => {});
   }, [isOpen, profile]);
 
-  // Lógica de reproducción cuando el usuario pasa a 'playing'
+  // Lógica de reproducción cuando el usuario pasa a 'playing' (solo móvil nativo con AdMob)
   useEffect(() => {
     if (!isOpen || viewState !== 'playing') {
       return;
     }
 
     let isMounted = true;
-    let timerInterval: NodeJS.Timeout | null = null;
 
-    const startFallbackCountdown = () => {
-      if (!isMounted) return;
-      setIsAdMobPlaying(false);
-      setSecondsRemaining(5);
-      timerInterval = setInterval(() => {
-        if (!isMounted) return;
-        setSecondsRemaining((prev) => {
-          if (prev <= 1) {
-            if (timerInterval) clearInterval(timerInterval);
-            setTimeout(() => {
-              if (isMounted) onCompleteRef.current();
-            }, 300);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    };
-
-    // 1. Entorno nativo Android: ejecutar AdMob Rewarded Video
+    // 1. Entorno nativo Android/iOS: ejecutar AdMob Rewarded Video
     if (isNativePlatform()) {
       setIsAdMobPlaying(true);
       showRewardVideoAdFlow()
@@ -245,10 +225,8 @@ export function AdInterstitialModal({
                 : Boolean(isUnlockRequested && !pendingUrl);
 
             if (isCrossDevice) {
-              // Si y solo si proviene de una solicitud de PC pendiente, mostrar pantalla de bifurcación
               setViewState('reward_credited');
             } else {
-              // Flujo normal nativo de móvil: auto-extraer de inmediato sin pantallas intermedias
               onCompleteRef.current();
             }
           } else if (result.error === 'AD_DISMISSED_WITHOUT_REWARD') {
@@ -259,29 +237,37 @@ export function AdInterstitialModal({
                 : 'Debes ver el vídeo completo para desbloquear tu receta gratuita.'
             );
           } else {
-            console.warn('[AdInterstitial] Fallo al cargar anuncio de AdMob, ejecutando fallback de cortesía:', result.error);
-            startFallbackCountdown();
+            console.warn('[AdInterstitial] No se pudo cargar el anuncio de AdMob:', result.error);
+            setViewState('choice');
+            setDismissWarning(
+              isEn
+                ? 'Could not load video ad right now. Please check your internet connection or try again later.'
+                : 'No se pudo cargar el vídeo publicitario en este momento. Comprueba tu conexión a internet o inténtalo más tarde.'
+            );
           }
         })
         .catch((err) => {
-          console.warn('[AdInterstitial] Excepción en AdMob nativo, ejecutando fallback:', err);
+          console.warn('[AdInterstitial] Excepción en AdMob nativo:', err);
           if (isMounted) {
-            startFallbackCountdown();
+            setIsAdMobPlaying(false);
+            setViewState('choice');
+            setDismissWarning(
+              isEn
+                ? 'Error playing video ad. Please try again.'
+                : 'Error al reproducir el anuncio publicitario. Por favor, inténtalo de nuevo.'
+            );
           }
         });
 
       return () => {
         isMounted = false;
-        if (timerInterval) clearInterval(timerInterval);
       };
     }
 
-    // 2. Otros entornos (Web/PC de cortesía si entrase en playing)
-    startFallbackCountdown();
-
+    // 2. Entornos Web/PC: no reproducen AdMob directamente; regresar a la selección
+    setViewState('choice');
     return () => {
       isMounted = false;
-      if (timerInterval) clearInterval(timerInterval);
     };
   }, [isOpen, viewState, isEn]);
 
@@ -454,8 +440,8 @@ export function AdInterstitialModal({
 
               <p className="text-xs text-stone-600 max-w-sm mx-auto leading-tight">
                 {isEn
-                  ? 'You have used your direct recipes this month. Choose your experience to continue:'
-                  : 'Has disfrutado de tus recetas directas del mes. Elige tu experiencia para continuar:'}
+                  ? 'You have used your 3 free direct recipes this month. Choose your experience to continue:'
+                  : 'Has disfrutado de tus 3 recetas gratis directas del mes. Elige tu experiencia para continuar:'}
               </p>
             </div>
 
@@ -491,7 +477,7 @@ export function AdInterstitialModal({
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-brand-primary shrink-0" />
-                  <span>{isEn ? 'Up to 150 recipes/month with advanced AI' : 'Hasta 150 recetas/mes con IA avanzada'}</span>
+                  <span>{isEn ? 'Up to 100 recipes/month with advanced AI' : 'Hasta 100 recetas/mes con IA avanzada'}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-brand-primary shrink-0" />

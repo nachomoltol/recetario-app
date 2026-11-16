@@ -91,12 +91,31 @@ export async function POST(req: NextRequest) {
           break;
         }
 
+        // Obtener current_period_end de Stripe para sincronizar pro_expires_at
+        let proExpiresAtIso: string | null = null;
+        if (subscriptionId) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId);
+            if (sub && (sub as any).current_period_end) {
+              proExpiresAtIso = new Date((sub as any).current_period_end * 1000).toISOString();
+            }
+          } catch (fetchSubErr) {
+            console.warn('[Stripe Webhook] No se pudo obtener subscription details:', fetchSubErr);
+          }
+        }
+
+        // Si no se pudo obtener de la suscripción, asignar 31 días por defecto
+        if (!proExpiresAtIso) {
+          proExpiresAtIso = new Date(Date.now() + 31 * 24 * 60 * 60 * 1000).toISOString();
+        }
+
         const { data: updatedRows, error: updateError } = await adminClient
           .from('usuarios')
           .update({
             plan_suscripcion: 'pro',
             stripe_customer_id: customerId,
             stripe_subscription_id: subscriptionId,
+            pro_expires_at: proExpiresAtIso,
             updated_at: new Date().toISOString(),
           })
           .eq('id', clientReferenceId)
@@ -106,7 +125,7 @@ export async function POST(req: NextRequest) {
           console.error('[Stripe Webhook] Error al activar PRO para el usuario:', updateError);
         } else {
           console.log(
-            `[Stripe Webhook] Plan PRO activado exitosamente para usuario ${clientReferenceId}. Filas actualizadas: ${
+            `[Stripe Webhook] Plan PRO activado exitosamente para usuario ${clientReferenceId} hasta ${proExpiresAtIso}. Filas actualizadas: ${
               updatedRows?.length ?? 0
             }`
           );
@@ -133,6 +152,7 @@ export async function POST(req: NextRequest) {
         let query = adminClient.from('usuarios').update({
           plan_suscripcion: 'gratis',
           stripe_subscription_id: null,
+          pro_expires_at: null,
           updated_at: new Date().toISOString(),
         });
 
@@ -191,6 +211,7 @@ export async function POST(req: NextRequest) {
 
         let query = adminClient.from('usuarios').update({
           plan_suscripcion: 'gratis',
+          pro_expires_at: null,
           updated_at: new Date().toISOString(),
         });
 
@@ -228,7 +249,54 @@ export async function POST(req: NextRequest) {
       }
 
       // --------------------------------------------------------------------------
-      // 4. Actualización de estado de la suscripción (reactivación o impago)
+      // 4. Renovación / Factura pagada con éxito (invoice.paid)
+      // --------------------------------------------------------------------------
+      case 'invoice.paid': {
+        const invoice = event.data.object as any;
+        const subscriptionId =
+          typeof invoice.subscription === 'string'
+            ? invoice.subscription
+            : invoice.subscription?.id;
+        const customerId =
+          typeof invoice.customer === 'string'
+            ? invoice.customer
+            : invoice.customer?.id;
+        const userId =
+          invoice.subscription_details?.metadata?.userId ||
+          invoice.metadata?.userId;
+
+        if (subscriptionId) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId);
+            if (sub && (sub.status === 'active' || sub.status === 'trialing')) {
+              const proExpiresAt = new Date((sub as any).current_period_end * 1000).toISOString();
+              let q = adminClient.from('usuarios').update({
+                plan_suscripcion: 'pro',
+                stripe_subscription_id: subscriptionId,
+                pro_expires_at: proExpiresAt,
+                updated_at: new Date().toISOString(),
+              });
+
+              if (userId) {
+                q = q.eq('id', userId);
+              } else {
+                q = q.eq('stripe_subscription_id', subscriptionId);
+              }
+
+              await q;
+              console.log(
+                `[Stripe Webhook] invoice.paid: Suscripción ${subscriptionId} renovada hasta ${proExpiresAt}.`
+              );
+            }
+          } catch (errInvoicePaid) {
+            console.warn('[Stripe Webhook] Error actualizando pro_expires_at en invoice.paid:', errInvoicePaid);
+          }
+        }
+        break;
+      }
+
+      // --------------------------------------------------------------------------
+      // 5. Actualización de estado de la suscripción (reactivación o impago)
       // --------------------------------------------------------------------------
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
@@ -242,10 +310,14 @@ export async function POST(req: NextRequest) {
 
         const isNowActive = status === 'active' || status === 'trialing';
         const newPlan = isNowActive ? 'pro' : 'gratis';
+        const proExpiresAt = isNowActive
+          ? new Date((subscription as any).current_period_end * 1000).toISOString()
+          : null;
 
         let query = adminClient.from('usuarios').update({
           plan_suscripcion: newPlan,
-          stripe_subscription_id: subscriptionId,
+          stripe_subscription_id: isNowActive ? subscriptionId : null,
+          pro_expires_at: proExpiresAt,
           updated_at: new Date().toISOString(),
         });
 
@@ -261,7 +333,7 @@ export async function POST(req: NextRequest) {
 
         await query;
         console.log(
-          `[Stripe Webhook] customer.subscription.updated: status=${status} -> plan=${newPlan}`
+          `[Stripe Webhook] customer.subscription.updated: status=${status} -> plan=${newPlan}, pro_expires_at=${proExpiresAt}`
         );
         break;
       }
