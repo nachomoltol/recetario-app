@@ -146,6 +146,60 @@ const LOADING_STAGES_EN: LoadingStage[] = [
   },
 ];
 
+const AUDIO_LOADING_STAGES_ES: LoadingStage[] = [
+  {
+    seconds: 0,
+    title: 'Transmitiendo nota de voz',
+    description: 'Subiendo audio comprimido de alta fidelidad al motor de IA...',
+    percent: 25,
+  },
+  {
+    seconds: 3,
+    title: 'Analizando voz con Gemini 3.1 Flash Lite',
+    description: 'Inferencia multimodal activa: reconociendo ingredientes, cantidades y tiempos...',
+    percent: 65,
+  },
+  {
+    seconds: 8,
+    title: 'Estructurando paso a paso',
+    description: 'Redactando instrucciones claras, deduciendo técnicas culinarias y normalizando medidas...',
+    percent: 88,
+  },
+  {
+    seconds: 15,
+    title: 'Finalizando receta',
+    description: 'Calculando alérgenos, asignando pasillos y guardando en tu recetario...',
+    percent: 96,
+  },
+];
+
+const AUDIO_LOADING_STAGES_EN: LoadingStage[] = [
+  {
+    seconds: 0,
+    title: 'Streaming voice note',
+    description: 'Uploading compressed high-fidelity audio to the AI engine...',
+    percent: 25,
+  },
+  {
+    seconds: 3,
+    title: 'Analyzing voice with Gemini 3.1 Flash Lite',
+    description: 'Active multimodal inference: recognizing ingredients, quantities, and times...',
+    percent: 65,
+  },
+  {
+    seconds: 8,
+    title: 'Structuring step-by-step',
+    description: 'Drafting clear instructions, deducing culinary techniques, and normalizing measures...',
+    percent: 88,
+  },
+  {
+    seconds: 15,
+    title: 'Finalizing recipe',
+    description: 'Calculating allergens, supermarket aisles, and saving to your cookbook...',
+    percent: 96,
+  },
+];
+
 export interface RecipeCaptureCardProps {
   initialProfile?: Usuario | null;
 }
@@ -574,8 +628,17 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       streamRef.current = stream;
 
       const { mimeType, ext } = getAudioMimeType();
-      const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
-      const recorder = new MediaRecorder(stream, options);
+      let recorder: MediaRecorder;
+      try {
+        recorder = new MediaRecorder(stream, {
+          ...(mimeType ? { mimeType } : {}),
+          audioBitsPerSecond: 24000,
+        });
+      } catch (recErr) {
+        console.warn('Fallback a MediaRecorder sin audioBitsPerSecond:', recErr);
+        const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
+        recorder = new MediaRecorder(stream, options);
+      }
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
 
@@ -676,6 +739,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       const { mimeType, ext } = getAudioMimeType();
+      setIsRecording(false);
       mediaRecorderRef.current.onstop = () => {
         if (streamRef.current) {
           streamRef.current.getTracks().forEach((track) => track.stop());
@@ -686,12 +750,12 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         if (blob.size > 0) {
           const file = new File([blob], `receta_voz_${Date.now()}.${ext}`, { type: finalMime });
           setAudioFile(file);
-          setIsRecording(false);
           executeIngest('audio', '', file);
         }
       };
       mediaRecorderRef.current.stop();
     } else if (audioFile) {
+      setIsRecording(false);
       executeIngest('audio', '', audioFile);
     }
   };
@@ -868,7 +932,12 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   };
 
   // Calcular etapa actual según segundos transcurridos
-  const loadingStages = language === 'en' ? LOADING_STAGES_EN : LOADING_STAGES_ES;
+  const loadingStages = useMemo(() => {
+    if (mode === 'audio') {
+      return language === 'en' ? AUDIO_LOADING_STAGES_EN : AUDIO_LOADING_STAGES_ES;
+    }
+    return language === 'en' ? LOADING_STAGES_EN : LOADING_STAGES_ES;
+  }, [mode, language]);
   const culinaryHumorPhrases =
     language === 'en' ? CULINARY_HUMOR_PHRASES_EN : CULINARY_HUMOR_PHRASES_ES;
 
@@ -901,8 +970,8 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
           </div>
         </div>
 
-        {/* Selector de modo Mobile-First con touch targets amplios */}
-        <div className="flex items-center bg-[#f4efe6] p-1.5 rounded-2xl border border-[#e7dfd5] self-start sm:self-auto overflow-x-auto max-w-full">
+        {/* Selector de modo Responsive en 3 columnas iguales sin scroll */}
+        <div className="w-full sm:w-auto grid grid-cols-3 gap-1.5 bg-[#f4efe6] p-1.5 rounded-2xl border border-[#e7dfd5]">
           <button
             type="button"
             disabled={isPending || isRecording}
@@ -910,14 +979,14 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
               setMode('url');
               setError(null);
             }}
-            className={`min-h-[44px] px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center gap-1.5 sm:gap-2 shrink-0 ${
+            className={`min-h-[44px] px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
               mode === 'url'
                 ? 'bg-white text-stone-900 font-semibold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900'
             } disabled:opacity-50`}
           >
-            <LinkIcon className="w-4 h-4 text-brand-primary" />
-            <span>{t('capture_tab_url')}</span>
+            <LinkIcon className="w-4 h-4 text-brand-primary shrink-0" />
+            <span className="truncate">{t('capture_tab_url')}</span>
           </button>
           <button
             type="button"
@@ -926,14 +995,14 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
               setMode('texto');
               setError(null);
             }}
-            className={`min-h-[44px] px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center gap-1.5 sm:gap-2 shrink-0 ${
+            className={`min-h-[44px] px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
               mode === 'texto'
                 ? 'bg-white text-stone-900 font-semibold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900'
             } disabled:opacity-50`}
           >
-            <FileText className="w-4 h-4 text-brand-primary" />
-            <span>{t('capture_tab_text')}</span>
+            <FileText className="w-4 h-4 text-brand-primary shrink-0" />
+            <span className="truncate">{t('capture_tab_text')}</span>
           </button>
           <button
             type="button"
@@ -942,14 +1011,14 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
               setMode('audio');
               setError(null);
             }}
-            className={`min-h-[44px] px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center gap-1.5 sm:gap-2 shrink-0 ${
+            className={`min-h-[44px] px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
               mode === 'audio'
                 ? 'bg-white text-stone-900 font-semibold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900'
             } disabled:opacity-50`}
           >
-            <Mic className="w-4 h-4 text-brand-primary" />
-            <span>{t('capture_tab_voice')}</span>
+            <Mic className="w-4 h-4 text-brand-primary shrink-0" />
+            <span className="truncate">{t('capture_tab_voice')}</span>
           </button>
         </div>
       </div>
