@@ -1347,7 +1347,8 @@ export async function scrapeUrlContent(rawUrl: string): Promise<{
 
 function getMimeType(fileName: string, providedType?: string): string {
   if (providedType && providedType !== 'application/octet-stream' && providedType.trim().length > 0) {
-    return providedType;
+    const cleanType = providedType.split(';')[0].trim();
+    if (cleanType) return cleanType;
   }
   const ext = path.extname(fileName).toLowerCase();
   switch (ext) {
@@ -1370,6 +1371,20 @@ function getMimeType(fileName: string, providedType?: string): string {
       return 'image/gif';
     case '.heic':
       return 'image/heic';
+    case '.webm':
+      return 'audio/webm';
+    case '.m4a':
+      return 'audio/m4a';
+    case '.mp3':
+      return 'audio/mp3';
+    case '.wav':
+      return 'audio/wav';
+    case '.ogg':
+      return 'audio/ogg';
+    case '.aac':
+      return 'audio/aac';
+    case '.mp4':
+      return 'audio/mp4';
     default:
       return providedType || 'application/octet-stream';
   }
@@ -1449,7 +1464,7 @@ export async function extractRecipeWithGemini({
                 mimeType: fileRecord.mimeType || mimeType,
               },
             };
-            contextPrompt += `ARCHIVO / DOCUMENTO ADJUNTO POR EL USUARIO (${fileName}, ${mimeType}). Analiza minuciosamente el contenido de este archivo (texto, imágenes o datos) para extraer la receta completa.\n\n`;
+            contextPrompt += `ARCHIVO / AUDIO / DOCUMENTO ADJUNTO POR EL USUARIO (${fileName}, ${mimeType}). Analiza minuciosamente el contenido de este archivo (texto, imágenes, audio multimodal o notas de voz) para extraer y estructurar la receta completa.\n\n`;
           } else {
             console.warn('El archivo subido a Gemini Files falló o no está listo:', fileRecord.state);
           }

@@ -42,7 +42,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     if (!url && !texto && !file) {
       return {
         success: false,
-        error: 'Por favor, introduce una URL (TikTok, Instagram, YouTube), el texto de la receta o sube una imagen/documento.',
+        error: 'Por favor, introduce una URL (TikTok, Instagram, YouTube), el texto de la receta, una nota de voz o sube una imagen/documento.',
       };
     }
 
@@ -443,7 +443,9 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     let fuenteTipo: FuenteTipoReceta = 'manual';
     if (file) {
       const ext = (file.name || '').toLowerCase();
-      if (file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|heic|avif)$/i.test(ext)) {
+      if (file.type.startsWith('audio/') || /\.(webm|m4a|mp3|wav|ogg|aac)$/i.test(ext)) {
+        fuenteTipo = 'audio';
+      } else if (file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|heic|avif)$/i.test(ext)) {
         fuenteTipo = 'foto_manuscrita';
       } else if (file.type === 'application/pdf' || ext.endsWith('.pdf')) {
         fuenteTipo = 'pdf';
@@ -456,7 +458,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       fuenteTipo = detectFuenteTipo(url);
     }
 
-    const fuenteUrl = url || (file ? `Archivo: ${file.name}` : null);
+    const fuenteUrl = url || (file ? (fuenteTipo === 'audio' ? `Audio: ${file.name}` : `Archivo: ${file.name}`) : null);
 
     // Consolidar etiquetas de doble clasificación (gastronómicas + momentos de consumo)
     const etiquetasCombinadas = Array.from(

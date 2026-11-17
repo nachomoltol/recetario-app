@@ -17,6 +17,9 @@ import {
   Users,
   Camera,
   FileDown,
+  ChevronUp,
+  ChevronDown,
+  Sparkles,
 } from 'lucide-react';
 import { Receta, RecetaIngrediente, Paso, DiarioCocinados } from '@/types/recipe';
 import { MomentoDia, RolPlato } from '@/types/database';
@@ -59,6 +62,14 @@ interface EditableIngredient {
   orden: number;
   notas?: string | null;
   pasillo_supermercado?: string;
+}
+
+interface EditableStep {
+  id: string;
+  orden: number;
+  instruccion: string;
+  tiempo_estimado_min?: number | null;
+  consejo_pro?: string | null;
 }
 
 interface RecipeDetailViewProps {
@@ -105,6 +116,7 @@ export function RecipeDetailView({
   const [currentIngredientes, setCurrentIngredientes] = useState<RecetaIngrediente[]>(ingredientes || []);
   const [currentPasos, setCurrentPasos] = useState<Paso[]>(pasos || []);
   const [editIngredientes, setEditIngredientes] = useState<EditableIngredient[]>([]);
+  const [editPasos, setEditPasos] = useState<EditableStep[]>([]);
 
   // Estado de adaptación in-line a perfil: detecta persistencia previa en Supabase tras F5
   const [isAdapted, setIsAdapted] = useState(Boolean(receta?.receta_original));
@@ -652,12 +664,22 @@ export function RecipeDetailView({
         pasillo_supermercado: i.pasillo_supermercado,
       }))
     );
+    setEditPasos(
+      (currentPasos || []).map((p, idx) => ({
+        id: p.id || `temp-step-${idx}`,
+        orden: p.orden || idx + 1,
+        instruccion: p.instruccion || '',
+        tiempo_estimado_min: p.tiempo_estimado_min,
+        consejo_pro: p.consejo_pro,
+      }))
+    );
     setIsEditing(true);
   };
 
   // Cancelar modo edición
   const handleCancelEdit = () => {
     setEditTitulo(currentTitulo);
+    setEditPasos([]);
     setIsEditing(false);
   };
 
@@ -696,6 +718,64 @@ export function RecipeDetailView({
     setEditIngredientes((prev) => prev.filter((_, idx) => idx !== index));
   };
 
+  // Manejar cambio en un paso
+  const handleStepChange = (
+    index: number,
+    field: 'instruccion' | 'tiempo_estimado_min' | 'consejo_pro',
+    value: any
+  ) => {
+    setEditPasos((prev) => {
+      const next = [...prev];
+      next[index] = {
+        ...next[index],
+        [field]: value,
+      };
+      return next;
+    });
+  };
+
+  // Añadir un nuevo paso
+  const handleAddStep = () => {
+    setEditPasos((prev) => [
+      ...prev,
+      {
+        id: `new-step-${Date.now()}-${prev.length}`,
+        orden: prev.length + 1,
+        instruccion: '',
+        tiempo_estimado_min: null,
+        consejo_pro: null,
+      },
+    ]);
+  };
+
+  // Eliminar un paso
+  const handleRemoveStep = (index: number) => {
+    setEditPasos((prev) =>
+      prev
+        .filter((_, idx) => idx !== index)
+        .map((step, idx) => ({
+          ...step,
+          orden: idx + 1,
+        }))
+    );
+  };
+
+  // Reordenar pasos (arriba / abajo)
+  const handleMoveStep = (index: number, direction: 'up' | 'down') => {
+    setEditPasos((prev) => {
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      const item = next[index];
+      next[index] = next[targetIndex];
+      next[targetIndex] = item;
+      return next.map((step, idx) => ({
+        ...step,
+        orden: idx + 1,
+      }));
+    });
+  };
+
   // Guardar cambios en el backend (Supabase)
   const handleSaveEdit = async () => {
     const cleanTitle = editTitulo.trim();
@@ -706,6 +786,12 @@ export function RecipeDetailView({
 
     if (editIngredientes.length === 0) {
       setToast({ message: 'La receta debe tener al menos un ingrediente', type: 'error' });
+      return;
+    }
+
+    const validEditPasos = editPasos.filter((p) => (p.instruccion || '').trim().length > 0);
+    if (validEditPasos.length === 0) {
+      setToast({ message: 'La receta debe tener al menos un paso con instrucciones', type: 'error' });
       return;
     }
 
@@ -724,6 +810,16 @@ export function RecipeDetailView({
           orden: idx + 1,
           notas: ing.notas || null,
           pasillo_supermercado: ing.pasillo_supermercado,
+        })),
+        pasos: validEditPasos.map((p, idx) => ({
+          id: p.id.startsWith('temp-') || p.id.startsWith('new-') ? undefined : p.id,
+          orden: idx + 1,
+          instruccion: p.instruccion.trim(),
+          tiempo_estimado_min:
+            typeof p.tiempo_estimado_min === 'number' && !isNaN(p.tiempo_estimado_min)
+              ? p.tiempo_estimado_min
+              : null,
+          consejo_pro: p.consejo_pro?.trim() || null,
         })),
       });
 
@@ -753,7 +849,28 @@ export function RecipeDetailView({
         created_at: new Date().toISOString(),
       }));
 
+      const updatedLocalPasos: Paso[] = validEditPasos.map((p, idx) => ({
+        id: p.id,
+        receta_id: receta?.id || '',
+        orden: idx + 1,
+        instruccion: p.instruccion.trim(),
+        instruccion_principiante: null,
+        instruccion_avanzada: null,
+        descriptor_sensorial: null,
+        potencia_fuego: null,
+        tiempo_estimado_min:
+          typeof p.tiempo_estimado_min === 'number' && !isNaN(p.tiempo_estimado_min)
+            ? p.tiempo_estimado_min
+            : null,
+        temperatura_celsius: null,
+        utensilios_sugeridos: [],
+        consejo_pro: p.consejo_pro?.trim() || null,
+        imagen_paso_url: null,
+        created_at: new Date().toISOString(),
+      }));
+
       setCurrentIngredientes(updatedLocalIngredientes);
+      setCurrentPasos(updatedLocalPasos);
       setIsEditing(false);
       setToast({ message: t('recipe_edit_success'), type: 'success' });
 
@@ -1150,6 +1267,134 @@ export function RecipeDetailView({
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* EDITOR TOTAL DEL PASO A PASO */}
+          <div className="pt-6 border-t border-[#e7dfd5] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 flex items-center gap-2">
+                  <ChefHat className="w-5 h-5 text-brand-primary" />
+                  {t('recipe_edit_steps_title')}
+                </h3>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  {t('recipe_edit_steps_desc')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleAddStep}
+                disabled={isSaving}
+                className="px-3.5 py-2 rounded-xl bg-[#f4efe6] hover:bg-[#e7dfd5] text-brand-primary text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer self-start sm:self-auto"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{t('recipe_edit_add_step')}</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {editPasos.map((step, idx) => (
+                <div
+                  key={step.id || idx}
+                  className="p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-3"
+                >
+                  <div className="flex items-center justify-between gap-2 border-b border-[#e7dfd5]/60 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-brand-primary text-white font-bold text-xs shadow-2xs">
+                        {t('recipe_edit_step_number')} {idx + 1}
+                      </span>
+                      <span className="text-xs text-stone-400">
+                        ({idx + 1} / {editPasos.length})
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleMoveStep(idx, 'up')}
+                        disabled={isSaving || idx === 0}
+                        title={t('recipe_edit_move_up')}
+                        className="w-8 h-8 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-200/70 flex items-center justify-center transition cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveStep(idx, 'down')}
+                        disabled={isSaving || idx === editPasos.length - 1}
+                        title={t('recipe_edit_move_down')}
+                        className="w-8 h-8 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-200/70 flex items-center justify-center transition cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveStep(idx)}
+                        disabled={isSaving || editPasos.length <= 1}
+                        title={t('recipe_edit_delete_step')}
+                        className="w-8 h-8 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed ml-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <textarea
+                      rows={3}
+                      value={step.instruccion}
+                      onChange={(e) => handleStepChange(idx, 'instruccion', e.target.value)}
+                      placeholder={t('recipe_edit_step_placeholder')}
+                      disabled={isSaving}
+                      className="w-full p-3 rounded-xl bg-white border border-[#e7dfd5] text-xs sm:text-sm text-stone-900 font-normal focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary shadow-2xs resize-y"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-[#e7dfd5]">
+                      <Clock className="w-4 h-4 text-stone-400 shrink-0" />
+                      <input
+                        type="number"
+                        min="0"
+                        value={step.tiempo_estimado_min ?? ''}
+                        onChange={(e) =>
+                          handleStepChange(
+                            idx,
+                            'tiempo_estimado_min',
+                            e.target.value ? parseInt(e.target.value, 10) : null
+                          )
+                        }
+                        placeholder={t('recipe_edit_step_time_placeholder')}
+                        disabled={isSaving}
+                        className="w-full text-xs text-stone-800 bg-transparent focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-[#e7dfd5]">
+                      <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                      <input
+                        type="text"
+                        value={step.consejo_pro ?? ''}
+                        onChange={(e) => handleStepChange(idx, 'consejo_pro', e.target.value)}
+                        placeholder={t('recipe_edit_step_tip_placeholder')}
+                        disabled={isSaving}
+                        className="w-full text-xs text-stone-800 bg-transparent focus:outline-none truncate"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddStep}
+              disabled={isSaving}
+              className="w-full py-3 rounded-2xl border-2 border-dashed border-[#e7dfd5] hover:border-brand-primary/50 bg-[#faf7f2] hover:bg-[#f4efe6] text-stone-600 hover:text-brand-primary text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('recipe_edit_add_step')}</span>
+            </button>
           </div>
 
           <div className="pt-4 flex items-center justify-end gap-3 border-t border-[#e7dfd5]">

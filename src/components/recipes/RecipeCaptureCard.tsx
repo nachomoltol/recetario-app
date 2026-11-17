@@ -20,6 +20,10 @@ import {
   Play,
   Monitor,
   Smartphone,
+  Mic,
+  Square,
+  RotateCcw,
+  Volume2,
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { ingestRecipeAction } from '@/app/actions/recipeIngest';
@@ -159,8 +163,9 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   const [showInterstitialModal, setShowInterstitialModal] = useState(false);
   const [hardLimitModal, setHardLimitModal] = useState<HardLimitType | null>(null);
   const [pendingIngestParams, setPendingIngestParams] = useState<{
-    mode: 'url' | 'texto';
+    mode: 'url' | 'texto' | 'audio';
     value: string;
+    file?: File | null;
   } | null>(null);
   const skipInterstitialRef = useRef(false);
 
@@ -177,13 +182,13 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     : null;
   const resolvedDefaultUrl = isInitialYouTube && initialYtMatch ? initialYtMatch[0] : initialUrl;
   const resolvedDefaultText = isInitialYouTube ? '' : initialText;
-  const resolvedDefaultMode: 'url' | 'texto' = isInitialYouTube
+  const resolvedDefaultMode: 'url' | 'texto' | 'audio' = isInitialYouTube
     ? 'url'
     : resolvedDefaultText && !resolvedDefaultUrl
       ? 'texto'
       : 'url';
 
-  const [mode, setMode] = useState<'url' | 'texto'>(resolvedDefaultMode);
+  const [mode, setMode] = useState<'url' | 'texto' | 'audio'>(resolvedDefaultMode);
   const [url, setUrl] = useState(resolvedDefaultUrl);
   const [texto, setTexto] = useState(resolvedDefaultText);
   const [error, setError] = useState<string | null>(null);
@@ -192,6 +197,17 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showProModal, setShowProModal] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  // Estados y referencias para grabación de voz (MediaRecorder)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   const captureCardRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -350,7 +366,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
   // Ejecutor centralizado de ingesta con validación de fricción Freemium/Premium
   const executeIngest = useCallback(
-    (targetMode: 'url' | 'texto', targetValue: string) => {
+    (targetMode: 'url' | 'texto' | 'audio', targetValue: string, overrideFile?: File | null) => {
       setError(null);
       setSuccess(null);
       setCreatedRecetaId(null);
@@ -362,14 +378,33 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       urlInputRef.current?.blur();
       textInputRef.current?.blur();
 
+      const fileToUpload = overrideFile !== undefined ? overrideFile : selectedFile;
+
       if (targetMode === 'url') {
-        if (!targetValue.trim() && !selectedFile) {
-          setError('Por favor, introduce un enlace o sube un archivo/imagen de la receta.');
+        if (!targetValue.trim() && !fileToUpload) {
+          setError(
+            language === 'en'
+              ? 'Please enter a link or upload a file/image.'
+              : 'Por favor, introduce un enlace o sube un archivo/imagen de la receta.'
+          );
           return;
         }
-      } else {
-        if (!targetValue.trim() && !selectedFile) {
-          setError('Por favor, introduce el texto con la receta o sube un archivo/imagen.');
+      } else if (targetMode === 'texto') {
+        if (!targetValue.trim() && !fileToUpload) {
+          setError(
+            language === 'en'
+              ? 'Please enter recipe text or upload a file/image.'
+              : 'Por favor, introduce el texto con la receta o sube un archivo/imagen.'
+          );
+          return;
+        }
+      } else if (targetMode === 'audio') {
+        if (!fileToUpload) {
+          setError(
+            language === 'en'
+              ? 'Please record a voice note first.'
+              : 'Por favor, graba primero una nota de voz.'
+          );
           return;
         }
       }
@@ -400,7 +435,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       const requiresInterstitial = !isPro && (!esPrimerMes || capturas >= 3);
 
       if (requiresInterstitial && !hasAdCredit) {
-        setPendingIngestParams({ mode: targetMode, value: targetValue });
+        setPendingIngestParams({ mode: targetMode, value: targetValue, file: fileToUpload });
         setShowInterstitialModal(true);
         return;
       }
@@ -418,8 +453,8 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
       startTransition(async () => {
         try {
-          if (selectedFile) {
-            formData.set('archivo', selectedFile);
+          if (fileToUpload) {
+            formData.set('archivo', fileToUpload);
           }
 
           // Resolver e inyectar el ID de hardware para protección anti-fraude
@@ -446,7 +481,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
               res.error === 'AD_REQUIRED' ||
               res.error === 'AD_REQUIRED_FOR_EXTRACTION'
             ) {
-              setPendingIngestParams({ mode: targetMode, value: targetValue });
+              setPendingIngestParams({ mode: targetMode, value: targetValue, file: fileToUpload });
               setShowInterstitialModal(true);
               setError(null);
             } else {
@@ -470,6 +505,11 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             setUrl('');
             setTexto('');
             setSelectedFile(null);
+            setAudioFile(null);
+            if (audioUrl) {
+              URL.revokeObjectURL(audioUrl);
+              setAudioUrl(null);
+            }
             setPendingIngestParams(null);
             if (fileInputRef.current) fileInputRef.current.value = '';
 
@@ -494,15 +534,188 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         }
       });
     },
-    [selectedFile, router, currentProfile, language, t]
+    [selectedFile, router, currentProfile, language, t, audioUrl]
   );
+
+  // Selector MIME compatible cross-platform (Web / iOS / Android)
+  const getAudioMimeType = (): { mimeType: string; ext: string } => {
+    if (typeof window === 'undefined' || typeof MediaRecorder === 'undefined') {
+      return { mimeType: 'audio/webm', ext: 'webm' };
+    }
+    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      return { mimeType: 'audio/webm;codecs=opus', ext: 'webm' };
+    }
+    if (MediaRecorder.isTypeSupported('audio/webm')) {
+      return { mimeType: 'audio/webm', ext: 'webm' };
+    }
+    if (MediaRecorder.isTypeSupported('audio/mp4')) {
+      return { mimeType: 'audio/mp4', ext: 'mp4' };
+    }
+    if (MediaRecorder.isTypeSupported('audio/aac')) {
+      return { mimeType: 'audio/aac', ext: 'aac' };
+    }
+    return { mimeType: '', ext: 'webm' };
+  };
+
+  // Iniciar grabación de voz por micrófono
+  const startVoiceRecording = async () => {
+    try {
+      setError(null);
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+        setError(
+          language === 'en'
+            ? 'Audio recording is not supported in this browser'
+            : 'Tu navegador no soporta grabación de audio.'
+        );
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      const { mimeType, ext } = getAudioMimeType();
+      const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
+      const recorder = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+
+        const finalMime = mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: finalMime });
+        if (blob.size > 0) {
+          const file = new File([blob], `receta_voz_${Date.now()}.${ext}`, { type: finalMime });
+          setAudioFile(file);
+          if (audioUrl) URL.revokeObjectURL(audioUrl);
+          setAudioUrl(URL.createObjectURL(blob));
+        }
+      };
+
+      recorder.start(250);
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      setAudioFile(null);
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+        setAudioUrl(null);
+      }
+
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => {
+          if (prev >= 179) {
+            stopVoiceRecording();
+            return 180;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } catch (err: any) {
+      console.error('Error al acceder al micrófono:', err);
+      setError(
+        language === 'en'
+          ? 'Could not access microphone. Please grant microphone permission.'
+          : 'No se pudo acceder al micrófono. Por favor, concede permiso de micrófono.'
+      );
+    }
+  };
+
+  // Detener grabación manteniendo archivo para revisión
+  const stopVoiceRecording = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  };
+
+  // Cancelar y purgar grabación
+  const cancelVoiceRecording = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {}
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    audioChunksRef.current = [];
+    setIsRecording(false);
+    setRecordingSeconds(0);
+    setAudioFile(null);
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+      setAudioUrl(null);
+    }
+  };
+
+  // Finalizar y enviar directamente a extracción
+  const handleStopAndExtractVoice = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      const { mimeType, ext } = getAudioMimeType();
+      mediaRecorderRef.current.onstop = () => {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+        const finalMime = mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: finalMime });
+        if (blob.size > 0) {
+          const file = new File([blob], `receta_voz_${Date.now()}.${ext}`, { type: finalMime });
+          setAudioFile(file);
+          setIsRecording(false);
+          executeIngest('audio', '', file);
+        }
+      };
+      mediaRecorderRef.current.stop();
+    } else if (audioFile) {
+      executeIngest('audio', '', audioFile);
+    }
+  };
+
+  // Extraer nota de voz previamente grabada
+  const handleExtractVoice = (fileToSend?: File | null) => {
+    const target = fileToSend || audioFile;
+    if (!target) {
+      setError(
+        language === 'en'
+          ? 'Please record a voice note first.'
+          : 'Por favor, graba primero una nota de voz.'
+      );
+      return;
+    }
+    executeIngest('audio', '', target);
+  };
 
   // Manejador al finalizar la cuenta regresiva del anuncio intersticial de 5s
   const handleInterstitialComplete = useCallback(() => {
     setShowInterstitialModal(false);
     skipInterstitialRef.current = true;
     if (pendingIngestParams) {
-      executeIngest(pendingIngestParams.mode, pendingIngestParams.value);
+      executeIngest(pendingIngestParams.mode, pendingIngestParams.value, pendingIngestParams.file);
     }
   }, [pendingIngestParams, executeIngest]);
 
@@ -639,7 +852,19 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    executeIngest(mode, mode === 'url' ? url : texto);
+    if (mode === 'url') {
+      executeIngest('url', url);
+    } else if (mode === 'texto') {
+      executeIngest('texto', texto);
+    } else if (mode === 'audio') {
+      if (isRecording) {
+        handleStopAndExtractVoice();
+      } else if (audioFile) {
+        executeIngest('audio', '', audioFile);
+      } else {
+        startVoiceRecording();
+      }
+    }
   };
 
   // Calcular etapa actual según segundos transcurridos
@@ -677,15 +902,15 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         </div>
 
         {/* Selector de modo Mobile-First con touch targets amplios */}
-        <div className="flex items-center bg-[#f4efe6] p-1.5 rounded-2xl border border-[#e7dfd5] self-start sm:self-auto">
+        <div className="flex items-center bg-[#f4efe6] p-1.5 rounded-2xl border border-[#e7dfd5] self-start sm:self-auto overflow-x-auto max-w-full">
           <button
             type="button"
-            disabled={isPending}
+            disabled={isPending || isRecording}
             onClick={() => {
               setMode('url');
               setError(null);
             }}
-            className={`min-h-[44px] px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center gap-2 ${
+            className={`min-h-[44px] px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center gap-1.5 sm:gap-2 shrink-0 ${
               mode === 'url'
                 ? 'bg-white text-stone-900 font-semibold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900'
@@ -696,12 +921,12 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
           </button>
           <button
             type="button"
-            disabled={isPending}
+            disabled={isPending || isRecording}
             onClick={() => {
               setMode('texto');
               setError(null);
             }}
-            className={`min-h-[44px] px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center gap-2 ${
+            className={`min-h-[44px] px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center gap-1.5 sm:gap-2 shrink-0 ${
               mode === 'texto'
                 ? 'bg-white text-stone-900 font-semibold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900'
@@ -709,6 +934,22 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
           >
             <FileText className="w-4 h-4 text-brand-primary" />
             <span>{t('capture_tab_text')}</span>
+          </button>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => {
+              setMode('audio');
+              setError(null);
+            }}
+            className={`min-h-[44px] px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center gap-1.5 sm:gap-2 shrink-0 ${
+              mode === 'audio'
+                ? 'bg-white text-stone-900 font-semibold shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            } disabled:opacity-50`}
+          >
+            <Mic className="w-4 h-4 text-brand-primary" />
+            <span>{t('capture_tab_voice')}</span>
           </button>
         </div>
       </div>
@@ -920,12 +1161,12 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                 <LinkIcon className="w-5 h-5 text-stone-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
 
-              {/* Input nativo de archivo con accept estricto para forzar conversión nativa en iOS */}
+              {/* Input nativo de archivo con accept amplio (imágenes, PDFs y audios) */}
               <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                accept="image/jpeg, image/png, image/webp, application/pdf"
+                accept="image/jpeg, image/png, image/webp, application/pdf, audio/*"
                 className="hidden"
                 disabled={isPending}
               />
@@ -959,6 +1200,103 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                     <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
                       <Camera className="w-5 h-5" />
                     </div>
+                  ) : selectedFile.type.startsWith('audio/') ? (
+                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
+                      <Volume2 className="w-5 h-5" />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                  )}
+                  <div className="truncate">
+                    <p className="font-semibold text-stone-900 truncate">{selectedFile.name}</p>
+                    <p className="text-[11px] text-stone-500">
+                      {(selectedFile.size / 1024).toFixed(1)} KB • {t('capture_file_ready')}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveFile}
+                  disabled={isPending}
+                  className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer shrink-0"
+                  title="Quitar archivo"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        ) : mode === 'texto' ? (
+          <div className="space-y-3">
+            <textarea
+              ref={textInputRef}
+              autoFocus={false}
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              rows={4}
+              placeholder={t('capture_placeholder_text_detailed')}
+              disabled={isPending}
+              className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition resize-none shadow-2xs disabled:opacity-60"
+            />
+
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isPending}
+                className="px-3.5 py-2 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Paperclip className="w-4 h-4" />
+                <span>{t('capture_btn_attach_file')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('audio');
+                  setError(null);
+                  startVoiceRecording();
+                }}
+                disabled={isPending}
+                className="px-3.5 py-2 rounded-xl bg-[#f4efe6] hover:bg-[#e7dfd5] text-brand-primary text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Mic className="w-4 h-4" />
+                <span>{t('capture_voice_record_btn')}</span>
+              </button>
+            </div>
+
+            {/* Input nativo de archivo con accept amplio */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/jpeg, image/png, image/webp, application/pdf, audio/*"
+              className="hidden"
+              disabled={isPending}
+            />
+
+            {/* Tarjeta de visualización de archivo adjunto con miniatura */}
+            {selectedFile && (
+              <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  {filePreviewUrl ? (
+                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-[#e7dfd5] shrink-0">
+                      <img
+                        src={filePreviewUrl}
+                        alt={selectedFile.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : selectedFile.type.startsWith('image/') ? (
+                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
+                      <Camera className="w-5 h-5" />
+                    </div>
+                  ) : selectedFile.type.startsWith('audio/') ? (
+                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
+                      <Volume2 className="w-5 h-5" />
+                    </div>
                   ) : (
                     <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
                       <FileText className="w-5 h-5" />
@@ -984,77 +1322,148 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             )}
           </div>
         ) : (
-          <div className="space-y-3">
-            <textarea
-              ref={textInputRef}
-              autoFocus={false}
-              value={texto}
-              onChange={(e) => setTexto(e.target.value)}
-              rows={4}
-              placeholder={t('capture_placeholder_text_detailed')}
-              disabled={isPending}
-              className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition resize-none shadow-2xs disabled:opacity-60"
-            />
-
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isPending}
-                className="px-3.5 py-2 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <Paperclip className="w-4 h-4" />
-                <span>{t('capture_btn_attach_file')}</span>
-              </button>
-            </div>
-
-            {/* Input nativo de archivo con accept estricto para forzar conversión nativa en iOS */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept="image/jpeg, image/png, image/webp, application/pdf"
-              className="hidden"
-              disabled={isPending}
-            />
-
-            {/* Tarjeta de visualización de archivo adjunto con miniatura */}
-            {selectedFile && (
-              <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs">
-                <div className="flex items-center gap-3 overflow-hidden">
-                  {filePreviewUrl ? (
-                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-[#e7dfd5] shrink-0">
-                      <img
-                        src={filePreviewUrl}
-                        alt={selectedFile.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : selectedFile.type.startsWith('image/') ? (
-                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
-                      <Camera className="w-5 h-5" />
-                    </div>
-                  ) : (
-                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                  )}
-                  <div className="truncate">
-                    <p className="font-semibold text-stone-900 truncate">{selectedFile.name}</p>
-                    <p className="text-[11px] text-stone-500">
-                      {(selectedFile.size / 1024).toFixed(1)} KB • {t('capture_file_ready')}
-                    </p>
-                  </div>
+          /* MODO AUDIO: ESTUDIO DE DICTADO POR VOZ CROSS-PLATFORM */
+          <div className="space-y-4">
+            {isRecording ? (
+              /* ESTADO: GRABANDO EN DIRECTO CON CRONÓMETRO REGRESIVO Y PULSO */
+              <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-rose-50/80 via-white to-amber-50/40 border-2 border-rose-400/80 shadow-md space-y-5 animate-fade-in text-center">
+                <div className="flex items-center justify-center gap-2 text-rose-600 font-bold text-xs sm:text-sm uppercase tracking-wider">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600"></span>
+                  </span>
+                  <span>{t('capture_voice_recording')}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleRemoveFile}
-                  disabled={isPending}
-                  className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer shrink-0"
-                  title="Quitar archivo"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+
+                {/* Visualizador interactivo simulado de actividad sonora */}
+                <div className="flex items-center justify-center gap-1.5 h-12 py-2">
+                  {[40, 75, 55, 90, 60, 100, 70, 85, 45, 95, 65, 80, 50, 70, 40].map((h, i) => (
+                    <div
+                      key={i}
+                      className="w-1.5 bg-gradient-to-t from-rose-500 to-amber-500 rounded-full transition-all duration-300 animate-pulse"
+                      style={{
+                        height: `${Math.max(16, (h * ((recordingSeconds % 3) + 1)) / 3)}%`,
+                        animationDelay: `${(i * 70) % 600}ms`,
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Cronómetro en vivo: tiempo transcurrido / tiempo restante */}
+                <div className="space-y-1">
+                  <div className="text-3xl sm:text-4xl font-bold font-mono text-stone-900 tracking-tight">
+                    {Math.floor(recordingSeconds / 60)}:{String(recordingSeconds % 60).padStart(2, '0')}
+                  </div>
+                  <p className="text-xs text-stone-500 font-medium">
+                    {language === 'en'
+                      ? `Remaining: ${Math.floor((180 - recordingSeconds) / 60)}:${String((180 - recordingSeconds) % 60).padStart(2, '0')} (Max 3:00)`
+                      : `Restante: ${Math.floor((180 - recordingSeconds) / 60)}:${String((180 - recordingSeconds) % 60).padStart(2, '0')} (Máx 3:00)`}
+                  </p>
+                </div>
+
+                {/* Controles de grabación activa */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={cancelVoiceRecording}
+                    className="w-full sm:w-auto min-h-[46px] px-5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <X className="w-4 h-4" />
+                    <span>{t('capture_voice_cancel')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleStopAndExtractVoice}
+                    className="w-full sm:w-auto min-h-[46px] px-6 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 shadow-sm shadow-rose-600/30"
+                  >
+                    <Square className="w-4 h-4 fill-current" />
+                    <span>{t('capture_voice_stop')}</span>
+                  </button>
+                </div>
+              </div>
+            ) : audioFile && audioUrl ? (
+              /* ESTADO: AUDIO GRABADO LISTO PARA REVISAR O EXTRAER */
+              <div className="p-5 sm:p-6 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-4 animate-fade-in shadow-2xs">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0">
+                      <Volume2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-stone-900">{audioFile.name}</p>
+                      <p className="text-xs text-stone-500">
+                        {(audioFile.size / 1024).toFixed(1)} KB • {recordingSeconds}s
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={cancelVoiceRecording}
+                    disabled={isPending}
+                    className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer"
+                    title="Descartar audio"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Reproductor de audio nativo para comprobación previa */}
+                <audio controls src={audioUrl} className="w-full h-10 rounded-xl outline-none" />
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={startVoiceRecording}
+                    disabled={isPending}
+                    className="px-4 py-2.5 rounded-xl bg-white hover:bg-stone-100 border border-[#e7dfd5] text-stone-700 text-xs font-semibold flex items-center gap-2 transition cursor-pointer shadow-2xs"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>{t('capture_voice_rerecord')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleExtractVoice(audioFile)}
+                    disabled={isPending}
+                    className="px-5 py-2.5 rounded-xl bg-brand-primary hover:bg-brand-hover text-white text-xs sm:text-sm font-bold flex items-center gap-2 transition cursor-pointer shadow-xs disabled:opacity-50"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>{t('capture_voice_extract')}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* ESTADO INICIAL: BOTÓN PRINCIPAL DE GRABACIÓN DE VOZ */
+              <div className="p-6 sm:p-10 rounded-3xl bg-gradient-to-b from-[#faf7f2] to-white border border-[#e7dfd5] text-center space-y-4 shadow-2xs">
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={startVoiceRecording}
+                    disabled={isPending}
+                    className="relative group w-20 h-20 rounded-full bg-gradient-to-tr from-brand-primary via-amber-600 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-brand-primary/25 hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer disabled:opacity-50"
+                  >
+                    <span className="absolute -inset-1 rounded-full bg-brand-primary/20 group-hover:bg-brand-primary/40 animate-pulse -z-10" />
+                    <Mic className="w-9 h-9" />
+                  </button>
+                </div>
+
+                <div className="space-y-1.5 max-w-md mx-auto">
+                  <h3 className="text-base sm:text-lg font-bold text-stone-900 font-serif-recipe">
+                    {t('capture_voice_record_btn')}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-light">
+                    {language === 'en'
+                      ? 'Tap to start recording. Dictate the ingredients and step-by-step instructions naturally, and our AI will structure them into a standardized recipe.'
+                      : 'Presiona el botón para comenzar a hablar. Narra los ingredientes y el paso a paso con naturalidad, y nuestra IA los estructurará en una receta estandarizada.'}
+                  </p>
+                </div>
+
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f4efe6] border border-[#e7dfd5] text-[11px] text-stone-600 font-medium">
+                  <Clock className="w-3.5 h-3.5 text-brand-primary" />
+                  <span>{t('capture_voice_time_limit')}</span>
+                </div>
               </div>
             )}
           </div>
@@ -1072,6 +1481,24 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                 {currentHumorPhrase} ({elapsedSeconds}s)
               </span>
             </>
+          ) : mode === 'audio' ? (
+            isRecording ? (
+              <>
+                <Square className="w-5 h-5 fill-current text-white shrink-0" />
+                <span>{t('capture_voice_stop')}</span>
+              </>
+            ) : audioFile ? (
+              <>
+                <Sparkles className="w-5 h-5 text-white shrink-0" />
+                <span>{t('capture_voice_extract')}</span>
+                <ArrowRight className="w-5 h-5" />
+              </>
+            ) : (
+              <>
+                <Mic className="w-5 h-5 text-white shrink-0" />
+                <span>{t('capture_voice_record_btn')}</span>
+              </>
+            )
           ) : (
             <>
               <span>

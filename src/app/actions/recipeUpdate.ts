@@ -15,6 +15,17 @@ export interface IngredientUpdateInput {
   pasillo_supermercado?: string;
 }
 
+export interface StepUpdateInput {
+  id?: string;
+  orden: number;
+  instruccion: string;
+  tiempo_estimado_min?: number | null;
+  consejo_pro?: string | null;
+  descriptor_sensorial?: string | null;
+  temperatura_celsius?: number | null;
+  potencia_fuego?: string | null;
+}
+
 export interface UpdateRecipeResult {
   success?: boolean;
   error?: string;
@@ -24,10 +35,12 @@ export async function updateRecipeAction({
   recetaId,
   titulo,
   ingredientes,
+  pasos,
 }: {
   recetaId: string;
   titulo: string;
-  ingredientes: IngredientUpdateInput[];
+  ingredientes?: IngredientUpdateInput[];
+  pasos?: StepUpdateInput[];
 }): Promise<UpdateRecipeResult> {
   try {
     // 1. Verificar autenticación
@@ -159,7 +172,98 @@ export async function updateRecipeAction({
       }
     }
 
-    // 6. Revalidar cachés de rutas
+    // 6. Reconciliación atómica de pasos (si se proporcionan)
+    if (pasos !== undefined) {
+      const { data: dbPasos, error: errFetchPasos } = await supabase
+        .from('pasos')
+        .select('id')
+        .eq('receta_id', recetaId);
+
+      if (errFetchPasos) {
+        console.error('Error consultando pasos existentes:', errFetchPasos);
+        return { error: `Error al leer pasos: ${errFetchPasos.message}` };
+      }
+
+      const existingIds = (dbPasos || []).map((p) => p.id);
+      const incomingIds = pasos
+        .map((p) => p.id)
+        .filter((id): id is string => Boolean(id && !id.startsWith('new-') && !id.startsWith('temp-')));
+
+      // A) Eliminar pasos descartados
+      const idsToDelete = existingIds.filter((id) => !incomingIds.includes(id));
+      if (idsToDelete.length > 0) {
+        const { error: errDelPasos } = await supabase
+          .from('pasos')
+          .delete()
+          .in('id', idsToDelete);
+
+        if (errDelPasos) {
+          console.error('Error eliminando pasos descartados:', errDelPasos);
+          return { error: `Error eliminando pasos: ${errDelPasos.message}` };
+        }
+      }
+
+      // B) Reconciliar pasos: actualizar existentes e insertar nuevos
+      const validPasos = pasos.filter((p) => (p.instruccion || '').trim().length > 0);
+      for (let idx = 0; idx < validPasos.length; idx++) {
+        const p = validPasos[idx];
+        const ordenFinal = idx + 1;
+        const cleanInstruccion = p.instruccion.trim();
+        const isExisting = Boolean(p.id && existingIds.includes(p.id));
+
+        if (isExisting && p.id) {
+          const { error: errUpdatePaso } = await supabase
+            .from('pasos')
+            .update({
+              orden: ordenFinal,
+              instruccion: cleanInstruccion,
+              tiempo_estimado_min:
+                typeof p.tiempo_estimado_min === 'number' && !isNaN(p.tiempo_estimado_min)
+                  ? p.tiempo_estimado_min
+                  : null,
+              consejo_pro: p.consejo_pro?.trim() || null,
+              descriptor_sensorial: p.descriptor_sensorial?.trim() || null,
+              temperatura_celsius:
+                typeof p.temperatura_celsius === 'number' && !isNaN(p.temperatura_celsius)
+                  ? p.temperatura_celsius
+                  : null,
+              potencia_fuego: p.potencia_fuego || null,
+            })
+            .eq('id', p.id);
+
+          if (errUpdatePaso) {
+            console.error(`Error actualizando paso ${p.id}:`, errUpdatePaso);
+            return { error: `Error actualizando paso ${ordenFinal}: ${errUpdatePaso.message}` };
+          }
+        } else {
+          const { error: errInsertPaso } = await supabase
+            .from('pasos')
+            .insert({
+              receta_id: recetaId,
+              orden: ordenFinal,
+              instruccion: cleanInstruccion,
+              tiempo_estimado_min:
+                typeof p.tiempo_estimado_min === 'number' && !isNaN(p.tiempo_estimado_min)
+                  ? p.tiempo_estimado_min
+                  : null,
+              consejo_pro: p.consejo_pro?.trim() || null,
+              descriptor_sensorial: p.descriptor_sensorial?.trim() || null,
+              temperatura_celsius:
+                typeof p.temperatura_celsius === 'number' && !isNaN(p.temperatura_celsius)
+                  ? p.temperatura_celsius
+                  : null,
+              potencia_fuego: p.potencia_fuego || null,
+            });
+
+          if (errInsertPaso) {
+            console.error('Error insertando nuevo paso:', errInsertPaso);
+            return { error: `Error insertando nuevo paso ${ordenFinal}: ${errInsertPaso.message}` };
+          }
+        }
+      }
+    }
+
+    // 7. Revalidar cachés de rutas
     revalidatePath(`/recipes/${recetaId}`, 'page');
     revalidatePath('/recipes', 'page');
     revalidatePath('/recipes/collection', 'page');
