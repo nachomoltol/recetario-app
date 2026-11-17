@@ -676,9 +676,9 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
       recordingTimerRef.current = setInterval(() => {
         setRecordingSeconds((prev) => {
-          if (prev >= 179) {
+          if (prev >= 299) {
             stopVoiceRecording();
-            return 180;
+            return 300;
           }
           return prev + 1;
         });
@@ -955,72 +955,70 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       id="panel-captura"
       className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-6 scroll-mt-20"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0 shadow-2xs">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 tracking-tight">
-              {t('capture_card_title')}
-            </h2>
-            <p className="text-xs sm:text-sm text-stone-500">
-              {t('capture_card_subtitle')}
-            </p>
-          </div>
+      <div className="flex items-center gap-3.5">
+        <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0 shadow-2xs">
+          <Sparkles className="w-5 h-5" />
         </div>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 tracking-tight">
+            {t('capture_card_title')}
+          </h2>
+          <p className="text-xs sm:text-sm text-stone-500">
+            {t('capture_card_subtitle')}
+          </p>
+        </div>
+      </div>
 
-        {/* Selector de modo Responsive en 3 columnas iguales sin scroll */}
-        <div className="w-full sm:w-auto grid grid-cols-3 gap-1.5 bg-[#f4efe6] p-1.5 rounded-2xl border border-[#e7dfd5]">
-          <button
-            type="button"
-            disabled={isPending || isRecording}
-            onClick={() => {
-              setMode('url');
-              setError(null);
-            }}
-            className={`min-h-[44px] px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
-              mode === 'url'
-                ? 'bg-white text-stone-900 font-semibold shadow-xs'
-                : 'text-stone-600 hover:text-stone-900'
-            } disabled:opacity-50`}
-          >
-            <LinkIcon className="w-4 h-4 text-brand-primary shrink-0" />
-            <span className="truncate">{t('capture_tab_url')}</span>
-          </button>
-          <button
-            type="button"
-            disabled={isPending || isRecording}
-            onClick={() => {
-              setMode('texto');
-              setError(null);
-            }}
-            className={`min-h-[44px] px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
-              mode === 'texto'
-                ? 'bg-white text-stone-900 font-semibold shadow-xs'
-                : 'text-stone-600 hover:text-stone-900'
-            } disabled:opacity-50`}
-          >
-            <FileText className="w-4 h-4 text-brand-primary shrink-0" />
-            <span className="truncate">{t('capture_tab_text')}</span>
-          </button>
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => {
-              setMode('audio');
-              setError(null);
-            }}
-            className={`min-h-[44px] px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
-              mode === 'audio'
-                ? 'bg-white text-stone-900 font-semibold shadow-xs'
-                : 'text-stone-600 hover:text-stone-900'
-            } disabled:opacity-50`}
-          >
-            <Mic className="w-4 h-4 text-brand-primary shrink-0" />
-            <span className="truncate">{t('capture_tab_voice')}</span>
-          </button>
-        </div>
+      {/* Selector de modo Responsive en 3 columnas iguales ocupando el 100% del ancho en móvil y PC */}
+      <div className="w-full grid grid-cols-3 gap-1.5 sm:gap-2 bg-[#f4efe6] p-1.5 rounded-2xl border border-[#e7dfd5]">
+        <button
+          type="button"
+          disabled={isPending || isRecording}
+          onClick={() => {
+            setMode('url');
+            setError(null);
+          }}
+          className={`min-h-[46px] sm:min-h-[50px] px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
+            mode === 'url'
+              ? 'bg-white text-stone-900 font-semibold shadow-xs'
+              : 'text-stone-600 hover:text-stone-900'
+          } disabled:opacity-50`}
+        >
+          <LinkIcon className="w-4 h-4 text-brand-primary shrink-0" />
+          <span className="truncate">{t('capture_tab_url')}</span>
+        </button>
+        <button
+          type="button"
+          disabled={isPending || isRecording}
+          onClick={() => {
+            setMode('texto');
+            setError(null);
+          }}
+          className={`min-h-[46px] sm:min-h-[50px] px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
+            mode === 'texto'
+              ? 'bg-white text-stone-900 font-semibold shadow-xs'
+              : 'text-stone-600 hover:text-stone-900'
+          } disabled:opacity-50`}
+        >
+          <FileText className="w-4 h-4 text-brand-primary shrink-0" />
+          <span className="truncate">{t('capture_tab_text')}</span>
+        </button>
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() => {
+            setMode('audio');
+            setError(null);
+          }}
+          className={`min-h-[46px] sm:min-h-[50px] px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
+            mode === 'audio'
+              ? 'bg-white text-stone-900 font-semibold shadow-xs'
+              : 'text-stone-600 hover:text-stone-900'
+          } disabled:opacity-50`}
+        >
+          <Mic className="w-4 h-4 text-brand-primary shrink-0" />
+          <span className="truncate">{t('capture_tab_voice')}</span>
+        </button>
       </div>
 
       {/* Tarjeta Banner de Solicitud de Desbloqueo Pendiente desde PC (Móvil Nativo: Android e iOS < 30 min) */}
@@ -1425,8 +1423,8 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                   </div>
                   <p className="text-xs text-stone-500 font-medium">
                     {language === 'en'
-                      ? `Remaining: ${Math.floor((180 - recordingSeconds) / 60)}:${String((180 - recordingSeconds) % 60).padStart(2, '0')} (Max 3:00)`
-                      : `Restante: ${Math.floor((180 - recordingSeconds) / 60)}:${String((180 - recordingSeconds) % 60).padStart(2, '0')} (Máx 3:00)`}
+                      ? `Remaining: ${Math.floor((300 - recordingSeconds) / 60)}:${String((300 - recordingSeconds) % 60).padStart(2, '0')} (Max 5:00)`
+                      : `Restante: ${Math.floor((300 - recordingSeconds) / 60)}:${String((300 - recordingSeconds) % 60).padStart(2, '0')} (Máx 5:00)`}
                   </p>
                 </div>
 
