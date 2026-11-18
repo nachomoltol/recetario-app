@@ -42,6 +42,7 @@ export async function redeemVipCodeAction(code: string): Promise<RedeemVipResult
       .from('usuarios')
       .update({
         plan_suscripcion: 'pro',
+        capturas_mes_actual: 0,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)

@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
           .from('usuarios')
           .update({
             plan_suscripcion: 'pro',
+            capturas_mes_actual: 0,
             stripe_customer_id: customerId,
             stripe_subscription_id: subscriptionId,
             pro_expires_at: proExpiresAtIso,
@@ -314,12 +315,15 @@ export async function POST(req: NextRequest) {
           ? new Date((subscription as any).current_period_end * 1000).toISOString()
           : null;
 
-        let query = adminClient.from('usuarios').update({
+        const updatePayload: Database['public']['Tables']['usuarios']['Update'] = {
           plan_suscripcion: newPlan,
           stripe_subscription_id: isNowActive ? subscriptionId : null,
           pro_expires_at: proExpiresAt,
           updated_at: new Date().toISOString(),
-        });
+          ...(isNowActive ? { capturas_mes_actual: 0 } : {}),
+        };
+
+        let query = adminClient.from('usuarios').update(updatePayload);
 
         if (userId) {
           query = query.eq('id', userId);

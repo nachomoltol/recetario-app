@@ -292,7 +292,7 @@ export const TRANSLATIONS = {
     billing_limit_reached_badge: 'Límite mensual alcanzado',
     billing_limit_reached_alert: 'Has consumido tus 20 recetas gratuitas de este mes',
     billing_limit_reached_desc:
-      'Para continuar estandarizando recetas al instante, mejora a PRO con hasta 150 recetas sin esperas ni anuncios.',
+      'Para continuar estandarizando recetas al instante, mejora a PRO con hasta 100 recetas sin esperas ni anuncios.',
     billing_dual_or: 'O bien',
     billing_ad_card_badge: 'Opción Gratuita',
     billing_ad_card_heading: 'Desbloquea 1 receta viendo un anuncio',
@@ -903,7 +903,7 @@ export const TRANSLATIONS = {
     billing_limit_reached_badge: 'Monthly limit reached',
     billing_limit_reached_alert: 'You have used your 20 free recipes for this month',
     billing_limit_reached_desc:
-      'To continue standardizing recipes instantly, upgrade to PRO with up to 150 recipes with zero ads or waiting.',
+      'To continue standardizing recipes instantly, upgrade to PRO with up to 100 recipes with zero ads or waiting.',
     billing_dual_or: 'Or',
     billing_ad_card_badge: 'Free Option',
     billing_ad_card_heading: 'Unlock 1 recipe by watching an ad',

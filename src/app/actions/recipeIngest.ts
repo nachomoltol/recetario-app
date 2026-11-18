@@ -111,11 +111,28 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
   const rawPlan = (syncRes.usuario?.plan_suscripcion ?? perfilUsuario?.plan_suscripcion ?? '').trim().toLowerCase();
   const isPro = rawPlan === 'pro';
 
-  // Anti-Fraude: Comprobación de cuota de dispositivo físico
-  let capturasDispositivo = 0;
-  const isValidoDeviceId = rawDeviceId && rawDeviceId !== 'web_unknown' && rawDeviceId !== 'server_fallback';
+  // Whitelist privada del desarrollador (variables de entorno)
+  const testDeviceIds = (process.env.UNLIMITED_TEST_DEVICE_IDS || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  const isWhitelistedDevice = Boolean(
+    rawDeviceId && testDeviceIds.includes(rawDeviceId.trim().toLowerCase())
+  );
 
-  if (isValidoDeviceId) {
+  const adminEmails = (process.env.UNLIMITED_ADMIN_EMAILS || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  const userEmail = (user.email || '').trim().toLowerCase();
+  const isWhitelistedAdminEmail = Boolean(userEmail && adminEmails.includes(userEmail));
+
+  // Anti-Fraude: Comprobación de cuota de dispositivo físico (exclusivo para usuarios Free no whitelisted)
+  let capturasDispositivo = 0;
+  const isValidoDeviceId = Boolean(rawDeviceId && rawDeviceId !== 'web_unknown' && rawDeviceId !== 'server_fallback');
+  const debeComprobarDispositivo = !isPro && !isWhitelistedDevice && isValidoDeviceId;
+
+  if (debeComprobarDispositivo) {
     const { data: dispData } = await db
       .from('dispositivos_cuotas')
       .select('*')
@@ -138,9 +155,9 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
   }
 
   // Cortafuegos de Límites Duros de Producción:
-  // A) Usuario PRO: Techo estricto de 100 recetas por mes calendario
-  if (isPro && capturasMesActual >= 100) {
-    console.warn(`[recipeIngest] BLOQUEO DURO PRO: Usuario ${user.id} alcanzó el techo mensual de 100 generaciones.`);
+  // A) Usuario PRO: Techo estricto de 100 recetas por mes calendario (exento si es admin email)
+  if (isPro && !isWhitelistedAdminEmail && capturasMesActual >= 100) {
+    console.warn(`[recipeIngest] BLOQUEO DURO PRO: Usuario ${user.id} (${userEmail}) alcanzó el techo mensual de 100 generaciones.`);
     return {
       success: false,
       error: 'PRO_LIMIT_REACHED',
@@ -150,9 +167,9 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
 
   // B) Usuario GRATUITO:
   if (!isPro) {
-    // 1. Límite máximo inquebrantable de 20 recetas al mes
-    if (capturasMesActual >= 20) {
-      console.warn(`[recipeIngest] BLOQUEO DURO GRATUITO: Usuario ${user.id} alcanzó el límite mensual de 20 recetas.`);
+    // 1. Límite máximo inquebrantable de 20 recetas al mes por usuario (exento si es admin email)
+    if (!isWhitelistedAdminEmail && capturasMesActual >= 20) {
+      console.warn(`[recipeIngest] BLOQUEO DURO GRATUITO: Usuario ${user.id} (${userEmail}) alcanzó el límite mensual de 20 recetas.`);
       return {
         success: false,
         error: 'FREE_LIMIT_REACHED',
@@ -160,7 +177,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       };
     }
 
-    if (isValidoDeviceId && capturasDispositivo >= 20) {
+    if (debeComprobarDispositivo && capturasDispositivo >= 20) {
       console.warn(`[recipeIngest] BLOQUEO ANTI-FRAUDE DISPOSITIVO: Dispositivo ${rawDeviceId} alcanzó el límite de 20 recetas.`);
       return {
         success: false,
@@ -174,7 +191,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     // Mes 2+ (antiguedadCiclos > 0): requiere anuncio desde la 1.ª receta (capturas >= 0).
     const requiereAnuncio = antiguedadCiclos === 0 ? capturasMesActual >= 3 : true;
 
-    if (requiereAnuncio && creditosAnuncio <= 0) {
+    if (requiereAnuncio && creditosAnuncio <= 0 && !isWhitelistedAdminEmail) {
       console.warn(`[recipeIngest] REQUISITO DE ANUNCIO: Usuario ${user.id} necesita anuncio (capturas=${capturasMesActual}, ciclo=${antiguedadCiclos}, créditos=${creditosAnuncio}).`);
       return {
         success: false,
@@ -360,7 +377,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
               console.error('[recipeIngest] ERROR al actualizar cuota con adminClient (cache):', errUpdateCuota);
             }
 
-            if (isValidoDeviceId) {
+            if (debeComprobarDispositivo) {
               const { data: dispFresco } = await adminClient
                 .from('dispositivos_cuotas')
                 .select('capturas_mes_actual')
@@ -381,7 +398,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
             const { data: rpcRes, error: errRpc } = await supabase.rpc('increment_user_capturas', {
               p_user_id: user.id,
               p_use_ad_credit: usoCreditoAnuncio,
-              p_device_id: isValidoDeviceId ? rawDeviceId : null,
+              p_device_id: debeComprobarDispositivo ? rawDeviceId : null,
             });
 
             if (errRpc) {
@@ -765,7 +782,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         );
       }
 
-      if (isValidoDeviceId) {
+      if (debeComprobarDispositivo) {
         const { data: dispFresco } = await adminClient
           .from('dispositivos_cuotas')
           .select('capturas_mes_actual')
@@ -786,7 +803,7 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       const { data: rpcRes, error: errRpc } = await supabase.rpc('increment_user_capturas', {
         p_user_id: user.id,
         p_use_ad_credit: usoCreditoAnuncio,
-        p_device_id: isValidoDeviceId ? rawDeviceId : null,
+        p_device_id: debeComprobarDispositivo ? rawDeviceId : null,
       });
 
       if (errRpc) {

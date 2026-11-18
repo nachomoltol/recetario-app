@@ -112,8 +112,8 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
           <div className="inline-block px-3 py-1 rounded-full bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary text-[11px] font-bold tracking-wider uppercase">
             {isProLimit
               ? isEn
-                ? 'PRO Monthly Quota (150/150)'
-                : 'Cuota Mensual PRO (150/150)'
+                ? 'PRO Monthly Quota (100/100)'
+                : 'Cuota Mensual PRO (100/100)'
               : isDeviceLimit
                 ? isEn
                   ? 'Device Quota Limit (20/20)'
