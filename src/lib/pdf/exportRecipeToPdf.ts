@@ -6,6 +6,7 @@ import {
 import { scaleStepQuantities } from '@/lib/culinary/stepQuantityScaler';
 import { cleanIngredientName } from '@/lib/nutrition/formatQuantity';
 import { MIGA_LOGO_PNG, cleanPdfText } from './exportMealPlanToPdf';
+import { saveOrSharePdf } from './pdfDownloadHelper';
 
 export interface ExportRecipePdfParams {
   receta: Partial<Receta> & { titulo?: string };
@@ -529,5 +530,7 @@ export async function exportRecipeToPdf(params: ExportRecipePdfParams): Promise<
       .replace(/^-+|-+$/g, '')
       .slice(0, 60) || 'Receta';
 
-  doc.save(`${tituloNormalizado}-Miga.pdf`);
+  const fileName = `${tituloNormalizado}-Miga.pdf`;
+  const dialogTitle = isEn ? 'Save or share recipe PDF' : 'Guardar o compartir receta en PDF';
+  await saveOrSharePdf({ doc, fileName, dialogTitle });
 }

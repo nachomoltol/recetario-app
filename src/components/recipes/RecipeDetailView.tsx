@@ -1025,7 +1025,24 @@ export function RecipeDetailView({
                     lang: language,
                     nivelCulinario: currentCulinaryLevel,
                   });
-                } catch (err) {
+                  setToast({
+                    message:
+                      language === 'en'
+                        ? 'PDF ready'
+                        : 'PDF listo',
+                    type: 'success',
+                  });
+                } catch (err: unknown) {
+                  const errMsg =
+                    err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+                  if (
+                    errMsg.includes('cancel') ||
+                    errMsg.includes('dismiss') ||
+                    errMsg.includes('abort') ||
+                    errMsg.includes('closed')
+                  ) {
+                    return;
+                  }
                   console.error('Error al exportar receta a PDF:', err);
                   setToast({
                     message:
