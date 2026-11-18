@@ -116,11 +116,11 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
                 : 'Cuota Mensual PRO (150/150)'
               : isDeviceLimit
                 ? isEn
-                  ? 'Device Quota Limit (50/50)'
-                  : 'Límite de Dispositivo (50/50)'
+                  ? 'Device Quota Limit (20/20)'
+                  : 'Límite de Dispositivo (20/20)'
                 : isEn
-                  ? 'Monthly Limit Reached (50/50)'
-                  : 'Límite Mensual Alcanzado (50/50)'}
+                  ? 'Monthly Limit Reached (20/20)'
+                  : 'Límite Mensual Alcanzado (20/20)'}
           </div>
 
           {/* Título */}
