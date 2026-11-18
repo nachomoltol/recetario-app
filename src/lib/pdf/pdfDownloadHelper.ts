@@ -11,11 +11,10 @@ export interface SaveOrSharePdfOptions {
 
 /**
  * Guarda o comparte un PDF de forma universal y robusta:
- * - En Capacitor Nativo (Android / iOS): Escribe el PDF en Base64 en Directory.Cache
- *   e invoca la hoja nativa de compartir (UIActivityViewController / Sharesheet),
- *   capturando cancelaciones del usuario sin fallar.
- * - En Navegadores Web: Descarga el archivo de forma directa y segura tanto en
- *   escritorio como en navegadores móviles (Safari iOS / Chrome Android).
+ * - En Android (Capacitor Nativo): Sanitiza el nombre de archivo, escribe en caché y
+ *   pasa exclusivamente el array `files: [fileUri]` para abrir el Sharesheet sin cerrarse.
+ * - En iOS (Apple Capacitor Nativo): Mantiene el flujo original validado con `url: fileUri`.
+ * - En Navegadores Web: Descarga directa y segura para escritorio y navegadores móviles.
  */
 export async function saveOrSharePdf({
   doc,
@@ -31,31 +30,63 @@ export async function saveOrSharePdf({
       const commaIdx = dataUri.indexOf(',');
       const base64Data = commaIdx !== -1 ? dataUri.slice(commaIdx + 1) : dataUri;
 
-      // 2. Escribir archivo temporal en la caché privada de la aplicación
-      const savedFile = await Filesystem.writeFile({
-        path: fileName,
-        data: base64Data,
-        directory: Directory.Cache,
-      });
+      const isAndroid = Capacitor.getPlatform() === 'android';
 
-      // 3. Resolver la URI nativa compatible con FileProvider (Android) / UIDocument (iOS)
-      let fileUri = savedFile?.uri;
-      if (!fileUri) {
-        const uriResult = await Filesystem.getUri({
-          path: fileName,
+      if (isAndroid) {
+        // Sanitizar estrictamente el nombre para Android (sin tildes, espacios ni caracteres especiales)
+        const nameWithoutExt = fileName.replace(/\.pdf$/i, '');
+        const cleanBase = nameWithoutExt
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-zA-Z0-9_-]/g, '_')
+          .replace(/_+/g, '_');
+        const safeFileName = `${cleanBase || 'miga_receta'}.pdf`;
+
+        // Escribir archivo temporal en la caché privada de la aplicación
+        await Filesystem.writeFile({
+          path: safeFileName,
+          data: base64Data,
           directory: Directory.Cache,
         });
-        fileUri = uriResult.uri;
-      }
 
-      // 4. Presentar la hoja nativa del sistema operativo
-      await Share.share({
-        title: fileName,
-        url: fileUri,
-        dialogTitle,
-      });
+        // Obtener URI nativa con Filesystem.getUri
+        const uriResult = await Filesystem.getUri({
+          path: safeFileName,
+          directory: Directory.Cache,
+        });
+        const fileUri = uriResult.uri;
+
+        // Presentar hoja nativa en Android usando el array estándar de archivos 'files'
+        await Share.share({
+          title: safeFileName,
+          files: [fileUri],
+          dialogTitle,
+        });
+      } else {
+        // Flujo iOS (Apple) intacto y validado: mantiene url: fileUri
+        const savedFile = await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Cache,
+        });
+
+        let fileUri = savedFile?.uri;
+        if (!fileUri) {
+          const uriResult = await Filesystem.getUri({
+            path: fileName,
+            directory: Directory.Cache,
+          });
+          fileUri = uriResult.uri;
+        }
+
+        await Share.share({
+          title: fileName,
+          url: fileUri,
+          dialogTitle,
+        });
+      }
     } catch (shareErr: unknown) {
-      // 5. Manejo limpio de cancelación voluntaria por parte del usuario
+      // Manejo limpio de cancelación voluntaria por parte del usuario
       const errMsg =
         shareErr instanceof Error
           ? shareErr.message.toLowerCase()
@@ -75,7 +106,7 @@ export async function saveOrSharePdf({
       throw shareErr;
     }
   } else {
-    // Entorno Web (Escritorio o Navegador Web Móvil)
+    // Entorno Web (Escritorio o Navegador Web Móvil) - 100% Intacto
     const isMobileWeb =
       typeof navigator !== 'undefined' &&
       /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
