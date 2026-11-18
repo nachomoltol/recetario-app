@@ -195,9 +195,10 @@ export function RecipeDetailView({
   // Temporizador para ocultar el toast
   useEffect(() => {
     if (!toast) return;
+    const duration = toast.type === 'error' ? 9000 : 3500;
     const timer = setTimeout(() => {
       setToast(null);
-    }, 3500);
+    }, duration);
     return () => clearTimeout(timer);
   }, [toast]);
 
@@ -883,14 +884,62 @@ export function RecipeDetailView({
     }
   };
 
+  // Exportar receta a PDF con diagnóstico exacto de errores
+  const handleExportPdf = async () => {
+    if (isExportingPdf) return;
+    setIsExportingPdf(true);
+    try {
+      const { exportRecipeToPdf } = await import('@/lib/pdf/exportRecipeToPdf');
+      await exportRecipeToPdf({
+        receta: {
+          ...receta,
+          titulo: currentTitulo,
+        },
+        porciones: currentServings,
+        ingredientes: currentIngredientes,
+        pasos: currentPasos,
+        lang: language,
+        nivelCulinario: currentCulinaryLevel,
+      });
+      setToast({
+        message:
+          language === 'en'
+            ? 'PDF ready'
+            : 'PDF listo',
+        type: 'success',
+      });
+    } catch (err: unknown) {
+      const rawError =
+        err instanceof Error
+          ? err.message
+          : (err as { message?: string })?.message || String(err);
+      const errMsg = rawError.toLowerCase();
+      if (
+        errMsg.includes('cancel') ||
+        errMsg.includes('dismiss') ||
+        errMsg.includes('abort') ||
+        errMsg.includes('closed')
+      ) {
+        return;
+      }
+      console.error('Error al exportar receta a PDF:', err);
+      setToast({
+        message: `Error PDF: ${rawError}`,
+        type: 'error',
+      });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   return (
     <>
-      {/* Toast Flotante de Notificación */}
+      {/* Toast Flotante de Notificación con z-index elevado sobre footer */}
       {toast && (
         <div
           role="status"
           aria-live="polite"
-          className={`fixed bottom-6 right-6 z-50 p-4 rounded-2xl shadow-xl flex items-center gap-3 transition-all duration-300 animate-in slide-in-from-bottom border ${
+          className={`fixed bottom-24 md:bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-[9999] p-4 rounded-2xl shadow-xl flex items-center gap-3 transition-all duration-300 animate-in slide-in-from-bottom border max-w-md ${
             toast.type === 'success'
               ? 'bg-stone-900 text-white border-emerald-500/40'
               : 'bg-rose-900 text-white border-rose-500/40'
@@ -901,7 +950,7 @@ export function RecipeDetailView({
           ) : (
             <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
           )}
-          <span className="text-xs sm:text-sm font-semibold">{toast.message}</span>
+          <span className="text-xs sm:text-sm font-semibold break-words">{toast.message}</span>
         </div>
       )}
 
@@ -1009,52 +1058,7 @@ export function RecipeDetailView({
             {/* Botón de Descarga PDF de la Receta */}
             <button
               type="button"
-              onClick={async () => {
-                if (isExportingPdf) return;
-                setIsExportingPdf(true);
-                try {
-                  const { exportRecipeToPdf } = await import('@/lib/pdf/exportRecipeToPdf');
-                  await exportRecipeToPdf({
-                    receta: {
-                      ...receta,
-                      titulo: currentTitulo,
-                    },
-                    porciones: currentServings,
-                    ingredientes: currentIngredientes,
-                    pasos: currentPasos,
-                    lang: language,
-                    nivelCulinario: currentCulinaryLevel,
-                  });
-                  setToast({
-                    message:
-                      language === 'en'
-                        ? 'PDF ready'
-                        : 'PDF listo',
-                    type: 'success',
-                  });
-                } catch (err: unknown) {
-                  const errMsg =
-                    err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
-                  if (
-                    errMsg.includes('cancel') ||
-                    errMsg.includes('dismiss') ||
-                    errMsg.includes('abort') ||
-                    errMsg.includes('closed')
-                  ) {
-                    return;
-                  }
-                  console.error('Error al exportar receta a PDF:', err);
-                  setToast({
-                    message:
-                      language === 'en'
-                        ? 'Error generating PDF'
-                        : 'Error al generar el PDF de la receta',
-                    type: 'error',
-                  });
-                } finally {
-                  setIsExportingPdf(false);
-                }
-              }}
+              onClick={handleExportPdf}
               disabled={isExportingPdf}
               title={language === 'en' ? 'Download PDF' : 'Descargar PDF'}
               className="h-9 px-3 py-1.5 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] hover:border-brand-primary text-xs font-semibold text-stone-700 hover:text-brand-primary transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"

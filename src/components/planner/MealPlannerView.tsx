@@ -806,8 +806,11 @@ export function MealPlannerView({
         language,
       });
     } catch (err: unknown) {
-      const errMsg =
-        err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+      const rawError =
+        err instanceof Error
+          ? err.message
+          : (err as { message?: string })?.message || String(err);
+      const errMsg = rawError.toLowerCase();
       if (
         errMsg.includes('cancel') ||
         errMsg.includes('dismiss') ||
@@ -817,7 +820,7 @@ export function MealPlannerView({
         return;
       }
       console.error('Error exportando PDF:', err);
-      alert(language === 'en' ? 'Error generating PDF' : 'Error al generar el PDF');
+      alert(`Error PDF: ${rawError}`);
     } finally {
       setIsExportingPdf(false);
     }

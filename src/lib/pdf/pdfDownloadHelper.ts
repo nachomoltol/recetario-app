@@ -42,26 +42,60 @@ export async function saveOrSharePdf({
           .replace(/_+/g, '_');
         const safeFileName = `${cleanBase || 'miga_receta'}.pdf`;
 
-        // Escribir archivo temporal en la caché privada de la aplicación
-        await Filesystem.writeFile({
-          path: safeFileName,
-          data: base64Data,
-          directory: Directory.Cache,
-        });
+        // 1. Escribir archivo temporal en la caché privada de la aplicación
+        try {
+          await Filesystem.writeFile({
+            path: safeFileName,
+            data: base64Data,
+            directory: Directory.Cache,
+          });
+        } catch (writeErr: unknown) {
+          const msg =
+            writeErr instanceof Error
+              ? writeErr.message
+              : (writeErr as { message?: string })?.message || String(writeErr);
+          throw new Error(`Filesystem.writeFile fallo: ${msg}`);
+        }
 
-        // Obtener URI nativa con Filesystem.getUri
-        const uriResult = await Filesystem.getUri({
-          path: safeFileName,
-          directory: Directory.Cache,
-        });
-        const fileUri = uriResult.uri;
+        // 2. Obtener URI nativa con Filesystem.getUri
+        let fileUri: string;
+        try {
+          const uriResult = await Filesystem.getUri({
+            path: safeFileName,
+            directory: Directory.Cache,
+          });
+          fileUri = uriResult.uri;
+        } catch (uriErr: unknown) {
+          const msg =
+            uriErr instanceof Error
+              ? uriErr.message
+              : (uriErr as { message?: string })?.message || String(uriErr);
+          throw new Error(`Filesystem.getUri fallo: ${msg}`);
+        }
 
-        // Presentar hoja nativa en Android usando el array estándar de archivos 'files'
-        await Share.share({
-          title: safeFileName,
-          files: [fileUri],
-          dialogTitle,
-        });
+        // 3. Presentar hoja nativa en Android usando el array estándar de archivos 'files'
+        try {
+          await Share.share({
+            title: safeFileName,
+            files: [fileUri],
+            dialogTitle,
+          });
+        } catch (shareCallErr: unknown) {
+          const msg =
+            shareCallErr instanceof Error
+              ? shareCallErr.message
+              : (shareCallErr as { message?: string })?.message || String(shareCallErr);
+          const lowMsg = msg.toLowerCase();
+          if (
+            lowMsg.includes('cancel') ||
+            lowMsg.includes('dismiss') ||
+            lowMsg.includes('abort') ||
+            lowMsg.includes('closed')
+          ) {
+            return;
+          }
+          throw new Error(`Share.share fallo: ${msg}`);
+        }
       } else {
         // Flujo iOS (Apple) intacto y validado: mantiene url: fileUri
         const savedFile = await Filesystem.writeFile({
@@ -87,10 +121,11 @@ export async function saveOrSharePdf({
       }
     } catch (shareErr: unknown) {
       // Manejo limpio de cancelación voluntaria por parte del usuario
-      const errMsg =
+      const rawMsg =
         shareErr instanceof Error
-          ? shareErr.message.toLowerCase()
-          : String(shareErr).toLowerCase();
+          ? shareErr.message
+          : (shareErr as { message?: string })?.message || String(shareErr);
+      const errMsg = rawMsg.toLowerCase();
 
       if (
         errMsg.includes('cancel') ||
@@ -103,7 +138,7 @@ export async function saveOrSharePdf({
       }
 
       console.error('[pdfDownloadHelper] Error al compartir PDF nativo:', shareErr);
-      throw shareErr;
+      throw new Error(rawMsg);
     }
   } else {
     // Entorno Web (Escritorio o Navegador Web Móvil) - 100% Intacto
