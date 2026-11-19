@@ -75,15 +75,15 @@ export interface AdaptRecipeInput {
 
 const adaptRecipeSchema = {
   type: Type.OBJECT,
-  description: 'Reescritura de la receta adaptada al perfil clínico y nivel culinario del usuario con etiquetas <mark>.',
+  description: 'Reescritura de la receta adaptada al perfil clínico y dietético del usuario preservando los 3 niveles pedagógicos con etiquetas <mark>.',
   properties: {
     resumen_adaptacion: {
       type: Type.STRING,
-      description: 'Resumen claro (1 a 2 frases) de las adaptaciones realizadas según el perfil de salud y nivel del usuario.',
+      description: 'Resumen claro (1 a 2 frases) de las adaptaciones realizadas según el perfil clínico de salud y dietético del usuario. TERMINANTEMENTE PROHIBIDO incluir etiquetas HTML como <mark> en este campo (debe ser siempre texto plano).',
     },
     titulo: {
       type: Type.STRING,
-      description: 'Título de la receta adaptada.',
+      description: 'Título de la receta adaptada. TERMINANTEMENTE PROHIBIDO incluir etiquetas HTML como <mark> en este campo (debe ser siempre texto plano).',
     },
     ingredientes: {
       type: Type.ARRAY,
@@ -149,7 +149,7 @@ const adaptRecipeSchema = {
           descriptor_sensorial: {
             type: Type.STRING,
             description:
-              'Tarjeta sensorial adaptada (cambios de color, textura y aroma clave para saber cuándo avanzar al siguiente paso sin quemar ni dejar crudo el alimento).',
+              'Tarjeta sensorial adaptada (cambios de color, textura y aroma clave para saber cuándo avanzar al siguiente paso sin quemar ni dejar crudo el alimento). TERMINANTEMENTE PROHIBIDO incluir etiquetas HTML como <mark> en este campo (debe ser siempre texto plano).',
           },
           potencia_fuego: {
             type: Type.STRING,
@@ -158,7 +158,7 @@ const adaptRecipeSchema = {
           },
           consejo_pro: {
             type: Type.STRING,
-            description: 'Consejo técnico adaptado al nivel culinario.',
+            description: 'Consejo técnico adaptado. Debe ser texto plano sin etiquetas <mark>.',
           },
           tiempo_estimado_min: {
             type: Type.INTEGER,
@@ -188,23 +188,26 @@ const adaptRecipeSchema = {
 
 const SYSTEM_INSTRUCTION_ADAPT = `
 Eres un Chef Consultor de Alta Cocina y Nutricionista Clínico experto en dietética personalizada.
-Tu misión es recibir una receta y REESCRIBIR SU JSON para adaptarla de forma IN-LINE al perfil clínico (alérgenos, intolerancias, dieta) y nivel culinario (Principiante, Intermedio, Avanzado) del usuario.
+Tu misión es recibir una receta y REESCRIBIR SU JSON para adaptarla a los requerimientos clínicos y dietéticos (alérgenos, intolerancias, patrón alimentario) del usuario, manteniendo intacta la jerarquía de los 3 niveles pedagógicos de preparación:
+- 'instruccion_principiante': relato pedagógico guiado con el "por qué" de la técnica, advertencias de seguridad física y control visual.
+- 'instruccion': nivel intermedio estándar, equilibrado y directo para cocina doméstica eficiente.
+- 'instruccion_avanzada': nivel técnico profesional con fundamentos físico-químicos (extracción de grasa, control de almidones para mantecatura, emulsiones mecánicas fuera del fuego) y mise en place agrupada en paralelo.
+TERMINANTEMENTE PROHIBIDO reducir la redacción base de 'instruccion' o 'resumen_adaptacion' a 'nivel principiante'. Cada nivel conserva su propia voz culinaria independiente.
 
 DIRECTIVAS ESTRICTAS DE ADAPTACIÓN:
-1. REESCRITURA DIRECTA DE INGREDIENTES Y PASOS:
+1. REESCRITURA DIRECTA DE INGREDIENTES Y PASOS POR PERFIL CLÍNICO:
    - Reescribe el JSON de esta receta.
-   - Adapta los ingredientes y los pasos de preparación basándote estrictamente en el nivel culinario y las intolerancias del usuario.
    - Si el usuario tiene celiaquía o intolerancia al gluten, sustituye cualquier harina, salsa o pasta con gluten por una alternativa adecuada (ej. harina de avena sin gluten, tamari, pasta de maíz o arroz).
-   - Si no tolera la lactosa, sustituye leche, natas o mantequillas por bebidas vegetales o versiones sin lactosa.
-   - Si es vegetariano/vegano, sustituye carnes o pescados por legumbres, tofu o proteínas vegetales coherentes con la receta.
-   - Si su nivel es "Principiante", redacción pedagógica paso a paso con el "por qué" de la técnica, advertencias de seguridad física y señales sensoriales explícitas.
-   - Si su nivel es "Intermedio", guía estándar paso a paso para cocina doméstica eficiente con tiempos y temperaturas claras.
-   - Si su nivel es "Avanzado", PROHIBIDO clonar pasos intermedios con meros sinónimos ("trocear" -> "brunoise", "aceite" -> "EVOO"). Agrupa en bloques de ejecución simultánea (mise en place en paralelo) y fundamenta en principios físico-químicos (renderizado de grasa, control de almidones para mantecatura, caramelización de azúcares y emulsiones fuera del fuego).
+   - Si no tolera la lactosa o excluye lácteos, sustituye leche, natas, quesos o mantequillas por bebidas vegetales, quesos vegetales/de anacardos, o versiones sin lactosa.
+   - Si es vegetariano/vegano, sustituye carnes o pescados por legumbres, tofu, tempeh o proteínas vegetales coherentes con la receta.
+   - En 'resumen_adaptacion': explica de forma concisa y profesional las sustituciones nutricionales y dietéticas realizadas (1-2 frases). PROHIBIDO redactar frases como "adaptando los pasos para un nivel principiante".
 
-2. ETIQUETADO OBLIGATORIO CON <mark>:
-   - IMPORTANTE: Cuando modifiques un ingrediente o cambies un paso para hacerlo más fácil o apto, envuelve esa palabra o frase modificada en una etiqueta <mark> (ejemplo: 'Añade <mark>la leche de avena</mark>').
-   - En ingredientes: si el ingrediente fue sustituido o cambiado, envuélvelo en <mark> (ejemplo: "<mark>Bebida de avena</mark>", "<mark>Harina de almendras</mark>").
-   - Si un ingrediente o paso no requirió cambios porque ya es 100% apto y perfecto para su nivel, mantenlo tal cual sin <mark>.
+2. ETIQUETADO CON <mark> (ESTRICTAMENTE DELIMITADO):
+   - IMPORTANTE: Las etiquetas <mark>...</mark> están permitidas ÚNICAMENTE dentro de:
+     a) 'ingredientes[].nombre_limpio': si el ingrediente fue sustituido o cambiado (ej: "<mark>Bebida de avena</mark>").
+     b) 'pasos[].instruccion', 'pasos[].instruccion_principiante', 'pasos[].instruccion_avanzada': cuando menciones el ingrediente sustituido (ej: "Añade <mark>la bebida de avena</mark>").
+   - TERMINANTEMENTE PROHIBIDO usar <mark> en 'resumen_adaptacion', en 'titulo', ni en 'descriptor_sensorial'. Estos campos deben ser siempre texto plano sin HTML.
+   - Si un ingrediente o paso no requirió cambios porque ya es 100% apto, mantenlo tal cual sin <mark>.
 
 3. FIDELIDAD ESTRICTA A UNIDADES Y CANTIDADES DE LA LISTA EN LOS PASOS:
    - Cuando menciones un ingrediente en la instrucción de un paso, DEBES UTILIZAR ESTRICTAMENTE LA MISMA UNIDAD Y CANTIDAD que figura en la lista de ingredientes adaptados.
@@ -379,8 +382,8 @@ function sanitizeAdaptedStepsProse(
       instruccion_principiante: instruccionPrincipiante,
       instruccion,
       instruccion_avanzada: instruccionAvanzada,
-      descriptor_sensorial: descriptorSensorial,
-      consejo_pro: consejo,
+      descriptor_sensorial: descriptorSensorial ? descriptorSensorial.replace(/<\/?mark>/gi, '').trim() : null,
+      consejo_pro: consejo ? consejo.replace(/<\/?mark>/gi, '').trim() : null,
     };
   });
 }
@@ -521,12 +524,14 @@ ${receta.pasos
   .join('\n')}
 
 INSTRUCCIONES CLAVE:
-Reescribe el JSON de esta receta. Adapta los ingredientes y los pasos de preparación basándote estrictamente en el nivel culinario y las intolerancias del usuario.
+Reescribe el JSON de esta receta. Adapta los ingredientes y los pasos de preparación basándote estrictamente en el perfil clínico y las preferencias dietéticas del usuario, manteniendo la calidad y pedagogía de cada nivel culinario.
 - PROHIBIDO PREFIJOS EN INGREDIENTES: El campo 'nombre_limpio' de cada ingrediente debe contener ÚNICAMENTE el nombre culinario limpio (ej: "<mark>Tofu firme prensado</mark>", "<mark>Parte verde de cebollino picado</mark>", "Tomate cherry"). NUNCA incluyas la cantidad ni la unidad métrica dentro de 'nombre_limpio' (NO "600 g de tofu", NO "300 g de tomate").
 - RENDIMIENTO BASE: Todas las cantidades numéricas adaptadas deben calcularse para las ${receta.porciones} porciones base de la receta.
 - FIDELIDAD A UNIDADES DE LA LISTA: Si un ingrediente usa cucharadas o tazas (ej: "1 ½ cucharadas de Polvo de curry"), NO lo conviertas a gramos ("25 g"). Mantén la unidad de cuchara en los pasos y en los ingredientes.
 - PROHIBIDO GRAMOS EN PIZCAS/AL GUSTO: Para ingredientes con unidad "pizca", "al gusto" o rol "invariable" (ej: perejil fresco), NUNCA inventes gramos ("8 g de perejil"). Escribe "una pizca de..." o "...al gusto".
-- ETIQUETADO <mark>: Cuando modifiques un ingrediente o cambies un paso para hacerlo más fácil o apto, envuelve esa palabra o frase modificada en una etiqueta <mark> (ejemplo: 'Añade <mark>la leche de avena</mark>').
+- ETIQUETADO <mark> RESTRINGIDO: Usa <mark>...</mark> ÚNICAMENTE en 'ingredientes[].nombre_limpio' (para ingredientes sustituidos) y en las instrucciones de los pasos ('pasos[].instruccion*') cuando se mencione el ingrediente adaptado.
+- PROHIBIDO <mark> EN RESUMEN, TÍTULO Y GUÍA SENSORIAL: Los campos 'resumen_adaptacion', 'titulo', 'descriptor_sensorial' y 'consejo_pro' deben ser SIEMPRE texto plano sin etiquetas <mark>.
+- RESUMEN PROFESIONAL: En 'resumen_adaptacion', describe de forma concisa y profesional las adaptaciones dietéticas/clínicas efectuadas (1 a 2 frases). NO reduzcas el texto a "adaptando los pasos para un nivel principiante".
 `.trim();
 
     // 3. Ejecutar inferencia en Gemini
@@ -607,11 +612,21 @@ Reescribe el JSON de esta receta. Adapta los ingredientes y los pasos de prepara
           exclusionesClinicas
         );
 
+        const cleanTitulo = parsedData.titulo
+          ? parsedData.titulo.replace(/<\/?mark>/gi, '').trim()
+          : undefined;
+        const cleanResumen = (
+          parsedData.resumen_adaptacion ||
+          (idioma === 'en' ? 'Recipe adapted to your profile.' : 'Receta adaptada a tu perfil.')
+        )
+          .replace(/<\/?mark>/gi, '')
+          .trim();
+
         return {
           success: true,
           data: {
-            resumen_adaptacion: parsedData.resumen_adaptacion || (idioma === 'en' ? 'Recipe adapted to your profile.' : 'Receta adaptada a tu perfil.'),
-            titulo: parsedData.titulo,
+            resumen_adaptacion: cleanResumen,
+            titulo: cleanTitulo,
             ingredientes: sanitizedIngredientes,
             pasos: sanitizedPasos,
           },

@@ -363,21 +363,29 @@ export function RecipeDetailView({
       };
     });
 
-    if (data?.titulo) {
-      setCurrentTitulo(data.titulo);
-    }
+    const cleanRecipeDesc = receta?.descripcion
+      ? receta.descripcion.replace(/<\/?mark>/gi, '').trim()
+      : null;
+    const cleanAdaptedTitle = data?.titulo
+      ? data.titulo.replace(/<\/?mark>/gi, '').trim()
+      : currentTitulo;
+    const cleanResumen = (data?.resumen_adaptacion || '')
+      .replace(/<\/?mark>/gi, '')
+      .trim();
+
+    setCurrentTitulo(cleanAdaptedTitle);
     setCurrentIngredientes(adaptedIngs);
     setCurrentPasos(adaptedP);
     setIsAdapted(true);
-    setAdaptationSummary(data?.resumen_adaptacion || null);
+    setAdaptationSummary(cleanResumen || null);
 
     // Persistir adaptación en Supabase (sobrescribe JSON con respaldo en receta_original)
     try {
       if (receta?.id) {
         const res = await saveRecipeAdaptationAction({
           recetaId: receta.id,
-          titulo: data?.titulo || currentTitulo,
-          descripcion: data?.resumen_adaptacion || receta?.descripcion,
+          titulo: cleanAdaptedTitle,
+          descripcion: cleanRecipeDesc || undefined,
           ingredientes: adaptedIngs.map((i, idx) => ({
             id: i.id,
             nombre_limpio: i.nombre_limpio,
@@ -653,11 +661,11 @@ export function RecipeDetailView({
 
   // Iniciar modo edición
   const handleStartEdit = () => {
-    setEditTitulo(currentTitulo);
+    setEditTitulo(currentTitulo.replace(/<\/?mark>/gi, '').trim());
     setEditIngredientes(
       currentIngredientes.map((i, idx) => ({
         id: i.id || `temp-${idx}`,
-        nombre_limpio: i.nombre_limpio || i.nombre_crudo || '',
+        nombre_limpio: (i.nombre_limpio || i.nombre_crudo || '').replace(/<\/?mark>/gi, '').trim(),
         cantidad: typeof i.cantidad === 'number' ? i.cantidad : parseFloat(String(i.cantidad)) || 1,
         unidad: i.unidad || 'unidad',
         orden: i.orden || idx + 1,
@@ -669,9 +677,9 @@ export function RecipeDetailView({
       (currentPasos || []).map((p, idx) => ({
         id: p.id || `temp-step-${idx}`,
         orden: p.orden || idx + 1,
-        instruccion: p.instruccion || '',
+        instruccion: (p.instruccion || '').replace(/<\/?mark>/gi, '').trim(),
         tiempo_estimado_min: p.tiempo_estimado_min,
-        consejo_pro: p.consejo_pro,
+        consejo_pro: p.consejo_pro ? p.consejo_pro.replace(/<\/?mark>/gi, '').trim() : null,
       }))
     );
     setIsEditing(true);
@@ -1129,7 +1137,7 @@ export function RecipeDetailView({
         {receta?.descripcion && (
           <div className="text-xs sm:text-sm text-stone-600 font-light leading-relaxed max-w-2xl">
             <p className={!isDescriptionExpanded ? 'line-clamp-2' : ''}>
-              {receta.descripcion}
+              <FormattedText text={receta.descripcion} />
             </p>
             {receta.descripcion.length > 90 && (
               <button

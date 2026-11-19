@@ -149,8 +149,13 @@ export async function saveRecipeAdaptationAction({
       updated_at: new Date().toISOString(),
       receta_original: backupOriginal,
     };
-    if (titulo) updateRecetaPayload.titulo = titulo.trim();
-    if (descripcion !== undefined) updateRecetaPayload.descripcion = descripcion;
+    if (titulo) updateRecetaPayload.titulo = titulo.replace(/<\/?mark>/gi, '').trim();
+    if (descripcion !== undefined) {
+      updateRecetaPayload.descripcion =
+        typeof descripcion === 'string'
+          ? descripcion.replace(/<\/?mark>/gi, '').trim()
+          : descripcion;
+    }
 
     const { error: errUpdateReceta } = await supabase
       .from('recetas')

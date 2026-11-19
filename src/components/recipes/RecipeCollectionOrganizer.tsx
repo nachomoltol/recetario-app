@@ -865,13 +865,13 @@ export function RecipeCollectionOrganizer({
               className="block group-hover:text-brand-primary transition-colors"
             >
               <h3 className="font-semibold sm:font-bold text-stone-900 font-serif-recipe text-xs sm:text-base leading-snug line-clamp-2">
-                {r.titulo}
+                {r.titulo.replace(/<\/?mark>/gi, '')}
               </h3>
             </Link>
 
             {r.descripcion && (
               <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed font-light hidden sm:block">
-                {r.descripcion}
+                {r.descripcion.replace(/<\/?mark>/gi, '')}
               </p>
             )}
 

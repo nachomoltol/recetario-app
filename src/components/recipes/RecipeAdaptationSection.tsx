@@ -59,9 +59,6 @@ export function RecipeAdaptationSection({
     (userProfile?.alergenos && userProfile.alergenos.length > 0)
   );
 
-  const nivel = userProfile?.nivel_culinario;
-  const tieneNivelEspecifico = nivel === 'Principiante' || nivel === 'Avanzado';
-
   // Reporte clínico cruzando ingredientes de la receta con perfil
   const compatibilityReport = useMemo(() => {
     if (!tienePreferenciasDieteticas) {
@@ -86,8 +83,8 @@ export function RecipeAdaptationSection({
     );
   }, [recipe.ingredientes, userProfile, tienePreferenciasDieteticas, language]);
 
-  // Si no tiene ninguna restricción configurada y tampoco nivel específico, no interrumpe la UI
-  if (!tienePreferenciasDieteticas && !tieneNivelEspecifico && !isAdapted) {
+  // Si no tiene ninguna restricción configurada y no está adaptada, no interrumpe la UI
+  if (!tienePreferenciasDieteticas && !isAdapted) {
     return null;
   }
 
@@ -121,9 +118,6 @@ export function RecipeAdaptationSection({
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-medium shadow-2xs">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span className="font-semibold font-serif-recipe">{t('recipe_adapted_badge')}</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-md font-bold bg-brand-primary text-white">
-              In-Line
-            </span>
           </div>
 
           <button
@@ -201,8 +195,8 @@ export function RecipeAdaptationSection({
                   {isPending
                     ? t('recipe_adapting_btn')
                     : isPro
-                    ? 'Adaptar'
-                    : 'Adaptar (PRO)'}
+                    ? t('recipe_adapt_btn')
+                    : `${t('recipe_adapt_btn')} (PRO)`}
                 </span>
               </button>
             </div>
@@ -223,7 +217,7 @@ export function RecipeAdaptationSection({
                 )}
               </div>
 
-              {tieneNivelEspecifico && (
+              {tienePreferenciasDieteticas && (
                 <button
                   type="button"
                   onClick={handleAdaptClick}
@@ -232,7 +226,7 @@ export function RecipeAdaptationSection({
                 >
                   <Sparkles className="w-3 h-3 text-brand-primary" />
                   <span>
-                    {isPending ? t('recipe_adapting_btn') : `Adaptar a ${nivel}`}
+                    {isPending ? t('recipe_adapting_btn') : t('recipe_adapt_btn')}
                   </span>
                 </button>
               )}

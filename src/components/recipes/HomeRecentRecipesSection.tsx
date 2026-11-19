@@ -245,13 +245,13 @@ export function HomeRecentRecipesSection({ recetas }: HomeRecentRecipesSectionPr
                   className="block group-hover:text-brand-primary transition-colors"
                 >
                   <h2 className="font-bold text-stone-900 font-serif-recipe text-2xl sm:text-3xl leading-snug">
-                    {recipeToShow.titulo}
+                    {recipeToShow.titulo.replace(/<\/?mark>/gi, '')}
                   </h2>
                 </Link>
 
                 {recipeToShow.descripcion && (
                   <p className="text-xs sm:text-sm text-stone-600 line-clamp-2 leading-relaxed font-light">
-                    {recipeToShow.descripcion}
+                    {recipeToShow.descripcion.replace(/<\/?mark>/gi, '')}
                   </p>
                 )}
 

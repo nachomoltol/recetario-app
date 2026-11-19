@@ -665,7 +665,7 @@ export function RecipeInteractiveSections({
                           </span>
                         </div>
                         <p className="text-xs sm:text-sm text-stone-800 leading-relaxed font-medium">
-                          {paso.descriptor_sensorial}
+                          <FormattedText text={paso.descriptor_sensorial} />
                         </p>
                       </div>
                     </div>

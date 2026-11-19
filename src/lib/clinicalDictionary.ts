@@ -375,13 +375,46 @@ export const ALERGENOS_UE: AlergenoUE[] = [
         'quesos',
         'queso fresco',
         'queso crema',
+        'queso rallado',
+        'queso curado',
+        'queso semicurado',
+        'queso tierno',
+        'ricota',
         'ricotta',
+        'parmesano',
+        'queso parmesano',
+        'mozzarella',
+        'burrata',
+        'stracciatella',
         'mascarpone',
+        'requesón',
+        'requeson',
+        'cottage',
+        'cheddar',
+        'gouda',
+        'emmental',
+        'gruyere',
+        'gruyère',
+        'provolone',
+        'brie',
+        'camembert',
+        'feta',
+        'roquefort',
+        'gorgonzola',
+        'manchego',
+        'pecorino',
         'yogur',
         'yogurt',
+        'yogures',
+        'yogurts',
+        'kéfir',
+        'kefir',
+        'cuajada',
         'mantequilla',
+        'ghee',
         'nata',
         'nata para cocinar',
+        'nata líquida',
         'crema de leche',
         'suero de leche',
         'lactosa',
@@ -400,10 +433,33 @@ export const ALERGENOS_UE: AlergenoUE[] = [
         'cheeses',
         'fresh cheese',
         'cream cheese',
+        'grated cheese',
+        'aged cheese',
         'ricotta',
+        'ricota',
+        'parmesan',
+        'parmesan cheese',
+        'mozzarella',
+        'burrata',
+        'stracciatella',
         'mascarpone',
+        'cottage cheese',
+        'cheddar',
+        'gouda',
+        'emmental',
+        'gruyere',
+        'provolone',
+        'brie',
+        'camembert',
+        'feta',
+        'roquefort',
+        'gorgonzola',
+        'manchego',
+        'pecorino',
         'yogurt',
+        'kefir',
         'butter',
+        'ghee',
         'heavy cream',
         'cream',
         'whey',
@@ -1130,15 +1186,48 @@ export const PROTOCOLOS_CLINICOS: ClinicalProtocolDefinition[] = [
         'nata para cocinar',
         'nata líquida',
         'crema de leche',
+        'queso',
+        'quesos',
         'queso fresco',
         'queso tierno',
         'queso crema',
+        'queso rallado',
+        'queso curado',
+        'queso semicurado',
+        'ricota',
         'ricotta',
+        'parmesano',
+        'queso parmesano',
+        'mozzarella',
+        'burrata',
+        'stracciatella',
         'mascarpone',
         'requesón',
+        'requeson',
+        'cottage',
+        'cheddar',
+        'gouda',
+        'emmental',
+        'gruyere',
+        'gruyère',
+        'provolone',
+        'brie',
+        'camembert',
+        'feta',
+        'roquefort',
+        'gorgonzola',
+        'manchego',
+        'pecorino',
+        'mantequilla',
         'mantequilla tradicional',
-        'yogur convencional',
+        'ghee',
+        'yogur',
         'yogurt',
+        'yogures',
+        'yogurts',
+        'kéfir',
+        'kefir',
+        'cuajada',
         'suero de leche',
         'helado de leche',
         'lactosa',
@@ -1155,14 +1244,38 @@ export const PROTOCOLOS_CLINICOS: ClinicalProtocolDefinition[] = [
         'cream',
         'heavy cream',
         'sour cream',
+        'cheese',
+        'cheeses',
         'fresh cheese',
         'cream cheese',
+        'grated cheese',
+        'aged cheese',
         'ricotta',
+        'ricota',
+        'parmesan',
+        'parmesan cheese',
+        'mozzarella',
+        'burrata',
+        'stracciatella',
         'mascarpone',
         'cottage cheese',
+        'cheddar',
+        'gouda',
+        'emmental',
+        'gruyere',
+        'provolone',
+        'brie',
+        'camembert',
+        'feta',
+        'roquefort',
+        'gorgonzola',
+        'manchego',
+        'pecorino',
+        'butter',
         'traditional butter',
-        'conventional yogurt',
+        'ghee',
         'yogurt',
+        'kefir',
         'whey',
         'ice cream',
         'lactose',
@@ -1197,6 +1310,15 @@ export const PROTOCOLOS_CLINICOS: ClinicalProtocolDefinition[] = [
         'cacao',
         'embutidos',
         'quesos curados o fermentados',
+        'parmesano',
+        'queso parmesano',
+        'queso curado',
+        'queso azul',
+        'roquefort',
+        'gorgonzola',
+        'manchego',
+        'cheddar',
+        'pecorino',
         'kéfir',
         'yogur',
         'chucrut',
@@ -1617,6 +1739,17 @@ export const PROTOCOLOS_CLINICOS: ClinicalProtocolDefinition[] = [
       es: [
         'gluten (trigo, centeno, cebada)',
         'lácteos de vaca (caseína A1)',
+        'leche de vaca',
+        'queso',
+        'quesos',
+        'queso parmesano',
+        'parmesano',
+        'ricota',
+        'ricotta',
+        'mozzarella',
+        'nata',
+        'mantequilla',
+        'yogur',
         'soja no fermentada',
         'exceso de yodo (algas marinas, kelp, sal yodada excesiva)',
         'aceites refinados de semillas',
@@ -1650,6 +1783,15 @@ export const PROTOCOLOS_CLINICOS: ClinicalProtocolDefinition[] = [
         'jarabes',
         'harinas blancas ultra-refinadas',
         'lácteos bovinos convencionales desnatados',
+        'leche',
+        'queso',
+        'quesos',
+        'parmesano',
+        'ricota',
+        'ricotta',
+        'nata',
+        'mantequilla',
+        'yogur',
         'grasas trans',
         'zumos',
         'alcohol',
@@ -1683,6 +1825,18 @@ export const PROTOCOLOS_CLINICOS: ClinicalProtocolDefinition[] = [
         'carnes rojas intensivas',
         'embutidos',
         'lácteos de vaca',
+        'leche',
+        'leche de vaca',
+        'queso',
+        'quesos',
+        'queso parmesano',
+        'parmesano',
+        'ricota',
+        'ricotta',
+        'mozzarella',
+        'nata',
+        'mantequilla',
+        'yogur',
         'grasas trans',
         'aceites ricos en omega-6',
         'ajo crudo',
@@ -1806,17 +1960,68 @@ export const PATRONES_ALIMENTARIOS_DATA: DietaryPatternDefinition[] = [
     prohibidos: {
       es: [
         'carne',
+        'carnes',
         'aves',
+        'pollo',
+        'pavo',
+        'ternera',
+        'cerdo',
+        'cordero',
+        'conejo',
+        'jamón',
+        'jamon',
+        'bacon',
+        'panceta',
+        'embutidos',
         'pescado',
+        'pescados',
+        'atún',
+        'atun',
+        'salmón',
+        'salmon',
+        'bacalao',
+        'merluza',
         'marisco',
+        'mariscos',
+        'gambas',
+        'langostinos',
+        'mejillones',
+        'calamares',
+        'pulpo',
         'gelatina animal',
+        'manteca de cerdo',
+        'caldo de carne',
+        'caldo de pollo',
+        'caldo de pescado',
       ],
       en: [
         'meat',
         'poultry',
+        'chicken',
+        'turkey',
+        'beef',
+        'pork',
+        'lamb',
+        'ham',
+        'bacon',
+        'cured sausages',
         'fish',
+        'tuna',
+        'salmon',
+        'cod',
+        'hake',
         'shellfish',
+        'seafood',
+        'prawns',
+        'shrimps',
+        'mussels',
+        'squid',
+        'octopus',
         'animal gelatin',
+        'lard',
+        'meat broth',
+        'chicken stock',
+        'fish stock',
       ],
     },
     reglasCulinarias: {
@@ -1834,24 +2039,103 @@ export const PATRONES_ALIMENTARIOS_DATA: DietaryPatternDefinition[] = [
     prohibidos: {
       es: [
         'carne',
+        'carnes',
         'aves',
+        'pollo',
+        'pavo',
+        'ternera',
+        'cerdo',
+        'cordero',
+        'conejo',
+        'jamón',
+        'jamon',
+        'bacon',
+        'panceta',
+        'embutidos',
         'pescado',
+        'pescados',
+        'atún',
+        'atun',
+        'salmón',
+        'salmon',
+        'bacalao',
+        'merluza',
         'marisco',
+        'mariscos',
+        'gambas',
+        'langostinos',
+        'mejillones',
+        'calamares',
+        'pulpo',
         'huevos',
+        'huevo',
+        'yema',
+        'clara de huevo',
         'lácteos',
+        'leche',
+        'queso',
+        'quesos',
+        'nata',
+        'mantequilla',
+        'yogur',
+        'cuajada',
+        'kéfir',
+        'kefir',
+        'ricota',
+        'ricotta',
+        'parmesano',
+        'queso parmesano',
+        'mozzarella',
         'miel',
         'gelatina animal',
+        'manteca de cerdo',
+        'suero de leche',
+        'lactosa',
         'productos de origen animal',
       ],
       en: [
         'meat',
         'poultry',
+        'chicken',
+        'turkey',
+        'beef',
+        'pork',
+        'lamb',
+        'ham',
+        'bacon',
+        'cured sausages',
         'fish',
+        'tuna',
+        'salmon',
+        'cod',
         'shellfish',
+        'seafood',
+        'prawns',
+        'shrimps',
+        'mussels',
+        'squid',
+        'octopus',
         'eggs',
+        'egg',
+        'egg yolk',
+        'egg white',
         'dairy',
+        'milk',
+        'cheese',
+        'cheeses',
+        'cream',
+        'butter',
+        'yogurt',
+        'kefir',
+        'ricotta',
+        'ricota',
+        'parmesan',
+        'mozzarella',
         'honey',
         'animal gelatin',
+        'lard',
+        'whey',
+        'lactose',
         'animal-derived products',
       ],
     },
@@ -1872,6 +2156,15 @@ export const PATRONES_ALIMENTARIOS_DATA: DietaryPatternDefinition[] = [
         'cereales (trigo, arroz, avena, maíz)',
         'legumbres',
         'lácteos',
+        'leche',
+        'queso',
+        'quesos',
+        'nata',
+        'mantequilla',
+        'yogur',
+        'ricota',
+        'ricotta',
+        'parmesano',
         'azúcar refinado',
         'aceites vegetales procesados',
       ],
@@ -1879,6 +2172,15 @@ export const PATRONES_ALIMENTARIOS_DATA: DietaryPatternDefinition[] = [
         'grains (wheat, rice, oats, corn)',
         'legumes',
         'dairy',
+        'milk',
+        'cheese',
+        'cheeses',
+        'cream',
+        'butter',
+        'yogurt',
+        'ricotta',
+        'ricota',
+        'parmesan',
         'refined sugar',
         'processed vegetable oils',
       ],
@@ -2376,6 +2678,216 @@ export function getSingularStem(term: string): string {
 }
 
 /**
+ * Detecta si un ingrediente es una alternativa vegetal o exención segura de lácteos (ej: leche de coco, mantequilla de cacahuete, queso vegano)
+ */
+export function isPlantBasedDairyExemption(rawOrNormIng: string): boolean {
+  const normIng = normalizeClinicalTerm(rawOrNormIng);
+  const plantTerms = [
+    'leche de coco', 'leche de almendra', 'leche de almendras', 'leche de avena',
+    'leche de soja', 'leche de soya', 'leche de arroz', 'leche de avellana',
+    'leche de avellanas', 'leche de nuez', 'leche vegetal', 'bebida de coco',
+    'bebida de almendra', 'bebida de almendras', 'bebida de avena', 'bebida de soja',
+    'bebida de soya', 'bebida de arroz', 'bebida vegetal', 'coconut milk',
+    'almond milk', 'oat milk', 'soy milk', 'rice milk',
+    'mantequilla de cacahuete', 'mantequilla de cacahuate', 'mantequilla de mani',
+    'mantequilla de maní', 'mantequilla de almendra', 'mantequilla de almendras',
+    'mantequilla de coco', 'mantequilla vegana', 'mantequilla vegetal',
+    'crema de cacahuete', 'crema de cacahuate', 'crema de mani', 'crema de maní',
+    'crema de almendra', 'crema de almendras', 'crema de coco', 'peanut butter', 'almond butter',
+    'queso vegano', 'queso vegetal', 'queso de anacardo', 'queso de anacardos',
+    'queso de soja', 'queso de soya', 'vegan cheese', 'plant-based cheese',
+    'yogur vegano', 'yogur vegetal', 'yogur de coco', 'yogur de soja',
+    'yogur de soya', 'yogur de avena', 'vegan yogurt',
+    'nata vegetal', 'nata de coco', 'coconut cream', 'dulce de leche de coco', 'dulce de leche vegano'
+  ];
+  if (plantTerms.some((t) => normIng.includes(t))) return true;
+  if (/\b(vegano|vegana|vegan|100%\s*vegetal|origen\s*vegetal)\b/i.test(normIng)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Detecta si un producto lácteo está explícitamente etiquetado como sin lactosa
+ */
+export function isLactoseFreeProduct(rawOrNormIng: string): boolean {
+  const normIng = normalizeClinicalTerm(rawOrNormIng);
+  return (
+    normIng.includes('sin lactosa') ||
+    normIng.includes('lactose free') ||
+    normIng.includes('lactose-free') ||
+    normIng.includes('deslactosad')
+  );
+}
+
+/**
+ * Evalúa si un ingrediente pertenece a la familia láctea universal (leche, quesos, natas, mantequillas, yogures, etc.)
+ */
+export function isUniversalDairyIngredient(rawOrNormIng: string): boolean {
+  const normIng = normalizeClinicalTerm(rawOrNormIng);
+  if (isPlantBasedDairyExemption(normIng)) return false;
+
+  const dairyPatterns = [
+    /\bleche(s)?\b/i,
+    /\bmilk(s)?\b/i,
+    /\bqueso(s)?\b/i,
+    /\bcheese(s)?\b/i,
+    /\bnata(s)?\b/i,
+    /\bcrema\s+de\s+leche\b/i,
+    /\bheavy\s+cream\b/i,
+    /\bsour\s+cream\b/i,
+    /\bmantequilla(s)?\b/i,
+    /\bbutter\b/i,
+    /\bghee\b/i,
+    /\byogur(t)?(es|s)?\b/i,
+    /\bkefir\b/i,
+    /\bkéfir\b/i,
+    /\bcuajada(s)?\b/i,
+    /\bricota\b/i,
+    /\bricotta\b/i,
+    /\bparmesano\b/i,
+    /\bparmesan\b/i,
+    /\bparmigiano\b/i,
+    /\bmozzarella\b/i,
+    /\bburrata\b/i,
+    /\bstracciatella\b/i,
+    /\bmascarpone\b/i,
+    /\brequeson\b/i,
+    /\brequesón\b/i,
+    /\bcottage\b/i,
+    /\bcheddar\b/i,
+    /\bgouda\b/i,
+    /\bemmental\b/i,
+    /\bgruyere\b/i,
+    /\bgruyère\b/i,
+    /\bprovolone\b/i,
+    /\bbrie\b/i,
+    /\bcamembert\b/i,
+    /\bfeta\b/i,
+    /\broquefort\b/i,
+    /\bgorgonzola\b/i,
+    /\bmanchego\b/i,
+    /\bpecorino\b/i,
+    /\bsuero\s+de\s+leche\b/i,
+    /\bwhey\b/i,
+    /\blactosa\b/i,
+    /\blactose\b/i,
+    /\bcaseina\b/i,
+    /\bcaseína\b/i,
+    /\bcasein\b/i,
+    /\bdulce\s+de\s+leche\b/i,
+  ];
+
+  return dairyPatterns.some((regex) => regex.test(normIng));
+}
+
+/**
+ * Detecta si un ingrediente es un sustituto vegetal de carne, ave, pescado o marisco
+ */
+export function isPlantBasedMeatExemption(rawOrNormIng: string): boolean {
+  const normIng = normalizeClinicalTerm(rawOrNormIng);
+  const plantTerms = [
+    'tofu', 'tempeh', 'seitan', 'seitán', 'heura', 'soja texturizada',
+    'carne vegetal', 'pollo vegetal', 'pollo vegano', 'pescado vegetal',
+    'atun vegano', 'atún vegano', 'hamburguesa vegana', 'hamburguesa vegetal',
+    'salchicha vegana', 'salchicha vegetal', 'bacon vegano', 'bacon vegetal',
+    'plant-based meat', 'vegan meat'
+  ];
+  if (plantTerms.some((t) => normIng.includes(t))) return true;
+  if (/\b(vegano|vegana|vegan|100%\s*vegetal)\b/i.test(normIng)) return true;
+  return false;
+}
+
+/**
+ * Evalúa si un ingrediente corresponde a carnes, aves o embutidos
+ */
+export function isUniversalMeatOrPoultryIngredient(rawOrNormIng: string): boolean {
+  const normIng = normalizeClinicalTerm(rawOrNormIng);
+  if (isPlantBasedMeatExemption(normIng)) return false;
+
+  const meatPatterns = [
+    /\bcarne(s)?\b/i, /\bmeat(s)?\b/i, /\bpollo(s)?\b/i, /\bchicken\b/i,
+    /\bpavo(s)?\b/i, /\bturkey\b/i, /\bternera(s)?\b/i, /\bbeef\b/i,
+    /\bvaca\b/i, /\bbuey\b/i, /\box\b/i, /\bcerdo(s)?\b/i, /\bpork\b/i,
+    /\bcochinillo\b/i, /\bcordero(s)?\b/i, /\blamb\b/i, /\bcabrito\b/i,
+    /\bconejo(s)?\b/i, /\brabbit\b/i, /\bpato(s)?\b/i, /\bduck\b/i,
+    /\boca(s)?\b/i, /\bjamon\b/i, /\bjamón\b/i, /\bham\b/i,
+    /\bbacon\b/i, /\bpanceta\b/i, /\btocino\b/i, /\blomo\b/i,
+    /\bchorizo(s)?\b/i, /\bsalchicha(s)?\b/i, /\bsausage(s)?\b/i,
+    /\bmorcilla(s)?\b/i, /\bembutido(s)?\b/i, /\bsobrasada\b/i,
+    /\bcecina\b/i, /\bfoie(\s+gras)?\b/i, /\bhigado\b/i, /\bhígado\b/i,
+    /\bliver\b/i, /\bmolleja(s)?\b/i, /\bcallos\b/i, /\bchistorra\b/i,
+    /\bfuet\b/i, /\bsalami\b/i, /\bpepperoni\b/i, /\bpeperoni\b/i,
+    /\bave(s)?\b/i, /\bpoultry\b/i, /\bchuleton\b/i, /\bchuletón\b/i,
+    /\bsolomillo\b/i, /\bentrecot\b/i, /\bcostilla(s)?\b/i, /\bribs?\b/i
+  ];
+  return meatPatterns.some((regex) => regex.test(normIng));
+}
+
+/**
+ * Evalúa si un ingrediente corresponde a pescados o mariscos
+ */
+export function isUniversalFishOrSeafoodIngredient(rawOrNormIng: string): boolean {
+  const normIng = normalizeClinicalTerm(rawOrNormIng);
+  if (isPlantBasedMeatExemption(normIng)) return false;
+
+  const fishPatterns = [
+    /\bpescado(s)?\b/i, /\bfish\b/i, /\batun\b/i, /\batún\b/i, /\btuna\b/i,
+    /\bsalmon\b/i, /\bsalmón\b/i, /\bbacalao\b/i, /\bcod\b/i,
+    /\bmerluza\b/i, /\bhake\b/i, /\blubina\b/i, /\bsea\s*bass\b/i,
+    /\bdorada\b/i, /\btrucha\b/i, /\btrout\b/i, /\bsardina(s)?\b/i,
+    /\bsardine(s)?\b/i, /\banchoa(s)?\b/i, /\banchov(y|ies)\b/i,
+    /\bboqueron(es)?\b/i, /\bboquerón(es)?\b/i, /\bbonito\b/i,
+    /\brape\b/i, /\blenguado\b/i, /\bpez\s+espada\b/i, /\bswordfish\b/i,
+    /\bmarisco(s)?\b/i, /\bshellfish\b/i, /\bseafood\b/i,
+    /\bgamba(s)?\b/i, /\bprawn(s)?\b/i, /\blangostino(s)?\b/i,
+    /\bcamaron(es)?\b/i, /\bcamarón(es)?\b/i, /\bshrimp(s)?\b/i,
+    /\bcangrejo(s)?\b/i, /\bcrab(s)?\b/i, /\bbogavante(s)?\b/i,
+    /\blangosta(s)?\b/i, /\blobster(s)?\b/i, /\bmejillon(es)?\b/i,
+    /\bmejillón(es)?\b/i, /\bmussel(s)?\b/i, /\balmeja(s)?\b/i,
+    /\bclam(s)?\b/i, /\bberberecho(s)?\b/i, /\bcockle(s)?\b/i,
+    /\bostra(s)?\b/i, /\boyster(s)?\b/i, /\bcalamar(es)?\b/i,
+    /\bsquid(s)?\b/i, /\bpulpo(s)?\b/i, /\boctopus\b/i,
+    /\bsepia(s)?\b/i, /\bcuttlefish\b/i, /\bchipiron(es)?\b/i,
+    /\bchoko(s)?\b/i
+  ];
+  return fishPatterns.some((regex) => regex.test(normIng));
+}
+
+/**
+ * Evalúa si un ingrediente contiene huevo o derivados aviares
+ */
+export function isUniversalEggIngredient(rawOrNormIng: string): boolean {
+  const normIng = normalizeClinicalTerm(rawOrNormIng);
+  if (isPlantBasedMeatExemption(normIng)) return false;
+  if (normIng.includes('berenjena') || normIng.includes('eggplant')) return false;
+
+  const eggPatterns = [
+    /\bhuevo(s)?\b/i, /\begg(s)?\b/i, /\byema(s)?\b/i,
+    /\byolk(s)?\b/i, /\bclara(s)?(\s+de\s+huevo)?\b/i, /\begg\s*white(s)?\b/i
+  ];
+  return eggPatterns.some((regex) => regex.test(normIng));
+}
+
+/**
+ * Evalúa derivados y subproductos de origen animal (gelatina, caldos cárnicos, miel, etc.)
+ */
+export function isUniversalAnimalDerivativeIngredient(rawOrNormIng: string): boolean {
+  const normIng = normalizeClinicalTerm(rawOrNormIng);
+  if (isPlantBasedMeatExemption(normIng)) return false;
+
+  const derivativePatterns = [
+    /\bgelatina\s+(animal)?\b/i, /\bmanteca\s+de\s+cerdo\b/i,
+    /\bgrasa\s+(animal|de\s+cerdo|de\s+vaca|de\s+pato)\b/i,
+    /\blard\b/i, /\btallow\b/i, /\bmiel\b/i, /\bhoney\b/i,
+    /\bcaldo\s+de\s+(carne|pollo|pavo|pescado|marisco|huesos?)\b/i,
+    /\bfondo\s+de\s+(carne|pollo|ternera|pescado)\b/i,
+    /\b(beef|chicken|fish|bone)\s+(broth|stock)\b/i
+  ];
+  return derivativePatterns.some((regex) => regex.test(normIng));
+}
+
+/**
  * Evalúa si un nombre de ingrediente coincide con un término prohibido clínico.
  * Maneja búsqueda de frases compuestas, lematización singular/plural y excepciones culinarias seguras.
  */
@@ -2392,16 +2904,20 @@ export function isIngredientMatchingProhibited(
   if (!normP || normP.length < 2) return false;
 
   // EXCEPCIONES CULINARIAS SEGURAS (Prevención de falsos positivos):
-  // 1. Trigo sarraceno (alforfón): pseudocereal 100% libre de gluten.
-  if ((normP === 'trigo' || normP === 'gluten') && normIng.includes('trigo sarraceno')) {
-    const withoutSarraceno = normIng.replace(/trigo\s+sarraceno/gi, '').trim();
-    if (!/\btrigo\b/i.test(withoutSarraceno)) {
+  // 1. Trigo sarraceno (alforfón) o etiquetado explícito "sin gluten":
+  if (normP === 'trigo' || normP === 'gluten' || patologiaClave === 'sin_gluten' || patologiaClave === 'celiaquia') {
+    if (normIng.includes('trigo sarraceno')) {
+      const withoutSarraceno = normIng.replace(/trigo\s+sarraceno/gi, '').trim();
+      if (!/\btrigo\b/i.test(withoutSarraceno)) {
+        return false;
+      }
+    }
+    if (normIng.includes('sin gluten') || normIng.includes('gluten free')) {
       return false;
     }
   }
 
   // 2. Aceite infusionado de ajo/cebolla en protocolo FODMAP / SII:
-  // Los fructanos son hidrosolubles y no liposolubles, por lo que el aceite infusionado es apto.
   if (
     (patologiaClave === 'fodmap' || patologiaClave === 'sii') &&
     (normP === 'ajo' || normP === 'cebolla') &&
@@ -2410,14 +2926,128 @@ export function isIngredientMatchingProhibited(
     return false;
   }
 
-  // A) Término prohibido de múltiples palabras (ej: "leche evaporada", "harina de trigo", "cebolla dulce")
+  // 3. Exenciones seguras para lácteos / lactosa:
+  if (patologiaClave === 'sin_lactosa' && isLactoseFreeProduct(normIng)) {
+    return false;
+  }
+  if (isPlantBasedDairyExemption(normIng)) {
+    const isDairyTerm =
+      normP.includes('lacteo') ||
+      normP.includes('leche') ||
+      normP.includes('queso') ||
+      normP.includes('nata') ||
+      normP.includes('mantequilla') ||
+      normP.includes('yogur') ||
+      normP.includes('dairy') ||
+      normP.includes('milk') ||
+      normP.includes('cheese') ||
+      normP.includes('butter') ||
+      patologiaClave === 'sin_lactosa' ||
+      patologiaClave === 'lacteos';
+    if (isDairyTerm) return false;
+  }
+
+  // 4. Exenciones seguras para carnes / pescados en patrones vegetales:
+  if (isPlantBasedMeatExemption(normIng)) {
+    const isAnimalTerm =
+      normP.includes('carne') ||
+      normP.includes('pollo') ||
+      normP.includes('pavo') ||
+      normP.includes('pescado') ||
+      normP.includes('marisco') ||
+      normP.includes('meat') ||
+      normP.includes('fish') ||
+      patologiaClave === 'vegana' ||
+      patologiaClave === 'vegetariana';
+    if (isAnimalTerm) return false;
+  }
+
+  // LEYES UNIVERSALES POR CATEGORÍA HIPERÓNIMA:
+  // A) Hiperónimo de Lácteos
+  const isDairyCategory =
+    normP === 'lacteos' ||
+    normP === 'lacteos de vaca' ||
+    normP === 'lacteos de vaca caseina a1' ||
+    normP === 'lacteos convencionales' ||
+    normP === 'lacteos bovinos convencionales desnatados' ||
+    normP === 'quesos curados o fermentados' ||
+    normP === 'dairy' ||
+    normP === 'cow dairy' ||
+    normP === 'queso' ||
+    normP === 'quesos' ||
+    normP === 'leche' ||
+    normP === 'mantequilla' ||
+    normP === 'yogur';
+
+  if (isDairyCategory && isUniversalDairyIngredient(normIng)) {
+    if (patologiaClave === 'sin_lactosa' && isLactoseFreeProduct(normIng)) return false;
+    return true;
+  }
+
+  // B) Hiperónimo de Carnes / Aves
+  const isMeatCategory =
+    normP === 'carne' ||
+    normP === 'carnes' ||
+    normP === 'aves' ||
+    normP === 'embutidos' ||
+    normP === 'carnes rojas intensivas' ||
+    normP === 'meat' ||
+    normP === 'poultry';
+
+  if (isMeatCategory && isUniversalMeatOrPoultryIngredient(normIng)) {
+    return true;
+  }
+
+  // C) Hiperónimo de Pescados / Mariscos
+  const isFishCategory =
+    normP === 'pescado' ||
+    normP === 'pescados' ||
+    normP === 'marisco' ||
+    normP === 'mariscos' ||
+    normP === 'fish' ||
+    normP === 'shellfish';
+
+  if (isFishCategory && isUniversalFishOrSeafoodIngredient(normIng)) {
+    return true;
+  }
+
+  // D) Hiperónimo de Huevos
+  const isEggCategory =
+    normP === 'huevos' ||
+    normP === 'huevo' ||
+    normP === 'eggs' ||
+    normP === 'egg';
+
+  if (isEggCategory && isUniversalEggIngredient(normIng)) {
+    return true;
+  }
+
+  // E) Hiperónimo de Productos de Origen Animal
+  const isAnimalOriginCategory =
+    normP === 'productos de origen animal' ||
+    normP === 'animal-derived products';
+
+  if (isAnimalOriginCategory) {
+    if (
+      isUniversalMeatOrPoultryIngredient(normIng) ||
+      isUniversalFishOrSeafoodIngredient(normIng) ||
+      isUniversalEggIngredient(normIng) ||
+      isUniversalDairyIngredient(normIng) ||
+      isUniversalAnimalDerivativeIngredient(normIng)
+    ) {
+      return true;
+    }
+  }
+
+  // COINCIDENCIA LÉXICA TRADICIONAL (Frase compuesta vs. palabra simple)
+  // 1. Término prohibido de múltiples palabras (ej: "leche evaporada", "harina de trigo", "cebolla dulce")
   if (normP.includes(' ')) {
     const escaped = normP.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const multiRegex = new RegExp(`(^|[\\s,;./()])${escaped}($|[\\s,;./()])`, 'i');
     return multiRegex.test(normIng);
   }
 
-  // B) Término prohibido de palabra simple (ej: "garbanzo", "cebolla", "leche", "ajo")
+  // 2. Término prohibido de palabra simple (ej: "garbanzo", "cebolla", "leche", "ajo")
   const stem = getSingularStem(normP);
   const escapedStem = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const singleRegex = new RegExp(
@@ -2461,7 +3091,88 @@ export function checkRecipeClinicalCompatibility(
     if (!rawName) continue;
 
     for (const det of profile.detallesPorPatologia) {
-      // Ordenar prohibidos por longitud descendente para emparejar términos específicos primero (ej: "leche evaporada" antes de "leche")
+      // 1. Verificación por Ley Universal de Categoría (Láctea / Animal)
+      let matchedUniversal = false;
+      const isDairyExcluding =
+        det.clave === 'sin_lactosa' ||
+        det.clave === 'lacteos' ||
+        det.clave === 'paleo' ||
+        det.clave === 'hashimoto' ||
+        det.clave === 'endometriosis' ||
+        det.clave === 'sop' ||
+        det.clave === 'bajo_histamina' ||
+        det.clave === 'macrobiotica';
+
+      if (isDairyExcluding && isUniversalDairyIngredient(rawName)) {
+        if (!(det.clave === 'sin_lactosa' && isLactoseFreeProduct(rawName))) {
+          const alreadyMatched = conflicts.some(
+            (c) =>
+              c.ingredienteOriginal.toLowerCase() === rawName.toLowerCase() &&
+              c.patologia === det.nombre
+          );
+          if (!alreadyMatched) {
+            conflicts.push({
+              ingredienteOriginal: rawName,
+              prohibidoDetectado: det.clave === 'sin_lactosa' ? 'Lácteo con lactosa' : 'Lácteo / Derivado',
+              severidad: det.severidad,
+              patologia: det.nombre,
+            });
+            matchedUniversal = true;
+          }
+        }
+      }
+
+      if (!matchedUniversal && det.clave === 'vegana') {
+        const isAnimal =
+          isUniversalMeatOrPoultryIngredient(rawName) ||
+          isUniversalFishOrSeafoodIngredient(rawName) ||
+          isUniversalEggIngredient(rawName) ||
+          isUniversalDairyIngredient(rawName) ||
+          isUniversalAnimalDerivativeIngredient(rawName);
+
+        if (isAnimal) {
+          const alreadyMatched = conflicts.some(
+            (c) =>
+              c.ingredienteOriginal.toLowerCase() === rawName.toLowerCase() &&
+              c.patologia === det.nombre
+          );
+          if (!alreadyMatched) {
+            conflicts.push({
+              ingredienteOriginal: rawName,
+              prohibidoDetectado: 'Producto de origen animal',
+              severidad: det.severidad,
+              patologia: det.nombre,
+            });
+            matchedUniversal = true;
+          }
+        }
+      } else if (!matchedUniversal && det.clave === 'vegetariana') {
+        const isMeatOrFish =
+          isUniversalMeatOrPoultryIngredient(rawName) ||
+          isUniversalFishOrSeafoodIngredient(rawName) ||
+          isUniversalAnimalDerivativeIngredient(rawName);
+
+        if (isMeatOrFish) {
+          const alreadyMatched = conflicts.some(
+            (c) =>
+              c.ingredienteOriginal.toLowerCase() === rawName.toLowerCase() &&
+              c.patologia === det.nombre
+          );
+          if (!alreadyMatched) {
+            conflicts.push({
+              ingredienteOriginal: rawName,
+              prohibidoDetectado: 'Carne / Pescado / Subproducto animal',
+              severidad: det.severidad,
+              patologia: det.nombre,
+            });
+            matchedUniversal = true;
+          }
+        }
+      }
+
+      if (matchedUniversal) continue;
+
+      // 2. Ordenar prohibidos por longitud descendente para emparejar términos específicos primero (ej: "leche evaporada" antes de "leche")
       const sortedProhibidos = [...det.prohibidos].sort((a, b) => b.length - a.length);
 
       for (const prohibido of sortedProhibidos) {
