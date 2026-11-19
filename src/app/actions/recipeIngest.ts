@@ -14,6 +14,7 @@ import { calcularGramos } from '@/lib/nutrition/converter';
 import { IngredienteMaestro } from '@/types/recipe';
 import { FuenteTipoReceta } from '@/types/database';
 import { MAX_SPOON_MAGNITUDE } from '@/lib/nutrition/formatQuantity';
+import { inferRecipeCategory } from '@/lib/recipeCategorizer';
 
 export interface IngestRecipeResult {
   success?: boolean;
@@ -507,7 +508,15 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     }
     const factorEscalado = 1;
 
-    // 4. Inserción en 'recetas'
+    // 4. Inserción en 'recetas' con clasificación inicial determinista de momentos y rol
+    const inferredInitialCategory = inferRecipeCategory({
+      titulo: (extracted.titulo || 'Receta sin título').trim(),
+      calorias_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.calorias) || 0),
+      etiquetas: etiquetasCombinadas,
+      descripcion: extracted.descripcion || null,
+      ingredientes: extracted.ingredientes || [],
+    });
+
     const recetaPayload = {
       usuario_id: user.id,
       titulo: (extracted.titulo || 'Receta sin título').trim(),
@@ -524,6 +533,8 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
       grasas_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.grasas) || 0),
       fibra_por_porcion: Math.max(0, Number(extracted.macros_estimados_por_porcion?.fibra) || 0),
       etiquetas: etiquetasCombinadas,
+      momentos_dia: inferredInitialCategory.momentos_dia,
+      rol_plato: inferredInitialCategory.rol_plato,
       source_url_hash: sourceUrlHash || null,
     };
 

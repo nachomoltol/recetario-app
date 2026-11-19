@@ -47,7 +47,10 @@ const DESSERT_KEYWORDS = [
   'arroz con leche', 'tarta de manzana', 'apple pie', 'profiterol', 'profiteroles',
   'panna cotta', 'panacota', 'torrija', 'torrijas', 'merengue', 'meringue',
   'gelato', 'sorbete', 'sorbet', 'cupcake', 'cupcakes', 'donut', 'donuts',
-  'chocoflan', 'dulce de leche'
+  'chocoflan', 'dulce de leche', 'rosquilla', 'rosquillas', 'bunuelo', 'bunuelos',
+  'buñuelo', 'buñuelos', 'churro', 'churros', 'leche frita', 'pestino', 'pestinos',
+  'pestiño', 'pestiños', 'hojaldre', 'milhojas', 'pastel', 'pasteles', 'roscon',
+  'ensaimada'
 ];
 
 // Exclusiones saladas para evitar falsos positivos con tartas saladas / quiches
@@ -89,20 +92,23 @@ const FIRST_COURSE_KEYWORDS = [
 // 3. Segundos platos (Protagonismo proteico directo de carne, ave o pescado)
 const SECOND_COURSE_MEAT_KEYWORDS = [
   'solomillo', 'sirloin', 'tenderloin', 'entrecot', 'ribeye', 'chuleton',
-  'filete', 'steak', 'pechuga de pollo', 'chicken breast', 'muslos de pollo',
-  'chicken thighs', 'pollo al horno', 'roast chicken', 'pollo asado',
+  'filete', 'steak', 'pechuga', 'pechuga de pollo', 'chicken breast', 'muslo', 'muslos',
+  'muslos de pollo', 'contramuslo', 'contramuslos', 'chicken thighs', 'pollo', 'pavo',
+  'pollo al horno', 'roast chicken', 'pollo asado', 'ternera', 'cerdo', 'vaca', 'buey',
   'conejo', 'rabbit', 'cordero', 'lamb', 'costillas', 'ribs',
-  'lomo de cerdo', 'pork loin', 'alitas de pollo', 'chicken wings',
-  'albondigas', 'meatballs', 'chuletas', 'pork chops', 'carrilleras',
+  'lomo', 'lomo de cerdo', 'pork loin', 'alitas', 'alitas de pollo', 'chicken wings',
+  'albondigas', 'meatballs', 'chuleta', 'chuletas', 'pork chops', 'carrillera', 'carrilleras',
+  'secreto', 'presa', 'osobuco', 'rabo', 'codillo', 'pato', 'magret', 'cabrito', 'cochinillo',
   'ternera guisada', 'estofado de ternera', 'beef stew'
 ];
 
 const SECOND_COURSE_FISH_KEYWORDS = [
   'salmon', 'merluza', 'hake', 'lubina', 'sea bass', 'dorada', 'sea bream',
   'bacalao', 'cod', 'atun', 'tuna', 'bonito', 'sardinas', 'sardines',
-  'boquerones', 'calamares', 'squid', 'sepia', 'cuttlefish', 'pulpo', 'octopus',
-  'gambas a la plancha', 'grilled shrimp', 'langostinos', 'prawns',
-  'emperador', 'swordfish', 'trucha', 'trout', 'pescado al horno', 'baked fish'
+  'boquerones', 'calamar', 'calamares', 'squid', 'sepia', 'cuttlefish', 'pulpo', 'octopus',
+  'gamba', 'gambas', 'gambas a la plancha', 'grilled shrimp', 'langostino', 'langostinos', 'prawns',
+  'emperador', 'swordfish', 'trucha', 'trout', 'rape', 'rodaballo', 'corvina',
+  'pescado al horno', 'baked fish'
 ];
 
 const SECOND_COURSE_VEG_PROTEIN = [
@@ -150,14 +156,14 @@ const LIGHT_DINNER_KEYWORDS = [
 
 /**
  * Infiere de forma heurística y determinista los momentos del día recomendados
- * (desayuno, almuerzo, cena, snack) y el rol del plato (completo, primero, segundo, desayuno_snack).
+ * (desayuno, almuerzo, cena, snack, postre) y el rol del plato (completo, primero, segundo, desayuno_snack, postre).
  */
 export function inferRecipeCategory(receta: {
   titulo: string;
   calorias_por_porcion?: number | null;
   etiquetas?: string[] | null;
   descripcion?: string | null;
-  ingredientes?: { nombre_limpio?: string; nombre_crudo?: string }[] | null;
+  ingredientes?: { nombre_limpio?: string; nombre_crudo?: string; rol_culinario?: string | null }[] | null;
 }): SuggestedCategory {
   const normTitle = normalizeText(receta.titulo);
   const normDesc = normalizeText(receta.descripcion);
@@ -168,15 +174,21 @@ export function inferRecipeCategory(receta: {
     .filter(Boolean)
     .join(' ');
 
+  const mainAnchorIngredients = (receta.ingredientes || [])
+    .filter((i) => (i as any)?.rol_culinario === 'principal')
+    .map((i) => normalizeText(i?.nombre_limpio || i?.nombre_crudo || ''))
+    .filter(Boolean)
+    .join(' ');
+
   const fullCorpus = `${normTitle} ${normDesc} ${normTags} ${ingredientNames}`.trim();
   const cals = typeof receta.calorias_por_porcion === 'number' ? receta.calorias_por_porcion : null;
 
   // ===========================================================================
-  // REGLA 0: POSTRES, DULCES Y REPOSTERÍA (TARTAS, FLANES, BROWNIES, HELADOS...)
+  // REGLA 0: POSTRES, DULCES Y REPOSTERÍA (TARTAS, FLANES, ROSQUILLAS, CHURROS...)
   // ===========================================================================
   const isSavoryTart = containsKeyword(normTitle, SAVORY_EXCLUSION_KEYWORDS);
   const isDessertTitle = !isSavoryTart && containsKeyword(normTitle, DESSERT_KEYWORDS);
-  const isDessertCorpus = !isSavoryTart && containsKeyword(fullCorpus, DESSERT_KEYWORDS);
+  const isDessertCorpus = !isSavoryTart && containsKeyword(`${normTitle} ${normTags}`, DESSERT_KEYWORDS);
 
   if (isDessertTitle || isDessertCorpus) {
     return {
@@ -191,8 +203,6 @@ export function inferRecipeCategory(receta: {
   // ===========================================================================
   const isBreakfastTitle = containsKeyword(normTitle, BREAKFAST_KEYWORDS);
   const isSnackTitle = containsKeyword(normTitle, SNACK_KEYWORDS);
-  const isBreakfastCorpus = containsKeyword(fullCorpus, BREAKFAST_KEYWORDS);
-  const isSnackCorpus = containsKeyword(fullCorpus, SNACK_KEYWORDS);
 
   if (isBreakfastTitle || isSnackTitle) {
     const momentos: MomentoDia[] = [];
@@ -207,29 +217,82 @@ export function inferRecipeCategory(receta: {
     };
   }
 
-  if (isBreakfastCorpus || isSnackCorpus) {
-    // Si en etiquetas o ingredientes hay clara señal de desayuno/snack y calorías moderadas (< 450)
-    if (cals === null || cals < 450) {
-      return {
-        momentos_dia: isBreakfastCorpus ? ['desayuno', 'snack'] : ['snack'],
-        rol_plato: 'desayuno_snack',
-        confianza: 'media',
-      };
-    }
-  }
-
   // ===========================================================================
-  // REGLA 2: PRIMEROS PLATOS (SOPAS, CREMAS, ENSALADAS SIMPLES, VERDURAS)
+  // EVALUACIÓN DE COMPONENTES ESTRUCTURALES (PROTEÍNAS, HIDRATOS Y SOPAS)
   // ===========================================================================
-  const isFirstCourseTitle = containsKeyword(normTitle, FIRST_COURSE_KEYWORDS);
-  const isFirstCourseCorpus = containsKeyword(fullCorpus, FIRST_COURSE_KEYWORDS);
+  const startsWithLiquidStarter =
+    /^(sopa|sopas|soup|soups|caldo|caldos|consome|crema|cremas|pure|pures|puree|veloute|gazpacho|salmorejo|ajoblanco|vichyssoise)\b/i.test(
+      normTitle
+    );
 
-  // Evitar falsos positivos si el plato es claramente un plato completo (ej: "Sopa de ramen con pollo y huevo", "Ensalada de pasta", "Ensalada César")
   const hasGrainsOrPasta =
     containsKeyword(normTitle, COMPLETE_DISH_GRAINS_KEYWORDS) ||
     containsKeyword(normTitle, COMPLETE_DISH_PASTA_KEYWORDS) ||
     containsKeyword(normTitle, COMPLETE_DISH_LEGUMES_KEYWORDS);
+
   const isCompleteMealTitle = containsKeyword(normTitle, COMPLETE_DISH_MEALS_KEYWORDS);
+
+  const isMeatTitleOrAnchor =
+    containsKeyword(normTitle, SECOND_COURSE_MEAT_KEYWORDS) ||
+    containsKeyword(mainAnchorIngredients, SECOND_COURSE_MEAT_KEYWORDS);
+
+  const isFishTitleOrAnchor =
+    containsKeyword(normTitle, SECOND_COURSE_FISH_KEYWORDS) ||
+    containsKeyword(mainAnchorIngredients, SECOND_COURSE_FISH_KEYWORDS);
+
+  const isVegProteinTitle = containsKeyword(normTitle, SECOND_COURSE_VEG_PROTEIN);
+
+  // ===========================================================================
+  // REGLA 2 (PRIORIDAD 1 EN PLATOS SALADOS): PROTEÍNA PRINCIPAL (2º PLATO)
+  // Si el título o ingrediente ancla es carne, ave, pescado o marisco y NO empieza
+  // por sopa/caldo/crema ni es un arroz/pasta/legumbre/pizza completo -> 2º Plato
+  // ===========================================================================
+  if (
+    (isMeatTitleOrAnchor || isFishTitleOrAnchor || isVegProteinTitle) &&
+    !startsWithLiquidStarter &&
+    !hasGrainsOrPasta &&
+    !isCompleteMealTitle
+  ) {
+    const isHeavyMeat = containsKeyword(normTitle, [
+      'chuleton', 'entrecot', 'cordero', 'costillas', 'carrillera', 'carrilleras', 'rabo', 'osobuco', 'codillo', 'cochinillo'
+    ]);
+    const momentos: MomentoDia[] = isHeavyMeat
+      ? ['almuerzo']
+      : ['almuerzo', 'cena'];
+
+    return {
+      momentos_dia: momentos,
+      rol_plato: 'segundo',
+      confianza: 'alta',
+    };
+  }
+
+  // ===========================================================================
+  // REGLA 3 (PRIORIDAD 2 EN PLATOS SALADOS): PLATOS COMPLETOS / ÚNICOS
+  // Arroces, pastas, legumbres, guisos de cuchara, pizzas, bowls, currys
+  // ===========================================================================
+  const isCompleteTitle = hasGrainsOrPasta || isCompleteMealTitle;
+
+  if (isCompleteTitle && !startsWithLiquidStarter) {
+    const isHeavy = containsKeyword(normTitle, HEAVY_LUNCH_KEYWORDS) || (cals !== null && cals > 650);
+    const momentos: MomentoDia[] = isHeavy
+      ? ['almuerzo']
+      : ['almuerzo', 'cena'];
+
+    return {
+      momentos_dia: momentos,
+      rol_plato: 'completo',
+      confianza: 'alta',
+    };
+  }
+
+  // ===========================================================================
+  // REGLA 4 (PRIORIDAD 3 EN PLATOS SALADOS): PRIMEROS PLATOS / ENTRANTES
+  // Sopas, cremas de verduras, caldos, purés, gazpachos, ensaladas simples y verduras
+  // ===========================================================================
+  const isFirstCourseTitle =
+    startsWithLiquidStarter ||
+    (!isMeatTitleOrAnchor && !isFishTitleOrAnchor && containsKeyword(normTitle, FIRST_COURSE_KEYWORDS));
 
   if (isFirstCourseTitle && !hasGrainsOrPasta && !isCompleteMealTitle) {
     const isLightForDinner = containsKeyword(normTitle, LIGHT_DINNER_KEYWORDS) || (cals !== null && cals < 280);
@@ -245,55 +308,22 @@ export function inferRecipeCategory(receta: {
   }
 
   // ===========================================================================
-  // REGLA 3: SEGUNDOS PLATOS (PROTEÍNA PRINCIPAL ANIMAL O VEGETAL AISLADA)
+  // REGLA 5: EVALUACIÓN SECUNDARIA POR INGREDIENTES Y CORPUS
   // ===========================================================================
-  const isMeat =
-    containsKeyword(normTitle, SECOND_COURSE_MEAT_KEYWORDS) ||
-    containsKeyword(normTags, SECOND_COURSE_MEAT_KEYWORDS);
-
-  const isFish =
-    containsKeyword(normTitle, SECOND_COURSE_FISH_KEYWORDS) ||
-    containsKeyword(normTags, SECOND_COURSE_FISH_KEYWORDS);
-
-  const isVegProtein = containsKeyword(normTitle, SECOND_COURSE_VEG_PROTEIN);
-
-  if ((isMeat || isFish || isVegProtein) && !hasGrainsOrPasta) {
-    // Si tiene calorías medias y no es un guiso completo con patata o arroz
-    const isHeavyMeat = containsKeyword(normTitle, ['chuleton', 'entrecot', 'cordero', 'costillas']);
-    const momentos: MomentoDia[] = isHeavyMeat
-      ? ['almuerzo']
-      : ['almuerzo', 'cena'];
-
-    return {
-      momentos_dia: momentos,
-      rol_plato: 'segundo',
-      confianza: 'alta',
-    };
-  }
-
-  // ===========================================================================
-  // REGLA 4: PLATOS COMPLETOS / ÚNICOS (ARROCES, PASTAS, GUISOS, PIZZAS, BOWLS)
-  // ===========================================================================
-  const isCompleteTitle =
-    hasGrainsOrPasta ||
-    containsKeyword(normTitle, COMPLETE_DISH_MEALS_KEYWORDS);
+  const hasMeatInIngredients = containsKeyword(ingredientNames, SECOND_COURSE_MEAT_KEYWORDS);
+  const hasFishInIngredients = containsKeyword(ingredientNames, SECOND_COURSE_FISH_KEYWORDS);
 
   const isCompleteCorpus =
-    containsKeyword(fullCorpus, COMPLETE_DISH_GRAINS_KEYWORDS) ||
-    containsKeyword(fullCorpus, COMPLETE_DISH_PASTA_KEYWORDS) ||
-    containsKeyword(fullCorpus, COMPLETE_DISH_LEGUMES_KEYWORDS) ||
-    containsKeyword(fullCorpus, COMPLETE_DISH_MEALS_KEYWORDS);
+    containsKeyword(ingredientNames, COMPLETE_DISH_GRAINS_KEYWORDS) ||
+    containsKeyword(ingredientNames, COMPLETE_DISH_PASTA_KEYWORDS) ||
+    containsKeyword(ingredientNames, COMPLETE_DISH_LEGUMES_KEYWORDS) ||
+    containsKeyword(normTitle, COMPLETE_DISH_MEALS_KEYWORDS);
 
-  if (isCompleteTitle) {
-    const isHeavy = containsKeyword(normTitle, HEAVY_LUNCH_KEYWORDS) || (cals !== null && cals > 650);
-    const momentos: MomentoDia[] = isHeavy
-      ? ['almuerzo']
-      : ['almuerzo', 'cena'];
-
+  if ((hasMeatInIngredients || hasFishInIngredients) && !isCompleteCorpus) {
     return {
-      momentos_dia: momentos,
-      rol_plato: 'completo',
-      confianza: 'alta',
+      momentos_dia: ['almuerzo', 'cena'],
+      rol_plato: 'segundo',
+      confianza: 'media',
     };
   }
 
@@ -310,24 +340,12 @@ export function inferRecipeCategory(receta: {
     };
   }
 
-  // ===========================================================================
-  // REGLA 5: EVALUACIÓN SECUNDARIA POR INGREDIENTES Y CALORÍAS
-  // ===========================================================================
-  if (isFirstCourseCorpus && (cals === null || cals < 350)) {
+  const isBreakfastCorpus = containsKeyword(normTitle, BREAKFAST_KEYWORDS);
+  const isSnackCorpus = containsKeyword(normTitle, SNACK_KEYWORDS);
+  if ((isBreakfastCorpus || isSnackCorpus) && (cals === null || cals < 450)) {
     return {
-      momentos_dia: ['almuerzo', 'cena'],
-      rol_plato: 'primero',
-      confianza: 'media',
-    };
-  }
-
-  const hasMeatInIngredients = containsKeyword(ingredientNames, SECOND_COURSE_MEAT_KEYWORDS);
-  const hasFishInIngredients = containsKeyword(ingredientNames, SECOND_COURSE_FISH_KEYWORDS);
-
-  if ((hasMeatInIngredients || hasFishInIngredients) && (cals === null || cals < 550)) {
-    return {
-      momentos_dia: ['almuerzo', 'cena'],
-      rol_plato: 'segundo',
+      momentos_dia: isBreakfastCorpus ? ['desayuno', 'snack'] : ['snack'],
+      rol_plato: 'desayuno_snack',
       confianza: 'media',
     };
   }
@@ -335,8 +353,6 @@ export function inferRecipeCategory(receta: {
   // ===========================================================================
   // REGLA 6: FALLBACK DETERMINISTA POR DEFECTO
   // ===========================================================================
-  // Si no se encuentra patrón concluyente, un plato salado general se asigna
-  // como plato único apto para almuerzo y cena con confianza baja.
   return {
     momentos_dia: ['almuerzo', 'cena'],
     rol_plato: 'completo',

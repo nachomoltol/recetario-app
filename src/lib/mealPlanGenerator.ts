@@ -104,51 +104,55 @@ export function isFirstCourseStarter(
   titleNorm?: string,
   ingrNorm: string[] = []
 ): boolean {
-  const normTags = tagsNorm || (receta.etiquetas || []).map((t) => normalizeString(t.trim()));
   const normTitle = titleNorm ?? normalizeString(receta.titulo || '');
 
-  // 0. Si el rol explícito es primero
-  if (receta.rol_plato === 'primero') {
-    return true;
-  }
-  if (receta.rol_plato === 'segundo' || receta.rol_plato === 'postre') {
+  // 0. Si el rol explícito es segundo plato, postre o desayuno_snack -> NUNCA es 1er plato
+  if (
+    receta.rol_plato === 'segundo' ||
+    receta.rol_plato === 'postre' ||
+    receta.rol_plato === 'desayuno_snack'
+  ) {
     return false;
   }
 
-  // 1. Exclusiones de platos contundentes / completos (Plato Principal obligatorio)
+  // 1. Exclusiones de platos contundentes / completos en el título (Plato Principal obligatorio)
   const HEAVY_EXCLUSIONS = [
     // Legumbres y guisos tradicionales
-    'lentejas', 'garbanzos', 'alubias', 'judias blancas', 'judías blancas',
+    'lentejas', 'garbanzos', 'alubias', 'judias blancas',
     'fabada', 'cocido', 'potaje', 'puchero', 'estofado', 'guiso', 'chili',
     // Arroces y pastas
     'paella', 'risotto', 'arroz caldoso', 'arroz meloso', 'arroz',
-    'espaguetis', 'spaghetti', 'macarrones', 'lasana', 'lasaña', 'canelones',
-    'pasta', 'fideua', 'fideuá', 'tallarines', 'noodles', 'ramen',
+    'espaguetis', 'spaghetti', 'macarrones', 'lasana', 'canelones',
+    'pasta', 'fideua', 'tallarines', 'noodles', 'ramen',
     // Platos combinados / masas
-    'pizza', 'hamburguesa', 'burger', 'tacos', 'burrito', 'fajitas', 'poke bowl',
+    'pizza', 'hamburguesa', 'burger', 'tacos', 'burrito', 'fajitas', 'poke bowl', 'curry',
     // Ensaladas contundentes (plato único)
     'ensalada de pasta', 'ensalada de arroz', 'ensalada de patata', 'ensalada campera',
-    'ensalada cesar', 'ensalada césar', 'caesar salad', 'ensaladilla rusa'
+    'ensalada cesar', 'caesar salad', 'ensaladilla rusa'
   ];
 
   for (const excl of HEAVY_EXCLUSIONS) {
     const norm = normalizeString(excl);
-    if (normTitle.includes(norm) || normTags.includes(norm)) {
+    if (normTitle.includes(norm)) {
       return false;
     }
   }
 
-  // 2. Proteínas principales animales evidentes (salvo si son caldos o sopas con pollo/pescado)
-  const hasLiquidPrefix = ['sopa', 'crema', 'caldo', 'consome', 'consomé', 'pure', 'puré'].some((lp) =>
-    normTitle.includes(normalizeString(lp))
+  // 2. Proteínas principales animales evidentes (salvo si el título EMPIEZA explícitamente por sopa/caldo/consomé)
+  const hasLiquidPrefix = /^(sopa|sopas|soup|soups|caldo|caldos|consome|gazpacho|salmorejo|ajoblanco|vichyssoise)\b/i.test(
+    normTitle
   );
 
   if (!hasLiquidPrefix) {
     const MAIN_PROTEIN_KEYWORDS = [
       'pollo', 'pavo', 'ternera', 'cerdo', 'conejo', 'cordero', 'vaca', 'buey',
-      'salmon', 'salmón', 'merluza', 'bacalao', 'lubina', 'dorada', 'trucha',
-      'atun', 'atún', 'bonito', 'emperador', 'solomillo', 'entrecot', 'albondigas',
-      'albóndigas', 'costillas', 'lomo', 'chuletas', 'hamburguesa'
+      'carrillera', 'carrilleras', 'secreto', 'presa', 'osobuco', 'rabo', 'codillo',
+      'pato', 'magret', 'cabrito', 'cochinillo', 'pechuga', 'muslo', 'muslos',
+      'contramuslo', 'contramuslos', 'alitas', 'solomillo', 'entrecot', 'chuleton',
+      'albondigas', 'costillas', 'lomo', 'chuleta', 'chuletas', 'hamburguesa',
+      'salmon', 'merluza', 'bacalao', 'lubina', 'dorada', 'trucha', 'rape', 'rodaballo',
+      'atun', 'bonito', 'emperador', 'pulpo', 'calamar', 'calamares', 'sepia',
+      'gamba', 'gambas', 'langostino', 'langostinos'
     ];
     for (const prot of MAIN_PROTEIN_KEYWORDS) {
       const normProt = normalizeString(prot);
@@ -159,52 +163,43 @@ export function isFirstCourseStarter(
     }
   }
 
-  // 3. Sopas, cremas, caldos, purés y sopas frías tradicionales
-  const LIQUID_STARTER_KEYWORDS = [
-    'sopa', 'sopas', 'soup',
-    'crema', 'cremas', 'crema de',
-    'caldo', 'caldos', 'consome', 'consomé', 'broth',
-    'pure', 'puré', 'pures', 'purés', 'puree', 'veloute', 'velouté',
-    'gazpacho', 'gazpachos', 'salmorejo', 'salmorejos', 'ajoblanco', 'vichyssoise'
-  ];
-
-  for (const kw of LIQUID_STARTER_KEYWORDS) {
-    const normKw = normalizeString(kw);
-    const regex = new RegExp(`(^|\\s)${normKw}(\\s|s|es)?($|\\s)`, 'i');
-    if (regex.test(normTitle) || normTags.includes(normKw)) {
-      return true;
-    }
+  // 3. Si pasó las exclusiones de proteína principal y platos pesados, respetar rol_plato === 'primero'
+  if (receta.rol_plato === 'primero') {
+    return true;
   }
 
-  // 4. Verduras ligeras y entrantes de huerta
+  // 4. Sopas, cremas, caldos, purés y sopas frías tradicionales (prefijo de título estricto)
+  if (
+    /^(sopa|sopas|soup|soups|crema|cremas|caldo|caldos|consome|broth|pure|pures|puree|veloute|gazpacho|gazpachos|salmorejo|salmorejos|ajoblanco|vichyssoise)\b/i.test(
+      normTitle
+    )
+  ) {
+    return true;
+  }
+
+  // 5. Verduras ligeras y entrantes de huerta (evaluadas en el título)
   const VEG_STARTER_KEYWORDS = [
     'ensalada verde', 'ensalada mixta', 'ensalada simple', 'ensalada mediterranea',
     'ensalada de tomate', 'ensalada de pepino', 'ensalada de canonigos', 'ensalada de espinacas',
     'verduras al vapor', 'menestra', 'pisto', 'escalivada', 'alcachofas', 'esparragos',
-    'espárragos', 'judias verdes', 'judías verdes', 'brocoli al vapor', 'brócoli al vapor',
-    'champinones al ajillo', 'champiñones al ajillo', 'setas salteadas', 'carpaccio de calabacin'
+    'judias verdes', 'brocoli al vapor', 'champinones al ajillo', 'setas salteadas',
+    'carpaccio de calabacin'
   ];
 
   for (const kw of VEG_STARTER_KEYWORDS) {
     const normKw = normalizeString(kw);
-    if (normTitle.includes(normKw) || normTags.includes(normKw)) {
+    if (normTitle.includes(normKw)) {
       return true;
     }
   }
 
-  // 5. Ensaladas ligeras (verificar que no contengan proteínas pesadas en el título)
+  // 6. Ensaladas ligeras (verificar que no contengan proteínas pesadas en el título)
   if (normTitle.includes('ensalada')) {
-    const heavyProteins = ['pollo', 'atun', 'atún', 'salmon', 'salmón', 'pavo', 'bacon', 'queso de cabra'];
+    const heavyProteins = ['pollo', 'atun', 'salmon', 'pavo', 'bacon', 'queso de cabra', 'gambas', 'langostinos'];
     const hasHeavyProtein = heavyProteins.some((hp) => normTitle.includes(normalizeString(hp)));
     if (!hasHeavyProtein) {
       return true;
     }
-  }
-
-  // 6. Verificación de tipo_plato si viniera indicado en la receta
-  const tipo = normalizeString((receta as any).tipo_plato || (receta as any).tipo || (receta as any).rol_plato || '');
-  if (tipo.includes('entrante') || tipo.includes('primero') || tipo.includes('sopa') || tipo.includes('crema')) {
-    return true;
   }
 
   return false;
@@ -223,24 +218,27 @@ export function matchesContextualMomento(
   if (f === 'todos' || !f) return true;
 
   const moments = getRecipeMoments(receta);
+  const isOnlyDessert =
+    receta.rol_plato === 'postre' ||
+    (moments.length === 1 && moments[0] === 'postre');
 
   switch (f) {
     case 'desayuno':
-      return moments.includes('desayuno');
+      return moments.includes('desayuno') && !isOnlyDessert;
 
     case 'cena':
-      return moments.includes('cena');
+      return moments.includes('cena') && !isOnlyDessert;
 
     case 'snack_postre':
     case 'snack':
     case 'postre':
-      return moments.includes('snack') || moments.includes('postre');
+      return moments.includes('snack') || moments.includes('postre') || receta.rol_plato === 'postre';
 
     case 'almuerzo':
-      return moments.includes('almuerzo');
+      return moments.includes('almuerzo') && !isOnlyDessert;
 
     case 'primero':
-      return moments.includes('almuerzo') && isFirstCourseStarter(receta);
+      return moments.includes('almuerzo') && !isOnlyDessert && isFirstCourseStarter(receta);
 
     default:
       return true;
@@ -265,8 +263,8 @@ function generateDates(fechaInicioStr: string, numDias: number): string[] {
 
 /**
  * Extrae metadatos culinarios homogéneos de cada receta:
- * Única y exclusivamente momentos explícitamente etiquetados en la receta (momentos_dia o momentos_recomendados).
- * Deduce el rol culinario sin depender de selecciones manuales de 'segundo plato'.
+ * Si la receta tiene momentos_dia definidos, obedece ÚNICA Y EXCLUSIVAMENTE a momentos_dia.
+ * Eliminada cualquier contaminación o inyección de momentos desde etiquetas (hashtags).
  */
 function extractPlanningMeta(receta: Receta): RecipePlanningMeta {
   const rawMoments = (
@@ -277,24 +275,24 @@ function extractPlanningMeta(receta: Receta): RecipePlanningMeta {
     .filter(Boolean)
     .map((m) => String(m).toLowerCase().trim() as MomentoDia);
 
-  const momentos: MomentoDia[] = [...rawMoments];
+  let momentos: MomentoDia[];
+  if (rawMoments.length > 0) {
+    // Fuente única de verdad: respetar estrictamente los momentos asignados a la receta
+    momentos = [...rawMoments];
+  } else {
+    // Fallback solo para recetas legadas sin momentos_dia en base de datos
+    const inferred = inferRecipeCategory({
+      titulo: receta.titulo,
+      calorias_por_porcion: receta.calorias_por_porcion,
+      etiquetas: receta.etiquetas,
+      descripcion: receta.descripcion,
+    });
+    momentos = inferred.momentos_dia;
+  }
 
   const tagsNorm = (receta.etiquetas || []).map((t) => normalizeString(t.trim()));
   const titleNorm = normalizeString(receta.titulo || '');
   const descNorm = normalizeString(receta.descripcion || '');
-
-  // Inclusión inteligente de desayunos:
-  // Si en etiquetas o título se indica desayuno/avena/porridge/tortita/tostada/pancakes/smoothie bowl,
-  // asegurar que quede clasificado para desayuno.
-  const isBreakfastSign = [
-    'desayuno', 'desayunos', 'breakfast', 'porridge', 'avena', 'oatmeal',
-    'tortita', 'tortitas', 'pancake', 'pancakes', 'tostada', 'tostadas',
-    'crepe', 'crepes', 'gofre', 'gofres', 'waffle', 'waffles', 'smoothie bowl'
-  ].some((kw) => titleNorm.includes(kw) || tagsNorm.includes(kw));
-
-  if (isBreakfastSign && !momentos.includes('desayuno')) {
-    momentos.push('desayuno');
-  }
 
   // Ingredientes normalizados si están presentes
   const ingrNorm: string[] = [];
@@ -318,18 +316,17 @@ function extractPlanningMeta(receta: Receta): RecipePlanningMeta {
 
   const isDessert =
     receta.rol_plato === 'postre' ||
-    momentos.includes('postre') ||
+    (momentos.length === 1 && momentos[0] === 'postre') ||
     isDessertExcludedFromSlot(receta.rol_plato, 'almuerzo');
 
   let rol: RolPlato | 'principal';
   if (isDessert) {
     rol = 'postre';
-  } else if (
-    receta.rol_plato === 'primero' ||
-    isFirstCourseStarter(receta, tagsNorm, titleNorm, ingrNorm)
-  ) {
+  } else if (isFirstCourseStarter(receta, tagsNorm, titleNorm, ingrNorm)) {
     rol = 'primero';
-  } else if (momentos.includes('almuerzo')) {
+  } else if (receta.rol_plato === 'segundo') {
+    rol = 'segundo';
+  } else if (momentos.includes('almuerzo') || momentos.includes('cena')) {
     rol = 'principal';
   } else if (momentos.includes('desayuno') || momentos.includes('snack')) {
     rol = 'desayuno_snack';
@@ -510,10 +507,9 @@ export function generateMealPlan(
   const recentHistorySet = new Set(opciones.historialRecientesIds || []);
 
   // 3. Creación de Pools por momento y rol culinario
-  // Pool de Desayunos: Toda receta que contenga 'desayuno' es apta,
-  // sin descartarla aunque comparta tags secundarios como 'snack', 'merienda' o 'postre'.
+  // Pool de Desayunos: Solo recetas con momento 'desayuno' explícito y que NO sean postres
   const desayunosPool = allMetas.filter(
-    (m) => m.momentos.includes('desayuno')
+    (m) => m.momentos.includes('desayuno') && !m.isDessert
   );
 
   const almuerzoPool = allMetas.filter(

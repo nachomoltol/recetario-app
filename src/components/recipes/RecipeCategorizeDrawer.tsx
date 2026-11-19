@@ -52,6 +52,9 @@ export function RecipeCategorizeDrawer({
 }: RecipeCategorizeDrawerProps) {
   const t = useLanguageStore((s) => s.t);
 
+  const language = useLanguageStore((s) => s.language);
+  const isEn = language === 'en';
+
   // Inferencia heurística calculada en segundo plano
   const suggestion = useMemo<SuggestedCategory>(() => {
     return inferRecipeCategory({
@@ -67,6 +70,21 @@ export function RecipeCategorizeDrawer({
     receta.momentos_dia && receta.momentos_dia.length > 0
   );
 
+  const resolveInitialRol = (): RolPlato => {
+    const suggestedRol = suggestion.rol_plato || 'completo';
+    const currentRol = receta.rol_plato;
+    if (currentRol === 'primero' || currentRol === 'segundo' || currentRol === 'completo') {
+      if (currentRol === 'primero' && suggestedRol === 'segundo' && suggestion.confianza === 'alta') {
+        return 'segundo';
+      }
+      return currentRol;
+    }
+    if (suggestedRol === 'primero' || suggestedRol === 'segundo' || suggestedRol === 'completo') {
+      return suggestedRol;
+    }
+    return 'completo';
+  };
+
   // Estados locales del formulario
   const [selectedMomentos, setSelectedMomentos] = useState<MomentoDia[]>(() => {
     if (receta.momentos_dia && receta.momentos_dia.length > 0) {
@@ -79,13 +97,13 @@ export function RecipeCategorizeDrawer({
     return initial.length > 0 ? initial : ['almuerzo', 'cena'];
   });
 
+  const [selectedRol, setSelectedRol] = useState<RolPlato>(resolveInitialRol);
+
   const [isMenuFavorite, setIsMenuFavorite] = useState<boolean>(() => {
     return Boolean(receta.es_favorito_menu);
   });
 
   const [isSaving, setIsSaving] = useState(false);
-
-
 
   // Sincronizar estado cuando el drawer se abre
   useEffect(() => {
@@ -99,6 +117,7 @@ export function RecipeCategorizeDrawer({
         }
         setSelectedMomentos(initial.length > 0 ? initial : ['almuerzo', 'cena']);
       }
+      setSelectedRol(resolveInitialRol());
       setIsMenuFavorite(Boolean(receta.es_favorito_menu));
     }
   }, [isOpen, receta.momentos_dia, receta.rol_plato, receta.es_favorito_menu, suggestion]);
@@ -127,14 +146,17 @@ export function RecipeCategorizeDrawer({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Asignación automática de rol culinario en segundo plano
-      let autoRol: RolPlato = suggestion.rol_plato || 'completo';
+      let autoRol: RolPlato = selectedRol || suggestion.rol_plato || 'completo';
 
-      // Si el usuario seleccionó 'postre', el rol culinario interno se fija como 'postre'
-      if (selectedMomentos.includes('postre')) {
+      if (selectedMomentos.length === 1 && selectedMomentos[0] === 'postre') {
         autoRol = 'postre';
-      } else if (autoRol === 'postre') {
-        autoRol = 'completo';
+      } else if (selectedMomentos.every((m) => m === 'desayuno' || m === 'snack')) {
+        autoRol = 'desayuno_snack';
+      } else if (autoRol === 'postre' || autoRol === 'desayuno_snack') {
+        autoRol =
+          suggestion.rol_plato === 'primero' || suggestion.rol_plato === 'segundo'
+            ? suggestion.rol_plato
+            : 'completo';
       }
 
       const payload = {
@@ -247,6 +269,62 @@ export function RecipeCategorizeDrawer({
                 })}
               </div>
             </div>
+
+            {/* Selector explícito de Rol del Plato cuando incluye Almuerzo o Cena */}
+            {(selectedMomentos.includes('almuerzo') || selectedMomentos.includes('cena')) && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-brand-primary">
+                    {isEn ? 'COURSE ROLE IN MEAL' : 'TIPO DE PLATO EN COMIDA'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      id: 'primero' as RolPlato,
+                      label: isEn ? '1st / Starter' : '1er Plato',
+                      sub: isEn ? 'Soup, salad, veg' : 'Sopa, crema, verdura',
+                    },
+                    {
+                      id: 'segundo' as RolPlato,
+                      label: isEn ? '2nd / Main' : '2º Plato',
+                      sub: isEn ? 'Meat, fish, eggs' : 'Carne, pescado, ave',
+                    },
+                    {
+                      id: 'completo' as RolPlato,
+                      label: isEn ? 'Single Dish' : 'Plato Único',
+                      sub: isEn ? 'Rice, pasta, stew' : 'Arroz, pasta, guiso',
+                    },
+                  ].map((roleOpt) => {
+                    const isRoleActive = selectedRol === roleOpt.id;
+                    return (
+                      <button
+                        key={roleOpt.id}
+                        type="button"
+                        onClick={() => setSelectedRol(roleOpt.id)}
+                        className={`p-2 rounded-2xl border text-left transition-all active:scale-95 cursor-pointer select-none ${
+                          isRoleActive
+                            ? 'bg-brand-primary text-white border-brand-primary shadow-2xs'
+                            : 'bg-white hover:bg-[#fbf9f5] text-stone-700 border-[#e7dfd5]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-xs font-bold truncate">{roleOpt.label}</span>
+                          {isRoleActive && <Check className="w-3 h-3 stroke-[2.5] shrink-0" />}
+                        </div>
+                        <span
+                          className={`text-[10px] block truncate mt-0.5 ${
+                            isRoleActive ? 'text-white/85' : 'text-stone-400'
+                          }`}
+                        >
+                          {roleOpt.sub}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Toggle Favorito para menús semanales */}
             <button

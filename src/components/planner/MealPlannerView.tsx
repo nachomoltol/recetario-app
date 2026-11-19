@@ -59,6 +59,8 @@ import {
   matchesContextualMomento,
   ContextualMomentoFilter,
 } from '@/lib/mealPlanGenerator';
+import { inferRecipeCategory } from '@/lib/recipeCategorizer';
+import { reclassifyUserRecipesAction } from '@/app/actions/recipeClassification';
 
 export type { ContextualMomentoFilter };
 
@@ -395,11 +397,87 @@ export function MealPlannerView({
     setPickerModal({ fecha, slot, momento: initialCategory });
   };
 
+  const [isReclassifying, setIsReclassifying] = useState(false);
+  const [reclassifiedMap, setReclassifiedMap] = useState<
+    Record<string, { momentos_dia: string[]; rol_plato: Receta['rol_plato'] }>
+  >({});
+
+  // Normalización reactiva de recetas con la jerarquía culinaria actualizada
+  const normalizedUserRecipes = useMemo(() => {
+    return (userRecipes || []).map((r) => {
+      const override = reclassifiedMap[r.id];
+      const baseMoments = override?.momentos_dia ?? r.momentos_dia;
+      let baseRol = override?.rol_plato ?? r.rol_plato;
+
+      const moments = Array.isArray(baseMoments)
+        ? baseMoments.map((m) => String(m).toLowerCase().trim())
+        : [];
+
+      if (moments.length === 1 && moments[0] === 'postre') {
+        baseRol = 'postre';
+      } else if (baseRol === 'primero' && !isFirstCourseStarter({ ...r, rol_plato: 'completo' })) {
+        const inferred = inferRecipeCategory({
+          titulo: r.titulo || '',
+          calorias_por_porcion: r.calorias_por_porcion,
+          etiquetas: r.etiquetas,
+          descripcion: r.descripcion,
+        });
+        baseRol = inferred.rol_plato === 'primero' ? 'segundo' : inferred.rol_plato;
+      }
+
+      return {
+        ...r,
+        momentos_dia:
+          moments.length > 0
+            ? (moments as Receta['momentos_dia'])
+            : inferRecipeCategory({
+                titulo: r.titulo || '',
+                calorias_por_porcion: r.calorias_por_porcion,
+                etiquetas: r.etiquetas,
+                descripcion: r.descripcion,
+              }).momentos_dia,
+        rol_plato: baseRol,
+      };
+    });
+  }, [userRecipes, reclassifiedMap]);
+
+  const handleReclassifyRecipes = async () => {
+    if (isReclassifying) return;
+    setIsReclassifying(true);
+    try {
+      const res = await reclassifyUserRecipesAction();
+      if (res.success && res.updates) {
+        const nextMap: Record<string, { momentos_dia: string[]; rol_plato: Receta['rol_plato'] }> = {};
+        for (const u of res.updates) {
+          nextMap[u.id] = { momentos_dia: u.momentos_dia, rol_plato: u.rol_plato };
+        }
+        setReclassifiedMap((prev) => ({ ...prev, ...nextMap }));
+      }
+    } catch (err) {
+      console.error('Error reclasificando recetas:', err);
+    } finally {
+      setIsReclassifying(false);
+    }
+  };
+
+  // Auto-sincronizar en segundo plano si se detectan recetas con rol desajustado en BD
+  useEffect(() => {
+    const needsSync = (userRecipes || []).some(
+      (r) =>
+        !r.momentos_dia ||
+        r.momentos_dia.length === 0 ||
+        (r.rol_plato === 'primero' && !isFirstCourseStarter({ ...r, rol_plato: 'completo' }))
+    );
+    if (needsSync) {
+      handleReclassifyRecipes();
+    }
+  }, []);
+
   // Contadores de recetas por categoría para mostrar en cada chip del selector
   // Obedece estricta y exclusivamente al array oficial de momentos asignados
   const recipeCategoryCounts = useMemo(() => {
     const counts: Record<ContextualMomentoFilter, number> = {
-      todos: userRecipes.length,
+      todos: normalizedUserRecipes.length,
       desayuno: 0,
       primero: 0,
       almuerzo: 0,
@@ -407,43 +485,32 @@ export function MealPlannerView({
       snack_postre: 0,
     };
 
-    for (const r of userRecipes) {
-      const moments = getRecipeMoments(r);
-
-      // Desayuno -> receta.momentos.includes('desayuno')
-      if (moments.includes('desayuno')) {
+    for (const r of normalizedUserRecipes) {
+      if (matchesContextualMomento(r, 'desayuno')) {
         counts.desayuno++;
       }
-
-      // 1er Plato (Modo dos platos) -> receta.momentos.includes('almuerzo') && isFirstCourseStarter(receta)
-      if (moments.includes('almuerzo') && isFirstCourseStarter(r)) {
+      if (matchesContextualMomento(r, 'primero')) {
         counts.primero++;
       }
-
-      // Almuerzo (Plato Único / 2do Plato) -> receta.momentos.includes('almuerzo')
-      if (moments.includes('almuerzo')) {
+      if (matchesContextualMomento(r, 'almuerzo')) {
         counts.almuerzo++;
       }
-
-      // Cena -> receta.momentos.includes('cena')
-      if (moments.includes('cena')) {
+      if (matchesContextualMomento(r, 'cena')) {
         counts.cena++;
       }
-
-      // Snack / Postre -> receta.momentos.includes('snack') || receta.momentos.includes('postre')
-      if (moments.includes('snack') || moments.includes('postre')) {
+      if (matchesContextualMomento(r, 'snack_postre')) {
         counts.snack_postre++;
       }
     }
 
     return counts;
-  }, [userRecipes]);
+  }, [normalizedUserRecipes]);
 
   // Filtrar recetas para el selector según el filtro de categoría activo y búsqueda
   const filteredPickerRecipes = useMemo(() => {
-    if (!pickerModal) return userRecipes;
+    if (!pickerModal) return normalizedUserRecipes;
 
-    let list = userRecipes;
+    let list = normalizedUserRecipes;
 
     // 1. Filtrado contextual estricto por momento del día oficial (sin tags ni etiquetas automáticas)
     if (pickerFilterCategory !== 'todos') {
@@ -461,7 +528,7 @@ export function MealPlannerView({
     }
 
     return list.sort((a, b) => a.titulo.localeCompare(b.titulo, 'es'));
-  }, [userRecipes, pickerModal, pickerFilterCategory, pickerSearchQuery]);
+  }, [normalizedUserRecipes, pickerModal, pickerFilterCategory, pickerSearchQuery]);
 
   // Sincronizar fechas seleccionadas por defecto con toda la semana activa
   useEffect(() => {
@@ -532,7 +599,24 @@ export function MealPlannerView({
   const handleAssignRecipe = async (recetaId: string) => {
     if (!pickerModal) return;
     const { fecha, slot } = pickerModal;
-    const recipe = userRecipes.find((r) => r.id === recetaId);
+    const recipe = normalizedUserRecipes.find((r) => r.id === recetaId);
+
+    // Verificar si había un plato único ('almuerzo') que deba migrarse al otro slot en modo 2 platos
+    const legacyPlan = plans.find((p) => p.fecha === fecha && p.slot === 'almuerzo');
+    let migratedCompanion: PlannedSlotItem | null = null;
+    if (legacyPlan && (slot === 'almuerzo_1' || slot === 'almuerzo_2')) {
+      const legacyRec =
+        normalizedUserRecipes.find((r) => r.id === legacyPlan.receta_id) ||
+        (legacyPlan.receta as Receta | null);
+      const isLegacyStarter = legacyRec ? isFirstCourseStarter(legacyRec) : false;
+      const legacyTargetSlot: MealSlot = isLegacyStarter ? 'almuerzo_1' : 'almuerzo_2';
+      if (legacyTargetSlot !== slot && !plans.some((p) => p.fecha === fecha && p.slot === legacyTargetSlot)) {
+        migratedCompanion = {
+          ...legacyPlan,
+          slot: legacyTargetSlot,
+        };
+      }
+    }
 
     // Optimistic UI con porciones del perfil del usuario
     const optimisticItem: PlannedSlotItem = {
@@ -553,17 +637,25 @@ export function MealPlannerView({
         (p) =>
           !(
             p.fecha === fecha &&
-            (p.slot === slot || (slot === 'almuerzo_1' && p.slot === 'almuerzo'))
+            (p.slot === slot || ((slot === 'almuerzo_1' || slot === 'almuerzo_2') && p.slot === 'almuerzo'))
           )
       ),
+      ...(migratedCompanion ? [migratedCompanion] : []),
       optimisticItem,
     ]);
     setPickerModal(null);
 
     if (slot === 'almuerzo_1' || slot === 'almuerzo_2') {
-      const hasLegacyAlmuerzo = plans.some((p) => p.fecha === fecha && p.slot === 'almuerzo');
-      if (hasLegacyAlmuerzo) {
+      if (legacyPlan) {
         await removeMealSlotAction({ fecha, slot: 'almuerzo' });
+        if (migratedCompanion && migratedCompanion.receta_id) {
+          await assignMealSlotAction({
+            fecha,
+            slot: migratedCompanion.slot as MealSlot,
+            recetaId: migratedCompanion.receta_id,
+            porciones: migratedCompanion.porciones ?? defaultDiners,
+          });
+        }
       }
     }
 
@@ -572,17 +664,30 @@ export function MealPlannerView({
 
   // Quitar receta de un slot
   const handleRemoveSlot = async (fecha: string, slot: MealSlot) => {
+    const legacyPlan = plans.find((p) => p.fecha === fecha && p.slot === 'almuerzo');
+    let shouldRemoveLegacy = false;
+    if (legacyPlan && (slot === 'almuerzo_1' || slot === 'almuerzo_2')) {
+      const legacyRec =
+        normalizedUserRecipes.find((r) => r.id === legacyPlan.receta_id) ||
+        (legacyPlan.receta as Receta | null);
+      const isLegacyStarter = legacyRec ? isFirstCourseStarter(legacyRec) : false;
+      const legacyTargetSlot: MealSlot = isLegacyStarter ? 'almuerzo_1' : 'almuerzo_2';
+      if (legacyTargetSlot === slot) {
+        shouldRemoveLegacy = true;
+      }
+    }
+
     setPlans((prev) =>
       prev.filter(
         (p) =>
           !(
             p.fecha === fecha &&
-            (p.slot === slot || (slot === 'almuerzo_1' && p.slot === 'almuerzo'))
+            (p.slot === slot || (shouldRemoveLegacy && p.slot === 'almuerzo'))
           )
       )
     );
     await removeMealSlotAction({ fecha, slot });
-    if (slot === 'almuerzo_1') {
+    if (shouldRemoveLegacy) {
       await removeMealSlotAction({ fecha, slot: 'almuerzo' });
     }
   };
@@ -883,18 +988,25 @@ export function MealPlannerView({
     const isTwoCourseMode = Boolean(planAlmuerzo1 || planAlmuerzo2 || twoCourseDays.has(dateStr));
 
     if (isTwoCourseMode) {
-      // Modo dos platos: 1er plato y 2do plato
+      // Modo dos platos: 1er plato y 2do plato.
+      // Si existía un plato único ('almuerzo'), colocarlo en almuerzo_1 si es entrante o en almuerzo_2 si es principal/segundo.
+      const legacyRec = planAlmuerzo
+        ? normalizedUserRecipes.find((r) => r.id === planAlmuerzo.receta_id) ||
+          (planAlmuerzo.receta as Receta | null)
+        : null;
+      const isLegacyStarter = legacyRec ? isFirstCourseStarter(legacyRec) : false;
+
       result.push({
         slot: 'almuerzo_1',
         label: t('slot_course_1'),
         icon: Soup,
-        plan: planAlmuerzo1 || planAlmuerzo,
+        plan: planAlmuerzo1 || (!planAlmuerzo2 && isLegacyStarter ? planAlmuerzo : undefined),
       });
       result.push({
         slot: 'almuerzo_2',
         label: t('slot_course_2'),
         icon: Utensils,
-        plan: planAlmuerzo2,
+        plan: planAlmuerzo2 || (!planAlmuerzo1 && !isLegacyStarter ? planAlmuerzo : undefined),
       });
     } else if (planAlmuerzo) {
       // Plato único asignado
@@ -981,7 +1093,12 @@ export function MealPlannerView({
                     type="button"
                     onClick={() => {
                       setTwoCourseDays((prev) => new Set(prev).add(dayDateStr));
-                      handleOpenAssignModal(dayDateStr, 'almuerzo_2');
+                      const recObj = assignedPlan?.receta_id
+                        ? normalizedUserRecipes.find((r) => r.id === assignedPlan.receta_id) ||
+                          (assignedPlan.receta as Receta | null)
+                        : null;
+                      const isStarter = recObj ? isFirstCourseStarter(recObj) : false;
+                      handleOpenAssignModal(dayDateStr, isStarter ? 'almuerzo_2' : 'almuerzo_1');
                     }}
                     className="text-[10px] font-semibold text-stone-500 hover:text-brand-primary hover:underline cursor-pointer"
                   >
@@ -1099,7 +1216,12 @@ export function MealPlannerView({
                     type="button"
                     onClick={() => {
                       setTwoCourseDays((prev) => new Set(prev).add(dayDateStr));
-                      handleOpenAssignModal(dayDateStr, 'almuerzo_2');
+                      const recObj = assignedPlan?.receta_id
+                        ? normalizedUserRecipes.find((r) => r.id === assignedPlan.receta_id) ||
+                          (assignedPlan.receta as Receta | null)
+                        : null;
+                      const isStarter = recObj ? isFirstCourseStarter(recObj) : false;
+                      handleOpenAssignModal(dayDateStr, isStarter ? 'almuerzo_2' : 'almuerzo_1');
                     }}
                     className="text-[10px] font-semibold text-stone-500 hover:text-brand-primary hover:underline cursor-pointer"
                     title={t('planner_add_second_course')}
@@ -1597,9 +1719,9 @@ export function MealPlannerView({
               )}
             </div>
 
-            {/* Indicador de filtro activo con reset rápido */}
-            {pickerFilterCategory !== 'todos' && (
-              <div className="flex items-center justify-between text-[11px] text-stone-500 px-1 shrink-0">
+            {/* Indicador de filtro activo con reset rápido y botón de reajuste de categorías */}
+            <div className="flex items-center justify-between gap-2 text-[11px] text-stone-500 px-1 shrink-0 flex-wrap">
+              {pickerFilterCategory !== 'todos' ? (
                 <span>
                   {isEn ? 'Filtered by' : 'Filtrando por'}:{' '}
                   <strong className="text-brand-primary">
@@ -1609,15 +1731,42 @@ export function MealPlannerView({
                   </strong>{' '}
                   ({filteredPickerRecipes.length} {isEn ? 'recipes' : 'recetas'})
                 </span>
+              ) : (
+                <span>
+                  {filteredPickerRecipes.length} {isEn ? 'recipes available' : 'recetas disponibles'}
+                </span>
+              )}
+
+              <div className="flex items-center gap-2.5 ml-auto">
                 <button
                   type="button"
-                  onClick={() => setPickerFilterCategory('todos')}
-                  className="text-brand-primary hover:underline font-semibold cursor-pointer"
+                  onClick={handleReclassifyRecipes}
+                  disabled={isReclassifying}
+                  className="text-stone-500 hover:text-brand-primary hover:underline font-medium cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                  title={
+                    isEn
+                      ? 'Recalculate 1st/2nd course roles for all recipes'
+                      : 'Reajustar automáticamente 1er/2º plato en mis recetas'
+                  }
                 >
-                  {isEn ? 'Show all' : 'Mostrar todas'}
+                  {isReclassifying && <Loader2 className="w-3 h-3 animate-spin" />}
+                  <span>{isEn ? 'Sync categories' : 'Reajustar categorías'}</span>
                 </button>
+
+                {pickerFilterCategory !== 'todos' && (
+                  <>
+                    <span>·</span>
+                    <button
+                      type="button"
+                      onClick={() => setPickerFilterCategory('todos')}
+                      className="text-brand-primary hover:underline font-semibold cursor-pointer"
+                    >
+                      {isEn ? 'Show all' : 'Mostrar todas'}
+                    </button>
+                  </>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Lista de recetas filtradas o estado vacío */}
             {filteredPickerRecipes.length === 0 ? (

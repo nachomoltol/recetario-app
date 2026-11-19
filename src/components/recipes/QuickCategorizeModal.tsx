@@ -44,6 +44,8 @@ export function QuickCategorizeModal({
   onRecipeClassified,
 }: QuickCategorizeModalProps) {
   const t = useLanguageStore((s) => s.t);
+  const language = useLanguageStore((s) => s.language);
+  const isEn = language === 'en';
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [totalInitial, setTotalInitial] = useState(0);
@@ -87,6 +89,11 @@ export function QuickCategorizeModal({
     return defaultMoments.length > 0 ? defaultMoments : (['almuerzo', 'cena'] as MomentoDia[]);
   });
 
+  const [selectedRol, setSelectedRol] = useState<RolPlato>(() => {
+    const r = suggestion.rol_plato;
+    return r === 'primero' || r === 'segundo' || r === 'completo' ? r : 'completo';
+  });
+
   const [isMenuFavorite, setIsMenuFavorite] = useState<boolean>(false);
 
   // Sincronizar estados locales cuando cambia la receta actual o la sugerencia
@@ -97,6 +104,8 @@ export function QuickCategorizeModal({
         defaultMoments.push('postre');
       }
       setSelectedMomentos(defaultMoments.length > 0 ? defaultMoments : (['almuerzo', 'cena'] as MomentoDia[]));
+      const r = suggestion.rol_plato;
+      setSelectedRol(r === 'primero' || r === 'segundo' || r === 'completo' ? r : 'completo');
       setIsMenuFavorite(Boolean(currentRecipe.es_favorito_menu));
     }
   }, [currentRecipe, suggestion]);
@@ -124,12 +133,16 @@ export function QuickCategorizeModal({
     if (!currentRecipe) return;
     setIsSaving(true);
     try {
-      // Inferencia de rol culinario en segundo plano
-      let autoRol: RolPlato = suggestion.rol_plato || 'completo';
-      if (selectedMomentos.includes('postre')) {
+      let autoRol: RolPlato = selectedRol || suggestion.rol_plato || 'completo';
+      if (selectedMomentos.length === 1 && selectedMomentos[0] === 'postre') {
         autoRol = 'postre';
-      } else if (autoRol === 'postre') {
-        autoRol = 'completo';
+      } else if (selectedMomentos.every((m) => m === 'desayuno' || m === 'snack')) {
+        autoRol = 'desayuno_snack';
+      } else if (autoRol === 'postre' || autoRol === 'desayuno_snack') {
+        autoRol =
+          suggestion.rol_plato === 'primero' || suggestion.rol_plato === 'segundo'
+            ? suggestion.rol_plato
+            : 'completo';
       }
 
       const finalMomentos: MomentoDia[] =
@@ -326,6 +339,62 @@ export function QuickCategorizeModal({
                   })}
                 </div>
               </div>
+
+              {/* Selector explícito de Rol del Plato cuando incluye Almuerzo o Cena */}
+              {(selectedMomentos.includes('almuerzo') || selectedMomentos.includes('cena')) && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand-primary">
+                      {isEn ? 'COURSE ROLE IN MEAL' : 'TIPO DE PLATO EN COMIDA'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      {
+                        id: 'primero' as RolPlato,
+                        label: isEn ? '1st / Starter' : '1er Plato',
+                        sub: isEn ? 'Soup, salad, veg' : 'Sopa, crema, verdura',
+                      },
+                      {
+                        id: 'segundo' as RolPlato,
+                        label: isEn ? '2nd / Main' : '2º Plato',
+                        sub: isEn ? 'Meat, fish, eggs' : 'Carne, pescado, ave',
+                      },
+                      {
+                        id: 'completo' as RolPlato,
+                        label: isEn ? 'Single Dish' : 'Plato Único',
+                        sub: isEn ? 'Rice, pasta, stew' : 'Arroz, pasta, guiso',
+                      },
+                    ].map((roleOpt) => {
+                      const isRoleActive = selectedRol === roleOpt.id;
+                      return (
+                        <button
+                          key={roleOpt.id}
+                          type="button"
+                          onClick={() => setSelectedRol(roleOpt.id)}
+                          className={`p-2 rounded-2xl border text-left transition-all active:scale-95 cursor-pointer select-none ${
+                            isRoleActive
+                              ? 'bg-brand-primary text-white border-brand-primary shadow-2xs'
+                              : 'bg-white hover:bg-[#fbf9f5] text-stone-700 border-[#e7dfd5]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-xs font-bold truncate">{roleOpt.label}</span>
+                            {isRoleActive && <Check className="w-3 h-3 stroke-[2.5] shrink-0" />}
+                          </div>
+                          <span
+                            className={`text-[10px] block truncate mt-0.5 ${
+                              isRoleActive ? 'text-white/85' : 'text-stone-400'
+                            }`}
+                          >
+                            {roleOpt.sub}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Toggle Favorito para menús semanales */}
               <button

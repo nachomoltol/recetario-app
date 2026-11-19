@@ -95,6 +95,11 @@ export const FRESH_PIECE_WEIGHT_G: Record<string, number> = {
   pera: 160,
   platano: 120,
   aguacate: 180,
+  fresa: 20,
+  kiwi: 90,
+  melocoton: 150,
+  mandarina: 80,
+  ciruela: 65,
 
   // Hortalizas y verduras
   cebolla: 150,
@@ -117,17 +122,74 @@ export const FRESH_PIECE_WEIGHT_G: Record<string, number> = {
   berenjena: 280,
   pepino: 200,
   champinon: 20,
+  seta: 20,
+  apio: 55,
+  puerro: 100,
+  alcachofa: 120,
+  hinojo: 200,
+  nabo: 120,
+  remolacha: 130,
+  esparrago: 20,
 
   // Huevos
   huevo: 55,
 
   // Tomate seco (peso unitario deshidratado aprox 8 g por pieza)
   'tomate seco': 8,
+
+  // Cortes cárnicos, aves y pescados (peso promedio por pieza para unificar en gramos)
+  'muslo de pollo': 180,
+  muslo_de_pollo: 180,
+  'contramuslo de pollo': 150,
+  contramuslo_de_pollo: 150,
+  'pechuga de pollo': 200,
+  pechuga_de_pollo: 200,
+  'filete de pollo': 130,
+  filete_de_pollo: 130,
+  'alita de pollo': 60,
+  alita_de_pollo: 60,
+  'filete de ternera': 180,
+  filete_de_ternera: 180,
+  'lomo de salmon': 180,
+  lomo_de_salmon: 180,
+  salmon: 180,
+  'lomo de merluza': 160,
+  lomo_de_merluza: 160,
+  merluza: 160,
+  bacalao: 160,
+  lubina: 200,
+  dorada: 200,
+  'chuleta de cerdo': 180,
+  chuleta_de_cerdo: 180,
+  chuleta: 180,
+  salchicha: 50,
+  chorizo: 80,
+  hamburguesa: 150,
 };
 
 export const PREFER_GRAMS_INGREDIENTS = new Set([
   'tomate seco',
   'champinon',
+  'seta',
+  'esparrago',
+  'muslo de pollo',
+  'contramuslo de pollo',
+  'pechuga de pollo',
+  'filete de pollo',
+  'alita de pollo',
+  'filete de ternera',
+  'lomo de salmon',
+  'salmon',
+  'lomo de merluza',
+  'merluza',
+  'bacalao',
+  'lubina',
+  'dorada',
+  'chuleta de cerdo',
+  'chuleta',
+  'salchicha',
+  'chorizo',
+  'hamburguesa',
 ]);
 
 /**
@@ -198,15 +260,23 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     .replace(/\b(al gusto|opcional|para decorar|para servir|para acompanar)\b/gi, '')
     .trim();
 
-  // Fase B - Eliminación de modificadores descartables (corte, forma física, temperatura)
-  // NOTA: Se preservan explícitamente formatos de producto comercial (triturado, en conserva, de bote, en polvo, cocido, etc.)
+  // Fase B - Eliminación de modificadores descartables (corte, forma física, temperatura, origen redundante)
+  // NOTA: Se preservan explícitamente formatos de producto comercial (triturado, en conserva, de bote, en polvo, cocido en legumbres, etc.)
   cleanedOriginal = cleanedOriginal
     .replace(/\b(sin|con)\s+(sal|azucar|gluten|lactosa)\b/gi, '')
     .replace(/\b(en\s+dados|en\s+cubos|en\s+trozos|en\s+tiras|en\s+rodajas|en\s+pomada|punto\s+pomada|pomada|a\s+temperatura\s+ambiente|fundid[oa]s?|derretid[oa]s?|ablandad[oa]s?)\b/gi, '')
-    .replace(/\b(fresc[oa]s?|natural|naturales|madur[oa]s?|de\s+temporada|de\s+abeja)\b/gi, '')
+    .replace(/\b(fresc[oa]s?|natural|naturales|madur[oa]s?|de\s+temporada|de\s+abeja|de\s+gallina|de\s+vaca)\b/gi, '')
+    .replace(/\b(entera|entero|semidesnatad[oa]s?|desnatad[oa]s?|crud[oa]s?|duro|dura|duros|duras)\b/gi, '')
     .replace(/\b(picad[oa]s?|trocead[oa]s?|cortad[oa]s?|rallad[oa]s?|pelad[oa]s?|machacad[oa]s?|laminad[oa]s?|desmenuzad[oa]s?)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
+
+  if (/\bhuevos?\b/i.test(cleanedOriginal)) {
+    cleanedOriginal = cleanedOriginal
+      .replace(/\b(cocid[oa]s?|escalfad[oa]s?|poch[eé]|batid[oa]s?)\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
 
   // Normalizar tildes, mayúsculas y caracteres diacríticos
   let norm = cleanedOriginal
@@ -222,9 +292,16 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   norm = norm
     .replace(/\b(tamano|talla|calibre|clase)\s+(xl|l|m|s)\b/gi, '')
     .replace(/\b(xl|l|m|s)\b/gi, '')
-    .replace(/\b(fresc[oa]s?|natural|naturales|madur[oa]s?|de\s+temporada|grandes?|medianos?|pequenos?|camperos?|ecologicos?|blancos?|morenos?|de\s+abeja|picad[oa]s?|trocead[oa]s?|cortad[oa]s?|rallad[oa]s?|pelad[oa]s?|machacad[oa]s?|laminad[oa]s?|desmenuzad[oa]s?)\b/gi, '')
+    .replace(/\b(fresc[oa]s?|natural|naturales|madur[oa]s?|de\s+temporada|grandes?|medianos?|pequenos?|camperos?|ecologicos?|blancos?|morenos?|de\s+abeja|de\s+gallina|de\s+vaca|entera|entero|semidesnatad[oa]s?|desnatad[oa]s?|crud[oa]s?|duro|dura|duros|duras|picad[oa]s?|trocead[oa]s?|cortad[oa]s?|rallad[oa]s?|pelad[oa]s?|machacad[oa]s?|laminad[oa]s?|desmenuzad[oa]s?)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
+
+  if (/\bhuevos?\b/i.test(norm)) {
+    norm = norm
+      .replace(/\b(cocid[oa]s?|escalfad[oa]s?|poche|batid[oa]s?)\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
 
   // Fase C - Lematización Adjetival y Compuesta
   const PREPOSITIONS = new Set(['de', 'del', 'al', 'con', 'en']);
@@ -257,6 +334,13 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'mantequilla sin sal': { key: 'mantequilla', displayName: 'Mantequilla' },
     'mantequilla pomada': { key: 'mantequilla', displayName: 'Mantequilla' },
 
+    'leche': { key: 'leche', displayName: 'Leche' },
+    'leches': { key: 'leche', displayName: 'Leche' },
+    'leche entera': { key: 'leche', displayName: 'Leche' },
+    'leche de vaca': { key: 'leche', displayName: 'Leche' },
+    'leche semidesnatada': { key: 'leche', displayName: 'Leche' },
+    'leche desnatada': { key: 'leche', displayName: 'Leche' },
+
     'azucar glass': { key: 'azucar glas', displayName: 'Azúcar glas' },
     'azucar glas': { key: 'azucar glas', displayName: 'Azúcar glas' },
     'azucar impalpable': { key: 'azucar glas', displayName: 'Azúcar glas' },
@@ -283,6 +367,12 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'harina todo uso': { key: 'harina de trigo', displayName: 'Harina de trigo' },
     'harina 000': { key: 'harina de trigo', displayName: 'Harina de trigo' },
     'harina 0000': { key: 'harina de trigo', displayName: 'Harina de trigo' },
+
+    'maicena': { key: 'almidon de maiz', displayName: 'Almidón de maíz (Maicena)' },
+    'maizena': { key: 'almidon de maiz', displayName: 'Almidón de maíz (Maicena)' },
+    'almidon de maiz': { key: 'almidon de maiz', displayName: 'Almidón de maíz (Maicena)' },
+    'fecula de maiz': { key: 'almidon de maiz', displayName: 'Almidón de maíz (Maicena)' },
+    'harina fina de maiz': { key: 'almidon de maiz', displayName: 'Almidón de maíz (Maicena)' },
 
     'sal fina': { key: 'sal', displayName: 'Sal fina' },
     'sal marina': { key: 'sal', displayName: 'Sal marina' },
@@ -326,6 +416,90 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
 
     'huevo': { key: 'huevo', displayName: 'Huevo' },
     'huevos': { key: 'huevo', displayName: 'Huevo' },
+    'huevo de gallina': { key: 'huevo', displayName: 'Huevo' },
+    'huevos de gallina': { key: 'huevo', displayName: 'Huevo' },
+    'huevo cocido': { key: 'huevo', displayName: 'Huevo' },
+    'huevos cocidos': { key: 'huevo', displayName: 'Huevo' },
+    'huevo duro': { key: 'huevo', displayName: 'Huevo' },
+    'huevos duros': { key: 'huevo', displayName: 'Huevo' },
+
+    // Frutos secos unificados
+    'almendra': { key: 'almendra', displayName: 'Almendras' },
+    'almendras': { key: 'almendra', displayName: 'Almendras' },
+    'almendra cruda': { key: 'almendra', displayName: 'Almendras' },
+    'almendras crudas': { key: 'almendra', displayName: 'Almendras' },
+    'almendra natural': { key: 'almendra', displayName: 'Almendras' },
+    'almendras naturales': { key: 'almendra', displayName: 'Almendras' },
+    'almendra tostada': { key: 'almendra', displayName: 'Almendras' },
+    'almendras tostadas': { key: 'almendra', displayName: 'Almendras' },
+
+    'nuez': { key: 'nuez', displayName: 'Nueces' },
+    'nueces': { key: 'nuez', displayName: 'Nueces' },
+    'nuez cruda': { key: 'nuez', displayName: 'Nueces' },
+    'nueces crudas': { key: 'nuez', displayName: 'Nueces' },
+    'nuez natural': { key: 'nuez', displayName: 'Nueces' },
+    'nueces naturales': { key: 'nuez', displayName: 'Nueces' },
+
+    'avellana': { key: 'avellana', displayName: 'Avellanas' },
+    'avellanas': { key: 'avellana', displayName: 'Avellanas' },
+    'avellana cruda': { key: 'avellana', displayName: 'Avellanas' },
+    'avellanas crudas': { key: 'avellana', displayName: 'Avellanas' },
+
+    'anacardo': { key: 'anacardo', displayName: 'Anacardos' },
+    'anacardos': { key: 'anacardo', displayName: 'Anacardos' },
+    'anacardo crudo': { key: 'anacardo', displayName: 'Anacardos' },
+    'anacardos crudos': { key: 'anacardo', displayName: 'Anacardos' },
+
+    'cacahuete': { key: 'cacahuete', displayName: 'Cacahuetes' },
+    'cacahuetes': { key: 'cacahuete', displayName: 'Cacahuetes' },
+    'cacahuete crudo': { key: 'cacahuete', displayName: 'Cacahuetes' },
+    'cacahuetes crudos': { key: 'cacahuete', displayName: 'Cacahuetes' },
+    'mani': { key: 'cacahuete', displayName: 'Cacahuetes' },
+
+    'pistacho': { key: 'pistacho', displayName: 'Pistachos' },
+    'pistachos': { key: 'pistacho', displayName: 'Pistachos' },
+
+    // Legumbres cocidas / en conserva unificadas
+    'garbanzo cocido': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos (en conserva)' },
+    'garbanzos cocidos': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos (en conserva)' },
+    'garbanzo de bote': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos (en conserva)' },
+    'garbanzos de bote': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos (en conserva)' },
+    'garbanzo en conserva': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos (en conserva)' },
+    'garbanzos en conserva': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos (en conserva)' },
+
+    'lenteja cocida': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas (en conserva)' },
+    'lentejas cocidas': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas (en conserva)' },
+    'lenteja de bote': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas (en conserva)' },
+    'lentejas de bote': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas (en conserva)' },
+    'lenteja en conserva': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas (en conserva)' },
+    'lentejas en conserva': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas (en conserva)' },
+
+    'alubia cocida': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
+    'alubias cocidas': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
+    'alubia de bote': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
+    'alubias de bote': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
+    'alubia en conserva': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
+    'alubias en conserva': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
+    'judia blanca cocida': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
+    'judias blancas cocidas': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
+    'alubia blanca cocida': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
+    'alubias blancas cocidas': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
+
+    // Cortes cárnicos y aves
+    'muslo de pollo': { key: 'muslo de pollo', displayName: 'Muslo de pollo' },
+    'muslos de pollo': { key: 'muslo de pollo', displayName: 'Muslo de pollo' },
+    'contramuslo de pollo': { key: 'contramuslo de pollo', displayName: 'Contramuslo de pollo' },
+    'contramuslos de pollo': { key: 'contramuslo de pollo', displayName: 'Contramuslo de pollo' },
+    'contramuslo': { key: 'contramuslo de pollo', displayName: 'Contramuslo de pollo' },
+    'contramuslos': { key: 'contramuslo de pollo', displayName: 'Contramuslo de pollo' },
+    'pechuga de pollo': { key: 'pechuga de pollo', displayName: 'Pechuga de pollo' },
+    'pechugas de pollo': { key: 'pechuga de pollo', displayName: 'Pechuga de pollo' },
+    'alita de pollo': { key: 'alita de pollo', displayName: 'Alitas de pollo' },
+    'alitas de pollo': { key: 'alita de pollo', displayName: 'Alitas de pollo' },
+    'lomo de salmon': { key: 'lomo de salmon', displayName: 'Lomo de salmón' },
+    'lomos de salmon': { key: 'lomo de salmon', displayName: 'Lomo de salmón' },
+    'lomo de merluza': { key: 'lomo de merluza', displayName: 'Lomo de merluza' },
+    'lomos de merluza': { key: 'lomo de merluza', displayName: 'Lomo de merluza' },
 
     'perejil': { key: 'perejil', displayName: 'Perejil' },
     'perejiles': { key: 'perejil', displayName: 'Perejil' },
@@ -492,7 +666,7 @@ export function consolidateShoppingItems(
     let canonicalUnitKey = uRaw;
     let unitConversionFactor = 1;
 
-    if (/^(unidad|unidades|unit|units|pieza|piezas|piece|pieces|huevo|huevos|ud|uds|u)$/i.test(uRaw)) {
+    if (/^(unidad|unidades|unit|units|pieza|piezas|piece|pieces|huevo|huevos|ud|uds|u|rama|ramas|tallo|tallos|penca|pencas)$/i.test(uRaw)) {
       canonicalUnitKey = 'unidad';
     } else if (/^(diente|dientes|clove|cloves)$/i.test(uRaw)) {
       canonicalUnitKey = 'diente';
@@ -502,9 +676,9 @@ export function consolidateShoppingItems(
       canonicalUnitKey = 'lata';
     } else if (/^(paquete|paquetes)$/i.test(uRaw)) {
       canonicalUnitKey = 'paquete';
-    } else if (/^(cucharada|cucharadas|tbsp)$/i.test(uRaw)) {
+    } else if (/^(cucharada|cucharadas|tbsp|cda|cdas)$/i.test(uRaw)) {
       canonicalUnitKey = 'cucharada';
-    } else if (/^(cucharadita|cucharaditas|tsp)$/i.test(uRaw)) {
+    } else if (/^(cucharadita|cucharaditas|tsp|cdta|cdtas)$/i.test(uRaw)) {
       canonicalUnitKey = 'cucharadita';
     } else if (/^(taza|tazas|cup|cups)$/i.test(uRaw)) {
       canonicalUnitKey = 'taza';
@@ -543,85 +717,138 @@ export function consolidateShoppingItems(
       canonicalUnitKey = 'despensa';
       cant = 0;
       gramos = 0;
-    }
-    // 2. Aceite de oliva: convertir cucharadas y cucharaditas a ml para consolidación unificada
-    else if (canon.key === 'aceite de oliva virgen extra') {
-      if (canonicalUnitKey === 'cucharada') {
-        cant = cant * 15;
-        canonicalUnitKey = 'ml';
-        if (gramos === 0) gramos = Math.round(cant * 0.92);
-      } else if (canonicalUnitKey === 'cucharadita') {
-        cant = cant * 5;
-        canonicalUnitKey = 'ml';
-        if (gramos === 0) gramos = Math.round(cant * 0.92);
-      }
+    } else {
+      // 1b. Conversión universal de cucharadas, cucharaditas y tazas a 'g' o 'ml' ANTES de construir la clave
+      if (canonicalUnitKey === 'cucharada' || canonicalUnitKey === 'cucharadita' || canonicalUnitKey === 'taza') {
+        const isLiquidIngredient =
+          /^(leche|nata|agua|caldo|vino|vinagre|salsa de soja|leche de coco|aceite|zumo)\b/i.test(canon.key);
 
-      const isMeasurable =
-        cant > 0 &&
-        !/^(al\s+gusto|a\s+gusto|to\s+taste|c\/n|c\.n\.|cn|despensa)$/i.test(uRaw) &&
-        canonicalUnitKey !== 'despensa';
-
-      if (!isMeasurable) {
-        canonicalUnitKey = 'botella';
-        cant = 1;
-        gramos = 0;
-      }
-    }
-    // 3. Ajos frescos
-    else if (canon.key === 'diente de ajo' && !canon.hasCommercialForm) {
-      if (canonicalUnitKey === 'unidad' || canonicalUnitKey === 'diente') {
-        canonicalUnitKey = 'diente';
-      } else if (canonicalUnitKey === 'g') {
-        cant = cant / 5;
-        canonicalUnitKey = 'diente';
-      }
-    }
-    // 4. Huevos
-    else if (canon.key === 'huevo') {
-      canonicalUnitKey = 'unidad';
-    }
-    // 5. Cítricos frescos
-    else if ((canon.key === 'limon' || canon.key === 'lima') && !canon.hasCommercialForm) {
-      if (canonicalUnitKey === 'ml') {
-        cant = cant / 35;
-        canonicalUnitKey = 'unidad';
-      } else if (canonicalUnitKey === 'g') {
-        const pieceWeight = FRESH_PIECE_WEIGHT_G[canon.key] || 100;
-        cant = cant / pieceWeight;
-        canonicalUnitKey = 'unidad';
-      }
-    }
-    // 6. Yogures
-    else if (canon.key === 'yogur natural') {
-      if (canonicalUnitKey === 'unidad' || canonicalUnitKey === 'bote' || canonicalUnitKey === 'paquete') {
-        cant = cant * 125;
-        canonicalUnitKey = 'g';
-      }
-      if (gramos === 0) {
-        gramos = cant;
-      }
-    }
-    // 7. Puente de conversión peso/pieza (restringido exclusivamente a alimentos frescos sin formato comercial procesado)
-    else {
-      const pieceWeightG =
-        FRESH_PIECE_WEIGHT_G[canon.key] ||
-        FRESH_PIECE_WEIGHT_G[canon.key.replace(/\s+/g, '_')];
-      if (pieceWeightG && !canon.hasCommercialForm) {
-        if (PREFER_GRAMS_INGREDIENTS.has(canon.key)) {
-          if (canonicalUnitKey === 'unidad') {
-            cant = cant * pieceWeightG;
-            canonicalUnitKey = 'g';
-          }
+        if (isLiquidIngredient) {
+          const mlPerUnit =
+            canonicalUnitKey === 'taza' ? 240 : canonicalUnitKey === 'cucharada' ? 15 : 5;
+          cant = cant * mlPerUnit;
+          canonicalUnitKey = 'ml';
           if (gramos === 0) {
-            gramos = cant;
+            gramos = canon.key.startsWith('aceite') ? Math.round(cant * 0.92) : Math.round(cant);
           }
         } else {
-          if (canonicalUnitKey === 'g') {
-            cant = cant / pieceWeightG;
-            canonicalUnitKey = 'unidad';
-          } else if (canonicalUnitKey === 'unidad') {
-            if (gramos === 0) {
-              gramos = cant * pieceWeightG;
+          // Sólidos, polvos, grasas y pastas culinarias
+          let gPerTbsp = 12;
+          let gPerTsp = 4;
+          let gPerCup = 200;
+
+          if (canon.key === 'mantequilla' || canon.key === 'queso crema' || canon.key === 'tomate concentrado') {
+            gPerTbsp = 15;
+            gPerTsp = 5;
+            gPerCup = 225;
+          } else if (canon.key.startsWith('harina') || canon.key === 'almidon de maiz' || canon.key === 'cacao en polvo' || canon.key === 'pan rallado') {
+            gPerTbsp = 10;
+            gPerTsp = 3.5;
+            gPerCup = 125;
+          } else if (canon.key.startsWith('azucar')) {
+            gPerTbsp = 12;
+            gPerTsp = 4;
+            gPerCup = 200;
+          } else if (canon.key === 'miel') {
+            gPerTbsp = 20;
+            gPerTsp = 7;
+            gPerCup = 340;
+          } else if (canon.key.startsWith('levadura') || canon.key === 'bicarbonato') {
+            gPerTbsp = 12;
+            gPerTsp = 4;
+            gPerCup = 190;
+          }
+
+          if (gramos > 0) {
+            cant = gramos;
+          } else {
+            const factor =
+              canonicalUnitKey === 'taza' ? gPerCup : canonicalUnitKey === 'cucharada' ? gPerTbsp : gPerTsp;
+            cant = cant * factor;
+            gramos = cant;
+          }
+          canonicalUnitKey = 'g';
+        }
+      }
+
+      // 2. Aceite de oliva: asegurar estado medible o botella
+      if (canon.key === 'aceite de oliva virgen extra') {
+        const isMeasurable =
+          cant > 0 &&
+          !/^(al\s+gusto|a\s+gusto|to\s+taste|c\/n|c\.n\.|cn|despensa)$/i.test(uRaw) &&
+          canonicalUnitKey !== 'despensa';
+
+        if (!isMeasurable) {
+          canonicalUnitKey = 'botella';
+          cant = 1;
+          gramos = 0;
+        }
+      }
+      // 3. Ajos frescos
+      else if (canon.key === 'diente de ajo' && !canon.hasCommercialForm) {
+        if (canonicalUnitKey === 'unidad' || canonicalUnitKey === 'diente') {
+          canonicalUnitKey = 'diente';
+        } else if (canonicalUnitKey === 'g') {
+          cant = cant / 5;
+          canonicalUnitKey = 'diente';
+        }
+      }
+      // 4. Huevos
+      else if (canon.key === 'huevo') {
+        if (canonicalUnitKey === 'g') {
+          cant = cant / 60;
+        }
+        canonicalUnitKey = 'unidad';
+      }
+      // 5. Cítricos frescos
+      else if ((canon.key === 'limon' || canon.key === 'lima') && !canon.hasCommercialForm) {
+        if (canonicalUnitKey === 'ml') {
+          cant = cant / 35;
+          canonicalUnitKey = 'unidad';
+        } else if (canonicalUnitKey === 'g') {
+          const pieceWeight = FRESH_PIECE_WEIGHT_G[canon.key] || 100;
+          cant = cant / pieceWeight;
+          canonicalUnitKey = 'unidad';
+        }
+      }
+      // 6. Yogures
+      else if (canon.key === 'yogur natural') {
+        if (canonicalUnitKey === 'unidad' || canonicalUnitKey === 'bote' || canonicalUnitKey === 'paquete') {
+          cant = cant * 125;
+          canonicalUnitKey = 'g';
+        }
+        if (gramos === 0) {
+          gramos = cant;
+        }
+      }
+      // 7. Puente de conversión peso/pieza (alimentos frescos y cortes sin formato comercial procesado)
+      else {
+        const pieceWeightG =
+          FRESH_PIECE_WEIGHT_G[canon.key] ||
+          FRESH_PIECE_WEIGHT_G[canon.key.replace(/\s+/g, '_')];
+        if (!canon.hasCommercialForm) {
+          if (PREFER_GRAMS_INGREDIENTS.has(canon.key)) {
+            if (canonicalUnitKey === 'unidad') {
+              if (gramos > 0) {
+                cant = gramos;
+              } else if (pieceWeightG) {
+                cant = cant * pieceWeightG;
+              }
+              if (gramos > 0 || pieceWeightG) {
+                canonicalUnitKey = 'g';
+              }
+            }
+            if (canonicalUnitKey === 'g' && gramos === 0) {
+              gramos = cant;
+            }
+          } else if (pieceWeightG) {
+            if (canonicalUnitKey === 'g') {
+              cant = cant / pieceWeightG;
+              canonicalUnitKey = 'unidad';
+            } else if (canonicalUnitKey === 'unidad') {
+              if (gramos === 0) {
+                gramos = cant * pieceWeightG;
+              }
             }
           }
         }
@@ -701,11 +928,11 @@ export function consolidateShoppingItems(
     groupsByCanonKey.get(canonKey)!.push(acc);
   }
 
-  for (const [, group] of groupsByCanonKey.entries()) {
-    const despensaEntry = group.find((item) => item.unidad === 'despensa' || item.unidad === 'botella');
+  for (const [canonKey, group] of groupsByCanonKey.entries()) {
+    const despensaEntries = group.filter((item) => item.unidad === 'despensa' || item.unidad === 'botella');
     const physicalEntries = group.filter((item) => item.unidad !== 'despensa' && item.unidad !== 'botella');
 
-    if (despensaEntry && physicalEntries.length > 0) {
+    if (physicalEntries.length > 0) {
       // Ordenar para elegir la magnitud principal (priorizar gramos, luego ml, luego unidad, luego mayor cantidad)
       physicalEntries.sort((a, b) => {
         if (a.unidad === 'g' && b.unidad !== 'g') return -1;
@@ -718,37 +945,83 @@ export function consolidateShoppingItems(
       });
       const mainEntry = physicalEntries[0];
 
-      // Transferir sourceIds sin duplicados
-      for (const id of despensaEntry.sourceIds) {
-        if (!mainEntry.sourceIds.includes(id)) {
-          mainEntry.sourceIds.push(id);
+      // 1. Reconciliar entradas físicas secundarias (ej. mezcla residual de 'g' y 'unidad')
+      if (physicalEntries.length > 1) {
+        const pieceWeightG =
+          FRESH_PIECE_WEIGHT_G[canonKey] ||
+          FRESH_PIECE_WEIGHT_G[canonKey.replace(/\s+/g, '_')] ||
+          100;
+
+        for (let i = 1; i < physicalEntries.length; i++) {
+          const sec = physicalEntries[i];
+          if (mainEntry.unidad === 'g') {
+            const addedGrams = sec.rawGramos > 0 ? sec.rawGramos : sec.rawCantidad * pieceWeightG;
+            mainEntry.rawCantidad += addedGrams;
+            mainEntry.rawGramos += addedGrams;
+          } else if (mainEntry.unidad === 'ml') {
+            const addedMl = sec.rawCantidad > 0 ? sec.rawCantidad : sec.rawGramos;
+            mainEntry.rawCantidad += addedMl;
+            mainEntry.rawGramos += sec.rawGramos;
+          } else if (mainEntry.unidad === 'unidad') {
+            const addedUnits =
+              sec.unidad === 'g'
+                ? sec.rawCantidad / pieceWeightG
+                : sec.rawGramos > 0
+                  ? sec.rawGramos / pieceWeightG
+                  : sec.rawCantidad;
+            mainEntry.rawCantidad += addedUnits;
+            mainEntry.rawGramos += sec.rawGramos || addedUnits * pieceWeightG;
+          } else {
+            mainEntry.rawCantidad += sec.rawCantidad;
+            mainEntry.rawGramos += sec.rawGramos;
+          }
+
+          for (const id of sec.sourceIds) {
+            if (!mainEntry.sourceIds.includes(id)) mainEntry.sourceIds.push(id);
+          }
+          for (const rec of sec.recetasNombres) {
+            if (!mainEntry.recetasNombres.includes(rec)) mainEntry.recetasNombres.push(rec);
+          }
+          for (const nota of sec.notas) {
+            if (!mainEntry.notas.includes(nota)) mainEntry.notas.push(nota);
+          }
+          for (const exp of sec.explicaciones) {
+            if (!mainEntry.explicaciones.includes(exp)) mainEntry.explicaciones.push(exp);
+          }
+          for (const brk of sec.desglose) {
+            mainEntry.desglose.push(brk);
+          }
+          consolidated.delete(sec.key);
         }
-      }
-      // Transferir recetas de procedencia
-      for (const rec of despensaEntry.recetasNombres) {
-        if (!mainEntry.recetasNombres.includes(rec)) {
-          mainEntry.recetasNombres.push(rec);
-        }
-      }
-      // Transferir notas culinarias
-      for (const nota of despensaEntry.notas) {
-        if (!mainEntry.notas.includes(nota)) {
-          mainEntry.notas.push(nota);
-        }
-      }
-      // Transferir explicaciones
-      for (const exp of despensaEntry.explicaciones) {
-        if (!mainEntry.explicaciones.includes(exp)) {
-          mainEntry.explicaciones.push(exp);
-        }
-      }
-      // Transferir desglose por sección
-      for (const brk of despensaEntry.desglose) {
-        mainEntry.desglose.push(brk);
       }
 
-      // Eliminar la entrada de despensa del Map consolidado
-      consolidated.delete(despensaEntry.key);
+      // 2. Absorber cualquier entrada de despensa o botella dentro de la magnitud física principal
+      for (const despensaEntry of despensaEntries) {
+        for (const id of despensaEntry.sourceIds) {
+          if (!mainEntry.sourceIds.includes(id)) {
+            mainEntry.sourceIds.push(id);
+          }
+        }
+        for (const rec of despensaEntry.recetasNombres) {
+          if (!mainEntry.recetasNombres.includes(rec)) {
+            mainEntry.recetasNombres.push(rec);
+          }
+        }
+        for (const nota of despensaEntry.notas) {
+          if (!mainEntry.notas.includes(nota)) {
+            mainEntry.notas.push(nota);
+          }
+        }
+        for (const exp of despensaEntry.explicaciones) {
+          if (!mainEntry.explicaciones.includes(exp)) {
+            mainEntry.explicaciones.push(exp);
+          }
+        }
+        for (const brk of despensaEntry.desglose) {
+          mainEntry.desglose.push(brk);
+        }
+        consolidated.delete(despensaEntry.key);
+      }
     }
   }
 
