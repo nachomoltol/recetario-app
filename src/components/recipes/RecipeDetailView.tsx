@@ -147,50 +147,37 @@ export function RecipeDetailView({
   const [currentEsFavoritoMenu, setCurrentEsFavoritoMenu] = useState<boolean>(
     () => Boolean(receta?.es_favorito_menu)
   );
-  const [isCategorizeDrawerOpen, setIsCategorizeDrawerOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const recetaId = receta?.id;
-      // 1. Si ya se descartó o guardó en esta sesión, bajo ningún concepto volver a abrir
-      if (recetaId) {
-        try {
-          if (sessionStorage.getItem(`categorize_dismissed_${recetaId}`) === 'true') {
-            return false;
-          }
-        } catch {}
-      }
+  // El estado inicial es SIEMPRE cerrado y puro (sin efectos secundarios en el inicializador):
+  // React puede invocar los inicializadores de useState varias veces (StrictMode, hidratación
+  // reintentada o descartada), y escribir sessionStorage aquí provocaba que la segunda invocación
+  // leyera "descartado" y devolviera false, ocultando el pop-up de momentos al crear la receta.
+  const [isCategorizeDrawerOpen, setIsCategorizeDrawerOpen] = useState(false);
+  const autoOpenCheckedRef = useRef<string | null>(null);
 
-      let shouldAutoOpen = Boolean(isNewRecipe);
+  // Apertura automática tras montar (fase de commit, una sola vez por receta)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const recetaId = receta?.id;
+    if (!recetaId || autoOpenCheckedRef.current === recetaId) return;
+    autoOpenCheckedRef.current = recetaId;
+
+    try {
+      if (sessionStorage.getItem(`categorize_dismissed_${recetaId}`) === 'true') return;
+    } catch {}
+
+    let shouldAutoOpen = Boolean(isNewRecipe);
+    try {
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('isNew') === 'true') {
-        shouldAutoOpen = true;
-      }
-      try {
-        if (recetaId && localStorage.getItem('receta_recien_creada_id') === recetaId) {
-          shouldAutoOpen = true;
-        }
-      } catch {}
+      if (urlParams.get('isNew') === 'true') shouldAutoOpen = true;
+    } catch {}
+    try {
+      if (localStorage.getItem('receta_recien_creada_id') === recetaId) shouldAutoOpen = true;
+    } catch {}
 
-      if (shouldAutoOpen) {
-        // Bloquear inmediatamente para que ningún re-render/revalidación futuro pueda volver a abrirlo
-        if (recetaId) {
-          try {
-            sessionStorage.setItem(`categorize_dismissed_${recetaId}`, 'true');
-            localStorage.removeItem('receta_recien_creada_id');
-          } catch {}
-        }
-        try {
-          if (urlParams.has('isNew')) {
-            urlParams.delete('isNew');
-            const searchStr = urlParams.toString();
-            const cleanUrl = window.location.pathname + (searchStr ? `?${searchStr}` : '') + window.location.hash;
-            window.history.replaceState({}, '', cleanUrl);
-          }
-        } catch {}
-        return true;
-      }
+    if (shouldAutoOpen) {
+      setIsCategorizeDrawerOpen(true);
     }
-    return false;
-  });
+  }, [receta?.id, isNewRecipe]);
 
   // Temporizador para ocultar el toast
   useEffect(() => {

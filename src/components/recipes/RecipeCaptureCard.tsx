@@ -42,6 +42,29 @@ import { useProfileStore } from '@/stores/useProfileStore';
 import { getDeviceIdentifier } from '@/lib/device/deviceIdentifier';
 import { Usuario } from '@/types/recipe';
 import { playCrunchFeedback } from '@/lib/utils/audioFeedback';
+import dynamic from 'next/dynamic';
+import { createClient as createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { updateRecipeClassificationAction } from '@/app/actions/recipeClassification';
+import type { MomentoDia, RolPlato } from '@/types/database';
+
+const RecipeCategorizeDrawer = dynamic(
+  () => import('./RecipeCategorizeDrawer').then((m) => m.RecipeCategorizeDrawer),
+  { ssr: false }
+);
+
+interface PostCaptureCategorizeTarget {
+  receta: {
+    id: string;
+    titulo: string;
+    calorias_por_porcion?: number | null;
+    etiquetas?: string[] | null;
+    descripcion?: string | null;
+    momentos_dia?: MomentoDia[] | null;
+    rol_plato?: RolPlato | null;
+    es_favorito_menu?: boolean | null;
+  };
+  ingredientes: { nombre_limpio?: string; nombre_crudo?: string }[];
+}
 
 interface LoadingStage {
   seconds: number;
@@ -248,6 +271,9 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [createdRecetaId, setCreatedRecetaId] = useState<string | null>(null);
+  // Pop-up de selección de momentos tras crear/importar una receta
+  const [postCaptureTarget, setPostCaptureTarget] = useState<PostCaptureCategorizeTarget | null>(null);
+  const [isPostCaptureCategorizeOpen, setIsPostCaptureCategorizeOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showProModal, setShowProModal] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -419,6 +445,99 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   }, [isPending]);
 
   // Ejecutor centralizado de ingesta con validación de fricción Freemium/Premium
+  // Carga los datos mínimos de la receta recién creada y abre el pop-up de momentos
+  const openPostCaptureCategorize = useCallback(async (recetaId: string) => {
+    if (!recetaId || typeof window === 'undefined') return;
+    try {
+      if (sessionStorage.getItem(`categorize_dismissed_${recetaId}`) === 'true') return;
+    } catch {}
+
+    let target: PostCaptureCategorizeTarget = {
+      receta: { id: recetaId, titulo: '' },
+      ingredientes: [],
+    };
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const [{ data: recetaRow }, { data: ingRows }] = await Promise.all([
+        supabase
+          .from('recetas')
+          .select('id, titulo, calorias_por_porcion, etiquetas, descripcion, momentos_dia, rol_plato, es_favorito_menu')
+          .eq('id', recetaId)
+          .single(),
+        supabase
+          .from('receta_ingredientes')
+          .select('nombre_limpio, nombre_crudo')
+          .eq('receta_id', recetaId)
+          .order('orden', { ascending: true }),
+      ]);
+      if (recetaRow) {
+        target = {
+          receta: {
+            id: recetaRow.id,
+            titulo: (recetaRow.titulo || '').replace(/<\/?mark>/gi, ''),
+            calorias_por_porcion: recetaRow.calorias_por_porcion ?? null,
+            etiquetas: recetaRow.etiquetas ?? null,
+            descripcion: recetaRow.descripcion ?? null,
+            momentos_dia: (recetaRow.momentos_dia as MomentoDia[] | null) ?? null,
+            rol_plato: (recetaRow.rol_plato as RolPlato | null) ?? null,
+            es_favorito_menu: recetaRow.es_favorito_menu ?? null,
+          },
+          ingredientes: (ingRows || []).map((i: any) => ({
+            nombre_limpio: i?.nombre_limpio || undefined,
+            nombre_crudo: i?.nombre_crudo || undefined,
+          })),
+        };
+      }
+    } catch (err) {
+      console.warn('[RecipeCaptureCard] No se pudieron cargar datos para el pop-up de momentos:', err);
+    }
+
+    setPostCaptureTarget(target);
+    setIsPostCaptureCategorizeOpen(true);
+  }, []);
+
+  const markPostCaptureDismissed = useCallback((recetaId?: string | null) => {
+    if (!recetaId || typeof window === 'undefined') return;
+    try {
+      sessionStorage.setItem(`categorize_dismissed_${recetaId}`, 'true');
+      localStorage.removeItem('receta_recien_creada_id');
+    } catch {}
+  }, []);
+
+  const handlePostCaptureOpenChange = useCallback(
+    (open: boolean) => {
+      setIsPostCaptureCategorizeOpen(open);
+      if (!open) markPostCaptureDismissed(postCaptureTarget?.receta.id);
+    },
+    [markPostCaptureDismissed, postCaptureTarget?.receta.id]
+  );
+
+  const handlePostCaptureSave = useCallback(
+    async (data: { momentos_dia: MomentoDia[]; rol_plato: RolPlato; es_favorito_menu: boolean }) => {
+      const recetaId = postCaptureTarget?.receta.id;
+      setIsPostCaptureCategorizeOpen(false);
+      markPostCaptureDismissed(recetaId);
+      if (!recetaId) return;
+      try {
+        const res = await updateRecipeClassificationAction({
+          recetaId,
+          momentos_dia: data.momentos_dia,
+          rol_plato: data.rol_plato,
+          es_favorito_menu: data.es_favorito_menu,
+        });
+        if (res.success) {
+          router.refresh();
+        } else if (res.error) {
+          setError(res.error);
+        }
+      } catch (err) {
+        console.error('[RecipeCaptureCard] Error guardando momentos tras captura:', err);
+      }
+    },
+    [postCaptureTarget?.receta.id, markPostCaptureDismissed, router]
+  );
+
   const executeIngest = useCallback(
     (targetMode: 'url' | 'texto' | 'audio', targetValue: string, overrideFile?: File | null) => {
       setError(null);
@@ -581,6 +700,11 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             }
 
             router.refresh();
+
+            // Abrir de forma fiable el pop-up de momentos de comida para la receta recién creada
+            if (res.recetaId) {
+              void openPostCaptureCategorize(res.recetaId);
+            }
           }
         } catch (e: any) {
           console.error('Error al procesar la receta:', e);
@@ -588,7 +712,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         }
       });
     },
-    [selectedFile, router, currentProfile, language, t, audioUrl]
+    [selectedFile, router, currentProfile, language, t, audioUrl, openPostCaptureCategorize]
   );
 
   // Selector MIME compatible cross-platform (Web / iOS / Android)
@@ -1610,6 +1734,18 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         type={hardLimitModal}
         onClose={() => setHardLimitModal(null)}
       />
+
+      {/* Pop-up de selección de momentos de comida tras crear/importar la receta */}
+      {postCaptureTarget && (
+        <RecipeCategorizeDrawer
+          isOpen={isPostCaptureCategorizeOpen}
+          onOpenChange={handlePostCaptureOpenChange}
+          isNew
+          receta={postCaptureTarget.receta}
+          ingredientes={postCaptureTarget.ingredientes}
+          onSave={handlePostCaptureSave}
+        />
+      )}
     </div>
   );
 }
