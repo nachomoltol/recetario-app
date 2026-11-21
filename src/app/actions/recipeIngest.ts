@@ -8,7 +8,6 @@ import { ensureMonthlyResetAndPlanSync } from '@/lib/quota/ensureMonthlyResetAnd
 const activeIngestUsers = new Set<string>();
 import { extractRecipeWithGemini, detectFuenteTipo, sanitizeRecipeUrl } from '@/lib/gemini/extractor';
 import { resolveCanonicalVideoSource, computeSourceUrlHash, repairBrokenTikTokUrl } from '@/lib/culinary/urlCanonicalizer';
-import { getClinicalExclusions } from '@/lib/clinicalDictionary';
 import { ExtractedIngredient, normalizarIngredientesExtraidos } from '@/lib/gemini/schema';
 import { calcularGramos } from '@/lib/nutrition/converter';
 import { IngredienteMaestro } from '@/types/recipe';
@@ -204,13 +203,9 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     }
   }
 
-  // Calcular restricciones clínicas del usuario únicamente para generar alertas informativas de compatibilidad
-  const alertasClinicas = getClinicalExclusions({
-    preferencias: perfilUsuario?.preferencias_dieteticas || [],
-    alergenos: perfilUsuario?.alergenos || [],
-  });
-
   // 2.5 Caché Semántica de Vídeos Virales (P2)
+  // Nota de eficiencia: la evaluación clínica determinista se ejecuta vía checkRecipeClinicalCompatibility;
+  // no se inyectan exclusiones clínicas en el prompt de ingesta para ahorrar tokens y garantizar 100% fidelidad al original.
   // Búsqueda cruzada por hash SHA-256 canónico en la base de datos antes de invocar a Gemini
   if (sourceUrlHash) {
     try {
@@ -436,7 +431,6 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     texto,
     file,
     idioma,
-    alertasClinicas,
   });
 
     // 4. Consultar ingredientes maestros para cruce relacional y cálculo volumétrico
@@ -449,13 +443,26 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     const encontrarMaestro = (nombreLimpio: string) => {
       const norm = (nombreLimpio || '').toLowerCase().trim();
       if (!norm) return undefined;
-      return listaMaestros.find(
-        (m) =>
-          m.nombre.toLowerCase() === norm ||
-          m.nombre_normalizado === norm ||
-          norm.includes(m.nombre_normalizado) ||
-          m.nombre_normalizado.includes(norm)
+
+      // 1. Prioridad absoluta: coincidencia exacta
+      const exactMatch = listaMaestros.find(
+        (m) => m.nombre.toLowerCase() === norm || m.nombre_normalizado === norm
       );
+      if (exactMatch) return exactMatch;
+
+      // 2. Coincidencia parcial segura solo con límites de palabra y longitud >= 4
+      // (evita falsos positivos como "sal" en "salmón" o "salsa")
+      if (norm.length < 4) return undefined;
+      const escapedNorm = norm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const normWordRegex = new RegExp(`(^|\\s)${escapedNorm}($|\\s)`, 'i');
+
+      return listaMaestros.find((m) => {
+        const mn = (m.nombre_normalizado || '').trim();
+        if (mn.length < 4) return false;
+        const escapedMn = mn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const mnWordRegex = new RegExp(`(^|\\s)${escapedMn}($|\\s)`, 'i');
+        return mnWordRegex.test(norm) || normWordRegex.test(mn);
+      });
     };
 
     let fuenteTipo: FuenteTipoReceta = 'manual';

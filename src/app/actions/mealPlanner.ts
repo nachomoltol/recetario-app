@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/server';
 import { PlanComida, Receta, RecetaIngrediente } from '@/types/recipe';
 import { classifyIngredientAisle } from '@/lib/culinary/aisles';
 import { generateShoppingListFromPlans, ConsolidatedShoppingBreakdown } from '@/lib/culinary/shoppingListGenerator';
-import { formatLocalDate, parseLocalDate, getMondayOfDate } from '@/lib/dateUtils';
 
 export type MealSlot = 'desayuno' | 'almuerzo' | 'almuerzo_1' | 'almuerzo_2' | 'cena' | 'snack_postre';
 
@@ -235,29 +234,9 @@ export async function batchAssignMealSlotsAction(
 
     const uniqueDates = Array.from(new Set(uniqueItems.map((it) => it.fecha))).sort();
 
-    // 1. Limpieza de días residuales de la misma semana fuera del rango del nuevo plan (ej. sábado y domingo en un plan de 5 días)
-    // OJO: Queda terminantemente prohibido tocar o borrar días anteriores a la fecha de inicio (ej. domingo anterior)
+    // 1. Limpiar exclusivamente los slots de las fechas exactas que se van a reasignar.
+    // Queda prohibido borrar días posteriores o anteriores fuera del rango seleccionado (p. ej. fin de semana existente al generar un plan corto).
     if (uniqueDates.length > 0) {
-      const planStartDate = uniqueDates[0];
-      const planEndDate = uniqueDates[uniqueDates.length - 1];
-      const mondayDate = getMondayOfDate(parseLocalDate(planStartDate));
-      const sundayDate = new Date(mondayDate);
-      sundayDate.setDate(mondayDate.getDate() + 6);
-      const mondayStr = formatLocalDate(mondayDate);
-      const sundayStr = formatLocalDate(sundayDate);
-
-      // Si el plan empieza en el lunes de la semana (o dentro de ella), los días restantes de esa misma semana
-      // posteriores a planEndDate deben limpiarse para evitar platos residuales de ejecuciones previas de 7 días.
-      if (planEndDate < sundayStr && planStartDate >= mondayStr) {
-        await supabase
-          .from('plan_comidas')
-          .delete()
-          .eq('usuario_id', user.id)
-          .gt('fecha', planEndDate)
-          .lte('fecha', sundayStr);
-      }
-
-      // Limpiar previamente los slots de las fechas exactas que se van a reasignar
       await supabase
         .from('plan_comidas')
         .delete()

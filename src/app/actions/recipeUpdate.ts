@@ -13,12 +13,17 @@ export interface IngredientUpdateInput {
   orden?: number;
   notas?: string | null;
   pasillo_supermercado?: string;
+  rol_culinario?: string | null;
+  seccion?: string | null;
+  es_opcional?: boolean;
 }
 
 export interface StepUpdateInput {
   id?: string;
   orden: number;
   instruccion: string;
+  instruccion_principiante?: string | null;
+  instruccion_avanzada?: string | null;
   tiempo_estimado_min?: number | null;
   consejo_pro?: string | null;
   descriptor_sensorial?: string | null;
@@ -93,13 +98,26 @@ export async function updateRecipeAction({
     const encontrarMaestro = (nombreLimpio: string) => {
       const norm = (nombreLimpio || '').toLowerCase().trim();
       if (!norm) return undefined;
-      return listaMaestros.find(
-        (m) =>
-          m.nombre.toLowerCase() === norm ||
-          m.nombre_normalizado === norm ||
-          norm.includes(m.nombre_normalizado) ||
-          m.nombre_normalizado.includes(norm)
+
+      // 1. Prioridad absoluta: coincidencia exacta
+      const exactMatch = listaMaestros.find(
+        (m) => m.nombre.toLowerCase() === norm || m.nombre_normalizado === norm
       );
+      if (exactMatch) return exactMatch;
+
+      // 2. Coincidencia parcial segura solo con límites de palabra y longitud >= 4
+      // (evita falsos positivos como "sal" en "salmón" o "salsa")
+      if (norm.length < 4) return undefined;
+      const escapedNorm = norm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const normWordRegex = new RegExp(`(^|\\s)${escapedNorm}($|\\s)`, 'i');
+
+      return listaMaestros.find((m) => {
+        const mn = (m.nombre_normalizado || '').trim();
+        if (mn.length < 4) return false;
+        const escapedMn = mn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const mnWordRegex = new RegExp(`(^|\\s)${escapedMn}($|\\s)`, 'i');
+        return mnWordRegex.test(norm) || normWordRegex.test(mn);
+      });
     };
 
     // 5. Reemplazar ingredientes de forma atómica
@@ -157,14 +175,24 @@ export async function updateRecipeAction({
           pasillo_supermercado: pasilloFinal,
           ingrediente_maestro_id: matchedMaestro?.id || null,
           notas: ing.notas || null,
-          es_opcional: false,
+          es_opcional: Boolean(ing.es_opcional),
           orden: idx + 1,
+          rol_culinario: ing.rol_culinario || null,
+          seccion: ing.seccion || null,
         };
       });
 
-      const { error: errInsertIng } = await supabase
+      let { error: errInsertIng } = await supabase
         .from('receta_ingredientes')
         .insert(payloadIngredientes);
+
+      if (errInsertIng && /seccion/i.test(errInsertIng.message || '')) {
+        const fallbackPayload = payloadIngredientes.map(({ seccion, ...rest }) => rest);
+        const retryRes = await supabase
+          .from('receta_ingredientes')
+          .insert(fallbackPayload as any);
+        errInsertIng = retryRes.error;
+      }
 
       if (errInsertIng) {
         console.error('Error insertando nuevos ingredientes:', errInsertIng);
@@ -176,7 +204,7 @@ export async function updateRecipeAction({
     if (pasos !== undefined) {
       const { data: dbPasos, error: errFetchPasos } = await supabase
         .from('pasos')
-        .select('id')
+        .select('id, instruccion')
         .eq('receta_id', recetaId);
 
       if (errFetchPasos) {
@@ -185,6 +213,9 @@ export async function updateRecipeAction({
       }
 
       const existingIds = (dbPasos || []).map((p) => p.id);
+      const existingInstructionById = new Map<string, string>(
+        (dbPasos || []).map((p) => [p.id, (p.instruccion || '').trim()])
+      );
       const incomingIds = pasos
         .map((p) => p.id)
         .filter((id): id is string => Boolean(id && !id.startsWith('new-') && !id.startsWith('temp-')));
@@ -212,23 +243,54 @@ export async function updateRecipeAction({
         const isExisting = Boolean(p.id && existingIds.includes(p.id));
 
         if (isExisting && p.id) {
+          const prevInstruccion = existingInstructionById.get(p.id) || '';
+          const instructionChanged = cleanInstruccion !== prevInstruccion;
+
+          const updateStepPayload: {
+            orden: number;
+            instruccion: string;
+            instruccion_principiante?: string | null;
+            instruccion_avanzada?: string | null;
+            tiempo_estimado_min: number | null;
+            consejo_pro: string | null;
+            descriptor_sensorial: string | null;
+            temperatura_celsius: number | null;
+            potencia_fuego: string | null;
+          } = {
+            orden: ordenFinal,
+            instruccion: cleanInstruccion,
+            tiempo_estimado_min:
+              typeof p.tiempo_estimado_min === 'number' && !isNaN(p.tiempo_estimado_min)
+                ? p.tiempo_estimado_min
+                : null,
+            consejo_pro: p.consejo_pro?.trim() || null,
+            descriptor_sensorial: p.descriptor_sensorial?.trim() || null,
+            temperatura_celsius:
+              typeof p.temperatura_celsius === 'number' && !isNaN(p.temperatura_celsius)
+                ? p.temperatura_celsius
+                : null,
+            potencia_fuego: p.potencia_fuego || null,
+          };
+
+          if (p.instruccion_principiante !== undefined) {
+            updateStepPayload.instruccion_principiante = p.instruccion_principiante
+              ? p.instruccion_principiante.trim()
+              : null;
+          } else if (instructionChanged) {
+            updateStepPayload.instruccion_principiante = null;
+          }
+
+          if (p.instruccion_avanzada !== undefined) {
+            updateStepPayload.instruccion_avanzada = p.instruccion_avanzada
+              ? p.instruccion_avanzada.trim()
+              : null;
+          } else if (instructionChanged) {
+            updateStepPayload.instruccion_avanzada = null;
+          }
+
           const { error: errUpdatePaso } = await supabase
             .from('pasos')
-            .update({
-              orden: ordenFinal,
-              instruccion: cleanInstruccion,
-              tiempo_estimado_min:
-                typeof p.tiempo_estimado_min === 'number' && !isNaN(p.tiempo_estimado_min)
-                  ? p.tiempo_estimado_min
-                  : null,
-              consejo_pro: p.consejo_pro?.trim() || null,
-              descriptor_sensorial: p.descriptor_sensorial?.trim() || null,
-              temperatura_celsius:
-                typeof p.temperatura_celsius === 'number' && !isNaN(p.temperatura_celsius)
-                  ? p.temperatura_celsius
-                  : null,
-              potencia_fuego: p.potencia_fuego || null,
-            })
+            .update(updateStepPayload)
             .eq('id', p.id);
 
           if (errUpdatePaso) {
@@ -242,6 +304,8 @@ export async function updateRecipeAction({
               receta_id: recetaId,
               orden: ordenFinal,
               instruccion: cleanInstruccion,
+              instruccion_principiante: p.instruccion_principiante?.trim() || null,
+              instruccion_avanzada: p.instruccion_avanzada?.trim() || null,
               tiempo_estimado_min:
                 typeof p.tiempo_estimado_min === 'number' && !isNaN(p.tiempo_estimado_min)
                   ? p.tiempo_estimado_min

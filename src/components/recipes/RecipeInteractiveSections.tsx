@@ -378,7 +378,7 @@ export function RecipeInteractiveSections({
         recetaId,
         nivel: targetLevel,
         titulo: tituloReceta,
-        porciones: servings,
+        porciones: basePorciones || 2,
         ingredientes: safeIngredientes,
         pasos: currentSteps,
         idioma: (language as 'es' | 'en') || 'es',

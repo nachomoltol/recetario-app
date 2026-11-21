@@ -62,6 +62,9 @@ interface EditableIngredient {
   orden: number;
   notas?: string | null;
   pasillo_supermercado?: string;
+  rol_culinario?: string | null;
+  seccion?: string | null;
+  es_opcional?: boolean;
 }
 
 interface EditableStep {
@@ -658,6 +661,9 @@ export function RecipeDetailView({
         orden: i.orden || idx + 1,
         notas: i.notas,
         pasillo_supermercado: i.pasillo_supermercado,
+        rol_culinario: (i as any).rol_culinario || null,
+        seccion: (i as any).seccion || null,
+        es_opcional: Boolean(i.es_opcional),
       }))
     );
     setEditPasos(
@@ -806,6 +812,9 @@ export function RecipeDetailView({
           orden: idx + 1,
           notas: ing.notas || null,
           pasillo_supermercado: ing.pasillo_supermercado,
+          rol_culinario: ing.rol_culinario || null,
+          seccion: ing.seccion || null,
+          es_opcional: Boolean(ing.es_opcional),
         })),
         pasos: validEditPasos.map((p, idx) => ({
           id: p.id.startsWith('temp-') || p.id.startsWith('new-') ? undefined : p.id,
@@ -841,29 +850,42 @@ export function RecipeDetailView({
         ingrediente_maestro_id: null,
         pasillo_supermercado: ing.pasillo_supermercado || 'Despensa y Especias',
         notas: ing.notas || null,
-        es_opcional: false,
+        es_opcional: Boolean(ing.es_opcional),
+        rol_culinario: (ing.rol_culinario as any) || null,
+        seccion: ing.seccion || null,
         created_at: new Date().toISOString(),
       }));
 
-      const updatedLocalPasos: Paso[] = validEditPasos.map((p, idx) => ({
-        id: p.id,
-        receta_id: receta?.id || '',
-        orden: idx + 1,
-        instruccion: p.instruccion.trim(),
-        instruccion_principiante: null,
-        instruccion_avanzada: null,
-        descriptor_sensorial: null,
-        potencia_fuego: null,
-        tiempo_estimado_min:
-          typeof p.tiempo_estimado_min === 'number' && !isNaN(p.tiempo_estimado_min)
-            ? p.tiempo_estimado_min
-            : null,
-        temperatura_celsius: null,
-        utensilios_sugeridos: [],
-        consejo_pro: p.consejo_pro?.trim() || null,
-        imagen_paso_url: null,
-        created_at: new Date().toISOString(),
-      }));
+      const prevStepsById = new Map<string, Paso>(
+        (currentPasos || []).map((ps) => [ps.id, ps])
+      );
+
+      const updatedLocalPasos: Paso[] = validEditPasos.map((p, idx) => {
+        const prevStep = prevStepsById.get(p.id);
+        const cleanInst = p.instruccion.trim();
+        const prevInst = (prevStep?.instruccion || '').replace(/<\/?mark>/gi, '').trim();
+        const changed = !prevStep || cleanInst !== prevInst;
+
+        return {
+          id: p.id,
+          receta_id: receta?.id || '',
+          orden: idx + 1,
+          instruccion: cleanInst,
+          instruccion_principiante: changed ? null : prevStep?.instruccion_principiante || null,
+          instruccion_avanzada: changed ? null : prevStep?.instruccion_avanzada || null,
+          descriptor_sensorial: prevStep?.descriptor_sensorial || null,
+          potencia_fuego: prevStep?.potencia_fuego || null,
+          tiempo_estimado_min:
+            typeof p.tiempo_estimado_min === 'number' && !isNaN(p.tiempo_estimado_min)
+              ? p.tiempo_estimado_min
+              : null,
+          temperatura_celsius: prevStep?.temperatura_celsius ?? null,
+          utensilios_sugeridos: prevStep?.utensilios_sugeridos || [],
+          consejo_pro: p.consejo_pro?.trim() || null,
+          imagen_paso_url: prevStep?.imagen_paso_url || null,
+          created_at: prevStep?.created_at || new Date().toISOString(),
+        };
+      });
 
       setCurrentIngredientes(updatedLocalIngredientes);
       setCurrentPasos(updatedLocalPasos);

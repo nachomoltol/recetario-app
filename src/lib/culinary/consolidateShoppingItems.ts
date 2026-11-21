@@ -131,8 +131,8 @@ export const FRESH_PIECE_WEIGHT_G: Record<string, number> = {
   remolacha: 130,
   esparrago: 20,
 
-  // Huevos
-  huevo: 55,
+  // Huevos (unificado a 60 g por pieza estándar L/M en conversión y schema)
+  huevo: 60,
 
   // Tomate seco (peso unitario deshidratado aprox 8 g por pieza)
   'tomate seco': 8,
@@ -514,6 +514,40 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'tomate frito': { key: 'tomate frito', displayName: 'Tomate frito' },
     'tomate concentrado': { key: 'tomate concentrado', displayName: 'Tomate concentrado' },
     'pasta de tomate': { key: 'tomate concentrado', displayName: 'Tomate concentrado' },
+
+    // Quesos habituales unificados (con y sin prefijo "queso")
+    'queso parmesano': { key: 'queso parmesano', displayName: 'Queso parmesano' },
+    'parmesano': { key: 'queso parmesano', displayName: 'Queso parmesano' },
+    'parmigiano': { key: 'queso parmesano', displayName: 'Queso parmesano' },
+    'queso mozzarella': { key: 'mozzarella', displayName: 'Queso mozzarella' },
+    'mozzarella': { key: 'mozzarella', displayName: 'Queso mozzarella' },
+    'queso ricota': { key: 'queso ricota', displayName: 'Queso ricota' },
+    'ricota': { key: 'queso ricota', displayName: 'Queso ricota' },
+    'queso ricotta': { key: 'queso ricota', displayName: 'Queso ricota' },
+    'ricotta': { key: 'queso ricota', displayName: 'Queso ricota' },
+    'queso feta': { key: 'queso feta', displayName: 'Queso feta' },
+    'feta': { key: 'queso feta', displayName: 'Queso feta' },
+    'queso cheddar': { key: 'queso cheddar', displayName: 'Queso cheddar' },
+    'cheddar': { key: 'queso cheddar', displayName: 'Queso cheddar' },
+
+    // Natas y cremas de leche
+    'nata': { key: 'nata para cocinar', displayName: 'Nata para cocinar' },
+    'nata liquida': { key: 'nata para cocinar', displayName: 'Nata para cocinar' },
+    'nata para cocinar': { key: 'nata para cocinar', displayName: 'Nata para cocinar' },
+    'nata liquida para cocinar': { key: 'nata para cocinar', displayName: 'Nata para cocinar' },
+    'crema de leche': { key: 'nata para cocinar', displayName: 'Nata para cocinar' },
+
+    // Caldos y fondos
+    'caldo de verduras': { key: 'caldo de verduras', displayName: 'Caldo de verduras' },
+    'caldo vegetal': { key: 'caldo de verduras', displayName: 'Caldo de verduras' },
+    'caldo de pollo': { key: 'caldo de pollo', displayName: 'Caldo de pollo' },
+    'caldo de ave': { key: 'caldo de pollo', displayName: 'Caldo de pollo' },
+
+    // Hortalizas con variantes regionales
+    'cebolleta': { key: 'cebolleta', displayName: 'Cebolleta' },
+    'cebolla tierna': { key: 'cebolleta', displayName: 'Cebolleta' },
+    'cebollin': { key: 'cebolleta', displayName: 'Cebolleta' },
+    'pimiento morron': { key: 'pimiento rojo', displayName: 'Pimiento rojo' },
   };
 
   const isCommercial =
@@ -721,7 +755,9 @@ export function consolidateShoppingItems(
       // 1b. Conversión universal de cucharadas, cucharaditas y tazas a 'g' o 'ml' ANTES de construir la clave
       if (canonicalUnitKey === 'cucharada' || canonicalUnitKey === 'cucharadita' || canonicalUnitKey === 'taza') {
         const isLiquidIngredient =
-          /^(leche|nata|agua|caldo|vino|vinagre|salsa de soja|leche de coco|aceite|zumo)\b/i.test(canon.key);
+          /^(leche|bebida\s+de|bebida\s+vegetal|nata|crema\s+de\s+leche|agua|caldo|vino|vinagre|salsa|tamari|aceite|zumo|jugo|sirope|jarabe|kefir|horchata|cerveza|ron|brandy|cognac|licor)\b/i.test(
+            canon.key
+          );
 
         if (isLiquidIngredient) {
           const mlPerUnit =
