@@ -43,7 +43,7 @@ export function BottomNavigation() {
   return (
     <nav
       aria-label="Navegación principal móvil"
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-[#e7dfd5] shadow-lg pb-[env(safe-area-inset-bottom)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#e7dfd5] shadow-lg pb-[env(safe-area-inset-bottom)]"
     >
       <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-around">
         {navItems.map((item) => {

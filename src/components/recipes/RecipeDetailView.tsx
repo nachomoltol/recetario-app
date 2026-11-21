@@ -124,7 +124,11 @@ export function RecipeDetailView({
   // Estado de adaptación in-line a perfil: detecta persistencia previa en Supabase tras F5
   const [isAdapted, setIsAdapted] = useState(Boolean(receta?.receta_original));
   const [adaptationSummary, setAdaptationSummary] = useState<string | null>(
-    receta?.receta_original ? 'Receta adaptada y sincronizada con tu perfil' : null
+    receta?.receta_original
+      ? language === 'en'
+        ? 'Recipe adapted and synced with your profile'
+        : 'Receta adaptada y sincronizada con tu perfil'
+      : null
   );
 
   // Estados de fotografía
@@ -403,14 +407,26 @@ export function RecipeDetailView({
         });
 
         if (res.success) {
-          setToast({ message: 'Adaptación guardada en tu recetario', type: 'success' });
+          setToast({
+            message:
+              language === 'en'
+                ? 'Adaptation saved to your recipe collection'
+                : 'Adaptación guardada en tu recetario',
+            type: 'success',
+          });
         } else if (res.error) {
           setToast({ message: res.error, type: 'error' });
         }
       }
     } catch (e) {
       console.error('Error guardando adaptación en Supabase:', e);
-      setToast({ message: 'Error persistiendo la adaptación en la base de datos', type: 'error' });
+      setToast({
+        message:
+          language === 'en'
+            ? 'Error saving adaptation to database'
+            : 'Error persistiendo la adaptación en la base de datos',
+        type: 'error',
+      });
     }
   };
 
@@ -424,7 +440,13 @@ export function RecipeDetailView({
           setCurrentPasos(res.originalData.pasos);
           setIsAdapted(false);
           setAdaptationSummary(null);
-          setToast({ message: 'Receta restaurada a su versión original', type: 'success' });
+          setToast({
+            message:
+              language === 'en'
+                ? 'Recipe restored to original version'
+                : 'Receta restaurada a su versión original',
+            type: 'success',
+          });
           return;
         }
       }

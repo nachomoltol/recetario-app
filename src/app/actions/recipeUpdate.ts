@@ -155,7 +155,9 @@ export async function updateRecipeAction({
         // Clasificar pasillo por defecto si no viene establecido
         let pasilloFinal = ing.pasillo_supermercado || 'Despensa y Especias';
         const nLower = nombreLimpio.toLowerCase();
-        if (
+        if (/\b(chocolate|cacao|cocoa)\b/i.test(nLower)) {
+          pasilloFinal = 'Despensa y Especias';
+        } else if (
           /manzana|platano|plátano|limon|limón|naranja|fruta|pera|fresa|aguacate|tomate|cebolla|ajo|patata|verdura/i.test(
             nLower
           )
@@ -288,36 +290,86 @@ export async function updateRecipeAction({
             updateStepPayload.instruccion_avanzada = null;
           }
 
-          const { error: errUpdatePaso } = await supabase
+          let { error: errUpdatePaso } = await supabase
             .from('pasos')
             .update(updateStepPayload)
             .eq('id', p.id);
+
+          // Fallback defensivo: Si el schema cache de PostgREST no contiene las columnas de nivel culinario
+          if (
+            errUpdatePaso &&
+            /instruccion_principiante|instruccion_avanzada|descriptor_sensorial|potencia_fuego|temperatura_celsius|column|schema cache|PGRST204/i.test(
+              errUpdatePaso.message || ''
+            )
+          ) {
+            console.warn(
+              `[recipeUpdate] Reintentando update de paso ${p.id} sin columnas de nivel culinario:`,
+              errUpdatePaso.message
+            );
+            const fallbackStepPayload = {
+              orden: ordenFinal,
+              instruccion: cleanInstruccion,
+              tiempo_estimado_min: updateStepPayload.tiempo_estimado_min,
+              consejo_pro: updateStepPayload.consejo_pro,
+            };
+            const retryUpdateRes = await supabase
+              .from('pasos')
+              .update(fallbackStepPayload)
+              .eq('id', p.id);
+            errUpdatePaso = retryUpdateRes.error;
+          }
 
           if (errUpdatePaso) {
             console.error(`Error actualizando paso ${p.id}:`, errUpdatePaso);
             return { error: `Error actualizando paso ${ordenFinal}: ${errUpdatePaso.message}` };
           }
         } else {
-          const { error: errInsertPaso } = await supabase
+          const insertPayload: any = {
+            receta_id: recetaId,
+            orden: ordenFinal,
+            instruccion: cleanInstruccion,
+            instruccion_principiante: p.instruccion_principiante?.trim() || null,
+            instruccion_avanzada: p.instruccion_avanzada?.trim() || null,
+            tiempo_estimado_min:
+              typeof p.tiempo_estimado_min === 'number' && !isNaN(p.tiempo_estimado_min)
+                ? p.tiempo_estimado_min
+                : null,
+            consejo_pro: p.consejo_pro?.trim() || null,
+            descriptor_sensorial: p.descriptor_sensorial?.trim() || null,
+            temperatura_celsius:
+              typeof p.temperatura_celsius === 'number' && !isNaN(p.temperatura_celsius)
+                ? p.temperatura_celsius
+                : null,
+            potencia_fuego: p.potencia_fuego || null,
+          };
+
+          let { error: errInsertPaso } = await supabase
             .from('pasos')
-            .insert({
+            .insert(insertPayload);
+
+          // Fallback defensivo ante ausencia de columnas en schema cache
+          if (
+            errInsertPaso &&
+            /instruccion_principiante|instruccion_avanzada|descriptor_sensorial|potencia_fuego|temperatura_celsius|column|schema cache|PGRST204/i.test(
+              errInsertPaso.message || ''
+            )
+          ) {
+            console.warn(
+              `[recipeUpdate] Reintentando inserción básica de nuevo paso ${ordenFinal}:`,
+              errInsertPaso.message
+            );
+            const fallbackInsertPayload = {
               receta_id: recetaId,
               orden: ordenFinal,
               instruccion: cleanInstruccion,
-              instruccion_principiante: p.instruccion_principiante?.trim() || null,
-              instruccion_avanzada: p.instruccion_avanzada?.trim() || null,
-              tiempo_estimado_min:
-                typeof p.tiempo_estimado_min === 'number' && !isNaN(p.tiempo_estimado_min)
-                  ? p.tiempo_estimado_min
-                  : null,
-              consejo_pro: p.consejo_pro?.trim() || null,
-              descriptor_sensorial: p.descriptor_sensorial?.trim() || null,
-              temperatura_celsius:
-                typeof p.temperatura_celsius === 'number' && !isNaN(p.temperatura_celsius)
-                  ? p.temperatura_celsius
-                  : null,
-              potencia_fuego: p.potencia_fuego || null,
-            });
+              tiempo_estimado_min: insertPayload.tiempo_estimado_min,
+              consejo_pro: insertPayload.consejo_pro,
+            };
+            const retryInsertRes = await supabase
+              .from('pasos')
+              .insert(fallbackInsertPayload);
+            errInsertPaso = retryInsertRes.error;
+          }
 
           if (errInsertPaso) {
             console.error('Error insertando nuevo paso:', errInsertPaso);

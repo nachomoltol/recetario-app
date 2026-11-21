@@ -653,10 +653,12 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         ? conv.gramos
         : (typeof ing.gramos_estimados === 'number' && !isNaN(ing.gramos_estimados) ? ing.gramos_estimados : 0);
 
-      // Regla estricta de pasillos: manzana a Frutas y Verduras, agua a Bebidas, etc.
+      // Regla estricta de pasillos: chocolate a Despensa, manzana a Frutas y Verduras, agua a Bebidas, etc.
       let pasilloFinal = ing.pasillo_supermercado || 'Despensa y Especias';
       const nLower = nombreLimpio.toLowerCase();
-      if (/manzana|platano|plátano|limon|limón|naranja|fruta|pera|fresa|aguacate|tomate|cebolla|ajo|patata|verdura/i.test(nLower)) {
+      if (/\b(chocolate|cacao|cocoa)\b/i.test(nLower)) {
+        pasilloFinal = 'Despensa y Especias';
+      } else if (/manzana|platano|plátano|limon|limón|naranja|fruta|pera|fresa|aguacate|tomate|cebolla|ajo|patata|verdura/i.test(nLower)) {
         pasilloFinal = 'Frutas y Verduras';
       } else if (/^agua\b|agua mineral|agua del grifo|refresco|zumo|vino|cerveza/i.test(nLower)) {
         pasilloFinal = 'Bebidas';

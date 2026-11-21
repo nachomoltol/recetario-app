@@ -59,15 +59,24 @@ export function lemmatizeSpanishWord(word: string): string {
   const w = word.trim().toLowerCase();
   if (w.length <= 3) return w;
 
+  // Adjetivos y sustantivos regulares en -des (verdes -> verde, grandes -> grande)
+  if (w.endsWith('des') && w.length > 4) {
+    return w.slice(0, -1);
+  }
+
   // Plurales en -ces (nueces -> nuez)
   if (w.endsWith('ces') && w.length > 4) {
     return w.slice(0, -3) + 'z';
   }
 
-  // Plurales en -es con raíz en consonante [lrnd] (limones -> limon, champiñones -> champinon)
+  // Plurales en -es con raíz en consonante [lrn] (limones -> limon, champiñones -> champinon)
   if (w.endsWith('es') && w.length > 4) {
     const root = w.slice(0, -2);
-    if (/[lrnd]$/.test(root)) {
+    if (/[lrn]$/.test(root)) {
+      return root;
+    }
+    // Sustantivos reales terminados en consonante 'd' (pared -> paredes, red -> redes)
+    if (root.endsWith('d') && !w.endsWith('rdes') && !w.endsWith('ndes')) {
       return root;
     }
   }
@@ -373,6 +382,67 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'almidon de maiz': { key: 'almidon de maiz', displayName: 'Almidón de maíz (Maicena)' },
     'fecula de maiz': { key: 'almidon de maiz', displayName: 'Almidón de maíz (Maicena)' },
     'harina fina de maiz': { key: 'almidon de maiz', displayName: 'Almidón de maíz (Maicena)' },
+
+    // Levadura química y polvos de hornear
+    'polvo de hornear': { key: 'levadura quimica', displayName: 'Levadura química (Polvo de hornear)' },
+    'polvos de hornear': { key: 'levadura quimica', displayName: 'Levadura química (Polvo de hornear)' },
+    'polvo para hornear': { key: 'levadura quimica', displayName: 'Levadura química (Polvo de hornear)' },
+    'polvos para hornear': { key: 'levadura quimica', displayName: 'Levadura química (Polvo de hornear)' },
+    'levadura quimica': { key: 'levadura quimica', displayName: 'Levadura química (Polvo de hornear)' },
+    'levadura royal': { key: 'levadura quimica', displayName: 'Levadura química (Polvo de hornear)' },
+    'polvo leudante': { key: 'levadura quimica', displayName: 'Levadura química (Polvo de hornear)' },
+    'impulsor': { key: 'levadura quimica', displayName: 'Levadura química (Polvo de hornear)' },
+    'impulsor quimico': { key: 'levadura quimica', displayName: 'Levadura química (Polvo de hornear)' },
+
+    // Chocolate y derivados de cacao
+    'chocolate negro': { key: 'chocolate negro', displayName: 'Chocolate negro' },
+    'chocolates negros': { key: 'chocolate negro', displayName: 'Chocolate negro' },
+    'chocolate con leche': { key: 'chocolate con leche', displayName: 'Chocolate con leche' },
+    'chocolate blanco': { key: 'chocolate blanco', displayName: 'Chocolate blanco' },
+    'chocolate para fundir': { key: 'chocolate para fundir', displayName: 'Chocolate para fundir' },
+    'chocolate de cobertura': { key: 'chocolate para fundir', displayName: 'Chocolate para fundir' },
+    'chocolate': { key: 'chocolate', displayName: 'Chocolate' },
+    'chocolates': { key: 'chocolate', displayName: 'Chocolate' },
+    'cacao puro en polvo': { key: 'cacao puro', displayName: 'Cacao puro en polvo' },
+    'cacao en polvo': { key: 'cacao puro', displayName: 'Cacao puro en polvo' },
+    'cacao puro': { key: 'cacao puro', displayName: 'Cacao puro en polvo' },
+    'cacao': { key: 'cacao puro', displayName: 'Cacao puro en polvo' },
+
+    // Pimentón y variantes
+    'pimenton': { key: 'pimenton dulce', displayName: 'Pimentón dulce' },
+    'pimenton dulce': { key: 'pimenton dulce', displayName: 'Pimentón dulce' },
+    'pimentones': { key: 'pimenton dulce', displayName: 'Pimentón dulce' },
+    'paprika': { key: 'pimenton dulce', displayName: 'Pimentón dulce' },
+    'pimenton de la vera': { key: 'pimenton de la vera', displayName: 'Pimentón de la Vera' },
+    'pimenton picante': { key: 'pimenton picante', displayName: 'Pimentón picante' },
+
+    // Judías verdes (protegidas contra lematización errónea a 'judia verd')
+    'judias verdes': { key: 'judias verdes', displayName: 'Judías verdes' },
+    'judia verde': { key: 'judias verdes', displayName: 'Judías verdes' },
+    'judia verd': { key: 'judias verdes', displayName: 'Judías verdes' },
+    'judias verd': { key: 'judias verdes', displayName: 'Judías verdes' },
+    'alubia verde': { key: 'judias verdes', displayName: 'Judías verdes' },
+    'alubias verdes': { key: 'judias verdes', displayName: 'Judías verdes' },
+    'chaucha': { key: 'judias verdes', displayName: 'Judías verdes' },
+    'chauchas': { key: 'judias verdes', displayName: 'Judías verdes' },
+    'ejote': { key: 'judias verdes', displayName: 'Judías verdes' },
+    'ejotes': { key: 'judias verdes', displayName: 'Judías verdes' },
+
+    // Arándanos y bayas
+    'arandano': { key: 'arandanos', displayName: 'Arándanos' },
+    'arandanos': { key: 'arandanos', displayName: 'Arándanos' },
+    'arandano azul': { key: 'arandanos', displayName: 'Arándanos' },
+    'arandanos azules': { key: 'arandanos', displayName: 'Arándanos' },
+    'arandano rojo': { key: 'arandanos rojos', displayName: 'Arándanos rojos' },
+    'arandanos rojos': { key: 'arandanos rojos', displayName: 'Arándanos rojos' },
+
+    // Champiñones y setas
+    'champinon': { key: 'champinon', displayName: 'Champiñones' },
+    'champinones': { key: 'champinon', displayName: 'Champiñones' },
+    'champiñon': { key: 'champinon', displayName: 'Champiñones' },
+    'champiñones': { key: 'champinon', displayName: 'Champiñones' },
+    'seta': { key: 'setas', displayName: 'Setas' },
+    'setas': { key: 'setas', displayName: 'Setas' },
 
     'sal fina': { key: 'sal', displayName: 'Sal fina' },
     'sal marina': { key: 'sal', displayName: 'Sal marina' },

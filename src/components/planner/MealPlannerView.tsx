@@ -30,6 +30,8 @@ import {
   Clock,
   UtensilsCrossed,
   Download,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
@@ -217,6 +219,15 @@ export function MealPlannerView({
   const [isCopied, setIsCopied] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isProModalOpen, setIsProModalOpen] = useState(false);
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const duration = toast.type === 'error' ? 8000 : 3500;
+    const timer = setTimeout(() => setToast(null), duration);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   const profileFromStore = useProfileStore((s) => s.profile);
   const profile = userProfile ?? profileFromStore;
@@ -694,18 +705,33 @@ export function MealPlannerView({
 
   // Herramienta de Reseteo / Limpieza de Menús
   const [isClearingWeek, setIsClearingWeek] = useState(false);
-  const handleClearWeek = async () => {
-    if (!window.confirm(t('planner_clear_week_confirm'))) return;
+  const handleClearWeek = () => {
+    setShowClearConfirmModal(true);
+  };
+
+  const handleExecuteClearWeek = async () => {
+    setShowClearConfirmModal(false);
     setIsClearingWeek(true);
     try {
       const res = await clearWeeklyPlanAction(startDateStr, endDateStr);
       if (res.success) {
         setPlans((prev) => prev.filter((p) => p.fecha < startDateStr || p.fecha > endDateStr));
+        setToast({
+          message: t('planner_clear_week_success'),
+          type: 'success',
+        });
       } else {
-        alert(res.error || 'Error al vaciar la semana');
+        setToast({
+          message: res.error || (language === 'en' ? 'Error clearing week' : 'Error al vaciar la semana'),
+          type: 'error',
+        });
       }
     } catch (err: any) {
       console.error('Error clearing weekly plan:', err);
+      setToast({
+        message: language === 'en' ? 'Error clearing week' : 'Error al vaciar la semana',
+        type: 'error',
+      });
     } finally {
       setIsClearingWeek(false);
     }
@@ -925,7 +951,10 @@ export function MealPlannerView({
         return;
       }
       console.error('Error exportando PDF:', err);
-      alert(`Error PDF: ${rawError}`);
+      setToast({
+        message: `Error PDF: ${rawError}`,
+        type: 'error',
+      });
     } finally {
       setIsExportingPdf(false);
     }
@@ -2231,6 +2260,68 @@ export function MealPlannerView({
         isOpen={isProModalOpen}
         onClose={() => setIsProModalOpen(false)}
       />
+
+      {/* Modal de confirmación para vaciar la semana */}
+      {showClearConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-[#e7dfd5] shadow-2xl space-y-4 animate-scale-in">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-bold text-stone-900 font-serif-recipe">
+                {t('planner_clear_week_btn')}
+              </h3>
+              <p className="text-xs text-stone-600 leading-relaxed">
+                {t('planner_clear_week_confirm')}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowClearConfirmModal(false)}
+                className="py-2.5 px-4 rounded-xl border border-[#e7dfd5] bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-semibold transition cursor-pointer"
+              >
+                {language === 'en' ? 'Cancel' : 'Cancelar'}
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteClearWeek}
+                disabled={isClearingWeek}
+                className="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer disabled:opacity-50"
+              >
+                {isClearingWeek
+                  ? language === 'en'
+                    ? 'Clearing...'
+                    : 'Vaciando...'
+                  : language === 'en'
+                  ? 'Clear'
+                  : 'Vaciar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Flotante de Notificación */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-20 md:bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-[9999] p-4 rounded-2xl shadow-xl flex items-center gap-3 transition-all duration-300 animate-in slide-in-from-bottom border max-w-md ${
+            toast.type === 'success'
+              ? 'bg-stone-900 text-white border-emerald-500/40'
+              : 'bg-rose-900 text-white border-rose-500/40'
+          }`}
+        >
+          {toast.type === 'success' ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+          )}
+          <span className="text-xs sm:text-sm font-semibold break-words">{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -402,12 +402,16 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
       fillColor: COLOR_BG_ALT,
     },
     columnStyles: {
-      0: { cellWidth: 16, halign: 'center', fontStyle: 'bold', textColor: COLOR_MUTED },
+      0: { cellWidth: 20, halign: 'center', fontStyle: 'bold', textColor: COLOR_MUTED },
       1: { cellWidth: 55, fontStyle: 'bold' },
       2: { cellWidth: 32 },
       3: { textColor: COLOR_MUTED, fontSize: 7.5 },
     },
     didParseCell: (data: any) => {
+      // Garantizar que la columna 0 (checkbox y cabecera 'Comprar'/'Check') quede siempre centrada en todas las páginas
+      if (data.column.index === 0) {
+        data.cell.styles.halign = 'center';
+      }
       // Garantizar que celdas de pasillo/despensa que abarcan 4 columnas se alineen siempre a la izquierda
       if (
         data.row.raw &&

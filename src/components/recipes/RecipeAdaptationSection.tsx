@@ -45,6 +45,7 @@ export function RecipeAdaptationSection({
   onRevertAdaptation,
 }: RecipeAdaptationSectionProps) {
   const language = useLanguageStore((s) => s.language);
+  const isEn = language === 'en';
   const t = useLanguageStore((s) => s.t);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -152,17 +153,23 @@ export function RecipeAdaptationSection({
                 )}
                 <span className="font-bold">
                   {compatibilityReport.conflicts.length}{' '}
-                  {compatibilityReport.conflicts.length === 1 ? 'conflicto' : 'conflictos'}
+                  {compatibilityReport.conflicts.length === 1
+                    ? isEn
+                      ? 'conflict'
+                      : 'conflicto'
+                    : isEn
+                    ? 'conflicts'
+                    : 'conflictos'}
                 </span>
                 <span className="text-[10px] opacity-75 font-semibold uppercase">
-                  ({isCritical ? 'Crítico' : 'Ajustable'})
+                  ({isCritical ? (isEn ? 'Critical' : 'Crítico') : isEn ? 'Adjustable' : 'Ajustable'})
                 </span>
                 <button
                   type="button"
                   onClick={() => setIsAlertExpanded(!isAlertExpanded)}
                   className="ml-1 text-[11px] font-bold underline hover:opacity-80 cursor-pointer flex items-center gap-0.5"
                 >
-                  <span>{isAlertExpanded ? 'Ocultar' : 'Ver'}</span>
+                  <span>{isAlertExpanded ? (isEn ? 'Hide' : 'Ocultar') : isEn ? 'View' : 'Ver'}</span>
                   <ChevronDown
                     className={`w-3 h-3 transition-transform ${isAlertExpanded ? 'rotate-180' : ''}`}
                   />

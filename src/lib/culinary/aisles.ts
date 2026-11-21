@@ -122,13 +122,21 @@ export function classifyIngredientAisle(nombre?: string | null, existingAisle?: 
       return 'Despensa y Especias';
     }
 
+    // Prioridad absoluta: chocolate, cacao y derivados van incondicionalmente a Despensa y Especias (nunca a Frutas y Verduras)
+    if (/\b(chocolate|cacao|cocoa)\b/i.test(n)) {
+      return 'Despensa y Especias';
+    }
+
     // Conservas y derivados de tomate (triturado, frito, concentrado, passata, salsa) van siempre a Despensa y Especias
     if (CANNED_TOMATO_FORMATS_REGEX.test(n)) {
       return 'Despensa y Especias';
     }
 
-    // Corrección estricta: si vino marcado erróneamente como Despensa, re-enrutar
+    // Corrección estricta de pasillo previo heredado o asignado erróneamente
     if (existingAisle && SUPERMARKET_AISLES.includes(existingAisle as SupermarketAisle)) {
+      if (/\b(chocolate|cacao|cocoa)\b/i.test(n)) {
+        return 'Despensa y Especias';
+      }
       if (existingAisle === 'Despensa y Especias') {
         if (
           !DRY_SPICE_FORMATS_REGEX.test(n) &&
