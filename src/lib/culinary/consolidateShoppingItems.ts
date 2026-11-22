@@ -148,21 +148,29 @@ export const FRESH_PIECE_WEIGHT_G: Record<string, number> = {
 
   // Cortes cárnicos, aves y pescados (peso promedio por pieza para unificar en gramos)
   'muslo de pollo': 180,
+  'muslos de pollo': 180,
   muslo_de_pollo: 180,
   'contramuslo de pollo': 150,
+  'contramuslos de pollo': 150,
   contramuslo_de_pollo: 150,
   'pechuga de pollo': 200,
+  'pechugas de pollo': 200,
   pechuga_de_pollo: 200,
   'filete de pollo': 130,
+  'filetes de pollo': 130,
   filete_de_pollo: 130,
   'alita de pollo': 60,
+  'alitas de pollo': 60,
   alita_de_pollo: 60,
   'filete de ternera': 180,
+  'filetes de ternera': 180,
   filete_de_ternera: 180,
   'lomo de salmon': 180,
+  'lomos de salmon': 180,
   lomo_de_salmon: 180,
   salmon: 180,
   'lomo de merluza': 160,
+  'lomos de merluza': 160,
   lomo_de_merluza: 160,
   merluza: 160,
   bacalao: 160,
@@ -171,9 +179,13 @@ export const FRESH_PIECE_WEIGHT_G: Record<string, number> = {
   'chuleta de cerdo': 180,
   chuleta_de_cerdo: 180,
   chuleta: 180,
+  chuletas: 180,
   salchicha: 50,
+  salchichas: 50,
   chorizo: 80,
+  chorizos: 80,
   hamburguesa: 150,
+  hamburguesas: 150,
 };
 
 export const PREFER_GRAMS_INGREDIENTS = new Set([
@@ -935,13 +947,28 @@ export function consolidateShoppingItems(
         if (!canon.hasCommercialForm) {
           if (PREFER_GRAMS_INGREDIENTS.has(canon.key)) {
             if (canonicalUnitKey === 'unidad') {
-              if (gramos > 0) {
+              // Si gramos <= 15 o gramos es inferior al 40% del peso de una sola pieza,
+              // 'gramos' vino contaminado por el número de unidades (ej. 2 unidades -> 2 g calculados).
+              // En ese caso, la verdadera masa en gramos es cant * pieceWeightG.
+              if (pieceWeightG && (gramos <= 15 || gramos < cant * (pieceWeightG * 0.4))) {
+                cant = cant * pieceWeightG;
+                gramos = cant;
+              } else if (gramos > 0) {
                 cant = gramos;
               } else if (pieceWeightG) {
                 cant = cant * pieceWeightG;
+                gramos = cant;
               }
               if (gramos > 0 || pieceWeightG) {
                 canonicalUnitKey = 'g';
+              }
+            } else if (canonicalUnitKey === 'g') {
+              // Sanity check crítico:
+              // Si un corte cárnico, ave, pescado o pieza fresca viene con <= 15 g (ej: 2 g de muslo de pollo),
+              // es un absurdo culinario evidente: el valor representaba unidades/piezas no convertidas.
+              if (pieceWeightG && cant <= 15) {
+                cant = cant * pieceWeightG;
+                gramos = cant;
               }
             }
             if (canonicalUnitKey === 'g' && gramos === 0) {
@@ -949,10 +976,17 @@ export function consolidateShoppingItems(
             }
           } else if (pieceWeightG) {
             if (canonicalUnitKey === 'g') {
-              cant = cant / pieceWeightG;
-              canonicalUnitKey = 'unidad';
+              // Si viene en gramos pero la cantidad es minúscula (<= 15 g) para un producto que se compra por unidades (ej. 2 g de manzana/cebolla)
+              if (cant <= 15) {
+                cant = Math.max(1, Math.round(cant));
+                canonicalUnitKey = 'unidad';
+                gramos = cant * pieceWeightG;
+              } else {
+                cant = cant / pieceWeightG;
+                canonicalUnitKey = 'unidad';
+              }
             } else if (canonicalUnitKey === 'unidad') {
-              if (gramos === 0) {
+              if (gramos === 0 || gramos <= 15) {
                 gramos = cant * pieceWeightG;
               }
             }

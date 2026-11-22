@@ -35,6 +35,20 @@ export function cleanPdfText(text: string): string {
     .trim();
 }
 
+/**
+ * Normaliza la capitalización de títulos e ingredientes y sanea prefijos residuales
+ * de OCR, dictado o transcripciones (ej. '20:', '10:', '2°:', '1°:', '2º:').
+ */
+export function formatPdfDisplayTitle(text: string | null | undefined): string {
+  if (!text) return '';
+  let cleaned = cleanPdfText(text);
+  // Limpiar prefijos residuales tipo '10:', '20:', '1º:', '2º:', '1°:', '2°:', etc.
+  cleaned = cleaned.replace(/^(?:[12][0º°ª\.]|[12]º|[12]°|1st|2nd|1er\s+plato|2[ºo]\s+plato)\s*:\s*/i, '').trim();
+  if (!cleaned) return '';
+  // Capitalización editorial: primera letra en mayúscula, respetando el resto
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
 export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Promise<void> {
   const {
     dateRangeLabel,
@@ -158,15 +172,22 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
         const almuerzoUnico = dayPlans.find((p) => p.slot === 'almuerzo');
 
         const parts: string[] = [];
-        const title1 = almuerzo1?.receta?.titulo || (almuerzo1 as any)?.recetas?.titulo;
-        const title2 = almuerzo2?.receta?.titulo || (almuerzo2 as any)?.recetas?.titulo;
-        const titleUnico = almuerzoUnico?.receta?.titulo || (almuerzoUnico as any)?.recetas?.titulo;
+        const rawTitle1 = almuerzo1?.receta?.titulo || (almuerzo1 as any)?.recetas?.titulo;
+        const rawTitle2 = almuerzo2?.receta?.titulo || (almuerzo2 as any)?.recetas?.titulo;
+        const rawTitleUnico = almuerzoUnico?.receta?.titulo || (almuerzoUnico as any)?.recetas?.titulo;
+
+        const title1 = formatPdfDisplayTitle(rawTitle1);
+        const title2 = formatPdfDisplayTitle(rawTitle2);
+        const titleUnico = formatPdfDisplayTitle(rawTitleUnico);
+
+        const prefix1 = isEn ? '1st:' : '1º:';
+        const prefix2 = isEn ? '2nd:' : '2º:';
 
         if (title1) {
-          parts.push(`1º: ${title1}`);
+          parts.push(`${prefix1} ${title1}`);
         }
         if (title2) {
-          parts.push(`2º: ${title2}`);
+          parts.push(`${prefix2} ${title2}`);
         }
         if (parts.length === 0 && titleUnico) {
           parts.push(titleUnico);
@@ -175,7 +196,8 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
         row.push(parts.length > 0 ? parts.join('\n\n') : '—');
       } else {
         const match = dayPlans.find((p) => p.slot === slotInfo.slotKey);
-        const title = match?.receta?.titulo || (match as any)?.recetas?.titulo;
+        const rawTitle = match?.receta?.titulo || (match as any)?.recetas?.titulo;
+        const title = formatPdfDisplayTitle(rawTitle);
         row.push(title || '—');
       }
     }
@@ -186,6 +208,7 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
   // Renderizar la tabla de planificación semanal
   runAutoTable(doc, {
     startY: currentY,
+    tableWidth: pageWidth - marginX * 2,
     head: tableHead,
     body: tableBody,
     theme: 'grid',
@@ -322,12 +345,12 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
     for (const it of itemsInAisle) {
       const cantidadFormatted = `${it.cantidadTotal} ${it.unidad}`;
       const recetasText = (it.recetasNombres || []).length > 0
-        ? (it.recetasNombres || []).join(', ')
+        ? (it.recetasNombres || []).map((r) => formatPdfDisplayTitle(r)).join(', ')
         : '—';
 
       shoppingTableBody.push([
         '[   ]',
-        it.nombre,
+        formatPdfDisplayTitle(it.nombre),
         cantidadFormatted,
         recetasText,
       ]);
@@ -359,12 +382,12 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
 
     for (const it of pantryItems) {
       const recetasText = (it.recetasNombres || []).length > 0
-        ? (it.recetasNombres || []).join(', ')
+        ? (it.recetasNombres || []).map((r) => formatPdfDisplayTitle(r)).join(', ')
         : '—';
 
       shoppingTableBody.push([
         '[   ]',
-        it.nombre,
+        formatPdfDisplayTitle(it.nombre),
         isEn ? 'In pantry' : 'En despensa',
         recetasText,
       ]);
@@ -373,6 +396,9 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
 
   runAutoTable(doc, {
     startY: currentY,
+    tableWidth: pageWidth - marginX * 2,
+    showHead: 'everyPage',
+    rowPageBreak: 'avoid',
     head: [
       [
         isEn ? 'Check' : 'Comprar',
@@ -391,26 +417,29 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
       lineWidth: 0.2,
       textColor: COLOR_DARK,
       valign: 'middle',
+      overflow: 'linebreak',
     },
     headStyles: {
       fillColor: COLOR_BRAND,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 8.5,
+      halign: 'center',
     },
     alternateRowStyles: {
       fillColor: COLOR_BG_ALT,
     },
     columnStyles: {
-      0: { cellWidth: 20, halign: 'center', fontStyle: 'bold', textColor: COLOR_MUTED },
-      1: { cellWidth: 55, fontStyle: 'bold' },
+      0: { cellWidth: 22, halign: 'center', fontStyle: 'bold', textColor: COLOR_MUTED },
+      1: { cellWidth: 56, fontStyle: 'bold' },
       2: { cellWidth: 32 },
-      3: { textColor: COLOR_MUTED, fontSize: 7.5 },
+      3: { cellWidth: 72, textColor: COLOR_MUTED, fontSize: 7.5 },
     },
     didParseCell: (data: any) => {
-      // Garantizar que la columna 0 (checkbox y cabecera 'Comprar'/'Check') quede siempre centrada en todas las páginas
+      // Garantizar que la columna 0 (checkbox y cabecera 'Comprar'/'Check') quede siempre centrada y con padding simétrico en todas las páginas
       if (data.column.index === 0) {
         data.cell.styles.halign = 'center';
+        data.cell.styles.cellPadding = { top: 2.5, bottom: 2.5, left: 1, right: 1 };
       }
       // Garantizar que celdas de pasillo/despensa que abarcan 4 columnas se alineen siempre a la izquierda
       if (

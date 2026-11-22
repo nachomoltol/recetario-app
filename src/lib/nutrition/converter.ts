@@ -24,15 +24,28 @@ export function calcularGramos({
     return { gramos: cantidad * 1000, metodo: 'peso_directo', confianza: 1.0 };
   }
 
-  // 2. Unidades discretas (ej. 2 huevos, 1 manzana)
+  // 2. Unidades discretas (ej. 2 huevos, 1 manzana, 2 muslos de pollo)
   if (
-    (unidadNorm === 'unidad' || unidadNorm === 'ud' || unidadNorm === 'uds' || unidadNorm === 'pieza') &&
-    ingredienteMaestro?.peso_unidad_promedio_g
+    unidadNorm === 'unidad' ||
+    unidadNorm === 'unidades' ||
+    unidadNorm === 'ud' ||
+    unidadNorm === 'uds' ||
+    unidadNorm === 'pieza' ||
+    unidadNorm === 'piezas'
   ) {
+    if (ingredienteMaestro?.peso_unidad_promedio_g) {
+      return {
+        gramos: cantidad * Number(ingredienteMaestro.peso_unidad_promedio_g),
+        metodo: 'unidad_discreta',
+        confianza: 0.9,
+      };
+    }
+    // Si la unidad es discreta pero no conocemos el peso por pieza del ingrediente maestro,
+    // los gramos son 0 (desconocido). NUNCA devolver 'cantidad' directamente como gramos (ej. 2 unidades != 2 g).
     return {
-      gramos: cantidad * Number(ingredienteMaestro.peso_unidad_promedio_g),
+      gramos: 0,
       metodo: 'unidad_discreta',
-      confianza: 0.9,
+      confianza: 0.3,
     };
   }
 
