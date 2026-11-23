@@ -11,10 +11,11 @@ import {
   Apple,
   AlertCircle,
   Loader2,
-  CheckCircle2,
   RotateCcw,
   ArrowRight,
   ArrowLeft,
+  Check,
+  Users,
 } from 'lucide-react';
 import { Usuario, Receta } from '@/types/recipe';
 import { MealSlot, PlannedSlotItem, batchAssignMealSlotsAction } from '@/app/actions/mealPlanner';
@@ -31,6 +32,22 @@ export interface SmartMenuWizardViewProps {
   userProfile?: Usuario | null;
 }
 
+export type DayMealConfig = {
+  desayuno: boolean;
+  almuerzo: boolean;
+  cena: boolean;
+  snack: boolean;
+};
+
+interface DateInfo {
+  dateStr: string;
+  dayLetter: string;
+  dayShort: string;
+  dayNum: number;
+  monthShort: string;
+  isWeekend: boolean;
+}
+
 function formatLocalDate(d: Date): string {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -42,12 +59,6 @@ function getTodayString(): string {
   return formatLocalDate(new Date());
 }
 
-function getTomorrowString(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return formatLocalDate(d);
-}
-
 function getNextMondayString(): string {
   const d = new Date();
   d.setHours(12, 0, 0, 0);
@@ -55,6 +66,40 @@ function getNextMondayString(): string {
   const daysUntilNextMonday = ((1 + 7 - day) % 7) || 7;
   d.setDate(d.getDate() + daysUntilNextMonday);
   return formatLocalDate(d);
+}
+
+function getDateInfoList(start: string, count: number, lang: string): DateInfo[] {
+  const list: DateInfo[] = [];
+  const [y, m, d] = start.split('-').map(Number);
+  const cur = new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
+
+  const dayLettersEs = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+  const dayShortsEs = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const monthsShortEs = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+  const dayLettersEn = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const dayShortsEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const monthsShortEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const isEn = lang === 'en';
+  const dayLetters = isEn ? dayLettersEn : dayLettersEs;
+  const dayShorts = isEn ? dayShortsEn : dayShortsEs;
+  const monthsShort = isEn ? monthsShortEn : monthsShortEs;
+
+  for (let i = 0; i < count; i++) {
+    const dateStr = formatLocalDate(cur);
+    const dayOfWeek = cur.getDay();
+    list.push({
+      dateStr,
+      dayLetter: dayLetters[dayOfWeek],
+      dayShort: dayShorts[dayOfWeek],
+      dayNum: cur.getDate(),
+      monthShort: monthsShort[cur.getMonth()],
+      isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
+    });
+    cur.setDate(cur.getDate() + 1);
+  }
+  return list;
 }
 
 export function SmartMenuWizardView({
@@ -74,15 +119,10 @@ export function SmartMenuWizardView({
     (profile?.plan_suscripcion || '').trim().toLowerCase()
   );
 
-  // Paso actual del asistente (1: Duración y Fechas, 2: Momentos del día)
+  // Paso actual del asistente (1: Duración y Fechas, 2: Cockpit Semanal Táctil)
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
 
-  // 3. Selector y Corrección Dinámica de Fechas en /smart-menu:
-  // Se calculan las fechas de forma dinámica en el cliente
-  const todayStr = useMemo(() => getTodayString(), []);
-  const nextMondayStr = useMemo(() => getNextMondayString(), []);
-
-  // Estados de configuración del Wizard
+  // Estados de configuración de fechas
   const [dias, setDias] = useState<number>(7);
   const [startDate, setStartDate] = useState<string>(() => {
     if (initialStartDate) return initialStartDate;
@@ -96,13 +136,53 @@ export function SmartMenuWizardView({
     const endD = new Date(y, (m || 1) - 1, (d || 1) + 6, 12, 0, 0, 0);
     return formatLocalDate(endD);
   });
-  const [incluirDesayunos, setIncluirDesayunos] = useState<boolean>(true);
-  const [incluirAlmuerzos, setIncluirAlmuerzos] = useState<boolean>(true);
-  const [intentarPrimeroYSegundo, setIntentarPrimeroYSegundo] = useState<boolean>(false);
-  const [incluirCenas, setIncluirCenas] = useState<boolean>(true);
-  const [incluirSnackPostre, setIncluirSnackPostre] = useState<boolean>(false);
 
-  // Herramienta de Reseteo / Limpieza de Historial
+  // Lista de días calculada para el rango seleccionado
+  const dateList = useMemo(() => {
+    return getDateInfoList(startDate, dias, language);
+  }, [startDate, dias, language]);
+
+  // Configuración granular día a día para el Cockpit Semanal
+  const [slotsConfig, setSlotsConfig] = useState<Record<string, DayMealConfig>>(() => {
+    const initial: Record<string, DayMealConfig> = {};
+    const dates = getDateInfoList(
+      initialStartDate || ((new Date().getDay() === 0 || new Date().getDay() === 6) ? getNextMondayString() : getTodayString()),
+      7,
+      language
+    );
+    for (const d of dates) {
+      initial[d.dateStr] = {
+        desayuno: true,
+        almuerzo: true,
+        cena: true,
+        snack: false,
+      };
+    }
+    return initial;
+  });
+
+  // Sincronizar slotsConfig cuando cambia el rango de fechas
+  useEffect(() => {
+    setSlotsConfig((prev) => {
+      const next: Record<string, DayMealConfig> = {};
+      for (const d of dateList) {
+        if (prev[d.dateStr]) {
+          next[d.dateStr] = prev[d.dateStr];
+        } else {
+          next[d.dateStr] = {
+            desayuno: true,
+            almuerzo: true,
+            cena: true,
+            snack: false,
+          };
+        }
+      }
+      return next;
+    });
+  }, [dateList]);
+
+  // Opciones complementarias
+  const [intentarPrimeroYSegundo, setIntentarPrimeroYSegundo] = useState<boolean>(false);
   const [resetRecentHistory, setResetRecentHistory] = useState<boolean>(false);
 
   // Estados de ejecución y feedback
@@ -110,10 +190,20 @@ export function SmartMenuWizardView({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isProModalOpen, setIsProModalOpen] = useState<boolean>(false);
 
-  // Validación: Al menos una comida debe estar activa
-  const hasAtLeastOneMeal = useMemo(() => {
-    return incluirDesayunos || incluirAlmuerzos || incluirCenas || incluirSnackPostre;
-  }, [incluirDesayunos, incluirAlmuerzos, incluirCenas, incluirSnackPostre]);
+  // Estimación de platos activos en la matriz
+  const estimatedSlots = useMemo(() => {
+    let count = 0;
+    for (const d of dateList) {
+      const cfg = slotsConfig[d.dateStr];
+      if (cfg?.desayuno) count += 1;
+      if (cfg?.almuerzo) count += intentarPrimeroYSegundo ? 2 : 1;
+      if (cfg?.cena) count += 1;
+      if (cfg?.snack) count += 1;
+    }
+    return count;
+  }, [dateList, slotsConfig, intentarPrimeroYSegundo]);
+
+  const hasAtLeastOneMeal = estimatedSlots > 0;
 
   // Sincronizar fecha de planificación activa para el botón "Ver mi Plan"
   useEffect(() => {
@@ -129,15 +219,94 @@ export function SmartMenuWizardView({
     }
   }, [startDate]);
 
-  // Estimación de platos a generar
-  const estimatedSlots = useMemo(() => {
-    let slotsPerDay = 0;
-    if (incluirDesayunos) slotsPerDay += 1;
-    if (incluirAlmuerzos) slotsPerDay += intentarPrimeroYSegundo ? 2 : 1;
-    if (incluirCenas) slotsPerDay += 1;
-    if (incluirSnackPostre) slotsPerDay += 1;
-    return slotsPerDay * dias;
-  }, [dias, incluirDesayunos, incluirAlmuerzos, intentarPrimeroYSegundo, incluirCenas, incluirSnackPostre]);
+  // Atajos rápidos para configurar la semana con 1 toque
+  const applyPresetAll = () => {
+    const next: Record<string, DayMealConfig> = {};
+    for (const d of dateList) {
+      next[d.dateStr] = { desayuno: true, almuerzo: true, cena: true, snack: false };
+    }
+    setSlotsConfig(next);
+  };
+
+  const applyPresetWeekdays = () => {
+    const next: Record<string, DayMealConfig> = {};
+    for (const d of dateList) {
+      if (d.isWeekend) {
+        next[d.dateStr] = { desayuno: false, almuerzo: false, cena: false, snack: false };
+      } else {
+        next[d.dateStr] = { desayuno: true, almuerzo: true, cena: true, snack: false };
+      }
+    }
+    setSlotsConfig(next);
+  };
+
+  const applyPresetLunchDinner = () => {
+    const next: Record<string, DayMealConfig> = {};
+    for (const d of dateList) {
+      next[d.dateStr] = { desayuno: false, almuerzo: true, cena: true, snack: false };
+    }
+    setSlotsConfig(next);
+  };
+
+  const applyPresetDinnersOnly = () => {
+    const next: Record<string, DayMealConfig> = {};
+    for (const d of dateList) {
+      next[d.dateStr] = { desayuno: false, almuerzo: false, cena: true, snack: false };
+    }
+    setSlotsConfig(next);
+  };
+
+  const applyPresetClearAll = () => {
+    const next: Record<string, DayMealConfig> = {};
+    for (const d of dateList) {
+      next[d.dateStr] = { desayuno: false, almuerzo: false, cena: false, snack: false };
+    }
+    setSlotsConfig(next);
+  };
+
+  // Alternar toda una columna (un día completo)
+  const toggleDay = (dateStr: string) => {
+    setSlotsConfig((prev) => {
+      const cur = prev[dateStr];
+      const isAnyActive = cur?.desayuno || cur?.almuerzo || cur?.cena || cur?.snack;
+      return {
+        ...prev,
+        [dateStr]: {
+          desayuno: !isAnyActive,
+          almuerzo: !isAnyActive,
+          cena: !isAnyActive,
+          snack: false,
+        },
+      };
+    });
+  };
+
+  // Alternar toda una fila (un momento para todos los días)
+  const toggleRow = (meal: keyof DayMealConfig) => {
+    setSlotsConfig((prev) => {
+      const allActive = dateList.every((d) => prev[d.dateStr]?.[meal]);
+      const nextVal = !allActive;
+      const next: Record<string, DayMealConfig> = { ...prev };
+      for (const d of dateList) {
+        next[d.dateStr] = {
+          ...(next[d.dateStr] || { desayuno: false, almuerzo: false, cena: false, snack: false }),
+          [meal]: nextVal,
+        };
+      }
+      return next;
+    });
+  };
+
+  // Alternar una celda individual (un momento en un día específico)
+  const toggleCell = (dateStr: string, meal: keyof DayMealConfig) => {
+    setSlotsConfig((prev) => ({
+      ...prev,
+      [dateStr]: {
+        ...(prev[dateStr] || { desayuno: false, almuerzo: false, cena: false, snack: false }),
+        [meal]: !prev[dateStr]?.[meal],
+      },
+    }));
+  };
 
   // Ejecución de la generación inteligente
   const handleGeneratePlan = async () => {
@@ -163,8 +332,6 @@ export function SmartMenuWizardView({
     setIsGenerating(true);
 
     try {
-      // 5. Historial de IDs de recetas usadas recientemente para evitar repeticiones excesivas,
-      // o reseteo completo (vacío) si el usuario decide ignorarlo para desbloquear el 100% del recetario
       const historialRecientesIds = resetRecentHistory
         ? []
         : Array.from(
@@ -175,16 +342,22 @@ export function SmartMenuWizardView({
             )
           );
 
-      // Invocar motor inteligente de generación de menús
+      const anyDesayuno = dateList.some((d) => slotsConfig[d.dateStr]?.desayuno);
+      const anyAlmuerzo = dateList.some((d) => slotsConfig[d.dateStr]?.almuerzo);
+      const anyCena = dateList.some((d) => slotsConfig[d.dateStr]?.cena);
+      const anySnack = dateList.some((d) => slotsConfig[d.dateStr]?.snack);
+
+      // Invocar motor inteligente de generación de menús con granularidad por día
       const result = generateSmartMealPlan(userRecipes, {
         dias,
         fechaInicio: startDate,
-        incluirDesayunos,
-        incluirAlmuerzos,
-        intentarPrimeroYSegundo: incluirAlmuerzos && intentarPrimeroYSegundo,
-        incluirCenas,
-        incluirSnackPostre,
+        incluirDesayunos: anyDesayuno,
+        incluirAlmuerzos: anyAlmuerzo,
+        intentarPrimeroYSegundo: anyAlmuerzo && intentarPrimeroYSegundo,
+        incluirCenas: anyCena,
+        incluirSnackPostre: anySnack,
         historialRecientesIds,
+        slotsPorDia: slotsConfig,
       });
 
       if (!result.items || result.items.length === 0) {
@@ -193,8 +366,6 @@ export function SmartMenuWizardView({
         return;
       }
 
-      // 2. Respeto Estricto de los Comensales del Usuario (porciones):
-      // Lee el número de porciones configurado en el perfil del usuario (perfil.raciones_defecto o porciones_por_defecto)
       const defaultServings = (profile as any)?.porciones_por_defecto ?? profile?.raciones_defecto ?? 4;
 
       // Persistir ítems generados en Supabase mediante Server Action atómica en lote
@@ -226,66 +397,87 @@ export function SmartMenuWizardView({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
-      {/* Cabecera Minimalista Limpia */}
-      <div className="space-y-1">
-        <h1 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 tracking-tight">
-          {t('smart_menu_title')}
-        </h1>
-        <p className="text-xs sm:text-sm text-stone-600">
-          {t('smart_menu_subtitle')}
-        </p>
+    <div className="space-y-2.5 sm:space-y-3 animate-fade-in w-full max-w-full overflow-x-hidden">
+      {/* Cabecera Gourmet Minimalista Miga PRO */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="space-y-0.5 min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 className="text-base sm:text-lg font-bold font-serif-recipe text-stone-900 tracking-tight truncate">
+              {t('smart_menu_title')}
+            </h1>
+            <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 shadow-2xs shrink-0">
+              PRO
+            </span>
+          </div>
+          <p className="text-[11px] text-stone-600 truncate">
+            {t('smart_menu_subtitle')}
+          </p>
+        </div>
+
+        {/* Acceso directo a cambiar fechas cuando se está en el paso 2 */}
+        {currentStep === 2 && (
+          <button
+            type="button"
+            onClick={() => setCurrentStep(1)}
+            className="text-[11px] font-bold text-brand-primary hover:text-brand-hover bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-lg flex items-center gap-1 transition shrink-0"
+          >
+            <Calendar className="w-3 h-3" />
+            <span className="hidden xs:inline">{language === 'en' ? 'Dates' : 'Fechas'}</span>
+          </button>
+        )}
       </div>
 
       {/* Alerta de Error si ocurre */}
       {errorMessage && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm flex items-center justify-between gap-3 animate-fade-in">
-          <div className="flex items-center gap-2.5">
+        <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-2 animate-fade-in">
+          <div className="flex items-center gap-2 min-w-0">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>{errorMessage}</span>
+            <span className="truncate">{errorMessage}</span>
           </div>
           <button
             type="button"
             onClick={() => setErrorMessage(null)}
-            className="text-rose-500 hover:text-rose-700 font-bold px-2 py-1 cursor-pointer"
+            className="text-rose-500 hover:text-rose-700 font-bold px-1.5 py-0.5 cursor-pointer text-xs"
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* Indicador de 2 Pasos Secuenciales */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 p-1.5 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5]">
+      {/* Stepper gastronómico compacto Miga PRO */}
+      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#f4efe6] border border-[#e7dfd5]">
         <button
           type="button"
           onClick={() => setCurrentStep(1)}
-          className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+          className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer touch-manipulation ${
             currentStep === 1
               ? 'bg-brand-primary text-white shadow-xs'
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
-          <span>{t('smart_menu_step_1_pill')}</span>
+          <Calendar className="w-3.5 h-3.5" />
+          <span className="truncate">{language === 'en' ? '1. Dates' : '1. Fechas y Días'}</span>
         </button>
 
         <button
           type="button"
           onClick={() => setCurrentStep(2)}
-          className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+          className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer touch-manipulation ${
             currentStep === 2
               ? 'bg-brand-primary text-white shadow-xs'
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
-          <span>{t('smart_menu_step_2_pill')}</span>
+          <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+          <span className="truncate">{language === 'en' ? '2. Week Cockpit' : '2. Cockpit Semanal'}</span>
         </button>
       </div>
 
       {/* ============================================================== */}
-      {/* PASO 1 (Duración y Fecha): Selector de Rango Calendario Booking/Airbnb */}
+      {/* PASO 1: Selector de Rango Calendario Booking/Airbnb             */}
       {/* ============================================================== */}
       {currentStep === 1 && (
-        <section className="space-y-4 animate-fade-in">
+        <section className="space-y-2.5 animate-fade-in">
           <CalendarRangePicker
             startDate={startDate}
             endDate={endDate}
@@ -299,13 +491,13 @@ export function SmartMenuWizardView({
           />
 
           {/* Botón claro y táctil para avanzar al Paso 2 */}
-          <div className="pt-2">
+          <div className="pt-0.5">
             <button
               type="button"
               onClick={() => setCurrentStep(2)}
-              className="w-full min-h-[50px] rounded-2xl bg-brand-primary hover:bg-brand-hover text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition active:scale-[0.99] cursor-pointer touch-manipulation"
+              className="w-full min-h-[44px] rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition active:scale-[0.99] cursor-pointer touch-manipulation"
             >
-              <span>{t('smart_menu_next_step')}</span>
+              <span>{language === 'en' ? 'Next: Configure Meals' : 'Siguiente: Personalizar Comidas'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -313,328 +505,311 @@ export function SmartMenuWizardView({
       )}
 
       {/* ============================================================== */}
-      {/* PASO 2 (Momentos del día): Switches independientes y Generación */}
+      {/* PASO 2: EL COCKPIT SEMANAL TÁCTIL (SIN SCROLL MÓVIL)           */}
       {/* ============================================================== */}
       {currentStep === 2 && (
-        <>
-          <section className="p-6 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4 animate-fade-in">
-            <div>
-              <h2 className="text-sm sm:text-base font-bold font-serif-recipe text-stone-900">
-                {t('planner_wizard_step_meals')}
-              </h2>
-              <p className="text-xs text-stone-500 mt-0.5">
-                {t('planner_wizard_step_meals_desc')}
-              </p>
+        <section className="space-y-2 animate-fade-in">
+          {/* 1. Barra de atajos rápidos de un toque */}
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider shrink-0 mr-0.5">
+              {language === 'en' ? 'Presets:' : 'Atajos:'}
+            </span>
+            <button
+              type="button"
+              onClick={applyPresetAll}
+              className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 transition active:scale-95 shrink-0 touch-manipulation"
+            >
+              ✨ {language === 'en' ? 'All week' : 'Toda la semana'}
+            </button>
+            <button
+              type="button"
+              onClick={applyPresetWeekdays}
+              className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-stone-100 text-stone-700 border border-stone-200 hover:bg-stone-200 transition active:scale-95 shrink-0 touch-manipulation"
+            >
+              💼 {language === 'en' ? 'Mon-Fri' : 'Lun a Vie'}
+            </button>
+            <button
+              type="button"
+              onClick={applyPresetLunchDinner}
+              className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-stone-100 text-stone-700 border border-stone-200 hover:bg-stone-200 transition active:scale-95 shrink-0 touch-manipulation"
+            >
+              🍲 {language === 'en' ? 'Lunch + Dinner' : 'Comida + Cena'}
+            </button>
+            <button
+              type="button"
+              onClick={applyPresetDinnersOnly}
+              className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-stone-100 text-stone-700 border border-stone-200 hover:bg-stone-200 transition active:scale-95 shrink-0 touch-manipulation"
+            >
+              🌙 {language === 'en' ? 'Dinners only' : 'Solo Cenas'}
+            </button>
+            <button
+              type="button"
+              onClick={applyPresetClearAll}
+              className="px-1.5 py-0.5 rounded-full text-[10.5px] font-medium text-stone-500 hover:text-stone-800 transition active:scale-95 shrink-0 touch-manipulation"
+              title={language === 'en' ? 'Clear all' : 'Desmarcar todo'}
+            >
+              ✕ {language === 'en' ? 'Clear' : 'Limpiar'}
+            </button>
+          </div>
+
+          {/* 2. Matriz Semanal Interactiva (El Cockpit) */}
+          <div className="w-full bg-white rounded-xl border border-[#e7dfd5] shadow-2xs p-1.5 sm:p-2">
+            <div className="w-full overflow-x-auto no-scrollbar">
+              <table className="w-full border-collapse table-fixed select-none">
+                <thead>
+                  <tr>
+                    <th className="w-14 sm:w-16 text-left pb-1 text-[10px] font-bold text-stone-600 uppercase tracking-wider">
+                      {language === 'en' ? 'Meal' : 'Comida'}
+                    </th>
+                    {dateList.map((d) => {
+                      const cur = slotsConfig[d.dateStr];
+                      const isAnyActive = cur?.desayuno || cur?.almuerzo || cur?.cena || cur?.snack;
+                      return (
+                        <th key={d.dateStr} className="text-center pb-1 px-0.5">
+                          <button
+                            type="button"
+                            onClick={() => toggleDay(d.dateStr)}
+                            title={language === 'en' ? `Toggle ${d.dayShort}` : `Activar/desactivar ${d.dayShort}`}
+                            className={`w-full py-0.5 rounded-md flex flex-col items-center justify-center transition active:scale-95 touch-manipulation ${
+                              isAnyActive
+                                ? 'bg-amber-100/90 text-amber-900 border border-amber-300'
+                                : 'bg-stone-100 text-stone-600 border border-stone-200'
+                            }`}
+                          >
+                            <span className="text-[11px] font-black leading-tight">{d.dayLetter}</span>
+                            <span className="text-[9px] font-semibold opacity-75 leading-none">{d.dayNum}</span>
+                          </button>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {/* Fila: Desayuno */}
+                  <tr>
+                    <td className="py-1 pr-1">
+                      <button
+                        type="button"
+                        onClick={() => toggleRow('desayuno')}
+                        title={language === 'en' ? 'Toggle all breakfasts' : 'Alternar desayunos toda la semana'}
+                        className="w-full text-left flex items-center gap-1 text-[11px] font-bold text-stone-800 hover:text-amber-800 transition touch-manipulation"
+                      >
+                        <span className="text-xs">☀️</span>
+                        <span className="truncate">{language === 'en' ? 'Brk' : 'Des.'}</span>
+                      </button>
+                    </td>
+                    {dateList.map((d) => {
+                      const active = Boolean(slotsConfig[d.dateStr]?.desayuno);
+                      return (
+                        <td key={d.dateStr} className="py-1 px-0.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => toggleCell(d.dateStr, 'desayuno')}
+                            className={`w-full h-8 sm:h-8.5 rounded-lg flex items-center justify-center transition active:scale-90 touch-manipulation font-bold text-xs ${
+                              active
+                                ? 'bg-amber-500 text-white shadow-2xs'
+                                : 'bg-stone-100 text-stone-300 hover:bg-stone-200/60 border border-stone-200/60'
+                            }`}
+                          >
+                            {active ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : '·'}
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+
+                  {/* Fila: Almuerzo */}
+                  <tr>
+                    <td className="py-1 pr-1">
+                      <button
+                        type="button"
+                        onClick={() => toggleRow('almuerzo')}
+                        title={language === 'en' ? 'Toggle all lunches' : 'Alternar comidas toda la semana'}
+                        className="w-full text-left flex items-center gap-1 text-[11px] font-bold text-stone-800 hover:text-amber-800 transition touch-manipulation"
+                      >
+                        <span className="text-xs">🍲</span>
+                        <span className="truncate">{language === 'en' ? 'Lunch' : 'Com.'}</span>
+                      </button>
+                    </td>
+                    {dateList.map((d) => {
+                      const active = Boolean(slotsConfig[d.dateStr]?.almuerzo);
+                      return (
+                        <td key={d.dateStr} className="py-1 px-0.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => toggleCell(d.dateStr, 'almuerzo')}
+                            className={`w-full h-8 sm:h-8.5 rounded-lg flex items-center justify-center transition active:scale-90 touch-manipulation font-bold text-xs ${
+                              active
+                                ? 'bg-amber-500 text-white shadow-2xs'
+                                : 'bg-stone-100 text-stone-300 hover:bg-stone-200/60 border border-stone-200/60'
+                            }`}
+                          >
+                            {active ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : '·'}
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+
+                  {/* Fila: Cena */}
+                  <tr>
+                    <td className="py-1 pr-1">
+                      <button
+                        type="button"
+                        onClick={() => toggleRow('cena')}
+                        title={language === 'en' ? 'Toggle all dinners' : 'Alternar cenas toda la semana'}
+                        className="w-full text-left flex items-center gap-1 text-[11px] font-bold text-stone-800 hover:text-amber-800 transition touch-manipulation"
+                      >
+                        <span className="text-xs">🌙</span>
+                        <span className="truncate">{language === 'en' ? 'Dinner' : 'Cen.'}</span>
+                      </button>
+                    </td>
+                    {dateList.map((d) => {
+                      const active = Boolean(slotsConfig[d.dateStr]?.cena);
+                      return (
+                        <td key={d.dateStr} className="py-1 px-0.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => toggleCell(d.dateStr, 'cena')}
+                            className={`w-full h-8 sm:h-8.5 rounded-lg flex items-center justify-center transition active:scale-90 touch-manipulation font-bold text-xs ${
+                              active
+                                ? 'bg-amber-500 text-white shadow-2xs'
+                                : 'bg-stone-100 text-stone-300 hover:bg-stone-200/60 border border-stone-200/60'
+                            }`}
+                          >
+                            {active ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : '·'}
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+
+                  {/* Fila: Snack o Postre */}
+                  <tr>
+                    <td className="py-1 pr-1">
+                      <button
+                        type="button"
+                        onClick={() => toggleRow('snack')}
+                        title={language === 'en' ? 'Toggle all snacks' : 'Alternar snacks toda la semana'}
+                        className="w-full text-left flex items-center gap-1 text-[11px] font-bold text-stone-800 hover:text-amber-800 transition touch-manipulation"
+                      >
+                        <span className="text-xs">🍏</span>
+                        <span className="truncate">{language === 'en' ? 'Snk' : 'Snk.'}</span>
+                      </button>
+                    </td>
+                    {dateList.map((d) => {
+                      const active = Boolean(slotsConfig[d.dateStr]?.snack);
+                      return (
+                        <td key={d.dateStr} className="py-1 px-0.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => toggleCell(d.dateStr, 'snack')}
+                            className={`w-full h-8 sm:h-8.5 rounded-lg flex items-center justify-center transition active:scale-90 touch-manipulation font-bold text-xs ${
+                              active
+                                ? 'bg-amber-500 text-white shadow-2xs'
+                                : 'bg-stone-100 text-stone-300 hover:bg-stone-200/60 border border-stone-200/60'
+                            }`}
+                          >
+                            {active ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : '·'}
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tbody>
+              </table>
             </div>
+          </div>
 
-            <div className="space-y-3">
-              {/* Tarjeta: Desayunos */}
-              <div
-                onClick={() => setIncluirDesayunos(!incluirDesayunos)}
-                className={`p-4 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
-                  incluirDesayunos
-                    ? 'bg-amber-50/70 border-amber-200'
-                    : 'bg-[#faf7f2] border-[#e7dfd5] opacity-75'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                      incluirDesayunos ? 'bg-amber-100 text-amber-700' : 'bg-stone-200 text-stone-500'
-                    }`}
-                  >
-                    <Sun className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-stone-900 block truncate">
-                      {t('planner_wizard_meal_breakfast')}
-                    </span>
-                    <span className="text-[11px] text-stone-500 block truncate">
-                      {t('planner_wizard_meal_breakfast_sub')}
-                    </span>
-                  </div>
-                </div>
+          {/* 3. Aclaración permanente de Cenas (Sopas, cremas y ensaladas son cenas completas) */}
+          <div className="flex items-center gap-1.5 text-[10px] bg-amber-50/90 border border-amber-200/70 rounded-lg px-2.5 py-1 text-amber-900 leading-tight">
+            <Sparkles className="w-3 h-3 text-amber-600 shrink-0" />
+            <span className="font-medium truncate">
+              {language === 'en'
+                ? '✨ Soups, creams and salads are 100% complete dinners'
+                : '✨ Sopas, cremas y ensaladas son cenas 100% completas y válidas'}
+            </span>
+          </div>
 
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={incluirDesayunos}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIncluirDesayunos(!incluirDesayunos);
-                  }}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    incluirDesayunos ? 'bg-brand-primary' : 'bg-stone-300'
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                      incluirDesayunos ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Tarjeta: Almuerzos / Comidas */}
-              <div
-                onClick={() => setIncluirAlmuerzos(!incluirAlmuerzos)}
-                className={`p-4 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
-                  incluirAlmuerzos
-                    ? 'bg-amber-50/70 border-amber-200'
-                    : 'bg-[#faf7f2] border-[#e7dfd5] opacity-75'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                      incluirAlmuerzos ? 'bg-amber-100 text-amber-700' : 'bg-stone-200 text-stone-500'
-                    }`}
-                  >
-                    <Soup className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-stone-900 block truncate">
-                      {t('planner_wizard_meal_lunch')}
-                    </span>
-                    <span className="text-[11px] text-stone-500 block truncate">
-                      {t('planner_wizard_meal_lunch_sub')}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={incluirAlmuerzos}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIncluirAlmuerzos(!incluirAlmuerzos);
-                  }}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    incluirAlmuerzos ? 'bg-brand-primary' : 'bg-stone-300'
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                      incluirAlmuerzos ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Sub-toggle anidado condicional para 1º y 2º plato en Almuerzos */}
-              {incluirAlmuerzos && (
-                <div className="ml-4 pl-4 border-l-2 border-amber-300 py-1 animate-fade-in">
-                  <div
-                    onClick={() => setIntentarPrimeroYSegundo(!intentarPrimeroYSegundo)}
-                    className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
-                      intentarPrimeroYSegundo
-                        ? 'bg-white border-brand-primary shadow-2xs'
-                        : 'bg-[#faf7f2]/90 border-[#e7dfd5]'
-                    }`}
-                  >
-                    <div className="min-w-0 pr-2">
-                      <span className="text-xs font-bold text-stone-900 block">
-                        {t('planner_wizard_pair_courses')}
-                      </span>
-                      <span className="text-[11px] text-stone-500 block mt-0.5">
-                        {t('planner_wizard_pair_courses_sub')}
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={intentarPrimeroYSegundo}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIntentarPrimeroYSegundo(!intentarPrimeroYSegundo);
-                      }}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                        intentarPrimeroYSegundo ? 'bg-brand-primary' : 'bg-stone-300'
-                      }`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                          intentarPrimeroYSegundo ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Tarjeta: Cenas */}
-              <div
-                onClick={() => setIncluirCenas(!incluirCenas)}
-                className={`p-4 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
-                  incluirCenas
-                    ? 'bg-amber-50/70 border-amber-200'
-                    : 'bg-[#faf7f2] border-[#e7dfd5] opacity-75'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                      incluirCenas ? 'bg-amber-100 text-amber-700' : 'bg-stone-200 text-stone-500'
-                    }`}
-                  >
-                    <Moon className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-stone-900 block truncate">
-                      {t('planner_wizard_meal_dinner')}
-                    </span>
-                    <span className="text-[11px] text-stone-500 block truncate">
-                      {t('planner_wizard_meal_dinner_sub')}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={incluirCenas}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIncluirCenas(!incluirCenas);
-                  }}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    incluirCenas ? 'bg-brand-primary' : 'bg-stone-300'
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                      incluirCenas ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Tarjeta: Snacks o Postres */}
-              <div
-                onClick={() => setIncluirSnackPostre(!incluirSnackPostre)}
-                className={`p-4 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
-                  incluirSnackPostre
-                    ? 'bg-amber-50/70 border-amber-200'
-                    : 'bg-[#faf7f2] border-[#e7dfd5] opacity-75'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                      incluirSnackPostre ? 'bg-amber-100 text-amber-700' : 'bg-stone-200 text-stone-500'
-                    }`}
-                  >
-                    <Apple className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-stone-900 block truncate">
-                      {t('planner_wizard_meal_snack')}
-                    </span>
-                    <span className="text-[11px] text-stone-500 block truncate">
-                      {t('planner_wizard_meal_snack_sub')}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={incluirSnackPostre}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIncluirSnackPostre(!incluirSnackPostre);
-                  }}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    incluirSnackPostre ? 'bg-brand-primary' : 'bg-stone-300'
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                      incluirSnackPostre ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
-
-            {/* 5. Toggle para Resetear Historial Reciente */}
-            <div
-              onClick={() => setResetRecentHistory(!resetRecentHistory)}
-              className={`p-4 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
-                resetRecentHistory
-                  ? 'bg-amber-50/80 border-amber-300 shadow-2xs'
-                  : 'bg-[#faf7f2] border-[#e7dfd5] hover:bg-stone-50'
+          {/* 4. Opciones secundarias compactas en una sola fila */}
+          <div className="flex items-center justify-between gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIntentarPrimeroYSegundo(!intentarPrimeroYSegundo)}
+              className={`px-2 py-1 rounded-lg text-[10.5px] font-bold border transition flex items-center gap-1.5 active:scale-95 touch-manipulation ${
+                intentarPrimeroYSegundo
+                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                  : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
               }`}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                    resetRecentHistory ? 'bg-amber-100 text-amber-700' : 'bg-stone-200 text-stone-500'
-                  }`}
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-xs sm:text-sm font-bold text-stone-900 block">
-                    {t('smart_menu_reset_history_title')}
-                  </span>
-                  <span className="text-[11px] text-stone-500 block">
-                    {t('smart_menu_reset_history_desc')}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                role="switch"
-                aria-checked={resetRecentHistory}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setResetRecentHistory(!resetRecentHistory);
-                }}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                  resetRecentHistory ? 'bg-brand-primary' : 'bg-stone-300'
+              <span>🍲 {language === 'en' ? '1st & 2nd Course' : '1º y 2º Plato en comida'}</span>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  intentarPrimeroYSegundo ? 'bg-brand-primary' : 'bg-stone-300'
                 }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                    resetRecentHistory ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-          </section>
+              />
+            </button>
 
-          {/* Botones de Acción del Paso 2: Volver a fechas y Generar */}
-          <div className="pt-2 pb-6 space-y-3">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setResetRecentHistory(!resetRecentHistory)}
+              className={`px-2 py-1 rounded-lg text-[10.5px] font-bold border transition flex items-center gap-1.5 active:scale-95 touch-manipulation ${
+                resetRecentHistory
+                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                  : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+              }`}
+            >
+              <RotateCcw className="w-3 h-3 text-stone-500" />
+              <span>{language === 'en' ? 'Ignore recent' : 'Alternar recientes'}</span>
+            </button>
+          </div>
+
+          {/* 5. Resumen en vivo condensado */}
+          <div className="flex items-center justify-between px-1 text-[11px] font-medium text-stone-600">
+            <div className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-stone-400" />
+              <span>
+                {(profile as any)?.porciones_por_defecto ?? profile?.raciones_defecto ?? 4}{' '}
+                {language === 'en' ? 'servings' : 'raciones'}
+              </span>
+              <span className="text-stone-300">·</span>
+              <span>
+                {dias} {dias === 1 ? (language === 'en' ? 'day' : 'día') : (language === 'en' ? 'days' : 'días')}
+              </span>
+            </div>
+            <div className="font-bold text-brand-primary bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full text-[10.5px]">
+              ~{estimatedSlots} {language === 'en' ? 'dishes selected' : 'platos a planificar'}
+            </div>
+          </div>
+
+          {/* 6. Botonera Inferior Ergonómica */}
+          <div className="space-y-1 pt-0.5">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setCurrentStep(1)}
-                className="min-h-[50px] px-4 rounded-2xl border border-[#e7dfd5] bg-white hover:bg-[#faf7f2] text-stone-700 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                className="min-h-[44px] px-3.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-2xs touch-manipulation shrink-0"
               >
-                <ArrowLeft className="w-4 h-4" />
-                <span>{t('smart_menu_prev_step')}</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>{language === 'en' ? 'Dates' : 'Fechas'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleGeneratePlan}
                 disabled={!hasAtLeastOneMeal || isGenerating}
-                className="flex-1 min-h-[54px] rounded-2xl bg-gradient-to-r from-[#a86224] via-[#bd722e] to-[#8e511c] hover:opacity-95 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg transition active:scale-[0.99] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
+                className="flex-1 min-h-[44px] rounded-xl bg-gradient-to-r from-[#a86224] via-[#bd722e] to-[#8e511c] hover:opacity-95 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg transition active:scale-[0.99] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
               >
                 {isGenerating ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     <span>{t('smart_menu_generating_btn')}</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-5 h-5 text-amber-200" />
+                    <Sparkles className="w-4 h-4 text-amber-200" />
                     <span>{t('smart_menu_generate_btn')}</span>
-                    <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-400 text-stone-900 shadow-2xs">
+                    <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase tracking-wider bg-amber-400 text-stone-900 shadow-2xs">
                       PRO
                     </span>
                   </>
@@ -642,11 +817,13 @@ export function SmartMenuWizardView({
               </button>
             </div>
 
-            <p className="text-center text-[11px] text-stone-500">
-              {t('smart_menu_overwrite_notice')}
+            <p className="text-center text-[10px] text-stone-500 leading-tight">
+              {language === 'en'
+                ? 'Only meals for selected dates and slots will be updated. Other existing meals remain untouched.'
+                : 'Solo se reemplazarán las comidas de los momentos y días seleccionados. Las demás comidas existentes se conservan.'}
             </p>
           </div>
-        </>
+        </section>
       )}
 
       {/* Modal Cortafuegos PRO */}

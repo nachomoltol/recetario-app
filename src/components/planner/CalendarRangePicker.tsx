@@ -373,38 +373,31 @@ export function CalendarRangePicker({
   const weekdays = isEn ? WEEKDAYS_EN : WEEKDAYS_ES;
 
   return (
-    <div className="space-y-4 select-none">
-      {/* Instrucción clara superior bilingüe */}
-      <div className="flex items-start gap-2.5 p-3 sm:p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-700">
-        <Info className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
-        <div className="text-xs sm:text-sm">
-          <p className="font-semibold text-stone-900">
-            {isEn
-              ? 'Tap start & end dates or drag on the calendar to select your menu'
-              : 'Toca el día de inicio y fin o arrastra sobre el calendario para seleccionar tu menú'}
-          </p>
-          <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5">
-            {isEn
-              ? 'Continuous range selection: minimum 1 day, up to 31 days.'
-              : 'Rango continuo de selección: mínimo 1 día, máximo 31 días.'}
-          </p>
-        </div>
+    <div className="space-y-2.5 sm:space-y-4 select-none">
+      {/* Micro-píldora de instrucción superior */}
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-900 text-xs font-medium">
+        <Info className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+        <span className="truncate">
+          {isEn
+            ? 'Tap start & end dates or drag (1 to 31 days)'
+            : 'Toca fecha de inicio y fin o arrastra (1 a 31 días)'}
+        </span>
       </div>
 
       {/* Contenedor del Calendario */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs">
+      <div className="p-3 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-[#e7dfd5] shadow-xs">
         {/* Barra de Navegación de Meses */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#e7dfd5]/60 mb-3">
+        <div className="flex items-center justify-between pb-2 border-b border-[#e7dfd5]/60 mb-2">
           <button
             type="button"
             onClick={handlePrevMonth}
             aria-label={isEn ? 'Previous month' : 'Mes anterior'}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
-          <span className="text-sm sm:text-base font-bold font-serif-recipe text-stone-900 tracking-tight">
+          <span className="text-xs sm:text-base font-bold font-serif-recipe text-stone-900 tracking-tight">
             {monthTitle}
           </span>
 
@@ -412,18 +405,18 @@ export function CalendarRangePicker({
             type="button"
             onClick={handleNextMonth}
             aria-label={isEn ? 'Next month' : 'Mes siguiente'}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {/* Cabecera de Días de la Semana */}
-        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+        <div className="grid grid-cols-7 gap-1 text-center mb-1.5 sm:mb-2">
           {weekdays.map((d, idx) => (
             <div
               key={idx}
-              className="text-[11px] sm:text-xs font-bold text-stone-500 py-1"
+              className="text-[10px] sm:text-xs font-bold text-stone-500 py-0.5 sm:py-1"
             >
               {d}
             </div>
@@ -432,7 +425,7 @@ export function CalendarRangePicker({
 
         {/* Cuadrícula de Días con soporte táctil touch-none durante interacción */}
         <div
-          className="grid grid-cols-7 gap-y-1 text-center touch-none"
+          className="grid grid-cols-7 gap-y-0.5 sm:gap-y-1 text-center touch-none"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -463,7 +456,7 @@ export function CalendarRangePicker({
               <div
                 key={dateStr}
                 data-calendar-date={dateStr}
-                className={`relative h-10 sm:h-11 flex items-center justify-center py-0.5 ${rangeBgClass}`}
+                className={`relative h-8 sm:h-10 flex items-center justify-center py-0.5 ${rangeBgClass}`}
                 onMouseEnter={() => handleMouseEnter(dateStr)}
               >
                 <button
@@ -476,7 +469,7 @@ export function CalendarRangePicker({
                       handleDayClick(dateStr);
                     }
                   }}
-                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex flex-col items-center justify-center text-xs sm:text-sm font-semibold transition touch-manipulation cursor-pointer ${
+                  className={`w-7 h-7 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-xs sm:text-sm font-semibold transition touch-manipulation cursor-pointer ${
                     isStart || isEnd
                       ? 'bg-brand-primary text-white font-bold shadow-xs scale-105 z-10 opacity-100'
                       : isInRange
@@ -498,14 +491,14 @@ export function CalendarRangePicker({
       </div>
 
       {/* Caja Inferior de Confirmación Única */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between gap-3 text-xs sm:text-sm animate-fade-in">
-        <div className="flex items-center gap-2 text-stone-700">
-          <CalendarIcon className="w-4 h-4 text-brand-primary shrink-0" />
-          <span className="font-semibold">
+      <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between gap-2.5 text-xs sm:text-sm animate-fade-in">
+        <div className="flex items-center gap-1.5 sm:gap-2 text-stone-700">
+          <CalendarIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-primary shrink-0" />
+          <span className="font-semibold text-[11px] sm:text-xs">
             {isEn ? 'Planned period:' : 'Período planificado:'}
           </span>
         </div>
-        <span className="font-bold text-stone-900 text-right">
+        <span className="font-bold text-stone-900 text-right text-xs sm:text-sm">
           {formattedRangeText}
         </span>
       </div>

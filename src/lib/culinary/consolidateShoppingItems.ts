@@ -1,4 +1,5 @@
 import { classifyIngredientAisle } from './aisles';
+import { expandAtomicShoppingItems } from './atomicIngredients';
 import { isCanonicalSpiceHerbSaltOrPepper } from '@/lib/gemini/schema';
 
 export interface ScaledShoppingInputItem {
@@ -242,11 +243,42 @@ export const PANTRY_BULK_STAPLES = new Set([
 ]);
 
 /**
+ * Normaliza la capitalización editorial de nombres de ingredientes o platos:
+ * evita palabras en mayúsculas gritadas en medio del texto (ej. "leche de COCO" -> "Leche de coco"),
+ * preservando siglas culinarias conocidas (AOVE, DOP, IGP).
+ */
+export function normalizeEditorialCase(text: string): string {
+  const trimmed = (text || '').trim();
+  if (!trimmed) return '';
+  const lower = trimmed.toLowerCase();
+  const withAcronyms = lower.replace(/\b(aove|dop|igp)\b/gi, (m) => m.toUpperCase());
+  return withAcronyms.charAt(0).toUpperCase() + withAcronyms.slice(1);
+}
+
+/**
+ * Detecta agua normal de cocción (del grifo, tibia, fría, caliente...) que no debe
+ * comprarse en el pasillo de Bebidas. Excluye agua mineral, con gas, tónica o de coco.
+ */
+export function isTapCookingWater(normalizedKey: string): boolean {
+  if (!normalizedKey) return false;
+  return /^agua(\s+(del\s+grifo|tibia|caliente|fria|templada|hirviendo|de\s+coccion|filtrada|potable|normal|comun))?$/i.test(
+    normalizedKey.trim()
+  );
+}
+
+/**
  * Clasificación canónica de especias y condimentos mediante el extractor semántico universal.
  * Evalúa exclusivamente el núcleo rector culinario, evitando falsos positivos como 'mantequilla sin sal'.
  */
 export function isPantrySpice(keyOrName: string): boolean {
   if (!keyOrName) return false;
+  if (
+    /^(mezcla de especias?|especias?|sazonador(es)?|condimentos?|hierbas?(\s+(aromaticas?|provenzales?|de\s+provenza|secas?|italianas?))?|finas?\s+hierbas?)$/i.test(
+      keyOrName.trim()
+    )
+  ) {
+    return true;
+  }
   return isCanonicalSpiceHerbSaltOrPepper(keyOrName, keyOrName);
 }
 
@@ -266,12 +298,6 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
   cleanedOriginal = cleanedOriginal
     .replace(/^(\d+[\d.,/]*\s*(g|gr|grs|gramo|gramos|kg|kgs|kilo|kilos|ml|mls|l|lt|lts|litro|litros|cda|cdas|cdta|cdtas|cucharada|cucharadas|cucharadita|cucharaditas|diente|dientes|unidad|unidades|ud|uds|pieza|piezas|bote|botes|lata|latas|pizca|pizcas|punado|puñado|punados|puñados)?\s*(de\s+)?)/i, '')
     .replace(/^(un|una|unos|unas)\s+(de\s+)?/i, '')
-    .trim();
-
-  // Disolución de ingredientes compuestos con sal
-  cleanedOriginal = cleanedOriginal
-    .replace(/^sal(\s+(fina|marina|de mesa|comun))?\s+(y|con)\s+/i, '')
-    .replace(/\s+(y|con)\s+sal(\s+(fina|marina|de mesa|comun))?$/i, '')
     .trim();
 
   // Limpieza de paréntesis con notas o estados como (pomada), (a temperatura ambiente), (en dados)
@@ -548,6 +574,10 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'garbanzos de bote': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos (en conserva)' },
     'garbanzo en conserva': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos (en conserva)' },
     'garbanzos en conserva': { key: 'garbanzos cocidos', displayName: 'Garbanzos cocidos (en conserva)' },
+    'garbanzo': { key: 'garbanzos secos', displayName: 'Garbanzos secos' },
+    'garbanzos': { key: 'garbanzos secos', displayName: 'Garbanzos secos' },
+    'garbanzo seco': { key: 'garbanzos secos', displayName: 'Garbanzos secos' },
+    'garbanzos secos': { key: 'garbanzos secos', displayName: 'Garbanzos secos' },
 
     'lenteja cocida': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas (en conserva)' },
     'lentejas cocidas': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas (en conserva)' },
@@ -555,6 +585,12 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'lentejas de bote': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas (en conserva)' },
     'lenteja en conserva': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas (en conserva)' },
     'lentejas en conserva': { key: 'lentejas cocidas', displayName: 'Lentejas cocidas (en conserva)' },
+    'lenteja': { key: 'lentejas secas', displayName: 'Lentejas secas' },
+    'lentejas': { key: 'lentejas secas', displayName: 'Lentejas secas' },
+    'lenteja seca': { key: 'lentejas secas', displayName: 'Lentejas secas' },
+    'lentejas secas': { key: 'lentejas secas', displayName: 'Lentejas secas' },
+    'lenteja pardina': { key: 'lentejas secas', displayName: 'Lentejas secas' },
+    'lentejas pardinas': { key: 'lentejas secas', displayName: 'Lentejas secas' },
 
     'alubia cocida': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
     'alubias cocidas': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
@@ -566,6 +602,43 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'judias blancas cocidas': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
     'alubia blanca cocida': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
     'alubias blancas cocidas': { key: 'alubias cocidas', displayName: 'Alubias cocidas (en conserva)' },
+    'alubia': { key: 'alubias secas', displayName: 'Alubias secas' },
+    'alubias': { key: 'alubias secas', displayName: 'Alubias secas' },
+    'alubia seca': { key: 'alubias secas', displayName: 'Alubias secas' },
+    'alubias secas': { key: 'alubias secas', displayName: 'Alubias secas' },
+    'alubia blanca': { key: 'alubias secas', displayName: 'Alubias secas' },
+    'alubias blancas': { key: 'alubias secas', displayName: 'Alubias secas' },
+    'judia blanca': { key: 'alubias secas', displayName: 'Alubias secas' },
+    'judias blancas': { key: 'alubias secas', displayName: 'Alubias secas' },
+
+    // Fideos y pastas de sopa unificadas
+    'fideo': { key: 'fideos de sopa', displayName: 'Fideos de sopa' },
+    'fideos': { key: 'fideos de sopa', displayName: 'Fideos de sopa' },
+    'fideo de sopa': { key: 'fideos de sopa', displayName: 'Fideos de sopa' },
+    'fideos de sopa': { key: 'fideos de sopa', displayName: 'Fideos de sopa' },
+    'fideo para sopa': { key: 'fideos de sopa', displayName: 'Fideos de sopa' },
+    'fideos para sopa': { key: 'fideos de sopa', displayName: 'Fideos de sopa' },
+    'fideo fino': { key: 'fideos de sopa', displayName: 'Fideos de sopa' },
+    'fideos finos': { key: 'fideos de sopa', displayName: 'Fideos de sopa' },
+    'cabello de angel': { key: 'fideos de sopa', displayName: 'Fideos de sopa' },
+
+    // Especias y hierbas genéricas (evitar singulares forzados como "Mezcla de especia" o "Hierba")
+    'especia': { key: 'mezcla de especias', displayName: 'Mezcla de especias' },
+    'especias': { key: 'mezcla de especias', displayName: 'Mezcla de especias' },
+    'mezcla de especia': { key: 'mezcla de especias', displayName: 'Mezcla de especias' },
+    'mezcla de especias': { key: 'mezcla de especias', displayName: 'Mezcla de especias' },
+    'sazonador': { key: 'mezcla de especias', displayName: 'Mezcla de especias' },
+    'condimento': { key: 'mezcla de especias', displayName: 'Mezcla de especias' },
+    'condimentos': { key: 'mezcla de especias', displayName: 'Mezcla de especias' },
+    'hierba': { key: 'hierbas aromaticas', displayName: 'Hierbas aromáticas' },
+    'hierbas': { key: 'hierbas aromaticas', displayName: 'Hierbas aromáticas' },
+    'hierba aromatica': { key: 'hierbas aromaticas', displayName: 'Hierbas aromáticas' },
+    'hierbas aromaticas': { key: 'hierbas aromaticas', displayName: 'Hierbas aromáticas' },
+    'fina hierba': { key: 'hierbas aromaticas', displayName: 'Hierbas aromáticas' },
+    'finas hierbas': { key: 'hierbas aromaticas', displayName: 'Hierbas aromáticas' },
+    'hierba provenzal': { key: 'hierbas provenzales', displayName: 'Hierbas provenzales' },
+    'hierbas provenzales': { key: 'hierbas provenzales', displayName: 'Hierbas provenzales' },
+    'hierbas de provenza': { key: 'hierbas provenzales', displayName: 'Hierbas provenzales' },
 
     // Cortes cárnicos y aves
     'muslo de pollo': { key: 'muslo de pollo', displayName: 'Muslo de pollo' },
@@ -574,10 +647,30 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
     'contramuslos de pollo': { key: 'contramuslo de pollo', displayName: 'Contramuslo de pollo' },
     'contramuslo': { key: 'contramuslo de pollo', displayName: 'Contramuslo de pollo' },
     'contramuslos': { key: 'contramuslo de pollo', displayName: 'Contramuslo de pollo' },
+    'pechuga': { key: 'pechuga de pollo', displayName: 'Pechuga de pollo' },
+    'pechugas': { key: 'pechuga de pollo', displayName: 'Pechuga de pollo' },
     'pechuga de pollo': { key: 'pechuga de pollo', displayName: 'Pechuga de pollo' },
     'pechugas de pollo': { key: 'pechuga de pollo', displayName: 'Pechuga de pollo' },
+    'filete de pollo': { key: 'pechuga de pollo', displayName: 'Pechuga de pollo' },
+    'filetes de pollo': { key: 'pechuga de pollo', displayName: 'Pechuga de pollo' },
     'alita de pollo': { key: 'alita de pollo', displayName: 'Alitas de pollo' },
     'alitas de pollo': { key: 'alita de pollo', displayName: 'Alitas de pollo' },
+    'filete de ternera': { key: 'filete de ternera', displayName: 'Filete de ternera' },
+    'filetes de ternera': { key: 'filete de ternera', displayName: 'Filete de ternera' },
+    'chuleta': { key: 'chuleta de cerdo', displayName: 'Chuleta de cerdo' },
+    'chuletas': { key: 'chuleta de cerdo', displayName: 'Chuleta de cerdo' },
+    'chuleta de cerdo': { key: 'chuleta de cerdo', displayName: 'Chuleta de cerdo' },
+    'chuletas de cerdo': { key: 'chuleta de cerdo', displayName: 'Chuleta de cerdo' },
+    'lomo de cerdo': { key: 'lomo de cerdo', displayName: 'Lomo de cerdo' },
+    'cinta de lomo': { key: 'lomo de cerdo', displayName: 'Lomo de cerdo' },
+    'carne picada': { key: 'carne picada', displayName: 'Carne picada' },
+    'carne molida': { key: 'carne picada', displayName: 'Carne picada' },
+    'salchicha': { key: 'salchicha', displayName: 'Salchichas' },
+    'salchichas': { key: 'salchicha', displayName: 'Salchichas' },
+    'chorizo': { key: 'chorizo', displayName: 'Chorizo' },
+    'chorizos': { key: 'chorizo', displayName: 'Chorizo' },
+    'hamburguesa': { key: 'hamburguesa', displayName: 'Hamburguesas' },
+    'hamburguesas': { key: 'hamburguesa', displayName: 'Hamburguesas' },
     'lomo de salmon': { key: 'lomo de salmon', displayName: 'Lomo de salmón' },
     'lomos de salmon': { key: 'lomo de salmon', displayName: 'Lomo de salmón' },
     'lomo de merluza': { key: 'lomo de merluza', displayName: 'Lomo de merluza' },
@@ -648,9 +741,9 @@ export function normalizeIngredientKey(rawName: string): CanonicalIngredient {
 
   let displayName = cleanedOriginal.trim();
   if (wasCompoundLemmatized || lemmaKey !== norm) {
-    displayName = lemmaKey.charAt(0).toUpperCase() + lemmaKey.slice(1);
+    displayName = normalizeEditorialCase(lemmaKey);
   } else {
-    displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+    displayName = normalizeEditorialCase(displayName);
   }
 
   return {
@@ -736,6 +829,9 @@ export function formatShoppingUnitPlural(unidad: string, cantidad: number): stri
   if (u === 'taza' || u === 'tazas') {
     return cantidad > 1 ? 'tazas' : 'taza';
   }
+  if (u === 'l' || u === 'lt' || u === 'lts' || u === 'litro' || u === 'litros' || u === 'liter' || u === 'liters') {
+    return 'L';
+  }
   return u;
 }
 
@@ -769,14 +865,38 @@ export function consolidateShoppingItems(
   const consolidated = new Map<string, ConsolidatedAcc>();
   const defaultTitle = options?.defaultRecipeTitle || 'Receta';
 
-  for (const item of items || []) {
+  // Ley Universal de Atomicidad: expandir ingredientes compuestos en ítems atómicos individuales
+  const expandedItems = expandAtomicShoppingItems(items || [], classifyIngredientAisle);
+
+  for (const item of expandedItems) {
     const rawName = (item.nombre_limpio || item.nombre_crudo || '').trim();
     if (!rawName) continue;
 
     const canon = normalizeIngredientKey(rawName);
     if (!canon.key) continue;
 
+    // Excluir agua normal de cocción (del grifo, tibia, fría, caliente...) de la lista de compras
+    // (se preservan agua mineral, agua con gas, agua tónica, agua de coco, etc.)
+    if (isTapCookingWater(canon.key)) continue;
+
     const uRaw = (item.unidad || 'unidad').trim().toLowerCase();
+
+    // Si una legumbre genérica viene medida en bote o lata, promoverla a su formato cocido en conserva
+    if (/^(bote|botes|lata|latas)$/i.test(uRaw)) {
+      if (canon.key === 'garbanzos secos') {
+        canon.key = 'garbanzos cocidos';
+        canon.displayName = 'Garbanzos cocidos (en conserva)';
+        canon.hasCommercialForm = true;
+      } else if (canon.key === 'lentejas secas') {
+        canon.key = 'lentejas cocidas';
+        canon.displayName = 'Lentejas cocidas (en conserva)';
+        canon.hasCommercialForm = true;
+      } else if (canon.key === 'alubias secas') {
+        canon.key = 'alubias cocidas';
+        canon.displayName = 'Alubias cocidas (en conserva)';
+        canon.hasCommercialForm = true;
+      }
+    }
 
     // Normalizar unidad base para la clave de agregación
     let canonicalUnitKey = uRaw;
@@ -1260,17 +1380,11 @@ export function consolidateShoppingItems(
     let finalAmount = acc.rawCantidad;
 
     if (acc.unidad === 'g' && finalAmount >= 1000) {
-      const inKg = Math.round((finalAmount / 1000) * 10) / 10;
-      if (Number.isInteger(inKg) || (inKg * 10) % 5 === 0) {
-        finalAmount = inKg;
-        finalUnit = 'kg';
-      }
+      finalAmount = Math.round((finalAmount / 1000) * 10) / 10;
+      finalUnit = 'kg';
     } else if (acc.unidad === 'ml' && finalAmount >= 1000) {
-      const inL = Math.round((finalAmount / 1000) * 10) / 10;
-      if (Number.isInteger(inL) || (inL * 10) % 5 === 0) {
-        finalAmount = inL;
-        finalUnit = 'l';
-      }
+      finalAmount = Math.round((finalAmount / 1000) * 10) / 10;
+      finalUnit = 'L';
     }
 
     const roundedCantidad = roundShoppingListAmount(finalAmount, finalUnit);

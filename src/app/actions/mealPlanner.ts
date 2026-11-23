@@ -234,14 +234,21 @@ export async function batchAssignMealSlotsAction(
 
     const uniqueDates = Array.from(new Set(uniqueItems.map((it) => it.fecha))).sort();
 
-    // 1. Limpiar exclusivamente los slots de las fechas exactas que se van a reasignar.
-    // Queda prohibido borrar días posteriores o anteriores fuera del rango seleccionado (p. ej. fin de semana existente al generar un plan corto).
-    if (uniqueDates.length > 0) {
+    // 1. Limpiar exclusivamente los slots específicos que se van a reasignar en cada fecha,
+    // preservando intactas las comidas planificadas en otros momentos (p. ej. desayunos o comidas al generar solo cenas).
+    const slotsByDate = new Map<string, Set<MealSlot>>();
+    for (const it of uniqueItems) {
+      if (!slotsByDate.has(it.fecha)) slotsByDate.set(it.fecha, new Set());
+      slotsByDate.get(it.fecha)!.add(it.slot);
+    }
+
+    for (const [dateStr, slotsSet] of slotsByDate.entries()) {
       await supabase
         .from('plan_comidas')
         .delete()
         .eq('usuario_id', user.id)
-        .in('fecha', uniqueDates);
+        .eq('fecha', dateStr)
+        .in('slot', Array.from(slotsSet));
     }
 
     const rows = uniqueItems.map((it) => ({

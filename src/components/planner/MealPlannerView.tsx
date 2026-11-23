@@ -964,13 +964,21 @@ export function MealPlannerView({
     if (!shoppingModal) return;
 
     const isEn = language === 'en';
-    const daysCount = selectedDates.length;
+    const copyStart = shoppingScopeMode === 'range' ? rangeStartDate : startDateStr;
+    const copyEnd = shoppingScopeMode === 'range' ? rangeEndDate : endDateStr;
+    const daysCount =
+      shoppingScopeMode === 'range'
+        ? getDateStringsBetween(
+            copyStart <= copyEnd ? copyStart : copyEnd,
+            copyStart <= copyEnd ? copyEnd : copyStart
+          ).length
+        : selectedDates.length;
     const slotsCount = selectedSlots.length;
     const lines = [
       isEn ? `🛒 UNIFIED WEEKLY SHOPPING LIST` : `🛒 LISTA DE LA COMPRA SEMANAL UNIFICADA`,
       isEn
-        ? `📅 Range: ${startDateStr} to ${endDateStr} (${daysCount} days · ${slotsCount} meals/day)`
-        : `📅 Rango: ${startDateStr} al ${endDateStr} (${daysCount} días · ${slotsCount} comidas/día)`,
+        ? `📅 Range: ${copyStart} to ${copyEnd} (${daysCount} days · ${slotsCount} meals/day)`
+        : `📅 Rango: ${copyStart} al ${copyEnd} (${daysCount} días · ${slotsCount} comidas/día)`,
       '=======================================================',
     ];
 
@@ -978,11 +986,13 @@ export function MealPlannerView({
       lines.push(`\n📍 ${group.aisle.toUpperCase()}`);
       lines.push('-------------------------------------------------------');
       for (const item of group.items) {
-        const isChecked = checkedShoppingItems.includes(item.nombre);
+        const itemKey = `${item.nombre}___${item.unidad}`;
+        const isChecked = checkedShoppingItems.includes(itemKey);
         const prefix = isChecked ? '✓' : '☐';
         const forLabel = isEn ? 'for' : 'para';
         const qtyStr = item.cantidadTotal > 0 ? `${item.cantidadTotal} ${item.unidad}` : item.unidad;
-        lines.push(`${prefix} ${qtyStr} ${item.nombre} (${forLabel}: ${item.recetasNombres.join(', ')})`);
+        const notesStr = item.notas && item.notas.length > 0 ? ` [${item.notas.join(' · ')}]` : '';
+        lines.push(`${prefix} ${qtyStr} ${item.nombre}${notesStr} (${forLabel}: ${item.recetasNombres.join(', ')})`);
       }
     }
 

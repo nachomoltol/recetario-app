@@ -46,7 +46,7 @@ export default async function MealPlannerPage(props: MealPlannerPageProps) {
     getWeeklyPlanAction(startDate, endDate),
     supabase
       .from('recetas')
-      .select('*')
+      .select('*, receta_ingredientes (*)')
       .eq('usuario_id', user.id)
       .order('titulo', { ascending: true }),
   ]);

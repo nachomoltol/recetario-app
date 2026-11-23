@@ -9,6 +9,7 @@ const activeIngestUsers = new Set<string>();
 import { extractRecipeWithGemini, detectFuenteTipo, sanitizeRecipeUrl } from '@/lib/gemini/extractor';
 import { resolveCanonicalVideoSource, computeSourceUrlHash, repairBrokenTikTokUrl } from '@/lib/culinary/urlCanonicalizer';
 import { ExtractedIngredient, normalizarIngredientesExtraidos } from '@/lib/gemini/schema';
+import { classifyIngredientAisle } from '@/lib/culinary/aisles';
 import { calcularGramos } from '@/lib/nutrition/converter';
 import { IngredienteMaestro } from '@/types/recipe';
 import { FuenteTipoReceta } from '@/types/database';
@@ -653,16 +654,8 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
         ? conv.gramos
         : (typeof ing.gramos_estimados === 'number' && !isNaN(ing.gramos_estimados) ? ing.gramos_estimados : 0);
 
-      // Regla estricta de pasillos: chocolate a Despensa, manzana a Frutas y Verduras, agua a Bebidas, etc.
-      let pasilloFinal = ing.pasillo_supermercado || 'Despensa y Especias';
-      const nLower = nombreLimpio.toLowerCase();
-      if (/\b(chocolate|cacao|cocoa)\b/i.test(nLower)) {
-        pasilloFinal = 'Despensa y Especias';
-      } else if (/manzana|platano|plátano|limon|limón|naranja|fruta|pera|fresa|aguacate|tomate|cebolla|ajo|patata|verdura/i.test(nLower)) {
-        pasilloFinal = 'Frutas y Verduras';
-      } else if (/^agua\b|agua mineral|agua del grifo|refresco|zumo|vino|cerveza/i.test(nLower)) {
-        pasilloFinal = 'Bebidas';
-      }
+      // LEY UNIVERSAL 1: Clasificación de pasillo físico por estado real del alimento
+      const pasilloFinal = classifyIngredientAisle(nombreLimpio, ing.pasillo_supermercado);
 
       const notasCombinadas = [
         ing.notas,

@@ -1,5 +1,9 @@
 import { PlannedSlotItem, UnifiedShoppingItem } from '@/app/actions/mealPlanner';
-import { ConsolidatedShoppingItem } from '@/lib/culinary/consolidateShoppingItems';
+import {
+  ConsolidatedShoppingItem,
+  normalizeEditorialCase,
+} from '@/lib/culinary/consolidateShoppingItems';
+import { groupItemsByAisle, SupermarketAisle } from '@/lib/culinary/aisles';
 import { saveOrSharePdf } from './pdfDownloadHelper';
 
 export interface ExportPdfDayInfo {
@@ -36,18 +40,50 @@ export function cleanPdfText(text: string): string {
 }
 
 /**
- * Normaliza la capitalización de títulos e ingredientes y sanea prefijos residuales
- * de OCR, dictado o transcripciones (ej. '20:', '10:', '2°:', '1°:', '2º:').
+ * Normaliza la capitalización editorial de títulos e ingredientes y sanea prefijos residuales
+ * de OCR, dictado o transcripciones (ej. '20:', '10.', '20. ', '2º ', '1°:', '2°:').
+ * Evita mayúsculas gritadas en medio de un texto (ej. 'leche de COCO' -> 'Leche de coco').
  */
 export function formatPdfDisplayTitle(text: string | null | undefined): string {
   if (!text) return '';
   let cleaned = cleanPdfText(text);
-  // Limpiar prefijos residuales tipo '10:', '20:', '1º:', '2º:', '1°:', '2°:', etc.
-  cleaned = cleaned.replace(/^(?:[12][0º°ª\.]|[12]º|[12]°|1st|2nd|1er\s+plato|2[ºo]\s+plato)\s*:\s*/i, '').trim();
+  // Limpiar prefijos residuales numéricos o de orden con ':', '.', '-', '–' o espacio tras ordinal
+  cleaned = cleaned
+    .replace(
+      /^(?:(?:[12]0|[12])\s*[:.\-–]\s*|(?:[12][º°ª]|1st|2nd|1er\s+plato|2[ºo]\s+plato)\s*(?:[:.\-–]\s*|\s+))/i,
+      ''
+    )
+    .trim();
   if (!cleaned) return '';
-  // Capitalización editorial: primera letra en mayúscula, respetando el resto
-  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  return normalizeEditorialCase(cleaned);
 }
+
+/**
+ * Formatea cantidad y unidad para el PDF asegurando que los litros usen siempre 'L' mayúscula
+ * (nunca 'l' minúscula que en Helvetica se confunde visualmente con el dígito '1').
+ */
+function formatPdfAmountAndUnit(cantidadTotal: number, unidadRaw: string): string {
+  const u = cleanPdfText(unidadRaw || '').trim();
+  const uLower = u.toLowerCase();
+  const safeUnit =
+    uLower === 'l' || uLower === 'lt' || uLower === 'lts' || uLower === 'litro' || uLower === 'litros'
+      ? 'L'
+      : u;
+  return `${cantidadTotal} ${safeUnit}`.trim();
+}
+
+const AISLE_EN_LABELS: Record<SupermarketAisle, string> = {
+  'Frutas y Verduras': 'Produce & Greens',
+  'Carnes y Aves': 'Meat & Poultry',
+  'Pescados y Mariscos': 'Seafood & Fish',
+  'Lácteos y Huevos': 'Dairy & Eggs',
+  'Panadería y Pastelería': 'Bakery & Pastry',
+  'Despensa y Especias': 'Pantry & Spices',
+  'Refrigerados': 'Refrigerated',
+  'Congelados': 'Frozen Foods',
+  'Bebidas': 'Beverages',
+  'Otros': 'Other',
+};
 
 export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Promise<void> {
   const {
@@ -151,95 +187,132 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
     { slotKey: 'snack_postre', label: isEn ? 'Snack / Dessert' : 'Snack / Postre' },
   ];
 
-  // Preparar encabezados de la tabla (Momento + cada día)
-  const tableHead = [
-    [
-      isEn ? 'Meal' : 'Momento',
-      ...days.map((d) => `${d.dayName}\n${d.dayNum}`),
-    ],
-  ];
+  // Dividir los días en bloques de máximo 7 días para evitar columnas aplastadas en planes largos (>7 días)
+  const MAX_DAYS_PER_TABLE = 7;
+  const dayChunks: ExportPdfDayInfo[][] = [];
+  for (let i = 0; i < days.length; i += MAX_DAYS_PER_TABLE) {
+    dayChunks.push(days.slice(i, i + MAX_DAYS_PER_TABLE));
+  }
+  if (dayChunks.length === 0) {
+    dayChunks.push([]);
+  }
 
-  // Construir las filas de la tabla
-  const tableBody = slotRows.map((slotInfo) => {
-    const row = [slotInfo.label];
+  for (let chunkIdx = 0; chunkIdx < dayChunks.length; chunkIdx++) {
+    const chunkDays = dayChunks[chunkIdx];
 
-    for (const day of days) {
-      const dayPlans = plans.filter((p) => p.fecha === day.dateStr);
-
-      if (slotInfo.slotKey === 'almuerzo') {
-        const almuerzo1 = dayPlans.find((p) => p.slot === 'almuerzo_1');
-        const almuerzo2 = dayPlans.find((p) => p.slot === 'almuerzo_2');
-        const almuerzoUnico = dayPlans.find((p) => p.slot === 'almuerzo');
-
-        const parts: string[] = [];
-        const rawTitle1 = almuerzo1?.receta?.titulo || (almuerzo1 as any)?.recetas?.titulo;
-        const rawTitle2 = almuerzo2?.receta?.titulo || (almuerzo2 as any)?.recetas?.titulo;
-        const rawTitleUnico = almuerzoUnico?.receta?.titulo || (almuerzoUnico as any)?.recetas?.titulo;
-
-        const title1 = formatPdfDisplayTitle(rawTitle1);
-        const title2 = formatPdfDisplayTitle(rawTitle2);
-        const titleUnico = formatPdfDisplayTitle(rawTitleUnico);
-
-        const prefix1 = isEn ? '1st:' : '1º:';
-        const prefix2 = isEn ? '2nd:' : '2º:';
-
-        if (title1) {
-          parts.push(`${prefix1} ${title1}`);
-        }
-        if (title2) {
-          parts.push(`${prefix2} ${title2}`);
-        }
-        if (parts.length === 0 && titleUnico) {
-          parts.push(titleUnico);
-        }
-
-        row.push(parts.length > 0 ? parts.join('\n\n') : '—');
+    if (chunkIdx > 0) {
+      const lastY = (doc as any).lastAutoTable?.finalY ?? currentY;
+      // Si no queda espacio razonable en la página actual, saltar a una nueva página antes del siguiente bloque semanal
+      if (lastY > pageHeight - 75) {
+        doc.addPage();
+        currentY = 18;
       } else {
-        const match = dayPlans.find((p) => p.slot === slotInfo.slotKey);
-        const rawTitle = match?.receta?.titulo || (match as any)?.recetas?.titulo;
-        const title = formatPdfDisplayTitle(rawTitle);
-        row.push(title || '—');
+        currentY = lastY + 8;
       }
+
+      const firstDay = chunkDays[0];
+      const lastDay = chunkDays[chunkDays.length - 1];
+      const weekSubtitle = isEn
+        ? `Week ${chunkIdx + 1} (${firstDay?.dateStr || ''} — ${lastDay?.dateStr || ''})`
+        : `Semana ${chunkIdx + 1} (${firstDay?.dateStr || ''} — ${lastDay?.dateStr || ''})`;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...COLOR_BRAND);
+      doc.text(weekSubtitle, marginX, currentY);
+      currentY += 3;
     }
 
-    return row;
-  });
+    // Preparar encabezados de la tabla (Momento + cada día del bloque)
+    const tableHead = [
+      [
+        isEn ? 'Meal' : 'Momento',
+        ...chunkDays.map((d) => `${d.dayName}\n${d.dayNum}`),
+      ],
+    ];
 
-  // Renderizar la tabla de planificación semanal
-  runAutoTable(doc, {
-    startY: currentY,
-    tableWidth: pageWidth - marginX * 2,
-    head: tableHead,
-    body: tableBody,
-    theme: 'grid',
-    styles: {
-      font: 'helvetica',
-      fontSize: 8,
-      cellPadding: 3,
-      lineColor: COLOR_BORDER,
-      lineWidth: 0.2,
-      textColor: COLOR_DARK,
-      valign: 'middle',
-    },
-    headStyles: {
-      fillColor: COLOR_BRAND,
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      halign: 'center',
-      fontSize: 8.5,
-    },
-    alternateRowStyles: {
-      fillColor: COLOR_BG_ALT,
-    },
-    columnStyles: {
-      0: {
-        fontStyle: 'bold',
-        fillColor: [245, 240, 232],
-        cellWidth: 26,
+    // Construir las filas de la tabla
+    const tableBody = slotRows.map((slotInfo) => {
+      const row = [slotInfo.label];
+
+      for (const day of chunkDays) {
+        const dayPlans = plans.filter((p) => p.fecha === day.dateStr);
+
+        if (slotInfo.slotKey === 'almuerzo') {
+          const almuerzo1 = dayPlans.find((p) => p.slot === 'almuerzo_1');
+          const almuerzo2 = dayPlans.find((p) => p.slot === 'almuerzo_2');
+          const almuerzoUnico = dayPlans.find((p) => p.slot === 'almuerzo');
+
+          const parts: string[] = [];
+          const rawTitle1 = almuerzo1?.receta?.titulo || (almuerzo1 as any)?.recetas?.titulo;
+          const rawTitle2 = almuerzo2?.receta?.titulo || (almuerzo2 as any)?.recetas?.titulo;
+          const rawTitleUnico = almuerzoUnico?.receta?.titulo || (almuerzoUnico as any)?.recetas?.titulo;
+
+          const title1 = formatPdfDisplayTitle(rawTitle1);
+          const title2 = formatPdfDisplayTitle(rawTitle2);
+          const titleUnico = formatPdfDisplayTitle(rawTitleUnico);
+
+          const prefix1 = isEn ? '1st:' : '1º:';
+          const prefix2 = isEn ? '2nd:' : '2º:';
+
+          if (title1) {
+            parts.push(`${prefix1} ${title1}`);
+          }
+          if (title2) {
+            parts.push(`${prefix2} ${title2}`);
+          }
+          if (parts.length === 0 && titleUnico) {
+            parts.push(titleUnico);
+          }
+
+          row.push(parts.length > 0 ? parts.join('\n\n') : '—');
+        } else {
+          const match = dayPlans.find((p) => p.slot === slotInfo.slotKey);
+          const rawTitle = match?.receta?.titulo || (match as any)?.recetas?.titulo;
+          const title = formatPdfDisplayTitle(rawTitle);
+          row.push(title || '—');
+        }
+      }
+
+      return row;
+    });
+
+    // Renderizar la tabla de planificación del bloque
+    runAutoTable(doc, {
+      startY: currentY,
+      tableWidth: pageWidth - marginX * 2,
+      head: tableHead,
+      body: tableBody,
+      theme: 'grid',
+      styles: {
+        font: 'helvetica',
+        fontSize: 8,
+        cellPadding: 3,
+        lineColor: COLOR_BORDER,
+        lineWidth: 0.2,
+        textColor: COLOR_DARK,
+        valign: 'middle',
       },
-    },
-    margin: { left: marginX, right: marginX },
-  });
+      headStyles: {
+        fillColor: COLOR_BRAND,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center',
+        fontSize: 8.5,
+      },
+      alternateRowStyles: {
+        fillColor: COLOR_BG_ALT,
+      },
+      columnStyles: {
+        0: {
+          fontStyle: 'bold',
+          fillColor: [245, 240, 232],
+          cellWidth: 26,
+        },
+      },
+      margin: { left: marginX, right: marginX },
+    });
+  }
 
   // =========================================================================
   // PÁGINA 2+: LISTA DE LA COMPRA CONSOLIDADA POR PASILLOS
@@ -306,27 +379,24 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
     (item) => item.unidad === 'Comprobar despensa' || item.cantidadTotal === 0
   );
 
-  // Agrupar los ítems normales por pasillo
-  const aisleMap = new Map<string, (UnifiedShoppingItem | ConsolidatedShoppingItem)[]>();
-  for (const item of regularItems) {
-    const aisle = item.pasillo_supermercado || (isEn ? 'Other' : 'Varios');
-    if (!aisleMap.has(aisle)) {
-      aisleMap.set(aisle, []);
-    }
-    aisleMap.get(aisle)!.push(item);
-  }
-
-  // Ordenar alfabéticamente los pasillos
-  const sortedAisles = Array.from(aisleMap.keys()).sort();
+  // Agrupar los ítems normales por pasillo respetando el orden lógico físico del supermercado (igual que en la app)
+  const groupedRegularAisles = groupItemsByAisle(
+    regularItems,
+    (item) => item.pasillo_supermercado
+  );
 
   // Construir filas de la tabla de compra
   const shoppingTableBody: any[] = [];
 
-  for (const aisle of sortedAisles) {
+  for (const group of groupedRegularAisles) {
+    const aisleLabel = isEn
+      ? AISLE_EN_LABELS[group.aisle] || group.aisle
+      : group.aisle;
+
     // Fila divisoria de pasillo
     shoppingTableBody.push([
       {
-        content: `  ${cleanPdfText(aisle).toUpperCase()}`,
+        content: `  ${cleanPdfText(aisleLabel).toUpperCase()}`,
         colSpan: 4,
         styles: {
           fillColor: [245, 239, 230],
@@ -341,16 +411,22 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
       },
     ]);
 
-    const itemsInAisle = aisleMap.get(aisle)!;
-    for (const it of itemsInAisle) {
-      const cantidadFormatted = `${it.cantidadTotal} ${it.unidad}`;
+    for (const it of group.items) {
+      const cantidadFormatted = formatPdfAmountAndUnit(it.cantidadTotal, it.unidad);
       const recetasText = (it.recetasNombres || []).length > 0
         ? (it.recetasNombres || []).map((r) => formatPdfDisplayTitle(r)).join(', ')
         : '—';
 
+      const cleanNotes = (it.notas || [])
+        .map((n) => cleanPdfText(n))
+        .filter(Boolean);
+      const nombreBase = formatPdfDisplayTitle(it.nombre);
+      const nombreConNotas =
+        cleanNotes.length > 0 ? `${nombreBase}\n(${cleanNotes.join(' · ')})` : nombreBase;
+
       shoppingTableBody.push([
         '[   ]',
-        formatPdfDisplayTitle(it.nombre),
+        nombreConNotas,
         cantidadFormatted,
         recetasText,
       ]);
@@ -385,9 +461,16 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
         ? (it.recetasNombres || []).map((r) => formatPdfDisplayTitle(r)).join(', ')
         : '—';
 
+      const cleanNotes = (it.notas || [])
+        .map((n) => cleanPdfText(n))
+        .filter((n) => n && !/^revisar\s+despensa$/i.test(n));
+      const nombreBase = formatPdfDisplayTitle(it.nombre);
+      const nombreConNotas =
+        cleanNotes.length > 0 ? `${nombreBase}\n(${cleanNotes.join(' · ')})` : nombreBase;
+
       shoppingTableBody.push([
         '[   ]',
-        formatPdfDisplayTitle(it.nombre),
+        nombreConNotas,
         isEn ? 'In pantry' : 'En despensa',
         recetasText,
       ]);

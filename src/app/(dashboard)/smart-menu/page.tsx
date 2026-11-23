@@ -47,7 +47,7 @@ export default async function SmartMenuPage(props: SmartMenuPageProps) {
     getWeeklyPlanAction(startHistoryStr, endHistoryStr),
     supabase
       .from('recetas')
-      .select('*')
+      .select('*, receta_ingredientes (*)')
       .eq('usuario_id', user.id)
       .order('titulo', { ascending: true }),
   ]);

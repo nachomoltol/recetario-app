@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { calcularGramos } from '@/lib/nutrition/converter';
+import { classifyIngredientAisle } from '@/lib/culinary/aisles';
 import { IngredienteMaestro } from '@/types/recipe';
 
 export interface IngredientUpdateInput {
@@ -152,20 +153,8 @@ export async function updateRecipeAction({
           ingredienteMaestro: matchedMaestro,
         });
 
-        // Clasificar pasillo por defecto si no viene establecido
-        let pasilloFinal = ing.pasillo_supermercado || 'Despensa y Especias';
-        const nLower = nombreLimpio.toLowerCase();
-        if (/\b(chocolate|cacao|cocoa)\b/i.test(nLower)) {
-          pasilloFinal = 'Despensa y Especias';
-        } else if (
-          /manzana|platano|plátano|limon|limón|naranja|fruta|pera|fresa|aguacate|tomate|cebolla|ajo|patata|verdura/i.test(
-            nLower
-          )
-        ) {
-          pasilloFinal = 'Frutas y Verduras';
-        } else if (/^agua\b|agua mineral|agua del grifo|refresco|zumo|vino|cerveza/i.test(nLower)) {
-          pasilloFinal = 'Bebidas';
-        }
+        // LEY UNIVERSAL 1: Clasificación de pasillo físico por estado real del alimento
+        const pasilloFinal = classifyIngredientAisle(nombreLimpio, ing.pasillo_supermercado);
 
         return {
           receta_id: recetaId,

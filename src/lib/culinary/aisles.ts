@@ -111,50 +111,29 @@ export const CANNED_TOMATO_FORMATS_REGEX =
   /\btomates?\b.*\b(triturad[oa]s?|frit[oa]s?|concentrad[oa]s?|en\s+conserva|de\s+bote|tamizad[oa]s?|passata|salsa(\s+de)?)\b/i;
 
 /**
- * Heurística de clasificación de pasillo para ingredientes sin asignar o heredados
+ * LEY UNIVERSAL 1: Alimentos secos, cereales, granos, pastas y legumbres de despensa.
+ * Pertenecen incondicionalmente a 'Despensa y Especias' a temperatura ambiente,
+ * salvo que contengan indicadores explícitos de cadena de frío o producto fresco refrigerado.
  */
-export function classifyIngredientAisle(nombre?: string | null, existingAisle?: string | null): SupermarketAisle {
-  try {
-    const n = String(nombre || '').toLowerCase();
+export const DRY_PANTRY_STAPLES_REGEX =
+  /\b(pasta|pastas|macarr[oó]n|macarrones|espagueti|espaguetis|spaghetti|spaghettis|tallar[ií]n|tallarines|fideo|fideos|penne|fusilli|rigatoni|farfalle|lazos|placas?\s+de\s+lasa[ñn]a|canel[oó]n|canelones|arroz|arroces|cusc[uú]s|couscous|quinoa|avena|copos\s+de\s+avena|lenteja|lentejas|garbanzo|garbanzos|alubia|alubias|jud[ií]as?\s+secas?|harina|harinas|maicena|almid[oó]n|s[eé]mola|az[uú]car|azucar|sal|aceite|aceites|vinagre|vinagres)\b/i;
 
-    // Prioridad absoluta: condimentos secos, especias y formatos en polvo siempre van a Despensa y Especias
-    if (DRY_SPICE_FORMATS_REGEX.test(n) || isCanonicalSpiceHerbSaltOrPepper(n, n)) {
-      return 'Despensa y Especias';
-    }
+/**
+ * Indicadores explícitos de conservación en frío o cadena de refrigeración activa.
+ */
+export const COLD_CHAIN_INDICATORS_REGEX =
+  /\b(fresc[oa]s?|refrigerad[oa]s?|en\s+fr[ií]o|cadena\s+de\s+fr[ií]o|al\s+vac[ií]o\s+para\s+fr[ií]o|prensada)\b/i;
 
-    // Prioridad absoluta: chocolate, cacao y derivados van incondicionalmente a Despensa y Especias (nunca a Frutas y Verduras)
-    if (/\b(chocolate|cacao|cocoa)\b/i.test(n)) {
-      return 'Despensa y Especias';
-    }
+/**
+ * Alimentos inherentemente refrigerados (proteínas vegetales frías, untables frescos, fermentados).
+ */
+export const INHERENTLY_REFRIGERATED_REGEX =
+  /\b(tofu|seitan|seitán|hummus|tempeh|guacamole|levadura\s+fresca|levadura\s+prensada|masa\s+fresca)\b/i;
 
-    // Conservas y derivados de tomate (triturado, frito, concentrado, passata, salsa) van siempre a Despensa y Especias
-    if (CANNED_TOMATO_FORMATS_REGEX.test(n)) {
-      return 'Despensa y Especias';
-    }
-
-    // Corrección estricta de pasillo previo heredado o asignado erróneamente
-    if (existingAisle && SUPERMARKET_AISLES.includes(existingAisle as SupermarketAisle)) {
-      if (/\b(chocolate|cacao|cocoa)\b/i.test(n)) {
-        return 'Despensa y Especias';
-      }
-      if (existingAisle === 'Despensa y Especias') {
-        if (
-          !DRY_SPICE_FORMATS_REGEX.test(n) &&
-          !isCanonicalSpiceHerbSaltOrPepper(n, n) &&
-          !CANNED_TOMATO_FORMATS_REGEX.test(n) &&
-          /tomate|cebolla|ajo|albahaca|limon|limón|lima|patata|papa|zanahoria|perejil|seta|champinon|champiñón|espinaca|lechuga|fruta|aguacate|calabacin|calabacín|berenjena|pimiento|brocoli|brócoli|col|manzana|platano|plátano|fresa|cilantro|romero|tomillo/i.test(
-            n
-          )
-        ) {
-          return 'Frutas y Verduras';
-        }
-        if (/^agua\b|agua mineral|agua del grifo|agua tibia|agua fría|vino|cerveza|licor|refresco|zumo|caldo/i.test(n)) {
-          return 'Bebidas';
-        }
-      }
-      return existingAisle as SupermarketAisle;
-    }
-
+/**
+ * Clasificación canónica basada en la naturaleza culinaria pura del alimento.
+ */
+export function classifyRawIngredientAisle(n: string): SupermarketAisle {
   // 1. Carnes y Aves
   if (
     /guanciale|salchicha|carne|pollo|ternera|cerdo|bacon|panceta|pavo|jamon|jamón|lomo|solomillo|chuleta|costilla|hamburguesa|picada|chorizo|morcilla/i.test(
@@ -192,13 +171,16 @@ export function classifyIngredientAisle(nombre?: string | null, existingAisle?: 
     return 'Frutas y Verduras';
   }
 
-  // 5. Bebidas
-  if (/^agua\b|agua mineral|agua del grifo|agua tibia|agua fría|vino|cerveza|licor|refresco|zumo|caldo/i.test(n)) {
+  // 5. Bebidas (excluye agua normal de cocción; incluye agua mineral/con gas)
+  if (/^agua\s+(mineral|con\s+gas|embotellada|tonica|de\s+coco)\b|vino|cerveza|licor|refresco|zumo|caldo/i.test(n)) {
     return 'Bebidas';
   }
 
-  // 6. Panadería y Pastelería
-  if (/pan|harina|levadura|croissant|hojaldre|masa brisa|masa quebrada|bizcocho|tortilla de trigo|wrap/i.test(n)) {
+  // 6. Panadería y Pastelería (excluyendo masas y levaduras que lleven indicador explícito de frío)
+  if (
+    !COLD_CHAIN_INDICATORS_REGEX.test(n) &&
+    /pan|harina|levadura|croissant|hojaldre|masa brisa|masa quebrada|bizcocho|tortilla de trigo|wrap/i.test(n)
+  ) {
     return 'Panadería y Pastelería';
   }
 
@@ -207,13 +189,80 @@ export function classifyIngredientAisle(nombre?: string | null, existingAisle?: 
     return 'Congelados';
   }
 
-  // 8. Refrigerados
-  if (/tofu|seitan|seitán|hummus|masa fresca/i.test(n)) {
+  // 8. Refrigerados (únicamente alimentos fríos o con indicación expresa de frío)
+  if (INHERENTLY_REFRIGERATED_REGEX.test(n) || (COLD_CHAIN_INDICATORS_REGEX.test(n) && /pasta|masa|salsa/i.test(n))) {
     return 'Refrigerados';
   }
 
-  // 9. Por defecto: Despensa y Especias (arroz, pasta, especias, aceite, sal, etc.)
+  // 9. Por defecto: Despensa y Especias (arroz, pasta seca, especias, aceite, sal, etc.)
   return 'Despensa y Especias';
+}
+
+/**
+ * Heurística de clasificación de pasillo para ingredientes sin asignar o heredados
+ */
+export function classifyIngredientAisle(nombre?: string | null, existingAisle?: string | null): SupermarketAisle {
+  try {
+    const n = String(nombre || '').toLowerCase();
+
+    // Prioridad absoluta: condimentos secos, especias y formatos en polvo siempre van a Despensa y Especias
+    if (DRY_SPICE_FORMATS_REGEX.test(n) || isCanonicalSpiceHerbSaltOrPepper(n, n)) {
+      return 'Despensa y Especias';
+    }
+
+    // Prioridad absoluta: chocolate, cacao y derivados van incondicionalmente a Despensa y Especias (nunca a Frutas y Verduras)
+    if (/\b(chocolate|cacao|cocoa)\b/i.test(n)) {
+      return 'Despensa y Especias';
+    }
+
+    // Conservas y derivados de tomate (triturado, frito, concentrado, passata, salsa) van siempre a Despensa y Especias
+    if (CANNED_TOMATO_FORMATS_REGEX.test(n)) {
+      return 'Despensa y Especias';
+    }
+
+    // LEY UNIVERSAL 1: Alimentos secos no perecederos (pasta seca, arroz, legumbres secas, harinas)
+    // van SIEMPRE a Despensa y Especias, anulando si venían marcados como Refrigerados por error,
+    // salvo que indiquen explícitamente frescura o cadena de frío (ej. "pasta fresca").
+    if (DRY_PANTRY_STAPLES_REGEX.test(n) && !COLD_CHAIN_INDICATORS_REGEX.test(n)) {
+      return 'Despensa y Especias';
+    }
+
+    // Corrección estricta de pasillo previo heredado o asignado erróneamente
+    if (existingAisle && SUPERMARKET_AISLES.includes(existingAisle as SupermarketAisle)) {
+      if (/\b(chocolate|cacao|cocoa)\b/i.test(n)) {
+        return 'Despensa y Especias';
+      }
+
+      // Si venía marcado como 'Refrigerados', auditar rigurosamente:
+      if (existingAisle === 'Refrigerados') {
+        const isLegitRefrigerated =
+          INHERENTLY_REFRIGERATED_REGEX.test(n) || COLD_CHAIN_INDICATORS_REGEX.test(n);
+        // Si no es un producto que requiera frío explícito, re-clasificar por su naturaleza real
+        if (!isLegitRefrigerated) {
+          return classifyRawIngredientAisle(n);
+        }
+        return 'Refrigerados';
+      }
+
+      if (existingAisle === 'Despensa y Especias') {
+        if (
+          !DRY_SPICE_FORMATS_REGEX.test(n) &&
+          !isCanonicalSpiceHerbSaltOrPepper(n, n) &&
+          !CANNED_TOMATO_FORMATS_REGEX.test(n) &&
+          /tomate|cebolla|ajo|albahaca|limon|limón|lima|patata|papa|zanahoria|perejil|seta|champinon|champiñón|espinaca|lechuga|fruta|aguacate|calabacin|calabacín|berenjena|pimiento|brocoli|brócoli|col|manzana|platano|plátano|fresa|cilantro|romero|tomillo/i.test(
+            n
+          )
+        ) {
+          return 'Frutas y Verduras';
+        }
+        if (/^agua\s+(mineral|con\s+gas|embotellada|tonica|de\s+coco)\b|vino|cerveza|licor|refresco|zumo|caldo/i.test(n)) {
+          return 'Bebidas';
+        }
+      }
+      return existingAisle as SupermarketAisle;
+    }
+
+    return classifyRawIngredientAisle(n);
   } catch {
     return 'Otros';
   }
@@ -368,7 +417,7 @@ export function formatIngredientUnit(
       if (u === 'cucharadita' || u === 'cucharaditas') return 'tsp';
       if (u === 'gramo' || u === 'gramos') return 'g';
       if (u === 'mililitro' || u === 'mililitros') return 'ml';
-      if (u === 'litro' || u === 'litros') return 'l';
+      if (u === 'l' || u === 'lt' || u === 'lts' || u === 'litro' || u === 'litros' || u === 'liter' || u === 'liters') return 'L';
       if (u === 'kilo' || u === 'kilos' || u === 'kilogramo' || u === 'kilogramos') return 'kg';
     } else {
       if (u === 'unit' || u === 'units') return qty > 1 ? 'unidades' : 'unidad';
@@ -377,6 +426,7 @@ export function formatIngredientUnit(
       if (u === 'tsp' || u === 'cucharadita' || u === 'cucharaditas') return qty > 1 ? 'cucharaditas' : 'cucharadita';
       if (u === 'taza' || u === 'tazas' || u === 'cup' || u === 'cups') return qty > 1 ? 'tazas' : 'taza';
       if (u === 'vaso' || u === 'vasos') return qty > 1 ? 'vasos' : 'vaso';
+      if (u === 'l' || u === 'lt' || u === 'lts' || u === 'litro' || u === 'litros' || u === 'liter' || u === 'liters') return 'L';
     }
 
     return raw;

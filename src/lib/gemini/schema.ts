@@ -1,4 +1,5 @@
 import { Type } from '@google/genai';
+import { expandAtomicExtractedIngredients } from '@/lib/culinary/atomicIngredients';
 
 /**
  * Esquema JSON estricto para estructurar recetas a través del Gemini SDK
@@ -485,14 +486,15 @@ ${rule4Units}
      * 'Carnes y Aves': Carnes rojas, pollo, pavo, cerdo, embutidos frescos, picadas y chacinas.
      * 'Pescados y Mariscos': Pescados frescos o congelados, marisco, conservas de pescado (atún, anchoas).
      * 'Lácteos y Huevos': Leche, quesos, yogur, mantequilla, nata líquida para cocinar, huevos.
-     * 'Despensa y Especias': Exclusivamente pastas secas, arroces, legumbres secas, aceites, vinagres, especias secas molidas, harinas, salsas envasadas, azúcar y sal.
-     * 'Panadería y Pastelería': Panes, masas de hojaldre, levadura de panadero, productos de repostería.
+     * 'Despensa y Especias': OBLIGATORIO para todas las pastas secas (macarrones, espaguetis, fideos, placas secas de lasaña), arroces, legumbres secas o en conserva no refrigerada, aceites, vinagres, especias secas molidas, harinas, salsas envasadas de despensa, azúcar y sal. JAMÁS clasifiques pastas secas, arroces ni harinas en 'Refrigerados'.
+     * 'Panadería y Pastelería': Panes, masas de hojaldre secas/precocidas, levadura de panadero seca o química, productos de repostería.
      * 'Congelados': Productos ultracongelados procesados.
-     * 'Refrigerados': Masas frescas refrigeradas, tofu, preparados listos refrigerados.
+     * 'Refrigerados': EXCLUSIVAMENTE para alimentos perecederos que requieran frío continuo y no pertenezcan a carnes, pescados ni lácteos: tofu, seitán, hummus refrigerado, masas frescas refrigeradas, pasta fresca rellena refrigerada (raviolis frescos, gnocchis frescos).
 
 6. EXTRACCIÓN Y FUSIÓN MULTIMODAL:
    - Si es_receta_valida es true:
      * Cruza lo que ves/escuchas en el vídeo/audio con el texto del post (caption).
+     * ATOMICIDAD OBLIGATORIA (UN INGREDIENTE POR LÍNEA): Queda TERMINANTEMENTE PROHIBIDO agrupar varios alimentos distintos en una sola entrada (ej: está PROHIBIDO emitir 'sal y pimienta' o 'ajo y perejil picado' juntos). DEBES emitir cada alimento en un objeto independiente del array 'ingredientes' ('sal', 'pimienta', etc.) con sus respectivas cantidades y pasillos.
      * Extrae cada ingrediente con cantidad numérica convertida a estándar métrico, unidad métrica estricta ('g' o 'ml'), pasillo de supermercado y 'nombre_limpio' canónico optimizado para cruce relacional.
      * Si detectas ultraprocesados industriales excesivos, marca 'es_ultraprocesado: true' y sugiere una alternativa viable en 'sustituto_saludable_sugerido'.
      * Calcula los gramos estimados mediante densidad física de cada alimento y estima los macronutrientes por porción.
@@ -838,7 +840,10 @@ export function normalizarIngredientesExtraidos(
     etiquetas: options?.etiquetas,
   });
 
-  return ingredientes.map((ing) => {
+  // Descomposición atómica de ingredientes compuestos (Ley Universal de Atomicidad)
+  const atomicIngredientes = expandAtomicExtractedIngredients(ingredientes);
+
+  return atomicIngredientes.map((ing) => {
     const sectionIsPastry = isPastryOrDessertContext({ seccion: ing.seccion });
     const isPastry = recipeIsPastry || sectionIsPastry;
 
