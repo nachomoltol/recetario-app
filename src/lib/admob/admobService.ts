@@ -10,7 +10,9 @@ interface NativeWindowBridge {
   Capacitor?: {
     isNativePlatform?: () => boolean;
     getPlatform?: () => string;
+    PluginHeaders?: unknown[];
   };
+  WEBVIEW_SERVER_URL?: string;
   webkit?: {
     messageHandlers?: {
       bridge?: unknown;
@@ -108,8 +110,12 @@ export function isNativeIosPlatform(): boolean {
     const isApple = capPlatform === 'ios' || winCapPlatform === 'ios' || isAppleTouchDevice(ua);
     if (!isApple) return false;
 
-    // 2. Marca personalizada de app nativa o Capacitor en User-Agent
-    if (/MigaAppIOS|Capacitor|com\.migaapp\.app/i.test(ua)) {
+    // 2. Marca personalizada de app nativa o variables inyectadas por Capacitor iOS
+    if (
+      /MigaAppIOS|Capacitor|com\.migaapp\.app/i.test(ua) ||
+      (typeof win.WEBVIEW_SERVER_URL === 'string' && win.WEBVIEW_SERVER_URL.startsWith('capacitor://')) ||
+      (Array.isArray(win.Capacitor?.PluginHeaders) && win.Capacitor.PluginHeaders.length > 0)
+    ) {
       return true;
     }
 
@@ -118,9 +124,14 @@ export function isNativeIosPlatform(): boolean {
       return true;
     }
 
-    // 4. Firma real de WKWebView en iPhone/iPad: AppleWebKit presente y ausencia de navegadores web externos
-    const isExternalIosBrowser = /Safari\/|CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua);
-    if (/AppleWebKit/i.test(ua) && !isExternalIosBrowser) {
+    // 4. Firma real de WKWebView en iPhone/iPad sin descartar por contener "Safari/" sin "Version/"
+    const isIosStandalonePwa = Boolean(
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+    );
+    const isThirdPartyIosBrowser = /CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|GSA\/|DuckDuckGo/i.test(ua);
+    const isMobileSafariBrowser = /Version\/[\d.]+.*Safari\//i.test(ua);
+
+    if (/AppleWebKit/i.test(ua) && !isIosStandalonePwa && !isThirdPartyIosBrowser && !isMobileSafariBrowser) {
       return true;
     }
 
