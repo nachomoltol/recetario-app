@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Download, X, Share2, PlusSquare, Sparkles, ChefHat } from 'lucide-react';
+import { isNativeMobilePlatform } from '@/lib/admob/admobService';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -16,6 +17,12 @@ export function PwaInstallPrompt() {
   const [showIOSGuide, setShowIOSGuide] = useState(false);
 
   useEffect(() => {
+    // 0. Jamás mostrar el aviso de instalar PWA dentro de la app nativa de iPhone o Android
+    if (isNativeMobilePlatform()) {
+      setIsStandalone(true);
+      return;
+    }
+
     // 1. Verificar si ya está corriendo en modo standalone (instalada)
     const checkStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||

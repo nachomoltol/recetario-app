@@ -191,14 +191,16 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
           <span>{t('billing_plan_name')}</span>
         </div>
 
-        <div className="flex items-baseline justify-center gap-1.5">
-          <span className="text-4xl sm:text-5xl font-extrabold font-serif-recipe text-stone-900 tracking-tight">
-            3,50€
-          </span>
-          <span className="text-stone-500 font-medium text-sm sm:text-base">
-            {t('billing_price_month')}
-          </span>
-        </div>
+        {!isNativeIos && (
+          <div className="flex items-baseline justify-center gap-1.5">
+            <span className="text-4xl sm:text-5xl font-extrabold font-serif-recipe text-stone-900 tracking-tight">
+              3,50€
+            </span>
+            <span className="text-stone-500 font-medium text-sm sm:text-base">
+              {t('billing_price_month')}
+            </span>
+          </div>
+        )}
 
         {vipSuccess ? (
           <div className="w-full py-4 px-6 rounded-2xl font-bold text-sm sm:text-base bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center justify-center gap-2">

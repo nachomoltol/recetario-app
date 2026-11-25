@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import type jsPDF from 'jspdf';
+import { hasActiveNativeBridge, isNativeAndroidPlatform } from '@/lib/admob/admobService';
 
 export interface SaveOrSharePdfOptions {
   doc: jsPDF;
@@ -10,10 +11,26 @@ export interface SaveOrSharePdfOptions {
 }
 
 /**
+ * Sanitiza un nombre de archivo PDF eliminando barras ("/"), tildes, espacios y caracteres especiales
+ * que provocarían errores de subdirectorio inexistente en iOS o fallos de URI en Android.
+ */
+function buildSafePdfFileName(rawFileName: string): string {
+  const nameWithoutExt = (rawFileName || '').replace(/\.pdf$/i, '');
+  const cleanBase = nameWithoutExt
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  return `${cleanBase || 'miga_receta'}.pdf`;
+}
+
+/**
  * Guarda o comparte un PDF de forma universal y robusta:
  * - En Android (Capacitor Nativo): Sanitiza el nombre de archivo, escribe en caché y
  *   pasa exclusivamente el array `files: [fileUri]` para abrir el Sharesheet sin cerrarse.
- * - En iOS (Apple Capacitor Nativo): Mantiene el flujo original validado con `url: fileUri`.
+ * - En iOS (Apple Capacitor Nativo): Sanitiza igualmente el nombre de archivo (`safeFileName`)
+ *   y mantiene el flujo validado con `url: fileUri`.
  * - En Navegadores Web: Descarga directa y segura para escritorio y navegadores móviles.
  */
 export async function saveOrSharePdf({
@@ -21,7 +38,7 @@ export async function saveOrSharePdf({
   fileName,
   dialogTitle = 'Guardar o compartir PDF',
 }: SaveOrSharePdfOptions): Promise<void> {
-  const isNative = Capacitor.isNativePlatform();
+  const isNative = Capacitor.isNativePlatform() || hasActiveNativeBridge();
 
   if (isNative) {
     try {
@@ -30,18 +47,10 @@ export async function saveOrSharePdf({
       const commaIdx = dataUri.indexOf(',');
       const base64Data = commaIdx !== -1 ? dataUri.slice(commaIdx + 1) : dataUri;
 
-      const isAndroid = Capacitor.getPlatform() === 'android';
+      const safeFileName = buildSafePdfFileName(fileName);
+      const isAndroid = Capacitor.getPlatform() === 'android' || isNativeAndroidPlatform();
 
       if (isAndroid) {
-        // Sanitizar estrictamente el nombre para Android (sin tildes, espacios ni caracteres especiales)
-        const nameWithoutExt = fileName.replace(/\.pdf$/i, '');
-        const cleanBase = nameWithoutExt
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-zA-Z0-9_-]/g, '_')
-          .replace(/_+/g, '_');
-        const safeFileName = `${cleanBase || 'miga_receta'}.pdf`;
-
         // 1. Escribir archivo temporal en la caché privada de la aplicación
         try {
           await Filesystem.writeFile({
@@ -97,9 +106,9 @@ export async function saveOrSharePdf({
           throw new Error(`Share.share fallo: ${msg}`);
         }
       } else {
-        // Flujo iOS (Apple) intacto y validado: mantiene url: fileUri
+        // Flujo iOS (Apple) con safeFileName para evitar errores si el título contiene "/" u otros símbolos
         const savedFile = await Filesystem.writeFile({
-          path: fileName,
+          path: safeFileName,
           data: base64Data,
           directory: Directory.Cache,
         });
@@ -107,14 +116,14 @@ export async function saveOrSharePdf({
         let fileUri = savedFile?.uri;
         if (!fileUri) {
           const uriResult = await Filesystem.getUri({
-            path: fileName,
+            path: safeFileName,
             directory: Directory.Cache,
           });
           fileUri = uriResult.uri;
         }
 
         await Share.share({
-          title: fileName,
+          title: safeFileName,
           url: fileUri,
           dialogTitle,
         });

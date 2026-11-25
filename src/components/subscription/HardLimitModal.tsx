@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
-import { isNativeMobilePlatform } from '@/lib/admob/admobService';
+import { isNativeMobilePlatform, isNativeIosPlatform } from '@/lib/admob/admobService';
 
 export type HardLimitType = 'FREE_LIMIT_REACHED' | 'DEVICE_LIMIT_REACHED' | 'PRO_LIMIT_REACHED';
 
@@ -31,10 +31,12 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
   const isEn = language === 'en';
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [isNativeMobile, setIsNativeMobile] = useState(false);
+  const [isNativeIos, setIsNativeIos] = useState(false);
 
   useEffect(() => {
     setIsNativeMobile(isNativeMobilePlatform());
-  }, []);
+    setIsNativeIos(isNativeIosPlatform());
+  }, [isOpen]);
 
   if (!isOpen || !type) return null;
 
@@ -144,18 +146,22 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
               ? isEn
                 ? 'You have reached the monthly fair-use limit of 100 recipes for your PRO subscription. Your quota will automatically reset on the 1st of next month.'
                 : 'Has alcanzado el límite de 100 recetas de tu membresía PRO. Tu cuota se reiniciará automáticamente el día 1 del próximo mes.'
-              : isDeviceLimit
+              : isNativeIos
                 ? isEn
-                  ? 'This physical device has reached the monthly quota of 20 free recipes. Quota resets on the 1st of each month, or you can unlock 100 recipes with a PRO membership.'
-                  : 'Este dispositivo físico ha alcanzado la cuota de 20 recetas gratuitas del mes. El día 1 se reiniciará tu contador, o puedes desbloquear 100 recetas con una cuenta PRO.'
-                : isEn
-                  ? 'Monthly limit reached (20/20). Your counter resets on the 1st of next month. Upgrade to PRO to get up to 100 recipes with zero ads or waiting.'
-                  : 'Límite mensual alcanzado (20/20). El día 1 se reiniciará tu contador. Mejora a PRO para obtener hasta 100 recetas sin esperas ni anuncios.'}
+                  ? 'You have reached the monthly quota of 20 free recipes. Your counter will automatically reset on the 1st of next month.'
+                  : 'Has alcanzado la cuota mensual de 20 recetas gratuitas. Tu contador se reiniciará automáticamente el día 1 del próximo mes.'
+                : isDeviceLimit
+                  ? isEn
+                    ? 'This physical device has reached the monthly quota of 20 free recipes. Quota resets on the 1st of each month, or you can unlock 100 recipes with a PRO membership.'
+                    : 'Este dispositivo físico ha alcanzado la cuota de 20 recetas gratuitas del mes. El día 1 se reiniciará tu contador, o puedes desbloquear 100 recetas con una cuenta PRO.'
+                  : isEn
+                    ? 'Monthly limit reached (20/20). Your counter resets on the 1st of next month. Upgrade to PRO to get up to 100 recipes with zero ads or waiting.'
+                    : 'Límite mensual alcanzado (20/20). El día 1 se reiniciará tu contador. Mejora a PRO para obtener hasta 100 recetas sin esperas ni anuncios.'}
           </p>
         </div>
 
-        {/* Tarjeta de ventajas PRO (si no es PRO) */}
-        {!isProLimit && (
+        {/* Tarjeta de ventajas PRO (si no es PRO y no estamos en iOS nativo) */}
+        {!isProLimit && !isNativeIos && (
           <div className="p-4 sm:p-5 rounded-2xl bg-white border border-[#e7dfd5] shadow-2xs space-y-3 text-left">
             <div className="flex items-center gap-2 text-xs font-bold text-brand-primary">
               <Sparkles className="w-4 h-4 text-brand-primary" />
@@ -171,7 +177,7 @@ export function HardLimitModal({ isOpen, type, onClose }: HardLimitModalProps) {
 
         {/* Botones de acción / Bloque Nativo Móvil */}
         <div className="space-y-3 pt-2">
-          {!isProLimit && isNativeMobile && (
+          {!isProLimit && isNativeMobile && !isNativeIos && (
             <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 text-left space-y-2">
               <div className="flex items-center gap-2 text-stone-900 font-semibold text-xs sm:text-sm">
                 <Globe className="w-4 h-4 text-brand-primary shrink-0" />

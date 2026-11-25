@@ -27,7 +27,7 @@ import { useProfileStore } from '@/stores/useProfileStore';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
 import { FeatureInfoTrigger } from '@/components/ui/FeatureInfoTrigger';
-import { isNativeMobilePlatform } from '@/lib/admob/admobService';
+import { isNativeMobilePlatform, isNativeIosPlatform } from '@/lib/admob/admobService';
 import {
   OBJETIVOS_CLINICOS,
   PATRONES_ALIMENTARIOS,
@@ -95,9 +95,11 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
   const [isClinicalDrawerOpen, setIsClinicalDrawerOpen] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [isNativeMobile, setIsNativeMobile] = useState(false);
+  const [isNativeIos, setIsNativeIos] = useState(false);
 
   useEffect(() => {
     setIsNativeMobile(isNativeMobilePlatform());
+    setIsNativeIos(isNativeIosPlatform());
   }, []);
 
   const resolvedPlan = (
@@ -852,17 +854,25 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                     <div className="flex items-center gap-1.5 text-stone-900 font-semibold text-xs">
                       <Globe className="w-3.5 h-3.5 text-brand-primary shrink-0" />
                       <span>
-                        {language === 'en'
+                        {isNativeIos
+                          ? language === 'en'
+                            ? 'Extended Features Access'
+                            : 'Acceso a funciones ampliadas'
+                          : language === 'en'
                           ? 'PRO Subscription via Web'
                           : 'Suscripción PRO vía Web'}
                       </span>
                     </div>
                     <p className="text-[11px] text-stone-700 leading-relaxed font-light">
-                      {language === 'en'
+                      {isNativeIos
+                        ? language === 'en'
+                          ? 'Your account is synced across all your devices. You can unlock additional recipe extractions for free via rewarded ads.'
+                          : 'Tu cuenta está sincronizada en todos tus dispositivos. Puedes desbloquear extracciones adicionales de forma gratuita mediante anuncios bonificados.'
+                        : language === 'en'
                         ? 'Manage or activate your PRO subscription on our website migaapp.com with this account.'
                         : 'Gestiona o activa tu suscripción PRO desde nuestra web oficial migaapp.com iniciando sesión con esta misma cuenta.'}
                     </p>
-                    {(initialProfile.email || currentStoreProfile?.email) && (
+                    {!isNativeIos && (initialProfile.email || currentStoreProfile?.email) && (
                       <div className="pt-0.5 flex items-center gap-1 text-[10px] text-stone-600 font-mono bg-white/90 px-2 py-0.5 rounded border border-stone-200/80 w-fit max-w-full truncate">
                         <span className="text-stone-400">Email:</span>
                         <span className="font-semibold text-stone-800 truncate">
@@ -929,7 +939,11 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
             <div className="p-3 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-950 text-xs flex items-center gap-2.5 animate-fade-in">
               <Lock className="w-4 h-4 text-brand-primary shrink-0" />
               <span>
-                {isNativeMobile
+                {isNativeIos
+                  ? language === 'en'
+                    ? 'You have selected extended profile features. Your account stays synced across all your devices.'
+                    : 'Has seleccionado funciones ampliadas de perfil. Tu cuenta se mantiene sincronizada en todos tus dispositivos.'
+                  : isNativeMobile
                   ? language === 'en'
                     ? 'You have selected Miga Pro features. Activate your subscription on migaapp.com to use these clinical settings.'
                     : 'Has seleccionado funciones exclusivas de Miga Pro. Activa tu suscripción en migaapp.com para aplicar esta configuración.'
