@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient, getAdminClient } from '@/lib/supabase/server';
+import { ensureUserProfileExists } from '@/lib/supabase/ensureUserProfile';
 import { ensureMonthlyResetAndPlanSync } from '@/lib/quota/ensureMonthlyResetAndPlanSync';
 
 // Bloqueo de concurrencia activo por usuario para evitar extracciones paralelas fraudulentas
@@ -89,6 +90,9 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     // Cliente con permisos de administración para saltarse RLS al gestionar cuotas
     const adminClient = getAdminClient();
     const db = adminClient || supabase;
+
+    // Red de seguridad autorreparadora: asegurar fila en public.usuarios antes de cuotas y guardado en recetas
+    await ensureUserProfileExists(user);
 
   // 2. Control de Cuotas Freemium / Premium y Anti-Fraude con Sincronización Mensual Compartida
   // Sincronizar reinicio mensual y validar estado de suscripción PRO con Stripe

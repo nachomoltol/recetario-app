@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { ensureUserProfileExists } from '@/lib/supabase/ensureUserProfile';
 import { ensureMonthlyResetAndPlanSync } from '@/lib/quota/ensureMonthlyResetAndPlanSync';
 import { BookOpen, Sparkles } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
@@ -31,6 +32,9 @@ export default async function RecipesDashboardPage(props: RecipesDashboardPagePr
   if (!user) {
     redirect('/login');
   }
+
+  // Red de seguridad autorreparadora: garantizar fila en 'usuarios' antes de cargar cuotas/perfil
+  await ensureUserProfileExists(user);
 
   // Sincronización mensual y verificación de caducidad PRO
   await ensureMonthlyResetAndPlanSync(user.id);

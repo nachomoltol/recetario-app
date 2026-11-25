@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { type EmailOtpType } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
+import { ensureUserProfileExists } from '@/lib/supabase/ensureUserProfile';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -31,12 +32,16 @@ export async function GET(request: Request) {
 
     // 1. Manejo con token_hash y type (enlaces directos de verificación y recovery de Supabase)
     if (token_hash && type) {
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         token_hash,
         type,
       });
 
       if (!error) {
+        const verifiedUser = data?.user ?? (await supabase.auth.getUser()).data.user;
+        if (verifiedUser) {
+          await ensureUserProfileExists(verifiedUser);
+        }
         // Si el tipo es recovery, redirigir obligatoriamente a /update-password
         if (type === 'recovery') {
           return NextResponse.redirect(new URL('/update-password', request.url));
@@ -52,9 +57,13 @@ export async function GET(request: Request) {
 
     // 2. Manejo con código PKCE tradicional
     if (code) {
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
       if (!error) {
+        const sessionUser = data?.user ?? (await supabase.auth.getUser()).data.user;
+        if (sessionUser) {
+          await ensureUserProfileExists(sessionUser);
+        }
         // Si el tipo es recovery o el destino solicitado es update-password, forzar redirección
         if (type === 'recovery' || next === '/update-password') {
           return NextResponse.redirect(new URL('/update-password', request.url));

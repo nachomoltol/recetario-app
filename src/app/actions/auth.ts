@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient, getAdminClient } from '@/lib/supabase/server';
+import { ensureUserProfileExists } from '@/lib/supabase/ensureUserProfile';
 
 export interface AuthActionResult {
   error?: string;
@@ -26,7 +27,7 @@ export async function loginAction(
 
   try {
     const supabase = await createClient();
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -38,6 +39,10 @@ export async function loginAction(
             ? 'Credenciales incorrectas. Verifica tu email y contraseña.'
             : String(error.message || 'Error al iniciar sesión.'),
       };
+    }
+
+    if (data.user) {
+      await ensureUserProfileExists(data.user);
     }
 
     shouldRedirect = true;
