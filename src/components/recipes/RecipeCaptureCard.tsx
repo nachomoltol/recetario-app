@@ -24,6 +24,7 @@ import {
   Square,
   RotateCcw,
   Volume2,
+  ClipboardPaste,
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { ingestRecipeAction } from '@/app/actions/recipeIngest';
@@ -1038,6 +1039,77 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     executeIngest(targetMode, trimmed);
   };
 
+  // Extrae una URL limpia si el texto pegado incluye frases promocionales o hashtags de TikTok, Instagram, YouTube, etc.
+  const extractCleanSharedUrl = useCallback((rawText: string): string | null => {
+    if (!rawText) return null;
+    const match = rawText.match(/https?:\/\/[^\s"'<>]+/i);
+    if (!match || !match[0]) return null;
+    return match[0].replace(/[.,;:!?)\]}]+$/, '').trim();
+  }, []);
+
+  // Pegar desde el portapapeles en 1 toque, limpiando texto sobrante de redes sociales
+  const handlePasteFromClipboard = useCallback(
+    async (autoExtract: boolean) => {
+      if (isPending) return;
+      setError(null);
+      setSuccess(null);
+
+      if (typeof navigator === 'undefined' || !navigator.clipboard?.readText) {
+        urlInputRef.current?.focus();
+        setError(
+          language === 'en'
+            ? 'Direct clipboard access is not available here. Tap the URL box and choose Paste.'
+            : 'El acceso rápido al portapapeles no está disponible aquí. Toca la casilla de enlace y pulsa Pegar.'
+        );
+        return;
+      }
+
+      try {
+        const rawClip = await navigator.clipboard.readText();
+        const trimmed = (rawClip || '').trim();
+
+        if (!trimmed) {
+          urlInputRef.current?.focus();
+          setError(
+            language === 'en'
+              ? 'Your clipboard is empty. Copy a recipe link from TikTok, Instagram or YouTube first.'
+              : 'Tu portapapeles está vacío. Copia primero el enlace de la receta en TikTok, Instagram o YouTube.'
+          );
+          return;
+        }
+
+        const cleanUrl = extractCleanSharedUrl(trimmed);
+        if (cleanUrl) {
+          setMode('url');
+          setUrl(cleanUrl);
+          if (autoExtract) {
+            executeIngest('url', cleanUrl);
+          } else {
+            urlInputRef.current?.focus();
+          }
+          return;
+        }
+
+        // Si el usuario copió texto de una receta sin enlace, pasarlo cómodamente a modo texto
+        setMode('texto');
+        setTexto(trimmed);
+        if (autoExtract) {
+          executeIngest('texto', trimmed);
+        } else {
+          textInputRef.current?.focus();
+        }
+      } catch {
+        urlInputRef.current?.focus();
+        setError(
+          language === 'en'
+            ? 'Clipboard permission was declined. Allow pasting or paste the link directly into the box.'
+            : 'No se concedió permiso para leer el portapapeles. Pulsa Permitir pegar o pega el enlace en la casilla.'
+        );
+      }
+    },
+    [isPending, language, extractCleanSharedUrl, executeIngest]
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (mode === 'url') {
@@ -1328,7 +1400,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {mode === 'url' ? (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <input
@@ -1336,20 +1408,47 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                   type="url"
                   autoFocus={false}
                   value={url}
+                  onPaste={(e) => {
+                    const pasted = e.clipboardData?.getData('text') || '';
+                    const cleanUrl = extractCleanSharedUrl(pasted);
+                    if (cleanUrl && cleanUrl !== pasted.trim()) {
+                      e.preventDefault();
+                      setUrl(cleanUrl);
+                    }
+                  }}
                   onChange={(e) => {
                     const val = e.target.value;
-                    if (val.includes('youtube.com') || val.includes('youtu.be')) {
-                      const urlMatch = val.match(/(https?:\/\/[^\s]+)/);
-                      setUrl(urlMatch ? urlMatch[0] : val);
+                    const trimmedVal = val.trim();
+                    if (
+                      trimmedVal &&
+                      !/^https?:\/\/\S+$/i.test(trimmedVal) &&
+                      /https?:\/\/\S+/i.test(trimmedVal)
+                    ) {
+                      const cleanUrl = extractCleanSharedUrl(trimmedVal);
+                      setUrl(cleanUrl || val);
                     } else {
                       setUrl(val);
                     }
                   }}
                   placeholder={t('capture_placeholder_url_detailed')}
                   disabled={isPending}
-                  className="w-full min-h-[52px] pl-4 pr-12 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition shadow-2xs disabled:opacity-60"
+                  className="w-full min-h-[52px] pl-4 pr-11 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition shadow-2xs disabled:opacity-60"
                 />
-                <LinkIcon className="w-5 h-5 text-stone-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                {url && !isPending ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUrl('');
+                      urlInputRef.current?.focus();
+                    }}
+                    title={language === 'en' ? 'Clear link' : 'Borrar enlace'}
+                    className="w-7 h-7 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/70 flex items-center justify-center absolute right-3 top-1/2 -translate-y-1/2 transition cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <LinkIcon className="w-5 h-5 text-stone-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                )}
               </div>
 
               {/* Input nativo de archivo con accept amplio (imágenes, PDFs y audios) */}
@@ -1372,6 +1471,30 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
               >
                 <Paperclip className="w-5 h-5" />
                 <span className="hidden sm:inline text-xs font-semibold">{t('capture_btn_upload_file')}</span>
+              </button>
+            </div>
+
+            {/* Botones rápidos de 1 toque para pegar desde TikTok, Instagram, YouTube o portapapeles */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handlePasteFromClipboard(true)}
+                disabled={isPending}
+                className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-2xl bg-[#f4efe6] hover:bg-[#ebe2d5] active:scale-[0.99] border border-brand-primary/35 text-stone-900 font-semibold text-xs sm:text-sm transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs disabled:opacity-50"
+              >
+                <ClipboardPaste className="w-4 h-4 text-brand-primary shrink-0" />
+                <span>
+                  {language === 'en' ? 'Paste link & extract' : 'Pegar enlace y extraer'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handlePasteFromClipboard(false)}
+                disabled={isPending}
+                className="min-h-[44px] px-3.5 py-2 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] active:scale-[0.99] border border-[#e7dfd5] text-stone-600 hover:text-stone-900 font-medium text-xs transition cursor-pointer flex items-center justify-center shrink-0 disabled:opacity-50"
+              >
+                <span>{language === 'en' ? 'Paste only' : 'Solo pegar'}</span>
               </button>
             </div>
 

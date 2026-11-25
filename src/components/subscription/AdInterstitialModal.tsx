@@ -49,15 +49,6 @@ export interface AdInterstitialModalProps {
 type PlatformType = 'android_native' | 'ios_native' | 'ios_web' | 'desktop_web';
 type ViewStateType = 'choice' | 'playing' | 'reward_credited';
 
-interface LiveModalDiagnostics {
-  detectedPlatform: PlatformType;
-  hasNativeBridge: boolean;
-  capacitorPlatform: string;
-  capacitorIsNative: boolean;
-  userAgent: string;
-  currentUrl: string;
-}
-
 function detectModalPlatform(): PlatformType {
   if (typeof window === 'undefined') return 'desktop_web';
 
@@ -95,39 +86,6 @@ function detectModalPlatform(): PlatformType {
   }
 }
 
-function readLiveModalDiagnostics(): LiveModalDiagnostics {
-  if (typeof window === 'undefined') {
-    return {
-      detectedPlatform: 'desktop_web',
-      hasNativeBridge: false,
-      capacitorPlatform: 'ssr',
-      capacitorIsNative: false,
-      userAgent: '',
-      currentUrl: '',
-    };
-  }
-
-  const detectedPlatform = detectModalPlatform();
-  let capacitorPlatform = 'web';
-  let capacitorIsNative = false;
-  try {
-    capacitorPlatform = Capacitor.getPlatform() || 'web';
-    capacitorIsNative = Boolean(Capacitor.isNativePlatform());
-  } catch {
-    capacitorPlatform = 'error';
-    capacitorIsNative = false;
-  }
-
-  return {
-    detectedPlatform,
-    hasNativeBridge: hasActiveNativeBridge(),
-    capacitorPlatform,
-    capacitorIsNative,
-    userAgent: window.navigator?.userAgent || '',
-    currentUrl: window.location?.href || '',
-  };
-}
-
 export function AdInterstitialModal({
   isOpen,
   onComplete,
@@ -155,9 +113,6 @@ export function AdInterstitialModal({
 
   const [viewState, setViewState] = useState<ViewStateType>('choice');
   const [platform, setPlatform] = useState<PlatformType>(() => detectModalPlatform());
-  const [liveDiagnostics, setLiveDiagnostics] = useState<LiveModalDiagnostics>(() =>
-    readLiveModalDiagnostics()
-  );
   const [secondsRemaining, setSecondsRemaining] = useState(5);
   const [isAdMobPlaying, setIsAdMobPlaying] = useState(false);
   const [dismissWarning, setDismissWarning] = useState<string | null>(null);
@@ -178,18 +133,16 @@ export function AdInterstitialModal({
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  // Detección precisa de plataforma y diagnóstico en vivo: reevaluar al montar y cada vez que se abra el modal (isOpen)
+  // Detección precisa de plataforma: reevaluar al montar y cada vez que se abra el modal (isOpen)
   useEffect(() => {
-    const syncDiagnostics = () => {
-      const snapshot = readLiveModalDiagnostics();
-      setPlatform(snapshot.detectedPlatform);
-      setLiveDiagnostics(snapshot);
+    const syncPlatform = () => {
+      setPlatform(detectModalPlatform());
     };
 
-    syncDiagnostics();
+    syncPlatform();
 
     if (!isOpen) return;
-    const timer = window.setTimeout(syncDiagnostics, 200);
+    const timer = window.setTimeout(syncPlatform, 200);
     return () => window.clearTimeout(timer);
   }, [isOpen]);
 
@@ -968,64 +921,6 @@ export function AdInterstitialModal({
             </div>
           </div>
         )}
-
-        {/* Recuadro visible de diagnóstico en vivo */}
-        <div className="mt-2 pt-2.5 border-t border-[#e7dfd5]">
-          <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 text-[10px] sm:text-[11px] text-stone-700 space-y-1 text-left font-mono leading-snug">
-            <div className="font-sans font-bold text-[10px] uppercase tracking-wider text-stone-500 pb-0.5">
-              {isEn ? 'Live Device Diagnostics' : 'Diagnóstico en vivo'}
-            </div>
-            <div>
-              <span className="font-semibold text-stone-900">
-                {isEn ? 'Detected platform:' : 'Plataforma detectada:'}
-              </span>{' '}
-              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-950 font-bold">
-                {liveDiagnostics.detectedPlatform}
-              </span>
-            </div>
-            <div>
-              <span className="font-semibold text-stone-900">
-                {isEn ? 'Native bridge active:' : 'Puente nativo activo:'}
-              </span>{' '}
-              <span
-                className={
-                  liveDiagnostics.hasNativeBridge
-                    ? 'text-emerald-700 font-bold'
-                    : 'text-rose-700 font-bold'
-                }
-              >
-                {liveDiagnostics.hasNativeBridge
-                  ? isEn
-                    ? 'Yes (true)'
-                    : 'Sí (true)'
-                  : isEn
-                  ? 'No (false)'
-                  : 'No (false)'}
-              </span>
-            </div>
-            <div>
-              <span className="font-semibold text-stone-900">
-                {isEn ? 'Capacitor platform:' : 'Plataforma Capacitor:'}
-              </span>{' '}
-              <span>
-                {liveDiagnostics.capacitorPlatform} (isNative:{' '}
-                {liveDiagnostics.capacitorIsNative ? 'true' : 'false'})
-              </span>
-            </div>
-            <div className="break-all">
-              <span className="font-semibold text-stone-900">
-                {isEn ? 'Device signature (User-Agent):' : 'Firma del dispositivo (User-Agent):'}
-              </span>{' '}
-              <span className="text-stone-600">{liveDiagnostics.userAgent || '—'}</span>
-            </div>
-            <div className="break-all">
-              <span className="font-semibold text-stone-900">
-                {isEn ? 'Current URL:' : 'Dirección URL actual:'}
-              </span>{' '}
-              <span className="text-stone-600">{liveDiagnostics.currentUrl || '—'}</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
