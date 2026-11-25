@@ -154,12 +154,17 @@ export function isNativeMobilePlatform(): boolean {
   }
 }
 
+const IOS_PROD_REWARDED_AD_UNIT_ID = 'ca-app-pub-8525131609099761/3729572928';
+const ANDROID_PROD_REWARDED_AD_UNIT_ID = 'ca-app-pub-8525131609099761/6495393562';
+const IOS_TEST_REWARDED_AD_UNIT_ID = 'ca-app-pub-3940256099942544/1712485313';
+const ANDROID_TEST_REWARDED_AD_UNIT_ID = 'ca-app-pub-3940256099942544/5224354917';
+
 /**
  * Obtiene el ID del bloque de anuncios de vídeo bonificado (Rewarded Video).
  * Si la variable de entorno indica que estamos en producción (process.env.NODE_ENV === 'production'),
  * utiliza el Ad Unit ID oficial para cada plataforma:
  * - Android: ca-app-pub-8525131609099761/6495393562
- * - iOS: ca-app-pub-8525131609099761/3729572928
+ * - iOS: ca-app-pub-8525131609099761/3729572928 (sin caer nunca en la variable general de Android)
  * En cualquier otro caso (desarrollo o testing), utiliza el ID oficial de pruebas de Google:
  * - Android: ca-app-pub-3940256099942544/5224354917
  * - iOS: ca-app-pub-3940256099942544/1712485313
@@ -171,29 +176,49 @@ export function getRewardedAdUnitId(): string {
   if (isProduction) {
     if (isIos) {
       return (
-        process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID_IOS ||
-        process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID ||
-        'ca-app-pub-8525131609099761/3729572928'
+        process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID_IOS?.trim() ||
+        IOS_PROD_REWARDED_AD_UNIT_ID
       );
     }
 
     return (
-      process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID_ANDROID ||
-      process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID ||
-      'ca-app-pub-8525131609099761/6495393562'
+      process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID_ANDROID?.trim() ||
+      process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID?.trim() ||
+      ANDROID_PROD_REWARDED_AD_UNIT_ID
     );
   }
 
   // En cualquier otro caso (desarrollo o testing), utiliza el ID oficial de pruebas de Google
   if (isIos) {
-    return 'ca-app-pub-3940256099942544/1712485313';
+    return IOS_TEST_REWARDED_AD_UNIT_ID;
   }
 
-  return 'ca-app-pub-3940256099942544/5224354917';
+  return ANDROID_TEST_REWARDED_AD_UNIT_ID;
 }
 
 let isUmpConsentGathered = false;
 let umpPromise: Promise<boolean> | null = null;
+let isIosAttChecked = false;
+
+/**
+ * Gestiona de forma segura el permiso App Tracking Transparency (ATT) en iOS 14+
+ * antes de inicializar o solicitar anuncios a Google AdMob.
+ */
+async function ensureIosTrackingAuthorization(): Promise<void> {
+  const isIos = Capacitor.getPlatform() === 'ios' || isNativeIosPlatform();
+  if (!isNativePlatform() || !isIos || isIosAttChecked) return;
+
+  try {
+    const statusRes = await AdMob.trackingAuthorizationStatus();
+    if (statusRes?.status === 'notDetermined') {
+      await AdMob.requestTrackingAuthorization();
+    }
+  } catch (err) {
+    console.warn('[AdMob ATT] No se pudo consultar o solicitar ATT en iOS:', err);
+  } finally {
+    isIosAttChecked = true;
+  }
+}
 
 /**
  * Solicita y gestiona el consentimiento del usuario con Google UMP antes de AdMob.
@@ -205,6 +230,8 @@ export async function ensureUmpConsent(): Promise<boolean> {
 
   umpPromise = (async () => {
     try {
+      await ensureIosTrackingAuthorization();
+
       const isTesting = process.env.NODE_ENV !== 'production';
 
       // 1. Solicitar información de consentimiento a Google UMP
@@ -255,10 +282,17 @@ export async function initializeAdMob(): Promise<void> {
       }
 
       const isTesting = process.env.NODE_ENV !== 'production';
+      const isIos = Capacitor.getPlatform() === 'ios' || isNativeIosPlatform();
 
       await AdMob.initialize({
         initializeForTesting: isTesting,
       });
+
+      // En iOS, MobileAds.shared.start() es asíncrono en el plugin nativo; dar margen breve antes de cargar anuncios
+      if (isIos) {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
+
       isAdMobInitialized = true;
     } catch (error) {
       console.error('[AdMob] Error al inicializar AdMob SDK:', error);
@@ -275,7 +309,8 @@ let preloadPromise: Promise<boolean> | null = null;
 
 /**
  * Precarga el anuncio bonificado en background para reproducción instantánea.
- * Evita peticiones duplicadas mediante control de promesa activa.
+ * En iOS incluye respaldo automático al bloque oficial de prueba de Google si el bloque comercial
+ * aún no tiene inventario disponible (ej. durante pruebas en TestFlight o revisión de App Store).
  */
 export async function preloadRewardedAd(): Promise<boolean> {
   if (!isNativePlatform()) return false;
@@ -283,14 +318,35 @@ export async function preloadRewardedAd(): Promise<boolean> {
   if (preloadPromise) return preloadPromise;
 
   preloadPromise = (async () => {
+    const isIos = Capacitor.getPlatform() === 'ios' || isNativeIosPlatform();
+    const adId = getRewardedAdUnitId();
+
     try {
       await initializeAdMob();
-      const adId = getRewardedAdUnitId();
       await AdMob.prepareRewardVideoAd({ adId });
       isAdLoaded = true;
       return true;
     } catch (err) {
-      console.warn('[AdMob] Error en precarga de anuncio bonificado:', err);
+      console.warn('[AdMob] Error en precarga de anuncio bonificado primario:', err);
+
+      // Respaldo automático en iOS al bloque oficial de vídeo bonificado de prueba de Google
+      if (isIos && adId !== IOS_TEST_REWARDED_AD_UNIT_ID) {
+        try {
+          console.info(
+            '[AdMob iOS] Reintentando con bloque oficial de prueba de Google para iOS:',
+            IOS_TEST_REWARDED_AD_UNIT_ID
+          );
+          await AdMob.prepareRewardVideoAd({
+            adId: IOS_TEST_REWARDED_AD_UNIT_ID,
+            isTesting: true,
+          });
+          isAdLoaded = true;
+          return true;
+        } catch (fallbackErr) {
+          console.warn('[AdMob iOS] Falló también el bloque de respaldo de prueba:', fallbackErr);
+        }
+      }
+
       isAdLoaded = false;
       return false;
     } finally {

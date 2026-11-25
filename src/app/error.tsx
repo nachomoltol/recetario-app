@@ -1,8 +1,28 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, RotateCcw, Home } from 'lucide-react';
+import { AlertTriangle, RotateCcw, Home, Wifi } from 'lucide-react';
+
+function isTransientNetworkOrWebKitError(err?: Error | null): boolean {
+  const msg = (err?.message || '').toLowerCase();
+  const name = (err?.name || '').toLowerCase();
+  if (!msg && !name) return false;
+
+  return (
+    msg.includes('load failed') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror') ||
+    msg.includes('network request failed') ||
+    msg.includes('the network connection was lost') ||
+    msg.includes('cancelled') ||
+    msg.includes('canceled') ||
+    msg.includes('aborted') ||
+    msg.includes('chunkloaderror') ||
+    msg.includes('loading chunk') ||
+    name.includes('chunkloaderror')
+  );
+}
 
 export default function GlobalError({
   error,
@@ -11,9 +31,74 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const isTransient = useMemo(() => isTransientNetworkOrWebKitError(error), [error]);
+
   useEffect(() => {
+    if (isTransient) {
+      console.warn('[GlobalError] Microcorte transitorio de red detectado (iOS/WebKit):', error?.message);
+      try {
+        const key = 'miga_last_transient_autorecover';
+        const lastRecover = Number(sessionStorage.getItem(key) || '0');
+        const now = Date.now();
+        // Auto-recuperar de inmediato si no se ha reintentado en los últimos 4 segundos
+        if (now - lastRecover > 4000) {
+          sessionStorage.setItem(key, String(now));
+          const timer = window.setTimeout(() => {
+            reset();
+          }, 120);
+          return () => window.clearTimeout(timer);
+        }
+      } catch {
+        const timer = window.setTimeout(() => {
+          reset();
+        }, 120);
+        return () => window.clearTimeout(timer);
+      }
+      return;
+    }
+
     console.error('GLOBAL APPLICATION CRASH:', error);
-  }, [error]);
+  }, [error, isTransient, reset]);
+
+  if (isTransient) {
+    return (
+      <div className="min-h-screen bg-[#faf7f2] flex items-center justify-center p-4 sm:p-6">
+        <div className="max-w-md w-full bg-white rounded-3xl border border-[#e7dfd5] p-6 sm:p-7 shadow-xl space-y-5 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center mx-auto text-brand-primary">
+            <Wifi className="w-6 h-6" />
+          </div>
+
+          <div className="space-y-1.5">
+            <h1 className="text-lg sm:text-xl font-bold font-serif-recipe text-stone-900">
+              Reconectando con Miga
+            </h1>
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+              La conexión se pausó un instante al cambiar de pantalla o abrir una ventana del móvil. Pulsa continuar para seguir donde estabas.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={() => reset()}
+              className="w-full sm:w-auto min-h-[44px] px-6 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-bold text-xs sm:text-sm inline-flex items-center justify-center gap-2 transition shadow-xs cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Continuar</span>
+            </button>
+
+            <Link
+              href="/recipes"
+              className="w-full sm:w-auto min-h-[44px] px-4 rounded-xl bg-[#f4efe6] hover:bg-[#e7dfd5] text-stone-800 font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 transition"
+            >
+              <Home className="w-4 h-4" />
+              <span>Volver a Recetas</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#faf7f2] flex items-center justify-center p-4 sm:p-6">

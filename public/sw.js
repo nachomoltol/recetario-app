@@ -1,4 +1,4 @@
-const CACHE_NAME = 'miga-pwa-v5.3';
+const CACHE_NAME = 'miga-pwa-v5.4';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
@@ -43,11 +43,11 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Fetch: Network-first con fallback a caché para garantizar siempre la versión más reciente
+// Fetch: Network-first seguro en iOS/WebKit (nunca devuelve null a respondWith)
 self.addEventListener('fetch', (event) => {
   const request = event.request;
 
-  // Ignorar peticiones no-GET o externas (Supabase, Google GenAI, etc.)
+  // Ignorar peticiones no-GET o externas (Supabase, Google GenAI, AdMob, etc.)
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
 
@@ -55,26 +55,46 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-First para todos los recursos locales: si hay red, entrega siempre lo más nuevo y actualiza caché
+  // No interceptar rutas de API ni payloads dinámicos RSC / Prefetch de Next.js
+  // para evitar que microcortes de WebKit al cambiar de app disparen "TypeError: Load failed"
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.searchParams.has('_rsc') ||
+    request.headers.get('RSC') === '1' ||
+    request.headers.get('Next-Router-Prefetch') === '1'
+  ) {
+    return;
+  }
+
+  // Network-First para recursos locales con fallback que jamás devuelve null
   event.respondWith(
     fetch(request)
       .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseClone);
+            cache.put(request, responseClone).catch(() => {});
           });
         }
         return networkResponse;
       })
-      .catch(() => {
-        // En caso de caída de red u offline, recuperar de caché
-        return caches.match(request).then((cachedResponse) => {
+      .catch(async () => {
+        try {
+          const cachedResponse = await caches.match(request);
           if (cachedResponse) return cachedResponse;
+
           if (request.mode === 'navigate') {
-            return caches.match('/');
+            const rootShell = await caches.match('/');
+            if (rootShell) return rootShell;
           }
-          return null;
+        } catch {}
+
+        // En WebKit/iOS, devolver null en respondWith provoca un crash "TypeError: Load failed".
+        // Devolvemos siempre una instancia Response válida.
+        return new Response('Conexión interrumpida temporalmente.', {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         });
       })
   );
