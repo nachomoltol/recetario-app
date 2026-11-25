@@ -11,7 +11,6 @@ import {
   Check,
   Loader2,
   ExternalLink,
-  Mail,
   AlertCircle,
   CheckCircle2,
   Monitor,
@@ -26,13 +25,17 @@ import { useProfileStore } from '@/stores/useProfileStore';
 import { createClient } from '@/lib/supabase/client';
 import {
   isNativePlatform,
-  isNativeMobilePlatform,
+  isNativeIosPlatform,
+  isNativeAndroidPlatform,
   showRewardVideoAdFlow,
   preloadRewardedAd,
 } from '@/lib/admob/admobService';
 import { claimAdRewardAction } from '@/app/actions/claimAdRewardAction';
 import { checkUserBalanceAction } from '@/app/actions/checkUserBalanceAction';
 import { requestMobileAdUnlockAction } from '@/app/actions/requestMobileAdUnlockAction';
+
+const APP_STORE_URL = 'https://apps.apple.com/app/id6832335156';
+const GOOGLE_PLAY_URL = 'https://play.google.com/store/apps/details?id=com.migaapp.app';
 
 export interface AdInterstitialModalProps {
   isOpen: boolean;
@@ -45,6 +48,39 @@ export interface AdInterstitialModalProps {
 
 type PlatformType = 'android_native' | 'ios_native' | 'ios_web' | 'desktop_web';
 type ViewStateType = 'choice' | 'playing' | 'reward_credited';
+
+function detectModalPlatform(): PlatformType {
+  if (typeof window === 'undefined') return 'desktop_web';
+
+  try {
+    const win = window as unknown as {
+      webkit?: { messageHandlers?: { bridge?: unknown } };
+      androidBridge?: unknown;
+    };
+    const hasIosBridge = Boolean(win.webkit?.messageHandlers?.bridge);
+    const hasAndroidBridge = Boolean(win.androidBridge);
+    const isNativeCap = Capacitor.isNativePlatform();
+    const capPlatform = Capacitor.getPlatform();
+    const ua = navigator.userAgent || '';
+    const isAppleDevice =
+      capPlatform === 'ios' ||
+      /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if ((isNativeCap && capPlatform === 'ios') || hasIosBridge || isNativeIosPlatform()) {
+      return 'ios_native';
+    }
+    if ((isNativeCap && capPlatform === 'android') || hasAndroidBridge || isNativeAndroidPlatform()) {
+      return 'android_native';
+    }
+    if (isAppleDevice) {
+      return 'ios_web';
+    }
+    return 'desktop_web';
+  } catch {
+    return 'desktop_web';
+  }
+}
 
 export function AdInterstitialModal({
   isOpen,
@@ -93,32 +129,10 @@ export function AdInterstitialModal({
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  // Detección precisa de plataforma: Android Nativo vs iOS vs Desktop Web
+  // Detección precisa de plataforma: reevaluar siempre al montar y cada vez que se abra el modal (isOpen)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    try {
-      const isNative = Capacitor.isNativePlatform();
-      const capPlatform = Capacitor.getPlatform();
-      const ua = navigator.userAgent || '';
-      const isApple =
-        capPlatform === 'ios' ||
-        /iPad|iPhone|iPod/.test(ua) ||
-        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-      if (isNative && capPlatform === 'android') {
-        setPlatform('android_native');
-      } else if (isNative && capPlatform === 'ios') {
-        setPlatform('ios_native');
-      } else if (isApple) {
-        setPlatform('ios_web');
-      } else {
-        setPlatform('desktop_web');
-      }
-    } catch {
-      setPlatform('desktop_web');
-    }
-  }, []);
+    setPlatform(detectModalPlatform());
+  }, [isOpen]);
 
   // Carga o sincronización del email del usuario activo
   useEffect(() => {
@@ -135,15 +149,16 @@ export function AdInterstitialModal({
   }, [profile?.email]);
 
   const userEmailDisplay = userEmail || (isEn ? 'your account' : 'tu cuenta');
+  const isNativeIos = platform === 'ios_native';
   const isNativeAndroid = platform === 'android_native';
-  const isNativeMobile = platform === 'android_native' || platform === 'ios_native';
+  const isNativeMobile = isNativeAndroid || isNativeIos;
 
-  // Precarga automática del anuncio bonificado al abrir el modal en Android nativo
+  // Precarga automática del anuncio bonificado al abrir el modal en móvil nativo (iOS o Android)
   useEffect(() => {
-    if (isOpen && viewState === 'choice' && isNativePlatform()) {
+    if (isOpen && viewState === 'choice' && (isNativeMobile || isNativePlatform())) {
       preloadRewardedAd().catch(() => {});
     }
-  }, [isOpen, viewState]);
+  }, [isOpen, viewState, isNativeMobile]);
 
   // Al abrir o cerrar el modal, reiniciar estados limpios
   useEffect(() => {
@@ -201,7 +216,7 @@ export function AdInterstitialModal({
     let isMounted = true;
 
     // 1. Entorno nativo Android/iOS: ejecutar AdMob Rewarded Video
-    if (isNativePlatform()) {
+    if (isNativeMobile || isNativePlatform()) {
       setIsAdMobPlaying(true);
       showRewardVideoAdFlow()
         .then(async (result) => {
@@ -453,11 +468,21 @@ export function AdInterstitialModal({
               </div>
 
               <h3 className="text-lg sm:text-xl font-bold font-serif-recipe text-stone-900 leading-snug">
-                {isEn ? 'Choose how to process your recipe' : 'Elige cómo procesar tu receta'}
+                {isNativeIos
+                  ? isEn
+                    ? 'Unlock your free recipe'
+                    : 'Desbloquea tu receta gratis'
+                  : isEn
+                  ? 'Choose how to process your recipe'
+                  : 'Elige cómo procesar tu receta'}
               </h3>
 
               <p className="text-xs text-stone-600 max-w-sm mx-auto leading-tight">
-                {isEn
+                {isNativeIos
+                  ? isEn
+                    ? 'You have used your 3 free direct recipes this month. Watch a short ad to continue:'
+                    : 'Has disfrutado de tus 3 recetas gratis directas del mes. Mira un breve anuncio para continuar:'
+                  : isEn
                   ? 'You have used your 3 free direct recipes this month. Choose your experience to continue:'
                   : 'Has disfrutado de tus 3 recetas gratis directas del mes. Elige tu experiencia para continuar:'}
               </p>
@@ -471,69 +496,71 @@ export function AdInterstitialModal({
               </div>
             )}
 
-            {/* Tarjeta A: Opción PRO (Prioritaria y destacada) */}
-            <div className="relative p-3 sm:p-3.5 rounded-2xl border-2 border-brand-primary bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white space-y-2 shadow-xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-6 h-6 rounded-lg bg-brand-primary/10 text-brand-primary flex items-center justify-center">
-                    <Crown className="w-3.5 h-3.5 text-brand-primary" />
+            {/* Tarjeta A: Opción PRO (Oculta por completo en iOS nativo por cumplimiento Apple Guideline 3.1.1) */}
+            {!isNativeIos && (
+              <div className="relative p-3 sm:p-3.5 rounded-2xl border-2 border-brand-primary bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white space-y-2 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-6 h-6 rounded-lg bg-brand-primary/10 text-brand-primary flex items-center justify-center">
+                      <Crown className="w-3.5 h-3.5 text-brand-primary" />
+                    </div>
+                    <span className="font-bold text-xs sm:text-sm text-stone-900">
+                      {isEn ? 'Miga PRO Experience' : 'Experiencia Miga PRO'}
+                    </span>
                   </div>
-                  <span className="font-bold text-xs sm:text-sm text-stone-900">
-                    {isEn ? 'Miga PRO Experience' : 'Experiencia Miga PRO'}
+                  <span className="px-2 py-0.5 rounded-full bg-brand-primary text-white text-[9px] font-bold uppercase tracking-wider shadow-2xs">
+                    {isEn ? 'Recommended' : 'Recomendado'}
                   </span>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-brand-primary text-white text-[9px] font-bold uppercase tracking-wider shadow-2xs">
-                  {isEn ? 'Recommended' : 'Recomendado'}
-                </span>
-              </div>
 
-              {/* 3 líneas ultra compactas */}
-              <div className="space-y-1 text-xs text-stone-700 font-medium pl-0.5">
-                <div className="flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-brand-primary shrink-0" />
-                  <span>{isEn ? 'Unlimited instant extraction' : 'Extracción ilimitada e instantánea'}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-brand-primary shrink-0" />
-                  <span>{isEn ? 'Up to 100 recipes/month with advanced AI' : 'Hasta 100 recetas/mes con IA avanzada'}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-brand-primary shrink-0" />
-                  <span>{isEn ? 'Weekly planner & PDF export' : 'Planificador semanal y exportación PDF'}</span>
-                </div>
-              </div>
-
-              {!isNativeMobile ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onSelectPro) {
-                      onSelectPro();
-                    }
-                  }}
-                  className="w-full min-h-[40px] py-2 px-3 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs shadow-sm hover:shadow transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-200" />
-                  <span>{isEn ? 'Get PRO & extract instantly' : 'Hazte PRO y extrae al instante'}</span>
-                </button>
-              ) : (
-                /* Bloque informativo de soporte (Cumplimiento de Políticas de Google Play y Apple App Store Guideline 3.1.1) */
-                <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-stone-700 space-y-1 text-left animate-fade-in">
-                  <div className="flex items-center gap-1.5 font-semibold text-stone-900 text-xs">
-                    <Globe className="w-3.5 h-3.5 text-brand-primary shrink-0" />
-                    <span>{isEn ? 'Web Subscription' : 'Suscripción en Web'}</span>
+                {/* 3 líneas ultra compactas */}
+                <div className="space-y-1 text-xs text-stone-700 font-medium pl-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+                    <span>{isEn ? 'Unlimited instant extraction' : 'Extracción ilimitada e instantánea'}</span>
                   </div>
-                  <p className="text-stone-600 leading-tight text-xs">
-                    {isEn
-                      ? 'Gestiona tu suscripción en migaapp.com iniciando con:'
-                      : 'Gestiona tu suscripción en migaapp.com iniciando con:'}
-                  </p>
-                  <div className="font-mono text-xs font-semibold text-stone-900 bg-white px-2 py-0.5 rounded border border-stone-200 w-fit break-all shadow-2xs">
-                    {userEmailDisplay}
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+                    <span>{isEn ? 'Up to 100 recipes/month with advanced AI' : 'Hasta 100 recetas/mes con IA avanzada'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+                    <span>{isEn ? 'Weekly planner & PDF export' : 'Planificador semanal y exportación PDF'}</span>
                   </div>
                 </div>
-              )}
-            </div>
+
+                {!isNativeMobile ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onSelectPro) {
+                        onSelectPro();
+                      }
+                    }}
+                    className="w-full min-h-[40px] py-2 px-3 rounded-xl bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs shadow-sm hover:shadow transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                    <span>{isEn ? 'Get PRO & extract instantly' : 'Hazte PRO y extrae al instante'}</span>
+                  </button>
+                ) : (
+                  /* Bloque informativo de soporte en Android nativo */
+                  <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-stone-700 space-y-1 text-left animate-fade-in">
+                    <div className="flex items-center gap-1.5 font-semibold text-stone-900 text-xs">
+                      <Globe className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+                      <span>{isEn ? 'Web Subscription' : 'Suscripción en Web'}</span>
+                    </div>
+                    <p className="text-stone-600 leading-tight text-xs">
+                      {isEn
+                        ? 'Manage your subscription on migaapp.com signing in with:'
+                        : 'Gestiona tu suscripción en migaapp.com iniciando con:'}
+                    </p>
+                    <div className="font-mono text-xs font-semibold text-stone-900 bg-white px-2 py-0.5 rounded border border-stone-200 w-fit break-all shadow-2xs">
+                      {userEmailDisplay}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Tarjeta B: Opción Gratuita según plataforma */}
             <div className="relative p-3 sm:p-3.5 rounded-2xl border-2 border-[#e7dfd5] bg-gradient-to-br from-white via-[#faf7f2] to-[#f4efe6]/60 space-y-2.5 shadow-xs">
@@ -638,7 +665,11 @@ export function AdInterstitialModal({
                     </p>
                     <ol className="space-y-1 list-decimal list-inside pl-0.5 leading-relaxed text-stone-700 text-[11px] sm:text-xs">
                       <li>
-                        <span>{isEn ? 'Open MigaApp on your Android phone with this account: ' : 'Abre MigaApp en tu móvil Android con esta cuenta: '}</span>
+                        <span>
+                          {isEn
+                            ? 'Open Miga App on your phone (iPhone or Android) with this account: '
+                            : 'Abre Miga App en tu móvil (iPhone o Android) con esta cuenta: '}
+                        </span>
                         <strong className="text-stone-900 break-all font-mono text-[10px] sm:text-[11px] bg-white px-1.5 py-0.2 rounded border border-stone-200">
                           {userEmailDisplay}
                         </strong>
@@ -682,42 +713,88 @@ export function AdInterstitialModal({
                     </span>
                   </button>
 
-                  {/* Enlace Secundario: Google Play */}
-                  <div className="text-center pt-0.5">
+                  {/* Enlaces Secundarios: App Store (iPhone) y Google Play (Android) */}
+                  <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 pt-0.5 text-center">
                     <a
-                      href="https://play.google.com/store/apps/details?id=com.migaapp.app"
+                      href={APP_STORE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs text-stone-600 hover:text-stone-900 font-medium underline underline-offset-4 transition"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-brand-primary" />
+                      <span>{isEn ? 'Download on App Store (iPhone)' : 'Descargar en App Store (iPhone)'}</span>
+                    </a>
+                    <a
+                      href={GOOGLE_PLAY_URL}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs text-stone-600 hover:text-stone-900 font-medium underline underline-offset-4 transition"
                     >
                       <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{isEn ? "Don't have the app yet? Download on Google Play" : '¿Aún no tienes la app? Descargar en Google Play'}</span>
+                      <span>{isEn ? 'Download on Google Play (Android)' : 'Descargar en Google Play (Android)'}</span>
                     </a>
                   </div>
                 </div>
               )}
 
-              {/* Caso 3: iPhone / iOS Web (Safari o PWA) */}
+              {/* Caso 3: iPhone / iOS Web (Safari o navegador móvil) */}
               {!isNativeMobile && platform === 'ios_web' && (
-                <div className="space-y-3 pt-0.5">
-                  <div className="p-3.5 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-700 leading-relaxed space-y-1 text-left">
-                    <p className="font-medium text-stone-900">
-                      {isEn ? 'Apple iOS' : 'Dispositivos Apple iOS'}
+                <div className="space-y-2.5 pt-0.5 text-left">
+                  <div className="p-3 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-700 leading-relaxed space-y-1.5">
+                    <p className="font-semibold text-stone-900 flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+                      <span>{isEn ? 'Miga App for iPhone (App Store)' : 'App oficial de Miga para iPhone'}</span>
                     </p>
                     <p className="text-stone-600">
                       {isEn
-                        ? 'Rewarded ads are currently only available on the Android App. We are preparing the launch on the Apple App Store.'
-                        : 'Actualmente los anuncios bonificados solo están disponibles en la App de Android. Estamos preparando el lanzamiento en la App Store de Apple.'}
+                        ? 'Rewarded ads are watched inside the official Miga App from the Apple App Store. Open or download the app with your account:'
+                        : 'Los anuncios bonificados se ven desde la app oficial de Miga en el App Store de Apple. Abre o descarga la app con tu cuenta:'}
                     </p>
+                    <div className="font-mono text-[11px] font-semibold text-stone-900 bg-white px-2 py-0.5 rounded border border-stone-200 w-fit break-all">
+                      {userEmailDisplay}
+                    </div>
                   </div>
 
+                  {/* Acceso directo a la ficha oficial de Miga App en el App Store */}
                   <a
-                    href="mailto:migarecetasredes@gmail.com?subject=Avisadme%20cuando%20este%20en%20App%20Store"
+                    href={APP_STORE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2"
                   >
-                    <Mail className="w-4 h-4 text-amber-300" />
-                    <span>{isEn ? 'Notify me when available on iPhone' : 'Avísame cuando esté disponible en iPhone'}</span>
+                    <ExternalLink className="w-4 h-4 text-amber-300" />
+                    <span>{isEn ? 'Open Miga on Apple App Store' : 'Abrir Miga en el App Store'}</span>
                   </a>
+
+                  {/* Alerta de Estado del Chequeo de Saldo */}
+                  {balanceCheckStatus === 'success' && (
+                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-medium flex items-center gap-2 animate-fade-in">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{balanceCheckMessage || (isEn ? 'Balance detected! Unlocking recipe...' : '¡Saldo detectado! Desbloqueando receta...')}</span>
+                    </div>
+                  )}
+
+                  {(balanceCheckStatus === 'not_found' || balanceCheckStatus === 'error') && (
+                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-medium flex items-center gap-2 animate-fade-in">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>{balanceCheckMessage}</span>
+                    </div>
+                  )}
+
+                  {/* Botón de comprobación de saldo tras ver el vídeo en la app */}
+                  <button
+                    type="button"
+                    onClick={handleCheckBalance}
+                    disabled={isCheckingBalance || balanceCheckStatus === 'success'}
+                    className="w-full min-h-[42px] py-2 px-4 rounded-xl bg-white hover:bg-stone-100 border border-stone-300 disabled:opacity-75 disabled:cursor-not-allowed text-stone-800 font-semibold text-xs sm:text-sm shadow-2xs transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-4 h-4 text-brand-primary ${isCheckingBalance ? 'animate-spin' : ''}`} />
+                    <span>
+                      {isCheckingBalance
+                        ? (isEn ? 'Checking balance...' : 'Comprobando saldo...')
+                        : (isEn ? 'Check balance / I watched the video' : 'Comprobar saldo / Ya vi el vídeo')}
+                    </span>
+                  </button>
                 </div>
               )}
             </div>
