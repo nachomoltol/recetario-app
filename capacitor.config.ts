@@ -13,6 +13,9 @@ const config: CapacitorConfig = {
       '*.migaapp.com',
     ],
   },
+  ios: {
+    appendUserAgent: 'MigaAppIOS Capacitor com.migaapp.app',
+  },
 };
 
 export default config;

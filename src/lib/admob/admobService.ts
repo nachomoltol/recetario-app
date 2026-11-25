@@ -6,29 +6,72 @@ import {
   type AdMobRewardItem,
 } from '@capacitor-community/admob';
 
+interface NativeWindowBridge {
+  Capacitor?: {
+    isNativePlatform?: () => boolean;
+    getPlatform?: () => string;
+  };
+  webkit?: {
+    messageHandlers?: {
+      bridge?: unknown;
+      [key: string]: unknown;
+    };
+  };
+  androidBridge?: unknown;
+}
+
+function getNativeWindow(): NativeWindowBridge | null {
+  if (typeof window === 'undefined') return null;
+  return window as unknown as NativeWindowBridge;
+}
+
+function isAppleTouchDevice(ua: string): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return (
+    /iPad|iPhone|iPod/i.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+}
+
 /**
- * Detecta si la aplicación se está ejecutando en un entorno nativo (iOS o Android)
- * a través de Capacitor. Devuelve false en Web/PC.
+ * Comprueba si existe un puente nativo de Capacitor realmente activo en tiempo de ejecución
+ * para poder invocar plugins nativos como Google AdMob (vídeo bonificado).
  */
-export function isNativePlatform(): boolean {
-  if (typeof window === 'undefined') return false;
+export function hasActiveNativeBridge(): boolean {
+  const win = getNativeWindow();
+  if (!win) return false;
   try {
-    return Capacitor.isNativePlatform();
+    if (Capacitor.isNativePlatform()) return true;
+    if (win.Capacitor?.isNativePlatform?.()) return true;
+    if (Boolean(win.webkit?.messageHandlers?.bridge)) return true;
+    if (Boolean(win.androidBridge)) return true;
+    return false;
   } catch {
     return false;
   }
 }
 
 /**
+ * Detecta si la aplicación se está ejecutando en un entorno nativo (iOS o Android)
+ * con puente activo de Capacitor. Devuelve false en Web/PC.
+ */
+export function isNativePlatform(): boolean {
+  return hasActiveNativeBridge();
+}
+
+/**
  * Detecta si la aplicación se está ejecutando específicamente en entorno nativo Android
- * a través de Capacitor o User-Agent embebido de la app oficial de Google Play.
+ * a través de Capacitor, puente androidBridge o User-Agent embebido de la app oficial de Google Play.
  */
 export function isNativeAndroidPlatform(): boolean {
-  if (typeof window === 'undefined') return false;
+  const win = getNativeWindow();
+  if (!win) return false;
   try {
-    const isCapNative = Capacitor.isNativePlatform();
-    const capPlatform = Capacitor.getPlatform();
-    if (isCapNative && capPlatform === 'android') return true;
+    const isCapNative = Capacitor.isNativePlatform() || Boolean(win.Capacitor?.isNativePlatform?.());
+    const capPlatform = Capacitor.getPlatform() || win.Capacitor?.getPlatform?.() || 'web';
+    if ((isCapNative && capPlatform === 'android') || Boolean(win.androidBridge)) {
+      return true;
+    }
 
     // Fallback complementario por User-Agent / WebView nativa Android de Capacitor
     const ua = navigator.userAgent || '';
@@ -42,24 +85,45 @@ export function isNativeAndroidPlatform(): boolean {
 }
 
 /**
- * Detecta si la aplicación se está ejecutando en una plataforma móvil nativa oficial
- * (tanto Android como iOS), ya sea a través de Capacitor nativo o WebView oficial.
+ * Detecta de forma reforzada y unificada si la aplicación corre dentro de la app nativa de iOS
+ * (WKWebView / Capacitor) frente a navegadores web móviles (Safari, Chrome, Firefox, Edge, Opera).
  */
-export function isNativeMobilePlatform(): boolean {
-  if (typeof window === 'undefined') return false;
+export function isNativeIosPlatform(): boolean {
+  const win = getNativeWindow();
+  if (!win) return false;
   try {
-    if (Capacitor.isNativePlatform()) {
-      const platform = Capacitor.getPlatform();
-      if (platform === 'android' || platform === 'ios') {
-        return true;
-      }
-    }
+    const capPlatform = Capacitor.getPlatform();
+    const winCapPlatform = win.Capacitor?.getPlatform?.();
+    const isCapNative = Capacitor.isNativePlatform() || Boolean(win.Capacitor?.isNativePlatform?.());
 
-    // Fallback complementario por User-Agent / WebView nativa
-    const ua = navigator.userAgent || '';
-    if (/Capacitor|com\.migaapp\.app/i.test(ua) && /Android|iPhone|iPad|iPod/i.test(ua)) {
+    // 1. Señal directa del puente Capacitor / WKWebView bridge en iOS
+    if (
+      (isCapNative && (capPlatform === 'ios' || winCapPlatform === 'ios')) ||
+      Boolean(win.webkit?.messageHandlers?.bridge)
+    ) {
       return true;
     }
+
+    const ua = window.navigator.userAgent || '';
+    const isApple = capPlatform === 'ios' || winCapPlatform === 'ios' || isAppleTouchDevice(ua);
+    if (!isApple) return false;
+
+    // 2. Marca personalizada de app nativa o Capacitor en User-Agent
+    if (/MigaAppIOS|Capacitor|com\.migaapp\.app/i.test(ua)) {
+      return true;
+    }
+
+    // 3. Presencia de webkit.messageHandlers (exclusivo de WKWebView embebido en iOS)
+    if (Boolean(win.webkit?.messageHandlers)) {
+      return true;
+    }
+
+    // 4. Firma real de WKWebView en iPhone/iPad: AppleWebKit presente y ausencia de navegadores web externos
+    const isExternalIosBrowser = /Safari\/|CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua);
+    if (/AppleWebKit/i.test(ua) && !isExternalIosBrowser) {
+      return true;
+    }
+
     return false;
   } catch {
     return false;
@@ -67,18 +131,13 @@ export function isNativeMobilePlatform(): boolean {
 }
 
 /**
- * Detecta si la aplicación se está ejecutando específicamente en entorno nativo iOS
- * a través de Capacitor o User-Agent embebido de la app oficial de iOS.
+ * Detecta si la aplicación se está ejecutando en una plataforma móvil nativa oficial
+ * (tanto Android como iOS), ya sea a través de Capacitor nativo o WebView oficial.
  */
-export function isNativeIosPlatform(): boolean {
+export function isNativeMobilePlatform(): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    const isCapNative = Capacitor.isNativePlatform();
-    const platform = Capacitor.getPlatform();
-    if (isCapNative && platform === 'ios') return true;
-
-    const ua = window.navigator.userAgent || '';
-    return /Capacitor|com\.migaapp\.app/i.test(ua) && /iPhone|iPad|iPod/i.test(ua);
+    return isNativeIosPlatform() || isNativeAndroidPlatform() || hasActiveNativeBridge();
   } catch {
     return false;
   }
@@ -96,10 +155,10 @@ export function isNativeIosPlatform(): boolean {
  */
 export function getRewardedAdUnitId(): string {
   const isProduction = process.env.NODE_ENV === 'production';
-  const platform = Capacitor.getPlatform();
+  const isIos = Capacitor.getPlatform() === 'ios' || isNativeIosPlatform();
 
   if (isProduction) {
-    if (platform === 'ios') {
+    if (isIos) {
       return (
         process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID_IOS ||
         process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID ||
@@ -115,7 +174,7 @@ export function getRewardedAdUnitId(): string {
   }
 
   // En cualquier otro caso (desarrollo o testing), utiliza el ID oficial de pruebas de Google
-  if (platform === 'ios') {
+  if (isIos) {
     return 'ca-app-pub-3940256099942544/1712485313';
   }
 
@@ -242,10 +301,10 @@ export interface ShowRewardedAdResult {
  * de recompensa y cierre para devolver un estado determinista.
  */
 export async function showRewardVideoAdFlow(): Promise<ShowRewardedAdResult> {
-  if (!isNativePlatform()) {
+  if (!hasActiveNativeBridge()) {
     return {
       rewarded: false,
-      error: 'PLATFORM_NOT_SUPPORTED',
+      error: isNativeIosPlatform() ? 'IOS_BRIDGE_UNAVAILABLE' : 'PLATFORM_NOT_SUPPORTED',
     };
   }
 

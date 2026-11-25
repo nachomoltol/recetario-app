@@ -24,7 +24,7 @@ import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { createClient } from '@/lib/supabase/client';
 import {
-  isNativePlatform,
+  hasActiveNativeBridge,
   isNativeIosPlatform,
   isNativeAndroidPlatform,
   showRewardVideoAdFlow,
@@ -53,26 +53,19 @@ function detectModalPlatform(): PlatformType {
   if (typeof window === 'undefined') return 'desktop_web';
 
   try {
-    const win = window as unknown as {
-      webkit?: { messageHandlers?: { bridge?: unknown } };
-      androidBridge?: unknown;
-    };
-    const hasIosBridge = Boolean(win.webkit?.messageHandlers?.bridge);
-    const hasAndroidBridge = Boolean(win.androidBridge);
-    const isNativeCap = Capacitor.isNativePlatform();
-    const capPlatform = Capacitor.getPlatform();
-    const ua = navigator.userAgent || '';
-    const isAppleDevice =
-      capPlatform === 'ios' ||
-      /iPad|iPhone|iPod/.test(ua) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-    if ((isNativeCap && capPlatform === 'ios') || hasIosBridge || isNativeIosPlatform()) {
+    if (isNativeIosPlatform()) {
       return 'ios_native';
     }
-    if ((isNativeCap && capPlatform === 'android') || hasAndroidBridge || isNativeAndroidPlatform()) {
+    if (isNativeAndroidPlatform()) {
       return 'android_native';
     }
+
+    const ua = navigator.userAgent || '';
+    const isAppleDevice =
+      Capacitor.getPlatform() === 'ios' ||
+      /iPad|iPhone|iPod/i.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
     if (isAppleDevice) {
       return 'ios_web';
     }
@@ -153,9 +146,9 @@ export function AdInterstitialModal({
   const isNativeAndroid = platform === 'android_native';
   const isNativeMobile = isNativeAndroid || isNativeIos;
 
-  // Precarga automática del anuncio bonificado al abrir el modal en móvil nativo (iOS o Android)
+  // Precarga automática del anuncio bonificado al abrir el modal en móvil nativo con puente activo
   useEffect(() => {
-    if (isOpen && viewState === 'choice' && (isNativeMobile || isNativePlatform())) {
+    if (isOpen && viewState === 'choice' && hasActiveNativeBridge()) {
       preloadRewardedAd().catch(() => {});
     }
   }, [isOpen, viewState, isNativeMobile]);
@@ -216,7 +209,7 @@ export function AdInterstitialModal({
     let isMounted = true;
 
     // 1. Entorno nativo Android/iOS: ejecutar AdMob Rewarded Video
-    if (isNativeMobile || isNativePlatform()) {
+    if (isNativeMobile || hasActiveNativeBridge()) {
       setIsAdMobPlaying(true);
       showRewardVideoAdFlow()
         .then(async (result) => {
@@ -250,6 +243,14 @@ export function AdInterstitialModal({
               isEn
                 ? 'You must watch the full video to unlock your free recipe.'
                 : 'Debes ver el vídeo completo para desbloquear tu receta gratuita.'
+            );
+          } else if (result.error === 'IOS_BRIDGE_UNAVAILABLE') {
+            console.warn('[AdInterstitial] Puente nativo iOS de AdMob no disponible en esta sesión.');
+            setViewState('choice');
+            setDismissWarning(
+              isEn
+                ? 'Could not connect to the native iPhone ad player. Please close and reopen the Miga app or update to the latest version.'
+                : 'No se pudo conectar con el reproductor nativo de anuncios del iPhone. Cierra y vuelve a abrir la app de Miga o actualiza a la última versión.'
             );
           } else {
             console.warn('[AdInterstitial] No se pudo cargar el anuncio de AdMob:', result.error);
