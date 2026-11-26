@@ -19,12 +19,11 @@ import {
   PartyPopper,
   Globe,
 } from 'lucide-react';
-import { Capacitor } from '@capacitor/core';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { createClient } from '@/lib/supabase/client';
 import {
-  hasActiveNativeBridge,
+  hasRealCapacitorBridge,
   isNativeIosPlatform,
   isNativeAndroidPlatform,
   showRewardVideoAdFlow,
@@ -60,16 +59,8 @@ function detectModalPlatform(): PlatformType {
       return 'android_native';
     }
 
+    // Safari / navegadores iOS (sin puente ni firma de app) se comportan como Web normal
     const ua = window.navigator.userAgent || '';
-    const isAppleDevice =
-      Capacitor.getPlatform() === 'ios' ||
-      /iPad|iPhone|iPod/i.test(ua) ||
-      (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
-
-    if (isAppleDevice) {
-      return 'ios_native';
-    }
-
     if (/Android/i.test(ua)) {
       return 'android_native';
     }
@@ -161,7 +152,7 @@ export function AdInterstitialModal({
 
   // Precarga automática del anuncio bonificado al abrir el modal en móvil nativo con puente activo
   useEffect(() => {
-    if (isOpen && viewState === 'choice' && hasActiveNativeBridge()) {
+    if (isOpen && viewState === 'choice' && hasRealCapacitorBridge()) {
       preloadRewardedAd().catch(() => {});
     }
   }, [isOpen, viewState, isNativeMobile]);
@@ -221,8 +212,8 @@ export function AdInterstitialModal({
 
     let isMounted = true;
 
-    // 1. Entorno nativo Android/iOS: ejecutar AdMob Rewarded Video
-    if (isNativeMobile || isNativeIosPlatform() || isNativeAndroidPlatform() || hasActiveNativeBridge()) {
+    // 1. Solo con puente nativo REAL de Capacitor (iOS/Android): ejecutar AdMob Rewarded Video
+    if (hasRealCapacitorBridge()) {
       setIsAdMobPlaying(true);
       showRewardVideoAdFlow()
         .then(async (result) => {
@@ -231,13 +222,28 @@ export function AdInterstitialModal({
 
           if (result.rewarded) {
             // Acreditar el saldo en la base de datos de Supabase (+1 creditos_anuncio)
+            let claimOk = false;
+            let claimError: string | null = null;
             try {
-              await claimAdRewardAction();
+              const claimRes = await claimAdRewardAction();
+              claimOk = Boolean(claimRes?.success);
+              claimError = claimRes?.error || null;
             } catch (err) {
               console.error('[AdInterstitialModal] Error acreditando recompensa en Supabase:', err);
             }
 
             if (!isMounted) return;
+
+            if (!claimOk) {
+              setViewState('choice');
+              setDismissWarning(
+                claimError ||
+                  (isEn
+                    ? 'We could not credit your reward. Please check your connection and try again.'
+                    : 'No pudimos acreditar tu recompensa. Comprueba tu conexión e inténtalo de nuevo.')
+              );
+              return;
+            }
 
             // Comprobar si el modal se abrió por una solicitud cruzada de PC
             const isCrossDevice =
@@ -257,13 +263,33 @@ export function AdInterstitialModal({
                 ? 'You must watch the full video to unlock your free recipe.'
                 : 'Debes ver el vídeo completo para desbloquear tu receta gratuita.'
             );
-          } else if (result.error === 'IOS_BRIDGE_UNAVAILABLE') {
-            console.warn('[AdInterstitial] Puente nativo iOS de AdMob no disponible en esta sesión.');
+          } else if (result.error === 'NATIVE_BRIDGE_UNAVAILABLE') {
+            console.warn('[AdInterstitial] Puente nativo de AdMob no disponible en esta sesión.');
             setViewState('choice');
             setDismissWarning(
               isEn
-                ? 'Could not connect to the native iPhone ad player. Please close and reopen the Miga app or update to the latest version.'
-                : 'No se pudo conectar con el reproductor nativo de anuncios del iPhone. Cierra y vuelve a abrir la app de Miga o actualiza a la última versión.'
+                ? 'Could not connect to the native ad player. Please close and reopen the Miga app or update to the latest version.'
+                : 'No se pudo conectar con el reproductor nativo de anuncios. Cierra y vuelve a abrir la app de Miga o actualiza a la última versión.'
+            );
+          } else if (result.error === 'AD_NO_FILL') {
+            setViewState('choice');
+            setDismissWarning(
+              isEn
+                ? 'No ads are available right now. Please try again in a few minutes.'
+                : 'No hay anuncios disponibles ahora mismo. Inténtalo de nuevo en unos minutos.'
+            );
+          } else if (
+            result.error === 'AD_LOAD_TIMEOUT' ||
+            result.error === 'AD_NOT_SHOWN' ||
+            result.error === 'AD_SHOW_TIMEOUT' ||
+            result.error === 'AD_DISMISS_TIMEOUT' ||
+            (result.error || '').endsWith('_TIMEOUT')
+          ) {
+            setViewState('choice');
+            setDismissWarning(
+              isEn
+                ? 'The ad is taking too long to load. Please tap "Watch ad and continue" to try again.'
+                : 'El anuncio está tardando demasiado en cargar. Pulsa "Ver anuncio y continuar" para reintentarlo.'
             );
           } else {
             console.warn('[AdInterstitial] No se pudo cargar el anuncio de AdMob:', result.error);
@@ -293,8 +319,13 @@ export function AdInterstitialModal({
       };
     }
 
-    // 2. Entornos Web/PC: no reproducen AdMob directamente; regresar a la selección
+    // 2. Sin puente nativo (Safari iOS, Web/PC): no se ejecuta AdMob; volver a la selección
     setViewState('choice');
+    setDismissWarning(
+      isEn
+        ? 'Rewarded ads can only be watched inside the Miga mobile app.'
+        : 'Los anuncios bonificados solo se pueden ver desde la app móvil de Miga.'
+    );
     return () => {
       isMounted = false;
     };
