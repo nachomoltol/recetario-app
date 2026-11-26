@@ -9,6 +9,7 @@ import {
   Star,
   Clock,
   Plus,
+  Minus,
   Loader2,
   CheckCircle2,
   AlertCircle,
@@ -36,6 +37,130 @@ interface CookingDiarySectionProps {
   isUploadingPhoto?: boolean;
 }
 
+function normalizeHalfStar(value: number): number {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 5;
+  return Math.max(0.5, Math.min(5, Math.round(num * 2) / 2));
+}
+
+function getStarFillState(starIndex: number, value: number): 'full' | 'half' | 'empty' {
+  if (value >= starIndex) return 'full';
+  if (value >= starIndex - 0.5) return 'half';
+  return 'empty';
+}
+
+function DiaryStarGlyph({
+  fillState,
+  sizeClass,
+}: {
+  fillState: 'full' | 'half' | 'empty';
+  sizeClass: string;
+}) {
+  return (
+    <span className={`relative inline-flex items-center justify-center ${sizeClass} pointer-events-none`}>
+      <Star
+        className={`${sizeClass} transition-colors ${
+          fillState === 'full' ? 'fill-[#f59e0b] text-[#f59e0b]' : 'text-stone-300'
+        }`}
+      />
+      {fillState === 'half' && (
+        <span className="absolute inset-y-0 left-0 w-1/2 overflow-hidden flex items-center">
+          <Star className={`${sizeClass} fill-[#f59e0b] text-[#f59e0b] shrink-0 max-w-none`} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+function DiaryHalfStarPicker({
+  value,
+  onChange,
+  compact = false,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+  compact?: boolean;
+}) {
+  const [hoverValue, setHoverValue] = useState<number | null>(null);
+  const displayValue = hoverValue !== null ? hoverValue : value;
+
+  return (
+    <div className="space-y-2">
+      <div
+        className="flex flex-wrap items-center gap-2"
+        onMouseLeave={() => setHoverValue(null)}
+      >
+        <div className="flex items-center gap-1">
+          {[1, 2, 3, 4, 5].map((star) => {
+            const halfScore = star - 0.5;
+            const fillState = getStarFillState(star, displayValue);
+
+            return (
+              <div
+                key={star}
+                className={`relative flex items-center justify-center rounded-xl bg-[#faf7f2]/80 border border-[#efe7dc] transition hover:border-amber-300 ${
+                  compact ? 'w-9 h-9' : 'w-11 h-11 sm:w-11 sm:h-11'
+                }`}
+              >
+                <DiaryStarGlyph
+                  fillState={fillState}
+                  sizeClass={compact ? 'w-5 h-5' : 'w-7 h-7'}
+                />
+
+                {/* Mitad izquierda: media estrella (star - 0.5) */}
+                <button
+                  type="button"
+                  onClick={() => onChange(halfScore)}
+                  onMouseEnter={() => setHoverValue(halfScore)}
+                  aria-label={`Puntuar con ${halfScore.toFixed(1)} de 5 estrellas`}
+                  title={`${halfScore.toFixed(1)} de 5 estrellas`}
+                  className="absolute inset-y-0 left-0 w-1/2 cursor-pointer rounded-l-xl active:bg-amber-100/50 focus:outline-none"
+                />
+
+                {/* Mitad derecha: estrella completa (star) */}
+                <button
+                  type="button"
+                  onClick={() => onChange(star)}
+                  onMouseEnter={() => setHoverValue(star)}
+                  aria-label={`Puntuar con ${star.toFixed(1)} de 5 estrellas`}
+                  title={`${star.toFixed(1)} de 5 estrellas`}
+                  className="absolute inset-y-0 right-0 w-1/2 cursor-pointer rounded-r-xl active:bg-amber-100/50 focus:outline-none"
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        <span className="text-xs sm:text-sm font-bold text-stone-700 tabular-nums">
+          {displayValue.toFixed(1)} de 5 estrellas
+        </span>
+      </div>
+
+      {/* Botones táctiles rápidos -0.5 / +0.5 para ajuste preciso en móvil */}
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          disabled={value <= 0.5}
+          onClick={() => onChange(normalizeHalfStar(value - 0.5))}
+          className="h-8 px-2.5 rounded-lg bg-[#faf7f2] border border-[#e7dfd5] text-stone-700 hover:border-brand-primary disabled:opacity-40 text-xs font-semibold flex items-center gap-1 cursor-pointer active:scale-95 transition"
+        >
+          <Minus className="w-3 h-3" />
+          <span>0.5</span>
+        </button>
+        <button
+          type="button"
+          disabled={value >= 5}
+          onClick={() => onChange(normalizeHalfStar(value + 0.5))}
+          className="h-8 px-2.5 rounded-lg bg-[#faf7f2] border border-[#e7dfd5] text-stone-700 hover:border-brand-primary disabled:opacity-40 text-xs font-semibold flex items-center gap-1 cursor-pointer active:scale-95 transition"
+        >
+          <Plus className="w-3 h-3" />
+          <span>0.5</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function CookingDiarySection({
   recetaId,
   entradas,
@@ -46,7 +171,6 @@ export function CookingDiarySection({
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [calificacion, setCalificacion] = useState<number>(5);
-  const [hoverCalificacion, setHoverCalificacion] = useState<number | null>(null);
   const [tiempoEmpleadoMin, setTiempoEmpleadoMin] = useState<string>('');
   const [notas, setNotas] = useState<string>('');
   const [modificaciones, setModificaciones] = useState<string>('');
@@ -63,6 +187,7 @@ export function CookingDiarySection({
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editNotas, setEditNotas] = useState<string>('');
   const [editModificaciones, setEditModificaciones] = useState<string>('');
+  const [editCalificacion, setEditCalificacion] = useState<number>(5);
   const [isEditingPending, startEditingTransition] = useTransition();
 
   useEffect(() => {
@@ -167,21 +292,25 @@ export function CookingDiarySection({
     setEditingEntryId(entry.id);
     setEditNotas(entry.notas_cocinero || '');
     setEditModificaciones(entry.modificaciones_realizadas || '');
+    setEditCalificacion(entry.calificacion ? normalizeHalfStar(entry.calificacion) : 5);
   };
 
   const handleCancelEdit = () => {
     setEditingEntryId(null);
     setEditNotas('');
     setEditModificaciones('');
+    setEditCalificacion(5);
   };
 
   const handleSaveEdit = (entry: DiarioCocinados) => {
+    const cleanRating = normalizeHalfStar(editCalificacion);
     startEditingTransition(async () => {
       const res = await updateDiaryEntryAction({
         entryId: entry.id,
         recetaId,
         notas: editNotas,
         modificaciones: editModificaciones,
+        calificacion: cleanRating,
       });
 
       if (res.success) {
@@ -192,11 +321,13 @@ export function CookingDiarySection({
                   ...item,
                   notas_cocinero: editNotas.trim() || null,
                   modificaciones_realizadas: editModificaciones.trim() || null,
+                  calificacion: cleanRating,
                 }
               : item
           )
         );
         setEditingEntryId(null);
+        router.refresh();
       } else if (res.error) {
         setError(res.error);
       }
@@ -332,34 +463,12 @@ export function CookingDiarySection({
               )}
             </div>
 
-            {/* Calificación por estrellas */}
+            {/* Calificación por estrellas (0.5 a 5.0) */}
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm font-semibold text-stone-800">
                 Puntuación del Plato
               </label>
-              <div className="flex items-center gap-1.5">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setCalificacion(star)}
-                    onMouseEnter={() => setHoverCalificacion(star)}
-                    onMouseLeave={() => setHoverCalificacion(null)}
-                    className="p-1 rounded-lg transition hover:scale-110 cursor-pointer focus:outline-none"
-                  >
-                    <Star
-                      className={`w-7 h-7 sm:w-8 sm:h-8 ${
-                        (hoverCalificacion !== null ? star <= hoverCalificacion : star <= calificacion)
-                          ? 'fill-[#f59e0b] text-[#f59e0b]'
-                          : 'text-stone-300'
-                      }`}
-                    />
-                  </button>
-                ))}
-                <span className="ml-2 text-sm font-bold text-stone-700">
-                  {calificacion} de 5 estrellas
-                </span>
-              </div>
+              <DiaryHalfStarPicker value={calificacion} onChange={setCalificacion} />
             </div>
 
             {/* Tiempo empleado */}
@@ -490,15 +599,17 @@ export function CookingDiarySection({
                       <div className="flex items-center justify-between pr-20">
                         <div className="flex items-center gap-1">
                           {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
+                            <DiaryStarGlyph
                               key={star}
-                              className={`w-4 h-4 ${
-                                entry.calificacion && star <= entry.calificacion
-                                  ? 'fill-[#f59e0b] text-[#f59e0b]'
-                                  : 'text-stone-300'
-                              }`}
+                              fillState={getStarFillState(star, Number(entry.calificacion) || 0)}
+                              sizeClass="w-4 h-4"
                             />
                           ))}
+                          {entry.calificacion != null && Number(entry.calificacion) > 0 && (
+                            <span className="ml-1 text-xs font-bold text-stone-700 tabular-nums">
+                              {Number(entry.calificacion).toFixed(1)}
+                            </span>
+                          )}
                         </div>
                         <span className="text-xs text-stone-500 font-medium">
                           {new Date(entry.fecha_cocinado).toLocaleDateString('es-ES', {
@@ -509,9 +620,20 @@ export function CookingDiarySection({
                         </span>
                       </div>
 
-                      {/* Modo Edición In-Line del Comentario/Nota */}
+                      {/* Modo Edición In-Line del Comentario/Nota y Puntuación */}
                       {isEditingThis ? (
                         <div className="space-y-3 pt-2 animate-fade-in">
+                          <div>
+                            <label className="block text-[11px] font-bold uppercase text-brand-primary tracking-wider mb-1.5">
+                              Editar puntuación
+                            </label>
+                            <DiaryHalfStarPicker
+                              value={editCalificacion}
+                              onChange={setEditCalificacion}
+                              compact
+                            />
+                          </div>
+
                           <div>
                             <label className="block text-[11px] font-bold uppercase text-brand-primary tracking-wider mb-1">
                               Editar nota personal

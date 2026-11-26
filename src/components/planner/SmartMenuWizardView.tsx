@@ -13,7 +13,6 @@ import {
   Loader2,
   RotateCcw,
   ArrowRight,
-  ArrowLeft,
   Check,
   Users,
 } from 'lucide-react';
@@ -784,38 +783,27 @@ export function SmartMenuWizardView({
 
           {/* 6. Botonera Inferior Ergonómica */}
           <div className="space-y-1 pt-0.5">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(1)}
-                className="min-h-[44px] px-3.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-2xs touch-manipulation shrink-0"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>{language === 'en' ? 'Dates' : 'Fechas'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleGeneratePlan}
-                disabled={!hasAtLeastOneMeal || isGenerating}
-                className="flex-1 min-h-[44px] rounded-xl bg-gradient-to-r from-[#a86224] via-[#bd722e] to-[#8e511c] hover:opacity-95 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg transition active:scale-[0.99] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{t('smart_menu_generating_btn')}</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 text-amber-200" />
-                    <span>{t('smart_menu_generate_btn')}</span>
-                    <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase tracking-wider bg-amber-400 text-stone-900 shadow-2xs">
-                      PRO
-                    </span>
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleGeneratePlan}
+              disabled={!hasAtLeastOneMeal || isGenerating}
+              className="w-full min-h-[44px] rounded-xl bg-gradient-to-r from-[#a86224] via-[#bd722e] to-[#8e511c] hover:opacity-95 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg transition active:scale-[0.99] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{t('smart_menu_generating_btn')}</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-amber-200" />
+                  <span>{t('smart_menu_generate_btn')}</span>
+                  <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase tracking-wider bg-amber-400 text-stone-900 shadow-2xs">
+                    PRO
+                  </span>
+                </>
+              )}
+            </button>
 
             <p className="text-center text-[10px] text-stone-500 leading-tight">
               {language === 'en'

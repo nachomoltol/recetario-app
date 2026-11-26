@@ -12,6 +12,13 @@ export interface DiaryActionResult {
   entryId?: string;
 }
 
+function normalizeHalfStarRating(raw: unknown): number | null {
+  if (raw === null || raw === undefined || raw === '') return null;
+  const num = Number(raw);
+  if (!Number.isFinite(num) || num <= 0) return null;
+  return Math.max(0.5, Math.min(5, Math.round(num * 2) / 2));
+}
+
 export async function addCookEntryAction(formData: FormData): Promise<DiaryActionResult> {
   try {
     const supabase = await createClient();
@@ -26,9 +33,7 @@ export async function addCookEntryAction(formData: FormData): Promise<DiaryActio
 
     const recetaId = formData.get('recetaId') as string;
     const fotoFile = formData.get('foto') as File | null;
-    const calificacion = formData.get('calificacion')
-      ? parseInt(formData.get('calificacion') as string, 10)
-      : null;
+    const calificacion = normalizeHalfStarRating(formData.get('calificacion'));
     const notas = (formData.get('notas') as string)?.trim() || null;
     const modificaciones = (formData.get('modificaciones') as string)?.trim() || null;
     const tiempoEmpleado = formData.get('tiempoEmpleadoMin')
@@ -212,7 +217,9 @@ export async function updateDiaryEntryAction(payload: {
     const updates: DiarioUpdate = {};
     if (payload.notas !== undefined) updates.notas_cocinero = payload.notas?.trim() || null;
     if (payload.modificaciones !== undefined) updates.modificaciones_realizadas = payload.modificaciones?.trim() || null;
-    if (payload.calificacion !== undefined) updates.calificacion = payload.calificacion;
+    const normalizedCalificacion =
+      payload.calificacion !== undefined ? normalizeHalfStarRating(payload.calificacion) : undefined;
+    if (normalizedCalificacion !== undefined) updates.calificacion = normalizedCalificacion;
     if (payload.tiempoEmpleadoMin !== undefined) updates.tiempo_empleado_min = payload.tiempoEmpleadoMin;
 
     const { error: updateError } = await supabase
@@ -227,10 +234,10 @@ export async function updateDiaryEntryAction(payload: {
     }
 
     // Si se actualizó la calificación, sincronizar en la receta
-    if (payload.calificacion && payload.recetaId) {
+    if (normalizedCalificacion && payload.recetaId) {
       await supabase
         .from('recetas')
-        .update({ puntuacion: payload.calificacion })
+        .update({ puntuacion: normalizedCalificacion })
         .eq('id', payload.recetaId)
         .eq('usuario_id', user.id);
     }
