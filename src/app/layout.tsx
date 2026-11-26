@@ -24,21 +24,22 @@ export const metadata: Metadata = {
   title: 'Miga | Recetas de Redes & Gestión Culinaria',
   description:
     'Captura recetas desde cualquier red social, imagen o texto libre, y dales tu toque personal con IA multimodal.',
-  manifest: '/manifest.json',
+  manifest: '/manifest.json?v=2',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'Miga',
-    startupImage: '/apple-touch-icon.png',
+    startupImage: '/apple-touch-icon.png?v=2',
   },
   icons: {
     icon: [
-      { url: '/miga-logo.svg', type: 'image/svg+xml' },
-      { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
-      { url: '/favicon.ico' },
+      { url: '/miga-logo.svg?v=2', type: 'image/svg+xml' },
+      { url: '/favicon-96x96.png?v=2', sizes: '96x96', type: 'image/png' },
+      { url: '/favicon.png?v=2', sizes: '64x64', type: 'image/png' },
+      { url: '/favicon.ico?v=2' },
     ],
-    shortcut: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
+    shortcut: '/favicon.ico?v=2',
+    apple: '/apple-touch-icon.png?v=2',
   },
 };
 
@@ -64,11 +65,12 @@ export default function RootLayout({
             __html: `(function(){try{var t=localStorage.getItem('miga_theme')||'terracota';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`,
           }}
         />
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" type="image/svg+xml" href="/miga-logo.svg" />
-        <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
-        <link rel="shortcut icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.json?v=2" />
+        <link rel="icon" type="image/svg+xml" href="/miga-logo.svg?v=2" />
+        <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png?v=2" />
+        <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png?v=2" />
+        <link rel="shortcut icon" href="/favicon.ico?v=2" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Miga" />
