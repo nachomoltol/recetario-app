@@ -303,6 +303,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   // Estados de solicitud de recarga pendiente desde PC (Plataformas Móviles Nativas: Android e iOS)
   const [isNativeMobile, setIsNativeMobile] = useState(false);
   const [hasPendingPcRequest, setHasPendingPcRequest] = useState(false);
+  const [isCrossDeviceModal, setIsCrossDeviceModal] = useState(false);
   const [pendingPcUrl, setPendingPcUrl] = useState<string | null>(null);
   const [isPlayingPcUnlockAd, setIsPlayingPcUnlockAd] = useState(false);
   const [pcUnlockFeedback, setPcUnlockFeedback] = useState<{
@@ -312,85 +313,85 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const isMobile = isNativeMobilePlatform();
+    const isMobile =
+      isNativeMobilePlatform() ||
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '') ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     setIsNativeMobile(isMobile);
-
-    if (!isMobile) return;
 
     const verifyPendingPcRequest = async () => {
       try {
         const res = await checkUserBalanceAction();
         if (res.success && res.solicitud_recarga_pc) {
+          let isUnder30Min = true;
           if (res.solicitud_recarga_pc_at) {
             const ageMs = Date.now() - new Date(res.solicitud_recarga_pc_at).getTime();
-            const isUnder30Min = ageMs >= 0 && ageMs < 30 * 60 * 1000;
-            setHasPendingPcRequest(isUnder30Min);
-            if (isUnder30Min) {
-              setPendingPcUrl(res.solicitud_recarga_url || null);
-              preloadRewardedAd().catch(() => {});
-            }
-          } else {
-            setHasPendingPcRequest(true);
+            isUnder30Min = ageMs >= 0 && ageMs < 30 * 60 * 1000;
+          }
+          if (isUnder30Min) {
             setPendingPcUrl(res.solicitud_recarga_url || null);
+            setHasPendingPcRequest(true);
+            setIsCrossDeviceModal(true);
+            setShowInterstitialModal(true);
             preloadRewardedAd().catch(() => {});
+          } else {
+            setHasPendingPcRequest(false);
+            setIsCrossDeviceModal(false);
           }
         } else {
           setHasPendingPcRequest(false);
+          setIsCrossDeviceModal(false);
         }
       } catch (err) {
         console.error('[RecipeCaptureCard] Error comprobando solicitud_recarga_pc:', err);
       }
     };
 
+    // 1. Ejecución inmediata al montar
     verifyPendingPcRequest();
+
+    // 2. Refresco reactivo al volver de segundo plano o recuperar foco
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        verifyPendingPcRequest();
+      }
+    };
+    const handleWindowFocus = () => {
+      verifyPendingPcRequest();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+
+    // 3. Listener nativo de Capacitor si la app está en un contenedor móvil
+    let capAppListener: { remove: () => void } | null = null;
+    const win = typeof window !== 'undefined' ? (window as any) : null;
+    if (win?.Capacitor?.Plugins?.App?.addListener) {
+      try {
+        win.Capacitor.Plugins.App.addListener('appStateChange', (state: { isActive: boolean }) => {
+          if (state.isActive) {
+            verifyPendingPcRequest();
+          }
+        }).then((handle: any) => {
+          capAppListener = handle;
+        }).catch(() => {});
+      } catch {}
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+      if (capAppListener) {
+        try {
+          capAppListener.remove();
+        } catch {}
+      }
+    };
   }, [currentProfile]);
 
-  const handleWatchAdForPc = async () => {
-    if (isPlayingPcUnlockAd) return;
-    setIsPlayingPcUnlockAd(true);
-    setPcUnlockFeedback(null);
-
-    try {
-      const result = await showRewardVideoAdFlow();
-      if (result.rewarded) {
-        await claimAdRewardAction();
-        setHasPendingPcRequest(false);
-        setPcUnlockFeedback({
-          type: 'success',
-          message:
-            language === 'en'
-              ? 'Credit added! Go back to your PC and click "Check balance / I watched the video" to unlock your recipe.'
-              : '¡Crédito acreditado con éxito! Vuelve a tu PC y pulsa "Comprobar saldo / Ya vi el vídeo" para desbloquear tu receta.',
-        });
-      } else if (result.error === 'AD_DISMISSED_WITHOUT_REWARD') {
-        setPcUnlockFeedback({
-          type: 'warning',
-          message:
-            language === 'en'
-              ? 'You must watch the full video to unlock the recipe on your PC.'
-              : 'Debes ver el vídeo completo para desbloquear la receta en tu ordenador.',
-        });
-      } else {
-        setPcUnlockFeedback({
-          type: 'warning',
-          message:
-            language === 'en'
-              ? 'Could not load video ad right now. Please check your connection and try again.'
-              : 'No se pudo cargar el vídeo publicitario en este momento. Comprueba tu conexión e inténtalo de nuevo.',
-        });
-      }
-    } catch (err) {
-      console.error('[RecipeCaptureCard] Error reproduciendo anuncio para PC:', err);
-      setPcUnlockFeedback({
-        type: 'warning',
-        message:
-          language === 'en'
-            ? 'Could not load video right now. Please try again.'
-            : 'No se pudo cargar el vídeo en este momento. Inténtalo de nuevo.',
-      });
-    } finally {
-      setIsPlayingPcUnlockAd(false);
-    }
+  const handleWatchAdForPc = () => {
+    setIsCrossDeviceModal(true);
+    setShowInterstitialModal(true);
   };
 
   // Previsualización ligera para miniaturas sin re-renders masivos ni fugas de memoria
@@ -899,23 +900,37 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     executeIngest('audio', '', target);
   };
 
-  // Manejador al finalizar la cuenta regresiva del anuncio intersticial de 5s
+  // Manejador al finalizar la cuenta regresiva del anuncio intersticial de 5s o vídeo AdMob
   const handleInterstitialComplete = useCallback(() => {
     setShowInterstitialModal(false);
+    setIsCrossDeviceModal(false);
     skipInterstitialRef.current = true;
     if (pendingIngestParams) {
       executeIngest(pendingIngestParams.mode, pendingIngestParams.value, pendingIngestParams.file);
+    } else if (pendingPcUrl) {
+      const trimmed = pendingPcUrl.trim();
+      const isHttp = /^https?:\/\//i.test(trimmed);
+      const targetMode: 'url' | 'texto' = isHttp ? 'url' : 'texto';
+      if (targetMode === 'url') {
+        setUrl(trimmed);
+        executeIngest('url', trimmed);
+      } else {
+        setTexto(trimmed);
+        executeIngest('texto', trimmed);
+      }
     }
-  }, [pendingIngestParams, executeIngest]);
+  }, [pendingIngestParams, pendingPcUrl, executeIngest]);
 
   const handleInterstitialCancel = useCallback(() => {
     setShowInterstitialModal(false);
+    setIsCrossDeviceModal(false);
     setPendingIngestParams(null);
     skipInterstitialRef.current = false;
   }, []);
 
   const handleSelectProFromInterstitial = useCallback(() => {
     setShowInterstitialModal(false);
+    setIsCrossDeviceModal(false);
     setShowProModal(true);
   }, []);
 
@@ -1842,13 +1857,14 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         }}
       />
 
-      {/* Modal Intersticial de 5 Segundos (Generación Patrocinada en Línea) */}
+      {/* Modal Intersticial de 5 Segundos (Generación Patrocinada en Línea / Desbloqueo Cruzado) */}
       <AdInterstitialModal
         isOpen={showInterstitialModal}
         onComplete={handleInterstitialComplete}
         onCancel={handleInterstitialCancel}
         onSelectPro={handleSelectProFromInterstitial}
-        pendingUrl={url || texto || pendingIngestParams?.value || ''}
+        pendingUrl={url || texto || pendingIngestParams?.value || pendingPcUrl || ''}
+        isCrossDeviceRequest={isCrossDeviceModal}
       />
 
       {/* Modal de Bloqueo Duro por Límite Mensual Alcanzado */}

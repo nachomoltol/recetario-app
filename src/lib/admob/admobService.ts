@@ -46,7 +46,11 @@ export function hasActiveNativeBridge(): boolean {
     if (Capacitor.isNativePlatform()) return true;
     if (win.Capacitor?.isNativePlatform?.()) return true;
     if (Boolean(win.webkit?.messageHandlers?.bridge)) return true;
+    if (Boolean(win.webkit?.messageHandlers)) return true;
     if (Boolean(win.androidBridge)) return true;
+    if (Boolean((win as any)?.Capacitor?.Plugins?.AdMob)) return true;
+    const ua = navigator.userAgent || '';
+    if (isAppleTouchDevice(ua) && Boolean(win.webkit)) return true;
     return false;
   } catch {
     return false;
@@ -58,7 +62,7 @@ export function hasActiveNativeBridge(): boolean {
  * con puente activo de Capacitor. Devuelve false en Web/PC.
  */
 export function isNativePlatform(): boolean {
-  return hasActiveNativeBridge();
+  return hasActiveNativeBridge() || isNativeIosPlatform() || isNativeAndroidPlatform();
 }
 
 /**
@@ -101,37 +105,14 @@ export function isNativeIosPlatform(): boolean {
     // 1. Señal directa del puente Capacitor / WKWebView bridge en iOS
     if (
       (isCapNative && (capPlatform === 'ios' || winCapPlatform === 'ios')) ||
-      Boolean(win.webkit?.messageHandlers?.bridge)
+      Boolean(win.webkit?.messageHandlers?.bridge) ||
+      Boolean(win.webkit?.messageHandlers)
     ) {
       return true;
     }
 
     const ua = window.navigator.userAgent || '';
-    const isApple = capPlatform === 'ios' || winCapPlatform === 'ios' || isAppleTouchDevice(ua);
-    if (!isApple) return false;
-
-    // 2. Marca personalizada de app nativa o variables inyectadas por Capacitor iOS
-    if (
-      /MigaAppIOS|Capacitor|com\.migaapp\.app/i.test(ua) ||
-      (typeof win.WEBVIEW_SERVER_URL === 'string' && win.WEBVIEW_SERVER_URL.startsWith('capacitor://')) ||
-      (Array.isArray(win.Capacitor?.PluginHeaders) && win.Capacitor.PluginHeaders.length > 0)
-    ) {
-      return true;
-    }
-
-    // 3. Presencia de webkit.messageHandlers (exclusivo de WKWebView embebido en iOS)
-    if (Boolean(win.webkit?.messageHandlers)) {
-      return true;
-    }
-
-    // 4. Firma real de WKWebView en iPhone/iPad sin descartar por contener "Safari/" sin "Version/"
-    const isIosStandalonePwa = Boolean(
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-    );
-    const isThirdPartyIosBrowser = /CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|GSA\/|DuckDuckGo/i.test(ua);
-    const isMobileSafariBrowser = /Version\/[\d.]+.*Safari\//i.test(ua);
-
-    if (/AppleWebKit/i.test(ua) && !isIosStandalonePwa && !isThirdPartyIosBrowser && !isMobileSafariBrowser) {
+    if (capPlatform === 'ios' || winCapPlatform === 'ios' || isAppleTouchDevice(ua)) {
       return true;
     }
 
@@ -288,10 +269,9 @@ export async function initializeAdMob(): Promise<void> {
         initializeForTesting: isTesting,
       });
 
-      // En iOS, MobileAds.shared.start() es asíncrono en el plugin nativo; dar margen breve antes de cargar anuncios
-      if (isIos) {
-        await new Promise((resolve) => setTimeout(resolve, 350));
-      }
+      // En iOS y Android, dar margen para que los adaptadores nativos del SDK completen la configuración
+      const initDelay = isIos ? 500 : 200;
+      await new Promise((resolve) => setTimeout(resolve, initDelay));
 
       isAdMobInitialized = true;
     } catch (error) {
@@ -309,8 +289,8 @@ let preloadPromise: Promise<boolean> | null = null;
 
 /**
  * Precarga el anuncio bonificado en background para reproducción instantánea.
- * En iOS incluye respaldo automático al bloque oficial de prueba de Google si el bloque comercial
- * aún no tiene inventario disponible (ej. durante pruebas en TestFlight o revisión de App Store).
+ * En iOS y Android incluye respaldo automático y reintento al bloque oficial de prueba de Google si el bloque comercial
+ * aún no tiene inventario disponible (ej. durante pruebas en TestFlight o revisión de tiendas).
  */
 export async function preloadRewardedAd(): Promise<boolean> {
   if (!isNativePlatform()) return false;
@@ -329,21 +309,23 @@ export async function preloadRewardedAd(): Promise<boolean> {
     } catch (err) {
       console.warn('[AdMob] Error en precarga de anuncio bonificado primario:', err);
 
-      // Respaldo automático en iOS al bloque oficial de vídeo bonificado de prueba de Google
-      if (isIos && adId !== IOS_TEST_REWARDED_AD_UNIT_ID) {
+      // Respaldo automático con reintento controlado ante falta de inventario o inicialización tardía
+      const fallbackAdId = isIos ? IOS_TEST_REWARDED_AD_UNIT_ID : ANDROID_TEST_REWARDED_AD_UNIT_ID;
+      if (adId !== fallbackAdId) {
         try {
+          await new Promise((resolve) => setTimeout(resolve, 500));
           console.info(
-            '[AdMob iOS] Reintentando con bloque oficial de prueba de Google para iOS:',
-            IOS_TEST_REWARDED_AD_UNIT_ID
+            '[AdMob] Reintentando con bloque oficial de prueba de Google:',
+            fallbackAdId
           );
           await AdMob.prepareRewardVideoAd({
-            adId: IOS_TEST_REWARDED_AD_UNIT_ID,
+            adId: fallbackAdId,
             isTesting: true,
           });
           isAdLoaded = true;
           return true;
         } catch (fallbackErr) {
-          console.warn('[AdMob iOS] Falló también el bloque de respaldo de prueba:', fallbackErr);
+          console.warn('[AdMob] Falló también el bloque de respaldo de prueba:', fallbackErr);
         }
       }
 

@@ -46,7 +46,7 @@ export interface AdInterstitialModalProps {
   isCrossDeviceRequest?: boolean;
 }
 
-type PlatformType = 'android_native' | 'ios_native' | 'ios_web' | 'desktop_web';
+type PlatformType = 'android_native' | 'ios_native' | 'desktop_web';
 type ViewStateType = 'choice' | 'playing' | 'reward_credited';
 
 function detectModalPlatform(): PlatformType {
@@ -67,19 +67,13 @@ function detectModalPlatform(): PlatformType {
       (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
 
     if (isAppleDevice) {
-      // No descartar visor nativo WKWebView de iOS por contener "Safari/" si no es Safari móvil real ("Version/... Safari/") ni navegador externo
-      const isIosStandalonePwa = Boolean(
-        (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-      );
-      const isThirdPartyIosBrowser = /CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|GSA\/|DuckDuckGo/i.test(ua);
-      const isMobileSafariBrowser = /Version\/[\d.]+.*Safari\//i.test(ua);
-
-      if (/AppleWebKit/i.test(ua) && !isIosStandalonePwa && !isThirdPartyIosBrowser && !isMobileSafariBrowser) {
-        return 'ios_native';
-      }
-
-      return 'ios_web';
+      return 'ios_native';
     }
+
+    if (/Android/i.test(ua)) {
+      return 'android_native';
+    }
+
     return 'desktop_web';
   } catch {
     return 'desktop_web';
@@ -596,8 +590,6 @@ export function AdInterstitialModal({
                     <span className="text-[10px] text-stone-500 font-medium">
                       {isNativeMobile
                         ? (isEn ? 'Sponsored short ad' : 'Vídeo patrocinado')
-                        : platform === 'ios_web'
-                        ? (isEn ? 'iOS Web' : 'iOS Web')
                         : (isEn ? 'Via Mobile App' : 'Vía App Móvil')}
                     </span>
                   </div>
@@ -754,67 +746,6 @@ export function AdInterstitialModal({
                       <span>{isEn ? 'Download on Google Play (Android)' : 'Descargar en Google Play (Android)'}</span>
                     </a>
                   </div>
-                </div>
-              )}
-
-              {/* Caso 3: iPhone / iOS Web (Safari o navegador móvil) */}
-              {!isNativeMobile && platform === 'ios_web' && (
-                <div className="space-y-2.5 pt-0.5 text-left">
-                  <div className="p-3 rounded-xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-700 leading-relaxed space-y-1.5">
-                    <p className="font-semibold text-stone-900 flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5 text-brand-primary shrink-0" />
-                      <span>{isEn ? 'Miga App for iPhone (App Store)' : 'App oficial de Miga para iPhone'}</span>
-                    </p>
-                    <p className="text-stone-600">
-                      {isEn
-                        ? 'Rewarded ads are watched inside the official Miga App from the Apple App Store. Open or download the app with your account:'
-                        : 'Los anuncios bonificados se ven desde la app oficial de Miga en el App Store de Apple. Abre o descarga la app con tu cuenta:'}
-                    </p>
-                    <div className="font-mono text-[11px] font-semibold text-stone-900 bg-white px-2 py-0.5 rounded border border-stone-200 w-fit break-all">
-                      {userEmailDisplay}
-                    </div>
-                  </div>
-
-                  {/* Acceso directo a la ficha oficial de Miga App en el App Store */}
-                  <a
-                    href={APP_STORE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2"
-                  >
-                    <ExternalLink className="w-4 h-4 text-amber-300" />
-                    <span>{isEn ? 'Open Miga on Apple App Store' : 'Abrir Miga en el App Store'}</span>
-                  </a>
-
-                  {/* Alerta de Estado del Chequeo de Saldo */}
-                  {balanceCheckStatus === 'success' && (
-                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-medium flex items-center gap-2 animate-fade-in">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>{balanceCheckMessage || (isEn ? 'Balance detected! Unlocking recipe...' : '¡Saldo detectado! Desbloqueando receta...')}</span>
-                    </div>
-                  )}
-
-                  {(balanceCheckStatus === 'not_found' || balanceCheckStatus === 'error') && (
-                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-medium flex items-center gap-2 animate-fade-in">
-                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                      <span>{balanceCheckMessage}</span>
-                    </div>
-                  )}
-
-                  {/* Botón de comprobación de saldo tras ver el vídeo en la app */}
-                  <button
-                    type="button"
-                    onClick={handleCheckBalance}
-                    disabled={isCheckingBalance || balanceCheckStatus === 'success'}
-                    className="w-full min-h-[42px] py-2 px-4 rounded-xl bg-white hover:bg-stone-100 border border-stone-300 disabled:opacity-75 disabled:cursor-not-allowed text-stone-800 font-semibold text-xs sm:text-sm shadow-2xs transition flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <RefreshCw className={`w-4 h-4 text-brand-primary ${isCheckingBalance ? 'animate-spin' : ''}`} />
-                    <span>
-                      {isCheckingBalance
-                        ? (isEn ? 'Checking balance...' : 'Comprobando saldo...')
-                        : (isEn ? 'Check balance / I watched the video' : 'Comprobar saldo / Ya vi el vídeo')}
-                    </span>
-                  </button>
                 </div>
               )}
             </div>
