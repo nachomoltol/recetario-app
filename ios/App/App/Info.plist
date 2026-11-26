@@ -70,7 +70,7 @@
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-8525131609099761~9421058312</string>
 	<key>NSUserTrackingUsageDescription</key>
-	<string>Miga utiliza identificadores para ofrecerte anuncios adaptados y permitirte desbloquear recetas adicionales.</string>
+	<string>Miga utiliza este identificador para mostrarte anuncios más relevantes y mejorar tu experiencia en la app.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Miga necesita acceso al micrófono para grabar notas de voz y dictar tus recetas (Microphone access is required to record voice recipes).</string>
 	<key>NSCameraUsageDescription</key>
