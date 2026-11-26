@@ -336,7 +336,7 @@ export function BillingPlanView({ userEmail, initialLimitReached = false }: Bill
         </div>
 
         <div className="grid grid-cols-1 gap-2.5">
-          {/* Ventaja 1: Hasta 150 recetas */}
+          {/* Ventaja 1: Hasta 100 recetas al mes */}
           <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] transition hover:border-brand-primary/40">
             <div className="w-9 h-9 rounded-xl bg-[#f4efe6] text-brand-primary flex items-center justify-center shrink-0 mt-0.5">
               <Sparkles className="w-4 h-4" />

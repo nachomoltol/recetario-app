@@ -26,6 +26,7 @@ import { useLanguageStore } from '@/stores/useLanguageStore';
 import { deleteAccountAction } from '@/app/actions/auth';
 import { createClient } from '@/lib/supabase/client';
 import { SupportFeedbackModal } from '@/components/feedback/SupportFeedbackModal';
+import { isNativeIosPlatform } from '@/lib/admob/admobService';
 
 interface UserDropdownMenuProps {
   fallbackName: string;
@@ -40,18 +41,16 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isNativeIos, setIsNativeIos] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const profile = useProfileStore((s) => s.profile);
   const user = useAuthStore((s) => s.user);
-  const language = useLanguageStore((s) => s.language);
   const t = useLanguageStore((s) => s.t);
 
-  const isPaidPlan =
-    Boolean((profile as any)?.is_pro) ||
-    ['pro', 'chef', 'premium', 'admin'].includes(
-      profile?.plan_suscripcion?.toLowerCase() || ''
-    );
+  useEffect(() => {
+    setIsNativeIos(isNativeIosPlatform());
+  }, []);
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -191,35 +190,16 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
               </div>
             </Link>
 
-            {isPaidPlan ? (
-              <div
-                className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-400 bg-stone-50/80 border border-stone-200/50 select-none opacity-40 cursor-not-allowed pointer-events-none"
-                title={
-                  language === 'en'
-                    ? 'Manual meal planner disabled: You have the AI Smart Menu available'
-                    : 'Planificador manual desactivado: Tienes activo el Menú con IA'
-                }
-              >
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-4 h-4 text-stone-400" />
-                  <span className="line-through">{t('nav_meal_planner_full')}</span>
-                </div>
-                <span className="text-[10px] font-semibold text-brand-primary bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
-                  {language === 'en' ? 'Use AI Menu' : 'Usa Menú con IA'}
-                </span>
+            <Link
+              href="/meal-planner"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium"
+            >
+              <Calendar className="w-4 h-4 text-brand-primary" />
+              <div className="flex-1">
+                <span>{t('nav_meal_planner_full')}</span>
               </div>
-            ) : (
-              <Link
-                href="/meal-planner"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium"
-              >
-                <Calendar className="w-4 h-4 text-brand-primary" />
-                <div className="flex-1">
-                  <span>{t('nav_meal_planner_full')}</span>
-                </div>
-              </Link>
-            )}
+            </Link>
 
             <Link
               href="/smart-menu"
@@ -257,19 +237,21 @@ export function UserDropdownMenu({ fallbackName, email }: UserDropdownMenuProps)
               </div>
             </Link>
 
-            <Link
-              href="/billing"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium"
-            >
-              <div className="flex items-center gap-3">
-                <CreditCard className="w-4 h-4 text-brand-primary" />
-                <span>{t('nav_payment_gateway')}</span>
-              </div>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-0.5">
-                <Sparkles className="w-2.5 h-2.5" /> {t('nav_subscription')}
-              </span>
-            </Link>
+            {!isNativeIos && (
+              <Link
+                href="/billing"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm text-stone-700 hover:text-stone-900 hover:bg-[#f4efe6] transition cursor-pointer font-medium"
+              >
+                <div className="flex items-center gap-3">
+                  <CreditCard className="w-4 h-4 text-brand-primary" />
+                  <span>{t('nav_payment_gateway')}</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-0.5">
+                  <Sparkles className="w-2.5 h-2.5" /> {t('nav_subscription')}
+                </span>
+              </Link>
+            )}
 
             <Link
               href="/privacidad"

@@ -320,7 +320,6 @@ export async function POST(req: NextRequest) {
           stripe_subscription_id: isNowActive ? subscriptionId : null,
           pro_expires_at: proExpiresAt,
           updated_at: new Date().toISOString(),
-          ...(isNowActive ? { capturas_mes_actual: 0 } : {}),
         };
 
         let query = adminClient.from('usuarios').update(updatePayload);

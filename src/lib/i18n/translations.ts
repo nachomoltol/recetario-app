@@ -99,11 +99,11 @@ export const TRANSLATIONS = {
 
     // Modal PRO & Billing
     pro_modal_title: 'Desbloquea el Rigor Clínico con Recetario PRO',
-    pro_modal_subtitle: 'Adaptación médica en tiempo real, capturas ilimitadas y rigor nutricional.',
-    pro_modal_limit_title: 'Desbloquea el recetario sin límites',
+    pro_modal_subtitle: 'Adaptación médica en tiempo real, hasta 100 recetas/mes y rigor nutricional.',
+    pro_modal_limit_title: 'Desbloquea hasta 100 recetas al mes con PRO',
     pro_modal_limit_desc: 'Has alcanzado tu límite de recetas gratuitas. Pásate a PRO para seguir capturando.',
     pro_modal_feature_title: 'Potencia tu recetario con IA',
-    pro_modal_feature_desc: 'Pásate a PRO para desbloquear el motor clínico, adaptar recetas a tus intolerancias y disfrutar de capturas ilimitadas.',
+    pro_modal_feature_desc: 'Pásate a PRO para desbloquear el motor clínico, adaptar recetas a tus intolerancias y disfrutar de hasta 100 recetas al mes.',
 
     // Menú de Usuario / Sidebar (Navegación extendida)
     nav_collection_full: 'Mi Recetario (Colección)',
@@ -260,16 +260,16 @@ export const TRANSLATIONS = {
     billing_title: 'Suscripción PRO',
     billing_subtitle: 'Gestión de Planes',
     billing_hero_desc:
-      'Eleva tu experiencia en la cocina. Disfruta de capturas ilimitadas, cero publicidad y un motor clínico que adapta cada receta a ti.',
+      'Eleva tu experiencia en la cocina. Disfruta de hasta 100 recetas al mes, cero publicidad y un motor clínico que adapta cada receta a ti.',
     billing_plan_name: 'Plan PRO Mensual',
     billing_price_month: '/ mes',
     billing_subscribe_btn: 'Suscribirse ahora — 3,50€/mes',
     billing_connecting: 'Conectando de forma segura...',
     billing_cancel_anytime: 'Cancela cuando quieras. Transacción segura procesada por Stripe',
     billing_vip_question: '¿Tienes un código promocional o VIP?',
-    billing_vip_placeholder: 'Introduce tu código (ej. NACHOVIP)',
+    billing_vip_placeholder: 'Introduce tu código promocional o VIP',
     billing_vip_redeem: 'Canjear',
-    billing_vip_success: '¡Nivel VIP desbloqueado! Generaciones ilimitadas activas.',
+    billing_vip_success: '¡Nivel VIP desbloqueado! Plan PRO activo con hasta 100 recetas al mes.',
     billing_vip_active_banner: 'Suscripción PRO Activa con Código VIP',
     billing_advantages_title: 'Ventajas incluidas en tu membresía PRO',
     billing_adv_1_title: 'Hasta 100 recetas con IA al mes',
@@ -710,11 +710,11 @@ export const TRANSLATIONS = {
 
     // Modal PRO & Billing
     pro_modal_title: 'Unlock Clinical Rigor with Smart Cookbook PRO',
-    pro_modal_subtitle: 'Real-time medical adaptation, unlimited captures, and clinical nutrition.',
-    pro_modal_limit_title: 'Unlock unlimited cookbook captures',
+    pro_modal_subtitle: 'Real-time medical adaptation, up to 100 recipes/month, and clinical nutrition.',
+    pro_modal_limit_title: 'Unlock up to 100 recipes/month with PRO',
     pro_modal_limit_desc: 'You have reached your free monthly limit. Switch to PRO to keep capturing recipes.',
     pro_modal_feature_title: 'Power your cookbook with AI',
-    pro_modal_feature_desc: 'Upgrade to PRO to unlock the clinical engine, adapt recipes to intolerances, and enjoy unlimited captures.',
+    pro_modal_feature_desc: 'Upgrade to PRO to unlock the clinical engine, adapt recipes to intolerances, and enjoy up to 100 recipes per month.',
 
     // User Menu / Sidebar (Extended navigation)
     nav_collection_full: 'My Cookbook (Collection)',
@@ -871,16 +871,16 @@ export const TRANSLATIONS = {
     billing_title: 'PRO Subscription',
     billing_subtitle: 'Plan Management',
     billing_hero_desc:
-      'Elevate your kitchen experience. Enjoy unlimited captures, zero ads, and a clinical engine that tailors every recipe to you.',
+      'Elevate your kitchen experience. Enjoy up to 100 recipes per month, zero ads, and a clinical engine that tailors every recipe to you.',
     billing_plan_name: 'Monthly PRO Plan',
     billing_price_month: '/ month',
     billing_subscribe_btn: 'Subscribe now — €3.50/month',
     billing_connecting: 'Connecting securely...',
     billing_cancel_anytime: 'Cancel anytime. Secure transaction processed by Stripe',
     billing_vip_question: 'Have a promo or VIP code?',
-    billing_vip_placeholder: 'Enter your code (e.g. NACHOVIP)',
+    billing_vip_placeholder: 'Enter your promo or VIP code',
     billing_vip_redeem: 'Redeem',
-    billing_vip_success: 'VIP unlocked! Unlimited generations active.',
+    billing_vip_success: 'VIP unlocked! PRO plan active with up to 100 recipes per month.',
     billing_vip_active_banner: 'PRO Subscription Active with VIP Code',
     billing_advantages_title: 'Benefits included in your PRO membership',
     billing_adv_1_title: 'Up to 100 AI recipes per month',
