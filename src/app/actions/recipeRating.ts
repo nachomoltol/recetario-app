@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 export interface RatingActionResult {
   success?: boolean;
   error?: string;
+  rating?: number;
 }
 
 export async function toggleFavoriteAction(
@@ -63,7 +64,10 @@ export async function updateRatingAction(
       return { success: false, error: 'No autenticado' };
     }
 
-    const cleanScore = Math.max(0, Math.min(5, Math.round(puntuacion * 2) / 2));
+    const numericScore = Number(puntuacion);
+    const cleanScore = Number.isFinite(numericScore)
+      ? Math.max(0, Math.min(5, Math.round(numericScore * 2) / 2))
+      : 0;
 
     const { error } = await supabase
       .from('recetas')
@@ -80,7 +84,7 @@ export async function updateRatingAction(
     revalidatePath('/recipes', 'page');
     revalidatePath('/recipes/collection', 'page');
 
-    return { success: true };
+    return { success: true, rating: cleanScore };
   } catch (err: any) {
     console.error('[recipeRating] Error no controlado en updateRatingAction:', err);
     return {

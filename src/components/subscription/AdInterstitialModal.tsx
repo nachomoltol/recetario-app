@@ -562,7 +562,7 @@ export function AdInterstitialModal({
                 <div className="space-y-1 text-xs text-stone-700 font-medium pl-0.5">
                   <div className="flex items-center gap-1.5">
                     <Check className="w-3.5 h-3.5 text-brand-primary shrink-0" />
-                    <span>{isEn ? 'Unlimited instant extraction' : 'Extracción ilimitada e instantánea'}</span>
+                    <span>{isEn ? 'Instant ad-free extraction' : 'Extracción instantánea y sin anuncios'}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Check className="w-3.5 h-3.5 text-brand-primary shrink-0" />

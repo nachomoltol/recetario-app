@@ -4,7 +4,7 @@ import {
   normalizeEditorialCase,
 } from '@/lib/culinary/consolidateShoppingItems';
 import { groupItemsByAisle, SupermarketAisle } from '@/lib/culinary/aisles';
-import { saveOrSharePdf } from './pdfDownloadHelper';
+import { saveOrSharePdfWithFallback } from './pdfExportFallback';
 
 export interface ExportPdfDayInfo {
   dateStr: string;
@@ -559,7 +559,7 @@ export async function exportMealPlanToPdf(params: ExportMealPlanPdfParams): Prom
   const cleanRange = dateRangeLabel.replace(/[\/\s—-]+/g, '_');
   const filename = `Miga_Plan_Semanal_${cleanRange}.pdf`;
   const dialogTitle = isEn ? 'Save or share weekly meal plan PDF' : 'Guardar o compartir plan semanal en PDF';
-  await saveOrSharePdf({ doc, fileName: filename, dialogTitle });
+  await saveOrSharePdfWithFallback({ doc, fileName: filename, dialogTitle });
 }
 
 export { MIGA_LOGO_PNG };
