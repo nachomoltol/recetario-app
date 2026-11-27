@@ -2,7 +2,10 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '@/lib/gemini/client';
-import { getClinicalExclusions } from '@/lib/clinicalDictionary';
+import {
+  getClinicalExclusions,
+  hasActiveClinicalRestrictions,
+} from '@/lib/clinicalDictionary';
 import { cleanIngredientName, formatCulinaryAmount } from '@/lib/nutrition/formatQuantity';
 import { normalizeSubstituteQuantityAndUnit } from '@/lib/culinary/scaler';
 import { Type } from '@google/genai';
@@ -440,10 +443,12 @@ export async function adaptRecipeAction(
     const preferenciasDieteticas = profile.preferencias_dieteticas || [];
     const alergenos = profile.alergenos || [];
 
-    // Validar si el usuario tiene alguna preferencia o nivel específico
+    // Validar si el usuario tiene alguna preferencia clínica/dietética real (ignora 'General' + 'Omnívora') o nivel específico
     const tieneRestricciones =
-      preferenciasDieteticas.length > 0 ||
-      alergenos.length > 0 ||
+      hasActiveClinicalRestrictions({
+        preferencias_dieteticas: preferenciasDieteticas,
+        alergenos,
+      }) ||
       nivelCulinario === 'Principiante' ||
       nivelCulinario === 'Avanzado';
 

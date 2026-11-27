@@ -19,7 +19,10 @@ import {
   AdaptRecipeInput,
 } from '@/app/actions/adaptRecipeAction';
 import { useLanguageStore } from '@/stores/useLanguageStore';
-import { checkRecipeClinicalCompatibility } from '@/lib/clinicalDictionary';
+import {
+  checkRecipeClinicalCompatibility,
+  hasActiveClinicalRestrictions,
+} from '@/lib/clinicalDictionary';
 import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionModal';
 
 interface RecipeAdaptationSectionProps {
@@ -54,11 +57,8 @@ export function RecipeAdaptationSection({
 
   const isPro = (userProfile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
 
-  // Preferencias clínicas o alérgicas configuradas
-  const tienePreferenciasDieteticas = Boolean(
-    (userProfile?.preferencias_dieteticas && userProfile.preferencias_dieteticas.length > 0) ||
-    (userProfile?.alergenos && userProfile.alergenos.length > 0)
-  );
+  // Preferencias clínicas o alérgicas reales activas (ignora estado neutro 'Omnívora' + 'General')
+  const tienePreferenciasDieteticas = hasActiveClinicalRestrictions(userProfile);
 
   // Reporte clínico cruzando ingredientes de la receta con perfil
   const compatibilityReport = useMemo(() => {

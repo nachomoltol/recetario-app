@@ -1780,29 +1780,38 @@ export const PROTOCOLOS_CLINICOS: ClinicalProtocolDefinition[] = [
     prohibidos: {
       es: [
         'azúcares añadidos',
+        'azúcar blanco',
+        'azúcar refinado',
         'jarabes',
+        'sirope de maíz',
         'harinas blancas ultra-refinadas',
+        'harina refinada',
         'lácteos bovinos convencionales desnatados',
-        'leche',
-        'queso',
-        'quesos',
-        'parmesano',
-        'ricota',
-        'ricotta',
-        'nata',
-        'mantequilla',
-        'yogur',
+        'leche desnatada',
+        'yogur desnatado azucarado',
+        'batido lácteo azucarado',
         'grasas trans',
+        'margarina',
         'zumos',
+        'zumo envasado',
+        'refrescos azucarados',
         'alcohol',
       ],
       en: [
         'added sugars',
+        'white sugar',
+        'refined sugar',
         'syrups',
+        'corn syrup',
         'ultra-refined white flours',
+        'refined flour',
         'conventional skimmed cow dairy',
+        'skim milk',
+        'sweetened low-fat yogurt',
         'trans fats',
+        'margarine',
         'fruit juices',
+        'sugary sodas',
         'alcohol',
       ],
     },
@@ -1936,13 +1945,26 @@ export const PATRONES_ALIMENTARIOS_DATA: DietaryPatternDefinition[] = [
     prohibidos: {
       es: [
         'ultraprocesados',
-        'aceites refinados de semillas',
+        'aceite de palma',
+        'aceite de girasol refinado',
+        'aceite de soja refinado',
+        'aceite de maíz refinado',
+        'margarina',
         'refrescos azucarados',
+        'bollería industrial',
+        'salchichas industriales',
+        'sirope de maíz',
       ],
       en: [
         'ultra-processed foods',
-        'refined seed oils',
+        'palm oil',
+        'refined sunflower oil',
+        'refined soybean oil',
+        'refined corn oil',
+        'margarine',
         'sugary sodas',
+        'industrial pastries',
+        'corn syrup',
       ],
     },
     reglasCulinarias: {
@@ -2153,8 +2175,34 @@ export const PATRONES_ALIMENTARIOS_DATA: DietaryPatternDefinition[] = [
     descEn: 'Hunter-gatherer inspired: no grains, legumes, or processed dairy.',
     prohibidos: {
       es: [
-        'cereales (trigo, arroz, avena, maíz)',
+        'trigo',
+        'harina de trigo',
+        'arroz',
+        'avena',
+        'maíz',
+        'maiz',
+        'cebada',
+        'centeno',
+        'espelta',
+        'pasta',
+        'espaguetis',
+        'macarrones',
+        'fideos',
+        'pan',
+        'pan rallado',
+        'cuscús',
+        'quinoa',
         'legumbres',
+        'garbanzos',
+        'lentejas',
+        'alubias',
+        'judías',
+        'frijoles',
+        'soja',
+        'tofu',
+        'edamame',
+        'cacahuetes',
+        'guisantes',
         'lácteos',
         'leche',
         'queso',
@@ -2165,12 +2213,39 @@ export const PATRONES_ALIMENTARIOS_DATA: DietaryPatternDefinition[] = [
         'ricota',
         'ricotta',
         'parmesano',
+        'azúcar',
+        'azúcar blanco',
         'azúcar refinado',
-        'aceites vegetales procesados',
+        'margarina',
+        'aceite de girasol',
+        'aceite de soja',
+        'aceite de maíz',
       ],
       en: [
-        'grains (wheat, rice, oats, corn)',
+        'wheat',
+        'wheat flour',
+        'rice',
+        'oats',
+        'corn',
+        'barley',
+        'rye',
+        'spelt',
+        'pasta',
+        'spaghetti',
+        'noodles',
+        'bread',
+        'breadcrumbs',
+        'couscous',
+        'quinoa',
         'legumes',
+        'chickpeas',
+        'lentils',
+        'beans',
+        'soy',
+        'tofu',
+        'edamame',
+        'peanuts',
+        'peas',
         'dairy',
         'milk',
         'cheese',
@@ -2181,8 +2256,13 @@ export const PATRONES_ALIMENTARIOS_DATA: DietaryPatternDefinition[] = [
         'ricotta',
         'ricota',
         'parmesan',
+        'sugar',
+        'white sugar',
         'refined sugar',
-        'processed vegetable oils',
+        'margarine',
+        'sunflower oil',
+        'soybean oil',
+        'corn oil',
       ],
     },
     reglasCulinarias: {
@@ -2200,21 +2280,98 @@ export const PATRONES_ALIMENTARIOS_DATA: DietaryPatternDefinition[] = [
     prohibidos: {
       es: [
         'azúcar',
+        'azúcar blanco',
+        'azúcar moreno',
+        'panela',
+        'miel',
+        'sirope',
         'siropes',
-        'cereales',
-        'legumbres',
-        'tubérculos (patata, boniato)',
-        'la gran mayoría de frutas dulces',
-        'alimentos procesados azucarados',
+        'mermelada',
+        'patata',
+        'patatas',
+        'papa',
+        'papas',
+        'boniato',
+        'batata',
+        'yuca',
+        'arroz',
+        'pasta',
+        'espaguetis',
+        'macarrones',
+        'fideos',
+        'pan',
+        'pan rallado',
+        'harina de trigo',
+        'harina de maíz',
+        'harina de arroz',
+        'harina de avena',
+        'avena',
+        'trigo',
+        'maíz',
+        'maiz',
+        'cuscús',
+        'quinoa',
+        'garbanzos',
+        'lentejas',
+        'alubias',
+        'judías',
+        'frijoles',
+        'guisantes',
+        'plátano',
+        'banana',
+        'uvas',
+        'mango',
+        'piña',
+        'manzana',
+        'pera',
+        'naranja',
+        'dátiles',
+        'pasas',
+        'galletas',
+        'bollería',
       ],
       en: [
         'sugar',
+        'white sugar',
+        'brown sugar',
+        'honey',
+        'syrup',
         'syrups',
-        'grains',
-        'legumes',
-        'tubers (potato, sweet potato)',
-        'most sweet fruits',
-        'sugary processed foods',
+        'jam',
+        'potato',
+        'potatoes',
+        'sweet potato',
+        'cassava',
+        'rice',
+        'pasta',
+        'spaghetti',
+        'noodles',
+        'bread',
+        'breadcrumbs',
+        'wheat flour',
+        'corn flour',
+        'rice flour',
+        'oat flour',
+        'oats',
+        'wheat',
+        'corn',
+        'couscous',
+        'quinoa',
+        'chickpeas',
+        'lentils',
+        'beans',
+        'peas',
+        'banana',
+        'grapes',
+        'mango',
+        'pineapple',
+        'apple',
+        'pear',
+        'orange',
+        'dates',
+        'raisins',
+        'cookies',
+        'pastries',
       ],
     },
     reglasCulinarias: {
@@ -2231,17 +2388,51 @@ export const PATRONES_ALIMENTARIOS_DATA: DietaryPatternDefinition[] = [
     descEn: 'Moderate reduction of flours, bread, and sugar while preserving vegetables and fruits.',
     prohibidos: {
       es: [
+        'azúcar',
+        'azúcar blanco',
+        'azúcar moreno',
         'azúcares añadidos',
-        'harinas blancas',
-        'pasta blanca',
+        'sirope',
+        'miel',
+        'harina de trigo',
+        'harina blanca',
+        'harina refinada',
+        'pasta',
+        'espaguetis',
+        'macarrones',
+        'fideos',
+        'arroz blanco',
+        'arroz',
         'pan blanco',
+        'pan de molde',
+        'pan rallado',
+        'patata',
+        'patatas',
+        'galletas',
+        'bollería',
         'dulces',
       ],
       en: [
+        'sugar',
+        'white sugar',
+        'brown sugar',
         'added sugars',
-        'white flours',
-        'white pasta',
+        'syrup',
+        'honey',
+        'wheat flour',
+        'white flour',
+        'refined flour',
+        'pasta',
+        'spaghetti',
+        'noodles',
+        'white rice',
+        'rice',
         'white bread',
+        'breadcrumbs',
+        'potato',
+        'potatoes',
+        'cookies',
+        'pastries',
         'sweets',
       ],
     },
@@ -2259,18 +2450,37 @@ export const PATRONES_ALIMENTARIOS_DATA: DietaryPatternDefinition[] = [
     descEn: 'Dietary Approaches to Stop Hypertension, rich in potassium/magnesium and low sodium.',
     prohibidos: {
       es: [
-        'embutidos curados',
-        'conservas saladas',
-        'salsas industriales',
-        'panes blancos ultraprocesados',
-        'exceso de sodio',
+        'embutidos',
+        'chorizo',
+        'salchichón',
+        'salami',
+        'jamón serrano',
+        'bacon',
+        'panceta',
+        'salchichas',
+        'salsa de soja',
+        'pastilla de caldo',
+        'caldo concentrado',
+        'anchoas en conserva',
+        'aceitunas en salmuera',
+        'encurtidos salados',
+        'pan de molde industrial',
+        'refrescos azucarados',
       ],
       en: [
-        'cured sausages',
-        'heavily salted canned foods',
-        'industrial sauces',
-        'ultra-processed white breads',
-        'excess sodium',
+        'cured meats',
+        'chorizo',
+        'salami',
+        'cured ham',
+        'bacon',
+        'sausages',
+        'soy sauce',
+        'bouillon cube',
+        'stock cube',
+        'canned anchovies',
+        'brined olives',
+        'salted pickles',
+        'sugary sodas',
       ],
     },
     reglasCulinarias: {
@@ -2287,12 +2497,26 @@ export const PATRONES_ALIMENTARIOS_DATA: DietaryPatternDefinition[] = [
     descEn: 'Rich in wild berries, fatty fish, root vegetables, and whole rye/barley grains.',
     prohibidos: {
       es: [
-        'cereales refinados',
-        'azúcares procesados',
+        'harina blanca',
+        'harina refinada',
+        'pan blanco',
+        'pasta blanca',
+        'arroz blanco',
+        'azúcar blanco',
+        'azúcar refinado',
+        'bollería industrial',
+        'embutidos procesados',
       ],
       en: [
-        'refined grains',
-        'processed sugars',
+        'white flour',
+        'refined flour',
+        'white bread',
+        'white pasta',
+        'white rice',
+        'white sugar',
+        'refined sugar',
+        'industrial pastries',
+        'processed meats',
       ],
     },
     reglasCulinarias: {
@@ -2309,18 +2533,42 @@ export const PATRONES_ALIMENTARIOS_DATA: DietaryPatternDefinition[] = [
     descEn: 'Organic whole grains, seasonal vegetables, legumes, and sea vegetables.',
     prohibidos: {
       es: [
-        'alimentos procesados',
-        'azúcares refinados',
-        'carnes rojas procesadas',
+        'azúcar blanco',
+        'azúcar refinado',
+        'harina blanca',
+        'harina refinada',
+        'pan blanco',
+        'ternera',
+        'cerdo',
+        'cordero',
+        'embutidos',
+        'bacon',
+        'salchichas',
         'lácteos convencionales',
-        'aditivos artificiales',
+        'leche de vaca',
+        'queso curado',
+        'nata',
+        'mantequilla',
+        'ultraprocesados',
       ],
       en: [
-        'processed foods',
-        'refined sugars',
-        'processed red meats',
+        'white sugar',
+        'refined sugar',
+        'white flour',
+        'refined flour',
+        'white bread',
+        'beef',
+        'pork',
+        'lamb',
+        'cured meats',
+        'bacon',
+        'sausages',
         'conventional dairy',
-        'artificial additives',
+        'cow milk',
+        'aged cheese',
+        'cream',
+        'butter',
+        'ultra-processed foods',
       ],
     },
     reglasCulinarias: {
@@ -2625,6 +2873,28 @@ export function getDetailedClinicalProfile(params: {
 }
 
 /**
+ * Determina si el usuario tiene al menos una restricción real activa
+ * (alérgenos, patología distinta de 'General' o patrón distinto de 'Omnívora').
+ * Un perfil neutro ('General' + 'Omnívora' sin alérgenos) devuelve false.
+ */
+export function hasActiveClinicalRestrictions(profile?: {
+  preferencias_dieteticas?: string[] | null;
+  alergenos?: string[] | null;
+} | null): boolean {
+  if (!profile) return false;
+  const hasAllergens = Array.isArray(profile.alergenos) && profile.alergenos.some((a) => Boolean((a || '').trim()));
+  if (hasAllergens) return true;
+
+  const neutralKeys = new Set(['general', 'omnivora', 'omnívora', 'omnivore', 'flexible_omnivore']);
+  const prefs = Array.isArray(profile.preferencias_dieteticas) ? profile.preferencias_dieteticas : [];
+  return prefs.some((p) => {
+    const clean = (p || '').trim();
+    if (!clean) return false;
+    return !neutralKeys.has(normalizeClinicalKey(clean));
+  });
+}
+
+/**
  * Cruza las preferencias del usuario y alérgenos con el diccionario clínico
  * para obtener una lista consolidada y deduplicada de ingredientes estrictamente prohibidos.
  * (Función retrocompatible: mantiene firma original devolviendo string[])
@@ -2870,20 +3140,28 @@ export function isUniversalEggIngredient(rawOrNormIng: string): boolean {
 }
 
 /**
- * Evalúa derivados y subproductos de origen animal (gelatina, caldos cárnicos, miel, etc.)
+ * Evalúa derivados y subproductos de origen animal (gelatina, caldos cárnicos, manteca; miel solo si includeHoney=true)
  */
-export function isUniversalAnimalDerivativeIngredient(rawOrNormIng: string): boolean {
+export function isUniversalAnimalDerivativeIngredient(
+  rawOrNormIng: string,
+  options?: { includeHoney?: boolean }
+): boolean {
   const normIng = normalizeClinicalTerm(rawOrNormIng);
   if (isPlantBasedMeatExemption(normIng)) return false;
+
+  const includeHoney = options?.includeHoney ?? true;
 
   const derivativePatterns = [
     /\bgelatina\s+(animal)?\b/i, /\bmanteca\s+de\s+cerdo\b/i,
     /\bgrasa\s+(animal|de\s+cerdo|de\s+vaca|de\s+pato)\b/i,
-    /\blard\b/i, /\btallow\b/i, /\bmiel\b/i, /\bhoney\b/i,
+    /\blard\b/i, /\btallow\b/i,
     /\bcaldo\s+de\s+(carne|pollo|pavo|pescado|marisco|huesos?)\b/i,
     /\bfondo\s+de\s+(carne|pollo|ternera|pescado)\b/i,
     /\b(beef|chicken|fish|bone)\s+(broth|stock)\b/i
   ];
+  if (includeHoney) {
+    derivativePatterns.push(/\bmiel\b/i, /\bhoney\b/i);
+  }
   return derivativePatterns.some((regex) => regex.test(normIng));
 }
 
@@ -2963,14 +3241,12 @@ export function isIngredientMatchingProhibited(
   }
 
   // LEYES UNIVERSALES POR CATEGORÍA HIPERÓNIMA:
-  // A) Hiperónimo de Lácteos
+  // A) Hiperónimo de Lácteos (no incluye términos acotados como quesos curados de histamina o desnatados de SOP)
   const isDairyCategory =
     normP === 'lacteos' ||
     normP === 'lacteos de vaca' ||
     normP === 'lacteos de vaca caseina a1' ||
     normP === 'lacteos convencionales' ||
-    normP === 'lacteos bovinos convencionales desnatados' ||
-    normP === 'quesos curados o fermentados' ||
     normP === 'dairy' ||
     normP === 'cow dairy' ||
     normP === 'queso' ||
@@ -3092,6 +3368,7 @@ export function checkRecipeClinicalCompatibility(
 
     for (const det of profile.detallesPorPatologia) {
       // 1. Verificación por Ley Universal de Categoría (Láctea / Animal)
+      // Nota: 'bajo_histamina' y 'sop' evalúan sus lácteos específicos (curados/fermentados o desnatados azucarados) sin bloqueo universal indiscriminado
       let matchedUniversal = false;
       const isDairyExcluding =
         det.clave === 'sin_lactosa' ||
@@ -3099,8 +3376,6 @@ export function checkRecipeClinicalCompatibility(
         det.clave === 'paleo' ||
         det.clave === 'hashimoto' ||
         det.clave === 'endometriosis' ||
-        det.clave === 'sop' ||
-        det.clave === 'bajo_histamina' ||
         det.clave === 'macrobiotica';
 
       if (isDairyExcluding && isUniversalDairyIngredient(rawName)) {
@@ -3147,10 +3422,11 @@ export function checkRecipeClinicalCompatibility(
           }
         }
       } else if (!matchedUniversal && det.clave === 'vegetariana') {
+        // En dieta ovolactovegetariana la miel está permitida (solo se excluye en vegana)
         const isMeatOrFish =
           isUniversalMeatOrPoultryIngredient(rawName) ||
           isUniversalFishOrSeafoodIngredient(rawName) ||
-          isUniversalAnimalDerivativeIngredient(rawName);
+          isUniversalAnimalDerivativeIngredient(rawName, { includeHoney: false });
 
         if (isMeatOrFish) {
           const alreadyMatched = conflicts.some(

@@ -282,6 +282,48 @@ const PHOTO_LOADING_STAGES_EN: LoadingStage[] = [
   },
 ];
 
+const TEXT_LOADING_STAGES_ES: LoadingStage[] = [
+  {
+    seconds: 0,
+    title: 'Leyendo texto de la receta',
+    description: 'Analizando ingredientes, cantidades y elaboración escrita...',
+    percent: 28,
+  },
+  {
+    seconds: 3,
+    title: 'Estandarizando ingredientes y pasos',
+    description: 'Normalizando medidas, ordenando tiempos y redactando instrucciones claras...',
+    percent: 68,
+  },
+  {
+    seconds: 8,
+    title: 'Finalizando receta',
+    description: 'Calculando alérgenos, asignando pasillos y guardando en tu recetario...',
+    percent: 96,
+  },
+];
+
+const TEXT_LOADING_STAGES_EN: LoadingStage[] = [
+  {
+    seconds: 0,
+    title: 'Reading recipe text',
+    description: 'Parsing written ingredients, quantities, and instructions...',
+    percent: 28,
+  },
+  {
+    seconds: 3,
+    title: 'Standardizing ingredients & steps',
+    description: 'Normalizing measurements, ordering timings, and drafting clear steps...',
+    percent: 68,
+  },
+  {
+    seconds: 8,
+    title: 'Finalizing recipe',
+    description: 'Checking allergens, assigning aisles, and saving to your cookbook...',
+    percent: 96,
+  },
+];
+
 const MAX_CAPTURE_PHOTOS = 3;
 const IDLE_AUDIO_BARS = Array.from({ length: 15 }, () => 14);
 
@@ -1448,8 +1490,30 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     if (mode === 'foto' || hasPhotoAttached) {
       return language === 'en' ? PHOTO_LOADING_STAGES_EN : PHOTO_LOADING_STAGES_ES;
     }
+    if (mode === 'texto') {
+      return language === 'en' ? TEXT_LOADING_STAGES_EN : TEXT_LOADING_STAGES_ES;
+    }
     return language === 'en' ? LOADING_STAGES_EN : LOADING_STAGES_ES;
   }, [mode, hasPhotoAttached, language]);
+
+  const loadingWaitNotice = useMemo(() => {
+    if (mode === 'audio') {
+      return language === 'en'
+        ? 'Transcribing your voice note and organizing ingredients, quantities, and steps.'
+        : 'Estamos transcribiendo tu nota de voz y ordenando ingredientes, cantidades y pasos.';
+    }
+    if (mode === 'foto' || hasPhotoAttached) {
+      return language === 'en'
+        ? 'Reading your photo(s) carefully to extract handwritten notes, labels, ingredients, and steps.'
+        : 'Estamos leyendo tus fotos con detalle para estructurar ingredientes, cantidades y pasos.';
+    }
+    if (mode === 'texto') {
+      return language === 'en'
+        ? 'Organizing your written recipe into standardized ingredients, aisles, and clear steps.'
+        : 'Estamos estructurando tu texto en ingredientes estandarizados, pasillos y pasos claros.';
+    }
+    return t('capture_loading_long_video');
+  }, [mode, hasPhotoAttached, language, t]);
   const culinaryHumorPhrases =
     language === 'en' ? CULINARY_HUMOR_PHRASES_EN : CULINARY_HUMOR_PHRASES_ES;
 
@@ -1687,11 +1751,11 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             </p>
           </div>
 
-          {/* Aviso informativo de espera para la IA */}
+          {/* Aviso informativo de espera adaptado al modo activo */}
           <div className="p-3.5 rounded-xl bg-white border border-[#e7dfd5] text-xs text-stone-600 flex items-start gap-2.5 shadow-2xs">
             <Sparkles className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
             <span className="leading-relaxed">
-              {t('capture_loading_long_video')}
+              {loadingWaitNotice}
             </span>
           </div>
         </div>
@@ -2043,14 +2107,16 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
               /* ESTADO: AUDIO GRABADO LISTO PARA REVISAR O EXTRAER */
               <div className="p-5 sm:p-6 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-4 animate-fade-in shadow-2xs">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="w-10 h-10 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0">
                       <Volume2 className="w-5 h-5" />
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-stone-900">{audioFile.name}</p>
-                      <p className="text-xs text-stone-500">
-                        {(audioFile.size / 1024).toFixed(1)} KB • {recordingSeconds}s
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-stone-900 truncate">
+                        {language === 'en' ? 'Recorded voice note' : 'Nota de voz grabada'}
+                      </p>
+                      <p className="text-xs text-stone-500 truncate">
+                        {Math.floor(recordingSeconds / 60)}:{String(recordingSeconds % 60).padStart(2, '0')} • {(audioFile.size / 1024).toFixed(1)} KB
                       </p>
                     </div>
                   </div>
@@ -2059,8 +2125,8 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                     type="button"
                     onClick={cancelVoiceRecording}
                     disabled={isPending}
-                    className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer"
-                    title="Descartar audio"
+                    className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer shrink-0"
+                    title={language === 'en' ? 'Discard audio' : 'Descartar audio'}
                   >
                     <X className="w-4 h-4" />
                   </button>
