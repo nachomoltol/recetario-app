@@ -3,8 +3,11 @@
 import { createClient } from '@/lib/supabase/server';
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '@/lib/gemini/client';
 import {
-  getClinicalExclusions,
+  getDetailedClinicalProfile,
+  buildClinicalFirewallPrompt,
+  checkRecipeClinicalCompatibility,
   hasActiveClinicalRestrictions,
+  ClinicalConflict,
 } from '@/lib/clinicalDictionary';
 import { cleanIngredientName, formatCulinaryAmount } from '@/lib/nutrition/formatQuantity';
 import { normalizeSubstituteQuantityAndUnit } from '@/lib/culinary/scaler';
@@ -34,6 +37,12 @@ export interface AdaptedStep {
 export interface AdaptacionCulinaria {
   resumen_adaptacion: string;
   titulo?: string;
+  calorias_por_porcion?: number | null;
+  proteinas_por_porcion?: number | null;
+  carbohidratos_por_porcion?: number | null;
+  grasas_por_porcion?: number | null;
+  fibra_por_porcion?: number | null;
+  conflictos_residuales?: ClinicalConflict[];
   ingredientes: AdaptedIngredient[];
   pasos: AdaptedStep[];
 }
@@ -87,6 +96,26 @@ const adaptRecipeSchema = {
     titulo: {
       type: Type.STRING,
       description: 'Título de la receta adaptada. TERMINANTEMENTE PROHIBIDO incluir etiquetas HTML como <mark> en este campo (debe ser siempre texto plano).',
+    },
+    calorias_por_porcion: {
+      type: Type.NUMBER,
+      description: 'Estimación realista de kilocalorías (kcal) por 1 porción tras aplicar las sustituciones de esta adaptación.',
+    },
+    proteinas_por_porcion: {
+      type: Type.NUMBER,
+      description: 'Estimación realista de proteínas en gramos por 1 porción tras la adaptación.',
+    },
+    carbohidratos_por_porcion: {
+      type: Type.NUMBER,
+      description: 'Estimación realista de carbohidratos en gramos por 1 porción tras la adaptación.',
+    },
+    grasas_por_porcion: {
+      type: Type.NUMBER,
+      description: 'Estimación realista de grasas en gramos por 1 porción tras la adaptación.',
+    },
+    fibra_por_porcion: {
+      type: Type.NUMBER,
+      description: 'Estimación realista de fibra en gramos por 1 porción tras la adaptación.',
     },
     ingredientes: {
       type: Type.ARRAY,
@@ -460,21 +489,44 @@ export async function adaptRecipeAction(
       };
     }
 
-    // Calcular cortafuegos clínico cruzado
-    const exclusionesClinicas = getClinicalExclusions({
+    const idioma = receta.idioma || 'es';
+
+    // Calcular perfil clínico detallado en el idioma activo del usuario (severidad + reglas culinarias concisas)
+    const clinicalProfile = getDetailedClinicalProfile({
       preferencias: preferenciasDieteticas,
       alergenos,
+      idioma,
     });
+    const exclusionesClinicas = clinicalProfile.exclusionesTotales;
 
-    const idioma = receta.idioma || 'es';
-    const langName = idioma === 'en' ? 'English' : 'Spanish';
+    // Control de tokens (Gemini 3.1 Flash Lite):
+    // Priorizar los ingredientes en conflicto presentes en esta receta + lista compacta deduplicada (máx. 40 términos)
+    const preCheck = checkRecipeClinicalCompatibility(
+      (receta.ingredientes || []).map((i) => ({
+        nombre_limpio: i.nombre_limpio,
+        nombre_crudo: i.nombre_limpio,
+      })),
+      { preferencias: preferenciasDieteticas, alergenos, idioma }
+    );
+
+    const priorityConflicts = preCheck.conflicts.map((c) => c.prohibidoDetectado).filter(Boolean);
+    const compactExclusions = Array.from(new Set([...priorityConflicts, ...exclusionesClinicas])).slice(0, 40);
+
+    const compactRules = clinicalProfile.reglasAvanzadasTexto
+      ? clinicalProfile.reglasAvanzadasTexto
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .slice(0, 6)
+          .join('\n')
+      : undefined;
+
     const firewallDirective =
-      exclusionesClinicas.length > 0
-        ? `\nCORTAFUEGOS CLÍNICO ACTIVO:
-ESTRICTAMENTE PROHIBIDO sugerir los siguientes ingredientes: [${exclusionesClinicas.join(
-            ', '
-          )}].
-Cualquier ingrediente prohibido debe ser sustituido obligatoriamente por una alternativa apta y equivalente.`
+      compactExclusions.length > 0
+        ? `\n${buildClinicalFirewallPrompt(compactExclusions, idioma, {
+            severidadMaxima: clinicalProfile.severidadMaxima,
+            reglasAvanzadasTexto: compactRules,
+          })}`
         : '';
 
     // 2. Construir prompt para Gemini
@@ -536,6 +588,7 @@ Reescribe el JSON de esta receta. Adapta los ingredientes y los pasos de prepara
 - PROHIBIDO GRAMOS EN PIZCAS/AL GUSTO: Para ingredientes con unidad "pizca", "al gusto" o rol "invariable" (ej: perejil fresco), NUNCA inventes gramos ("8 g de perejil"). Escribe "una pizca de..." o "...al gusto".
 - ETIQUETADO <mark> RESTRINGIDO: Usa <mark>...</mark> ÚNICAMENTE en 'ingredientes[].nombre_limpio' (para ingredientes sustituidos) y en las instrucciones de los pasos ('pasos[].instruccion*') cuando se mencione el ingrediente adaptado.
 - PROHIBIDO <mark> EN RESUMEN, TÍTULO Y GUÍA SENSORIAL: Los campos 'resumen_adaptacion', 'titulo', 'descriptor_sensorial' y 'consejo_pro' deben ser SIEMPRE texto plano sin etiquetas <mark>.
+- MACROS ACTUALIZADOS: Calcula y rellena 'calorias_por_porcion', 'proteinas_por_porcion', 'carbohidratos_por_porcion', 'grasas_por_porcion' y 'fibra_por_porcion' por 1 porción reflejando los nuevos ingredientes adaptados.
 - RESUMEN PROFESIONAL: En 'resumen_adaptacion', describe de forma concisa y profesional las adaptaciones dietéticas/clínicas efectuadas (1 a 2 frases). NO reduzcas el texto a "adaptando los pasos para un nivel principiante".
 `.trim();
 
@@ -627,11 +680,34 @@ Reescribe el JSON de esta receta. Adapta los ingredientes y los pasos de prepara
           .replace(/<\/?mark>/gi, '')
           .trim();
 
+        // Verificación clínica determinista posterior a la IA sobre los ingredientes adaptados
+        const postCheck =
+          exclusionesClinicas.length > 0
+            ? checkRecipeClinicalCompatibility(
+                sanitizedIngredientes.map((i) => {
+                  const plain = (i.nombre_limpio || '').replace(/<\/?[^>]+(>|$)/g, '').trim();
+                  return { nombre_limpio: plain, nombre_crudo: plain };
+                }),
+                { preferencias: preferenciasDieteticas, alergenos, idioma }
+              )
+            : { isCompatible: true, conflicts: [] as ClinicalConflict[] };
+
+        const parseMacro = (val: unknown): number | null => {
+          const n = Number(val);
+          return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
+        };
+
         return {
           success: true,
           data: {
             resumen_adaptacion: cleanResumen,
             titulo: cleanTitulo,
+            calorias_por_porcion: parseMacro(parsedData.calorias_por_porcion),
+            proteinas_por_porcion: parseMacro(parsedData.proteinas_por_porcion),
+            carbohidratos_por_porcion: parseMacro(parsedData.carbohidratos_por_porcion),
+            grasas_por_porcion: parseMacro(parsedData.grasas_por_porcion),
+            fibra_por_porcion: parseMacro(parsedData.fibra_por_porcion),
+            conflictos_residuales: postCheck.conflicts,
             ingredientes: sanitizedIngredientes,
             pasos: sanitizedPasos,
           },

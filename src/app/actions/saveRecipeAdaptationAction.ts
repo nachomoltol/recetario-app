@@ -33,6 +33,11 @@ export interface SaveRecipeAdaptationParams {
   recetaId: string;
   titulo?: string;
   descripcion?: string | null;
+  calorias_por_porcion?: number | null;
+  proteinas_por_porcion?: number | null;
+  carbohidratos_por_porcion?: number | null;
+  grasas_por_porcion?: number | null;
+  fibra_por_porcion?: number | null;
   ingredientes: AdaptedIngredientPayload[];
   pasos: AdaptedStepPayload[];
 }
@@ -52,6 +57,11 @@ export interface RevertAdaptationResult {
     descripcion: string | null;
     porciones: number;
     dificultad: string;
+    calorias_por_porcion?: number | null;
+    proteinas_por_porcion?: number | null;
+    carbohidratos_por_porcion?: number | null;
+    grasas_por_porcion?: number | null;
+    fibra_por_porcion?: number | null;
     ingredientes: any[];
     pasos: any[];
   };
@@ -65,6 +75,11 @@ export async function saveRecipeAdaptationAction({
   recetaId,
   titulo,
   descripcion,
+  calorias_por_porcion,
+  proteinas_por_porcion,
+  carbohidratos_por_porcion,
+  grasas_por_porcion,
+  fibra_por_porcion,
   ingredientes,
   pasos,
 }: SaveRecipeAdaptationParams): Promise<SaveAdaptationResult> {
@@ -117,6 +132,11 @@ export async function saveRecipeAdaptationAction({
         descripcion: recetaActual.descripcion,
         porciones: recetaActual.porciones,
         dificultad: recetaActual.dificultad,
+        calorias_por_porcion: recetaActual.calorias_por_porcion ?? null,
+        proteinas_por_porcion: recetaActual.proteinas_por_porcion ?? null,
+        carbohidratos_por_porcion: recetaActual.carbohidratos_por_porcion ?? null,
+        grasas_por_porcion: recetaActual.grasas_por_porcion ?? null,
+        fibra_por_porcion: recetaActual.fibra_por_porcion ?? null,
         ingredientes: (ingOriginales || []).map((i) => ({
           id: i.id,
           nombre_limpio: i.nombre_limpio,
@@ -155,6 +175,21 @@ export async function saveRecipeAdaptationAction({
         typeof descripcion === 'string'
           ? descripcion.replace(/<\/?mark>/gi, '').trim()
           : descripcion;
+    }
+    if (typeof calorias_por_porcion === 'number' && Number.isFinite(calorias_por_porcion)) {
+      updateRecetaPayload.calorias_por_porcion = Math.round(calorias_por_porcion);
+    }
+    if (typeof proteinas_por_porcion === 'number' && Number.isFinite(proteinas_por_porcion)) {
+      updateRecetaPayload.proteinas_por_porcion = Math.round(proteinas_por_porcion);
+    }
+    if (typeof carbohidratos_por_porcion === 'number' && Number.isFinite(carbohidratos_por_porcion)) {
+      updateRecetaPayload.carbohidratos_por_porcion = Math.round(carbohidratos_por_porcion);
+    }
+    if (typeof grasas_por_porcion === 'number' && Number.isFinite(grasas_por_porcion)) {
+      updateRecetaPayload.grasas_por_porcion = Math.round(grasas_por_porcion);
+    }
+    if (typeof fibra_por_porcion === 'number' && Number.isFinite(fibra_por_porcion)) {
+      updateRecetaPayload.fibra_por_porcion = Math.round(fibra_por_porcion);
     }
 
     const { error: errUpdateReceta } = await supabase
@@ -296,17 +331,34 @@ export async function revertRecipeAdaptationAction(recetaId: string): Promise<Re
       return { success: false, error: 'No hay ninguna versión original respaldada para revertir.' };
     }
 
-    // 2. Restaurar cabecera de la receta y vaciar receta_original
+    // 2. Restaurar cabecera de la receta (incluyendo macros originales respaldados) y vaciar receta_original
+    const restoreHeaderPayload: any = {
+      titulo: backup.titulo,
+      descripcion: backup.descripcion,
+      porciones: backup.porciones || receta.porciones,
+      dificultad: backup.dificultad || receta.dificultad,
+      receta_original: null,
+      updated_at: new Date().toISOString(),
+    };
+    if (backup.calorias_por_porcion !== undefined) {
+      restoreHeaderPayload.calorias_por_porcion = backup.calorias_por_porcion;
+    }
+    if (backup.proteinas_por_porcion !== undefined) {
+      restoreHeaderPayload.proteinas_por_porcion = backup.proteinas_por_porcion;
+    }
+    if (backup.carbohidratos_por_porcion !== undefined) {
+      restoreHeaderPayload.carbohidratos_por_porcion = backup.carbohidratos_por_porcion;
+    }
+    if (backup.grasas_por_porcion !== undefined) {
+      restoreHeaderPayload.grasas_por_porcion = backup.grasas_por_porcion;
+    }
+    if (backup.fibra_por_porcion !== undefined) {
+      restoreHeaderPayload.fibra_por_porcion = backup.fibra_por_porcion;
+    }
+
     const { error: errUpdate } = await supabase
       .from('recetas')
-      .update({
-        titulo: backup.titulo,
-        descripcion: backup.descripcion,
-        porciones: backup.porciones || receta.porciones,
-        dificultad: backup.dificultad || receta.dificultad,
-        receta_original: null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(restoreHeaderPayload)
       .eq('id', recetaId)
       .eq('usuario_id', user.id);
 

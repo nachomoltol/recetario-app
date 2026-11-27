@@ -131,6 +131,16 @@ export function RecipeDetailView({
         : 'Receta adaptada y sincronizada con tu perfil'
       : null
   );
+  const [residualConflicts, setResidualConflicts] = useState<
+    NonNullable<AdaptacionCulinaria['conflictos_residuales']>
+  >([]);
+  const [currentMacros, setCurrentMacros] = useState({
+    calorias: receta?.calorias_por_porcion ?? null,
+    proteinas: receta?.proteinas_por_porcion ?? null,
+    carbohidratos: receta?.carbohidratos_por_porcion ?? null,
+    grasas: receta?.grasas_por_porcion ?? null,
+    fibra: receta?.fibra_por_porcion ?? null,
+  });
 
   // Estados de fotografía
   const [currentFotoUrl, setCurrentFotoUrl] = useState<string | null>(
@@ -373,6 +383,16 @@ export function RecipeDetailView({
     setCurrentPasos(adaptedP);
     setIsAdapted(true);
     setAdaptationSummary(cleanResumen || null);
+    setResidualConflicts(data?.conflictos_residuales || []);
+
+    const nextMacros = {
+      calorias: data?.calorias_por_porcion ?? currentMacros.calorias,
+      proteinas: data?.proteinas_por_porcion ?? currentMacros.proteinas,
+      carbohidratos: data?.carbohidratos_por_porcion ?? currentMacros.carbohidratos,
+      grasas: data?.grasas_por_porcion ?? currentMacros.grasas,
+      fibra: data?.fibra_por_porcion ?? currentMacros.fibra,
+    };
+    setCurrentMacros(nextMacros);
 
     // Persistir adaptación en Supabase (sobrescribe JSON con respaldo en receta_original)
     try {
@@ -381,6 +401,11 @@ export function RecipeDetailView({
           recetaId: receta.id,
           titulo: cleanAdaptedTitle,
           descripcion: cleanRecipeDesc || undefined,
+          calorias_por_porcion: nextMacros.calorias,
+          proteinas_por_porcion: nextMacros.proteinas,
+          carbohidratos_por_porcion: nextMacros.carbohidratos,
+          grasas_por_porcion: nextMacros.grasas,
+          fibra_por_porcion: nextMacros.fibra,
           ingredientes: adaptedIngs.map((i, idx) => ({
             id: i.id,
             nombre_limpio: i.nombre_limpio,
@@ -439,6 +464,29 @@ export function RecipeDetailView({
           setCurrentTitulo(res.originalData.titulo);
           setCurrentIngredientes(res.originalData.ingredientes);
           setCurrentPasos(res.originalData.pasos);
+          setCurrentMacros({
+            calorias:
+              res.originalData.calorias_por_porcion !== undefined
+                ? res.originalData.calorias_por_porcion
+                : receta?.calorias_por_porcion ?? null,
+            proteinas:
+              res.originalData.proteinas_por_porcion !== undefined
+                ? res.originalData.proteinas_por_porcion
+                : receta?.proteinas_por_porcion ?? null,
+            carbohidratos:
+              res.originalData.carbohidratos_por_porcion !== undefined
+                ? res.originalData.carbohidratos_por_porcion
+                : receta?.carbohidratos_por_porcion ?? null,
+            grasas:
+              res.originalData.grasas_por_porcion !== undefined
+                ? res.originalData.grasas_por_porcion
+                : receta?.grasas_por_porcion ?? null,
+            fibra:
+              res.originalData.fibra_por_porcion !== undefined
+                ? res.originalData.fibra_por_porcion
+                : receta?.fibra_por_porcion ?? null,
+          });
+          setResidualConflicts([]);
           setIsAdapted(false);
           setAdaptationSummary(null);
           setToast({
@@ -1186,6 +1234,7 @@ export function RecipeDetailView({
               userProfile={userProfile}
               isAdapted={isAdapted}
               adaptationSummary={adaptationSummary}
+              residualConflicts={residualConflicts}
               onApplyAdaptation={handleApplyAdaptation}
               onRevertAdaptation={handleRevertAdaptation}
             />
@@ -1265,11 +1314,11 @@ export function RecipeDetailView({
 
       {/* Pestaña / Acordeón Plegable Compacto de Valores Nutricionales */}
       <RecipeNutritionAccordion
-        calorias={receta?.calorias_por_porcion}
-        proteinas={receta?.proteinas_por_porcion}
-        carbohidratos={receta?.carbohidratos_por_porcion}
-        grasas={receta?.grasas_por_porcion}
-        fibra={receta?.fibra_por_porcion}
+        calorias={currentMacros.calorias}
+        proteinas={currentMacros.proteinas}
+        carbohidratos={currentMacros.carbohidratos}
+        grasas={currentMacros.grasas}
+        fibra={currentMacros.fibra}
       />
 
       {/* PANEL DE EDICIÓN DE INGREDIENTES EN MODO EDICIÓN */}
