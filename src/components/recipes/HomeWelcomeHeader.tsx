@@ -40,7 +40,7 @@ export function HomeBrandHeader() {
       <img
         src="/miga-logo.svg"
         alt="Logo Miga"
-        className="h-9 sm:h-10 w-auto max-w-[130px] sm:max-w-[160px] object-contain"
+        className="h-8 sm:h-10 w-auto max-w-[105px] sm:max-w-[160px] object-contain"
       />
     </Link>
   );

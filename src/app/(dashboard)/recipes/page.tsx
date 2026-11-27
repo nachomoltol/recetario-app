@@ -6,6 +6,7 @@ import { ensureUserProfileExists } from '@/lib/supabase/ensureUserProfile';
 import { ensureMonthlyResetAndPlanSync } from '@/lib/quota/ensureMonthlyResetAndPlanSync';
 import { BookOpen, Sparkles } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
+import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { RecipeCaptureCard } from '@/components/recipes/RecipeCaptureCard';
 import { HomeRecentRecipesSection } from '@/components/recipes/HomeRecentRecipesSection';
 import {
@@ -57,14 +58,19 @@ export default async function RecipesDashboardPage(props: RecipesDashboardPagePr
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
-      {/* Barra de navegación superior limpia y compacta (sin Volver ni idioma en inicio) */}
+      {/* Barra de navegación superior limpia y compacta (sin Volver; idioma centrado entre logo y usuario) */}
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+        <div className="max-w-4xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3">
           {/* Zona izquierda: Marca Miga compacta */}
-          <HomeBrandHeader />
+          <div className="shrink-0">
+            <HomeBrandHeader />
+          </div>
+
+          {/* Zona central: Selector de idioma compacto */}
+          <LanguageToggle className="shrink-0" />
 
           {/* Zona derecha: Menú de Usuario Desplegable */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center shrink-0">
             <UserDropdownMenu
               fallbackName={userName}
               email={user.email || ''}
