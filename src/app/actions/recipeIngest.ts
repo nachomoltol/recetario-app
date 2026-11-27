@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient, getAdminClient } from '@/lib/supabase/server';
 import { ensureUserProfileExists } from '@/lib/supabase/ensureUserProfile';
 import { ensureMonthlyResetAndPlanSync } from '@/lib/quota/ensureMonthlyResetAndPlanSync';
+import { cleanupStaleTemporaryCaptures } from '@/lib/supabase/storageCleanup';
 
 // Bloqueo de concurrencia activo por usuario para evitar extracciones paralelas fraudulentas
 const activeIngestUsers = new Set<string>();
@@ -37,11 +38,21 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     const texto = (formData.get('texto') as string)?.trim() || undefined;
     const rawIdioma = (formData.get('idioma') as string)?.trim().toLowerCase();
     const idioma: 'es' | 'en' = rawIdioma === 'en' ? 'en' : 'es';
-    const fileEntry = formData.get('archivo') || formData.get('file');
-    const file = fileEntry instanceof File && fileEntry.size > 0 ? fileEntry : undefined;
+    const rawFileEntries = [
+      ...formData.getAll('archivo'),
+      ...formData.getAll('file'),
+    ];
+    const files: File[] = [];
+    for (const entry of rawFileEntries) {
+      if (entry instanceof File && entry.size > 0) {
+        files.push(entry);
+        if (files.length >= 3) break;
+      }
+    }
+    const file = files[0];
     const rawDeviceId = ((formData.get('deviceId') as string) || '').trim() || 'web_unknown';
 
-    if (!url && !texto && !file) {
+    if (!url && !texto && files.length === 0) {
       return {
         success: false,
         error: 'Por favor, introduce una URL (TikTok, Instagram, YouTube), el texto de la receta, una nota de voz o sube una imagen/documento.',
@@ -49,10 +60,11 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
     }
 
     // Límites estrictos de tamaño de entrada para prevenir DoS y costes descontrolados
-    if (file && file.size > 10 * 1024 * 1024) {
+    const totalFilesSize = files.reduce((acc, f) => acc + f.size, 0);
+    if (files.some((f) => f.size > 10 * 1024 * 1024) || totalFilesSize > 12 * 1024 * 1024) {
       return {
         success: false,
-        error: 'El archivo adjunto supera el tamaño máximo permitido de 10 MB.',
+        error: 'Los archivos adjuntos superan el tamaño máximo permitido (10 MB por archivo / 12 MB en total).',
       };
     }
     if (texto && texto.length > 15000) {
@@ -431,10 +443,14 @@ export async function ingestRecipeAction(formData: FormData): Promise<IngestReci
   }
 
   // 3. Extracción multimodal autónoma con Gemini (fidelidad 100% al contenido original del vídeo/fuente)
+  // Lanzar limpieza prudencial en segundo plano de posibles residuos temporales > 24h
+  void cleanupStaleTemporaryCaptures().catch(() => {});
+
   const extracted = await extractRecipeWithGemini({
     url,
     texto,
     file,
+    files,
     idioma,
   });
 

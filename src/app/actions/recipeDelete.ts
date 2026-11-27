@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { removeStorageUrlsSafely } from '@/lib/supabase/storageCleanup';
 
 export interface DeleteRecipeResult {
   success?: boolean;
@@ -41,27 +42,10 @@ export async function deleteRecipeAction(recipeId: string): Promise<DeleteRecipe
       .single();
 
     if (recetaData) {
-      const recetaPathsToDelete: string[] = [];
-      const urlsToCheck = [recetaData.foto_url, recetaData.imagen_portada_url].filter(Boolean) as string[];
-
-      for (const url of urlsToCheck) {
-        if (url.includes('/recetas_fotos/')) {
-          const parts = url.split('/recetas_fotos/');
-          if (parts[1]) {
-            recetaPathsToDelete.push(decodeURIComponent(parts[1]));
-          }
-        }
-      }
-
-      if (recetaPathsToDelete.length > 0) {
-        const { error: errRecetasStorage } = await supabase.storage
-          .from('recetas_fotos')
-          .remove(recetaPathsToDelete);
-
-        if (errRecetasStorage) {
-          console.warn('Aviso: no se pudieron eliminar fotos del bucket recetas_fotos:', errRecetasStorage);
-        }
-      }
+      await removeStorageUrlsSafely(supabase, 'recetas_fotos', [
+        recetaData.foto_url,
+        recetaData.imagen_portada_url,
+      ]);
     }
 
     // B) Fotografías del diario culinario vinculadas a la receta en el bucket 'cooking-diary'
@@ -72,26 +56,11 @@ export async function deleteRecipeAction(recipeId: string): Promise<DeleteRecipe
       .eq('usuario_id', user.id);
 
     if (diarioEntries && diarioEntries.length > 0) {
-      const storagePathsToDelete: string[] = [];
-      for (const entry of diarioEntries) {
-        if (entry.foto_resultado_url && entry.foto_resultado_url.includes('/cooking-diary/')) {
-          const parts = entry.foto_resultado_url.split('/cooking-diary/');
-          if (parts[1]) {
-            // Decodificar posibles caracteres URI codificados
-            storagePathsToDelete.push(decodeURIComponent(parts[1]));
-          }
-        }
-      }
-
-      if (storagePathsToDelete.length > 0) {
-        const { error: errStorage } = await supabase.storage
-          .from('cooking-diary')
-          .remove(storagePathsToDelete);
-
-        if (errStorage) {
-          console.warn('Aviso: no se pudieron eliminar algunos archivos del bucket cooking-diary:', errStorage);
-        }
-      }
+      await removeStorageUrlsSafely(
+        supabase,
+        'cooking-diary',
+        diarioEntries.map((entry) => entry.foto_resultado_url)
+      );
     }
 
     // 2. Eliminar la fila en 'recetas' (las FKs en cascada eliminan ingredientes, pasos y registros del diario)

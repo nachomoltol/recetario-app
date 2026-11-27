@@ -22,6 +22,8 @@ import {
   Smartphone,
   Mic,
   Square,
+  Pause,
+  Plus,
   RotateCcw,
   Volume2,
   ClipboardPaste,
@@ -43,6 +45,7 @@ import { useProfileStore } from '@/stores/useProfileStore';
 import { getDeviceIdentifier } from '@/lib/device/deviceIdentifier';
 import { Usuario } from '@/types/recipe';
 import { playCrunchFeedback } from '@/lib/utils/audioFeedback';
+import { compressImageClient } from '@/lib/utils/imageCompress';
 import dynamic from 'next/dynamic';
 import { createClient as createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { updateRecipeClassificationAction } from '@/app/actions/recipeClassification';
@@ -224,6 +227,63 @@ const AUDIO_LOADING_STAGES_EN: LoadingStage[] = [
   },
 ];
 
+const PHOTO_LOADING_STAGES_ES: LoadingStage[] = [
+  {
+    seconds: 0,
+    title: 'Preparando foto(s) de la receta',
+    description: 'Enviando imágenes optimizadas de alta nitidez al motor visual...',
+    percent: 24,
+  },
+  {
+    seconds: 3,
+    title: 'Leyendo ingredientes y texto manuscrito',
+    description: 'Identificando cantidades, abreviaturas, etiquetas o detalles del plato...',
+    percent: 58,
+  },
+  {
+    seconds: 8,
+    title: 'Estructurando receta paso a paso',
+    description: 'Uniendo páginas, normalizando medidas y ordenando la elaboración...',
+    percent: 84,
+  },
+  {
+    seconds: 14,
+    title: 'Finalizando receta',
+    description: 'Calculando alérgenos, asignando pasillos y guardando en tu recetario...',
+    percent: 96,
+  },
+];
+
+const PHOTO_LOADING_STAGES_EN: LoadingStage[] = [
+  {
+    seconds: 0,
+    title: 'Preparing recipe photo(s)',
+    description: 'Uploading crisp optimized images to the visual AI engine...',
+    percent: 24,
+  },
+  {
+    seconds: 3,
+    title: 'Reading ingredients & handwritten notes',
+    description: 'Detecting quantities, abbreviations, product labels, or dish details...',
+    percent: 58,
+  },
+  {
+    seconds: 8,
+    title: 'Structuring recipe step-by-step',
+    description: 'Combining pages, normalizing measurements, and ordering instructions...',
+    percent: 84,
+  },
+  {
+    seconds: 14,
+    title: 'Finalizing recipe',
+    description: 'Checking allergens, assigning aisles, and saving to your cookbook...',
+    percent: 96,
+  },
+];
+
+const MAX_CAPTURE_PHOTOS = 3;
+const IDLE_AUDIO_BARS = Array.from({ length: 15 }, () => 14);
+
 export interface RecipeCaptureCardProps {
   initialProfile?: Usuario | null;
 }
@@ -243,7 +303,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   const [pendingIngestParams, setPendingIngestParams] = useState<{
     mode: 'url' | 'texto' | 'audio';
     value: string;
-    file?: File | null;
+    files?: File[] | null;
   } | null>(null);
   const skipInterstitialRef = useRef(false);
 
@@ -275,18 +335,28 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   // Pop-up de selección de momentos tras crear/importar una receta
   const [postCaptureTarget, setPostCaptureTarget] = useState<PostCaptureCategorizeTarget | null>(null);
   const [isPostCaptureCategorizeOpen, setIsPostCaptureCategorizeOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isOptimizingPhoto, setIsOptimizingPhoto] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // Estados y referencias para grabación de voz (MediaRecorder)
+  // Estados y referencias para grabación de voz (MediaRecorder + medidor real de señal)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioAnimFrameRef = useRef<number | null>(null);
+  const hasDetectedVoiceSignalRef = useRef(false);
+  const recordingSecondsRef = useRef(0);
+  const isPausedRef = useRef(false);
 
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [audioLevels, setAudioLevels] = useState<number[]>(IDLE_AUDIO_BARS);
+  const [noVoiceSignalWarning, setNoVoiceSignalWarning] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
@@ -394,37 +464,95 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     setShowInterstitialModal(true);
   };
 
-  // Previsualización ligera para miniaturas sin re-renders masivos ni fugas de memoria
-  const filePreviewUrl = useMemo(() => {
-    if (selectedFile && selectedFile.type.startsWith('image/')) {
-      return URL.createObjectURL(selectedFile);
-    }
-    return null;
-  }, [selectedFile]);
+  // Previsualización ligera para miniaturas (soporta hasta 3 fotos en la misma captura)
+  const filePreviewUrls = useMemo(() => {
+    return selectedFiles.map((file) =>
+      file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    );
+  }, [selectedFiles]);
 
   useEffect(() => {
     return () => {
-      if (filePreviewUrl) {
-        URL.revokeObjectURL(filePreviewUrl);
-      }
+      filePreviewUrls.forEach((previewUrl) => {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+      });
     };
-  }, [filePreviewUrl]);
+  }, [filePreviewUrls]);
 
-  // Manejador "Dumb Input": iOS convierte nativamente HEIC a JPEG por hardware al usar accept estricto
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawFile = e.target.files?.[0];
-    if (!rawFile) return;
-
-    // Resetear valor nativo del input para permitir re-selección
+  // Compresión y redimensionamiento automático en cliente para fotos (hasta 3 fotos = 1 captura)
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const incomingFiles = Array.from(e.target.files || []);
     e.target.value = '';
+    if (incomingFiles.length === 0) return;
 
-    // Guardar el archivo nativo directamente en el estado sin procesamientos pesados en JS
-    setSelectedFile(rawFile);
+    const imageFiles = incomingFiles.filter((f) => f.type.startsWith('image/'));
+    const otherFiles = incomingFiles.filter((f) => !f.type.startsWith('image/'));
+
+    // Si es PDF o audio, se mantiene un único archivo
+    if (imageFiles.length === 0 && otherFiles.length > 0) {
+      setSelectedFiles([otherFiles[0]]);
+      setError(null);
+      return;
+    }
+
+    const existingImages = selectedFiles.filter((f) => f.type.startsWith('image/'));
+    const availableSlots = Math.max(0, MAX_CAPTURE_PHOTOS - existingImages.length);
+
+    if (availableSlots === 0) {
+      setError(
+        language === 'en'
+          ? `You can attach up to ${MAX_CAPTURE_PHOTOS} photos per recipe.`
+          : `Puedes añadir un máximo de ${MAX_CAPTURE_PHOTOS} fotos por receta.`
+      );
+      return;
+    }
+
+    const filesToProcess = imageFiles.slice(0, availableSlots);
+    const exceededLimit = imageFiles.length > availableSlots;
+
+    setIsOptimizingPhoto(true);
     setError(null);
+
+    try {
+      const optimizedImages: File[] = [];
+      for (const rawFile of filesToProcess) {
+        try {
+          const compressedBlob = await compressImageClient(rawFile, 1600, 1600, 0.82);
+          const baseName = rawFile.name.replace(/\.[^.]+$/, '') || `receta_${Date.now()}`;
+          const compressedFile = new File([compressedBlob], `${baseName}.jpg`, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          });
+          optimizedImages.push(compressedFile);
+        } catch {
+          optimizedImages.push(rawFile);
+        }
+      }
+
+      // Evitar mezclar enlaces previos con fotos nuevas en la pestaña Enlace
+      if (mode === 'url' && url.trim()) {
+        setUrl('');
+      }
+
+      setSelectedFiles([...existingImages, ...optimizedImages]);
+      if (exceededLimit) {
+        setError(
+          language === 'en'
+            ? `Up to ${MAX_CAPTURE_PHOTOS} photos can be combined per recipe. Extra photos were skipped.`
+            : `Puedes combinar hasta ${MAX_CAPTURE_PHOTOS} fotos en una misma receta. Se han mantenido las ${MAX_CAPTURE_PHOTOS} primeras.`
+        );
+      }
+    } finally {
+      setIsOptimizingPhoto(false);
+    }
   };
 
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
+  const handleRemoveFile = (index?: number) => {
+    if (typeof index === 'number') {
+      setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      setSelectedFiles([]);
+    }
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -541,7 +669,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   );
 
   const executeIngest = useCallback(
-    (targetMode: 'url' | 'texto' | 'audio', targetValue: string, overrideFile?: File | null) => {
+    (targetMode: 'url' | 'texto' | 'audio', targetValue: string, overrideFiles?: File[] | null) => {
       setError(null);
       setSuccess(null);
       setCreatedRecetaId(null);
@@ -553,10 +681,12 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       urlInputRef.current?.blur();
       textInputRef.current?.blur();
 
-      const fileToUpload = overrideFile !== undefined ? overrideFile : selectedFile;
+      const filesToUpload = overrideFiles !== undefined ? (overrideFiles ?? []) : selectedFiles;
+      const hasFiles = filesToUpload.length > 0;
+      const isPhotoCapture = hasFiles && filesToUpload.every((f) => f.type.startsWith('image/'));
 
       if (targetMode === 'url') {
-        if (!targetValue.trim() && !fileToUpload) {
+        if (!targetValue.trim() && !hasFiles) {
           setError(
             language === 'en'
               ? 'Please enter a link or upload a file/image.'
@@ -565,7 +695,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
           return;
         }
       } else if (targetMode === 'texto') {
-        if (!targetValue.trim() && !fileToUpload) {
+        if (!targetValue.trim() && !hasFiles) {
           setError(
             language === 'en'
               ? 'Please enter recipe text or upload a file/image.'
@@ -574,7 +704,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
           return;
         }
       } else if (targetMode === 'audio') {
-        if (!fileToUpload) {
+        if (!hasFiles) {
           setError(
             language === 'en'
               ? 'Please record a voice note first.'
@@ -610,7 +740,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       const requiresInterstitial = !isPro && (!esPrimerMes || capturas >= 3);
 
       if (requiresInterstitial && !hasAdCredit) {
-        setPendingIngestParams({ mode: targetMode, value: targetValue, file: fileToUpload });
+        setPendingIngestParams({ mode: targetMode, value: targetValue, files: filesToUpload });
         setShowInterstitialModal(true);
         return;
       }
@@ -620,7 +750,8 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       const formData = new FormData();
       formData.set('idioma', language);
 
-      if (targetMode === 'url' && targetValue.trim()) {
+      // Si hay fotos adjuntas en modo Enlace, no mezclar ningún enlace previo
+      if (targetMode === 'url' && targetValue.trim() && !isPhotoCapture) {
         formData.set('url', targetValue.trim());
       } else if (targetMode === 'texto' && targetValue.trim()) {
         formData.set('texto', targetValue.trim());
@@ -628,8 +759,10 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
       startTransition(async () => {
         try {
-          if (fileToUpload) {
-            formData.set('archivo', fileToUpload);
+          if (hasFiles) {
+            filesToUpload.forEach((fileItem) => {
+              formData.append('archivo', fileItem);
+            });
           }
 
           // Resolver e inyectar el ID de hardware para protección anti-fraude
@@ -656,7 +789,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
               res.error === 'AD_REQUIRED' ||
               res.error === 'AD_REQUIRED_FOR_EXTRACTION'
             ) {
-              setPendingIngestParams({ mode: targetMode, value: targetValue, file: fileToUpload });
+              setPendingIngestParams({ mode: targetMode, value: targetValue, files: filesToUpload });
               setShowInterstitialModal(true);
               setError(null);
             } else {
@@ -679,7 +812,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             setCreatedRecetaId(res.recetaId || null);
             setUrl('');
             setTexto('');
-            setSelectedFile(null);
+            setSelectedFiles([]);
             setAudioFile(null);
             if (audioUrl) {
               URL.revokeObjectURL(audioUrl);
@@ -714,7 +847,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         }
       });
     },
-    [selectedFile, router, currentProfile, language, t, audioUrl, openPostCaptureCategorize]
+    [selectedFiles, router, currentProfile, language, t, audioUrl, openPostCaptureCategorize]
   );
 
   // Selector MIME compatible cross-platform (Web / iOS / Android)
@@ -737,10 +870,104 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     return { mimeType: '', ext: 'webm' };
   };
 
-  // Iniciar grabación de voz por micrófono
+  // Detener medidor real de audio (AudioContext + requestAnimationFrame)
+  const stopAudioMeter = useCallback(() => {
+    if (audioAnimFrameRef.current !== null) {
+      cancelAnimationFrame(audioAnimFrameRef.current);
+      audioAnimFrameRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    analyserRef.current = null;
+    setAudioLevels(IDLE_AUDIO_BARS);
+  }, []);
+
+  // Conectar las barras visuales al nivel real de señal del micrófono
+  const startAudioMeter = useCallback(
+    (stream: MediaStream) => {
+      stopAudioMeter();
+      try {
+        const AudioCtx =
+          window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!AudioCtx) return;
+
+        const audioCtx = new AudioCtx();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64;
+        analyser.smoothingTimeConstant = 0.72;
+        source.connect(analyser);
+
+        audioContextRef.current = audioCtx;
+        analyserRef.current = analyser;
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        let lastUiUpdate = 0;
+
+        const sampleAudio = (ts: number) => {
+          if (!analyserRef.current) return;
+          if (ts - lastUiUpdate >= 55) {
+            lastUiUpdate = ts;
+            if (isPausedRef.current) {
+              setAudioLevels(IDLE_AUDIO_BARS);
+            } else {
+              analyserRef.current.getByteFrequencyData(dataArray);
+              const bars: number[] = [];
+              let energySum = 0;
+              const usableBins = Math.min(dataArray.length, 24);
+              for (let i = 0; i < 15; i++) {
+                const binIndex = Math.min(usableBins - 1, Math.floor((i * usableBins) / 15));
+                const value = dataArray[binIndex] || 0;
+                energySum += value;
+                const normalized = Math.min(100, Math.max(14, Math.round((value / 220) * 100)));
+                bars.push(normalized);
+              }
+              const avgEnergy = energySum / 15;
+              if (avgEnergy > 8) {
+                hasDetectedVoiceSignalRef.current = true;
+                setNoVoiceSignalWarning(false);
+              }
+              setAudioLevels(bars);
+            }
+          }
+          audioAnimFrameRef.current = requestAnimationFrame(sampleAudio);
+        };
+
+        audioAnimFrameRef.current = requestAnimationFrame(sampleAudio);
+      } catch (meterErr) {
+        console.warn('[RecipeCaptureCard] No se pudo inicializar el medidor de audio:', meterErr);
+      }
+    },
+    [stopAudioMeter]
+  );
+
+  // Limpiar recursos de micrófono y medidor si el componente se desmonta
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      stopAudioMeter();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {}
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, [stopAudioMeter]);
+
+  // Iniciar grabación de voz por micrófono con reducción de ruido de cocina
   const startVoiceRecording = async () => {
     try {
       setError(null);
+      setNoVoiceSignalWarning(false);
       if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
         setError(
           language === 'en'
@@ -750,7 +977,18 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         return;
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            noiseSuppression: true,
+            echoCancellation: true,
+            autoGainControl: true,
+          },
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
       streamRef.current = stream;
 
       const { mimeType, ext } = getAudioMimeType();
@@ -758,7 +996,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       try {
         recorder = new MediaRecorder(stream, {
           ...(mimeType ? { mimeType } : {}),
-          audioBitsPerSecond: 24000,
+          audioBitsPerSecond: 48000,
         });
       } catch (recErr) {
         console.warn('Fallback a MediaRecorder sin audioBitsPerSecond:', recErr);
@@ -767,6 +1005,9 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       }
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
+      hasDetectedVoiceSignalRef.current = false;
+      recordingSecondsRef.current = 0;
+      isPausedRef.current = false;
 
       recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
@@ -775,6 +1016,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       };
 
       recorder.onstop = () => {
+        stopAudioMeter();
         if (streamRef.current) {
           streamRef.current.getTracks().forEach((track) => track.stop());
           streamRef.current = null;
@@ -782,16 +1024,26 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
         const finalMime = mimeType || 'audio/webm';
         const blob = new Blob(audioChunksRef.current, { type: finalMime });
-        if (blob.size > 0) {
-          const file = new File([blob], `receta_voz_${Date.now()}.${ext}`, { type: finalMime });
-          setAudioFile(file);
-          if (audioUrl) URL.revokeObjectURL(audioUrl);
-          setAudioUrl(URL.createObjectURL(blob));
+        if (blob.size < 1024 || recordingSecondsRef.current < 1) {
+          setAudioFile(null);
+          setError(
+            language === 'en'
+              ? 'No audio was captured. Check your microphone and try recording again.'
+              : 'No se ha detectado audio suficiente en la grabación. Comprueba el micrófono e inténtalo de nuevo.'
+          );
+          return;
         }
+
+        const file = new File([blob], `receta_voz_${Date.now()}.${ext}`, { type: finalMime });
+        setAudioFile(file);
+        if (audioUrl) URL.revokeObjectURL(audioUrl);
+        setAudioUrl(URL.createObjectURL(blob));
       };
 
       recorder.start(250);
+      startAudioMeter(stream);
       setIsRecording(true);
+      setIsPaused(false);
       setRecordingSeconds(0);
       setAudioFile(null);
       if (audioUrl) {
@@ -801,16 +1053,23 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
       recordingTimerRef.current = setInterval(() => {
+        if (isPausedRef.current) return;
         setRecordingSeconds((prev) => {
+          const next = prev + 1;
+          recordingSecondsRef.current = next;
+          if (next >= 4 && !hasDetectedVoiceSignalRef.current) {
+            setNoVoiceSignalWarning(true);
+          }
           if (prev >= 299) {
             stopVoiceRecording();
             return 300;
           }
-          return prev + 1;
+          return next;
         });
       }, 1000);
     } catch (err: any) {
       console.error('Error al acceder al micrófono:', err);
+      stopAudioMeter();
       setError(
         language === 'en'
           ? 'Could not access microphone. Please grant microphone permission.'
@@ -819,14 +1078,45 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     }
   };
 
-  // Detener grabación manteniendo archivo para revisión
+  // Pausar o reanudar la grabación actual sin perder lo dictado
+  const togglePauseVoiceRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+
+    if (recorder.state === 'recording' && typeof recorder.pause === 'function') {
+      try {
+        recorder.pause();
+        isPausedRef.current = true;
+        setIsPaused(true);
+      } catch (pauseErr) {
+        console.warn('[RecipeCaptureCard] Pausa de audio no soportada en este navegador:', pauseErr);
+      }
+    } else if (recorder.state === 'paused' && typeof recorder.resume === 'function') {
+      try {
+        recorder.resume();
+        isPausedRef.current = false;
+        setIsPaused(false);
+      } catch (resumeErr) {
+        console.warn('[RecipeCaptureCard] Reanudación de audio no soportada:', resumeErr);
+      }
+    }
+  };
+
+  // Detener grabación y pasar siempre a la tarjeta de revisión previa antes de gastar cuota o lanzar anuncio
   const stopVoiceRecording = () => {
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current);
       recordingTimerRef.current = null;
     }
+    stopAudioMeter();
+    isPausedRef.current = false;
+    setIsPaused(false);
+    setNoVoiceSignalWarning(false);
+
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {}
     }
     setIsRecording(false);
   };
@@ -837,7 +1127,18 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       clearInterval(recordingTimerRef.current);
       recordingTimerRef.current = null;
     }
+    stopAudioMeter();
+    isPausedRef.current = false;
+    setIsPaused(false);
+    setNoVoiceSignalWarning(false);
+
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.onstop = () => {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+      };
       try {
         mediaRecorderRef.current.stop();
       } catch {}
@@ -847,6 +1148,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       streamRef.current = null;
     }
     audioChunksRef.current = [];
+    recordingSecondsRef.current = 0;
     setIsRecording(false);
     setRecordingSeconds(0);
     setAudioFile(null);
@@ -856,37 +1158,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     }
   };
 
-  // Finalizar y enviar directamente a extracción
-  const handleStopAndExtractVoice = () => {
-    if (recordingTimerRef.current) {
-      clearInterval(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-    }
-
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      const { mimeType, ext } = getAudioMimeType();
-      setIsRecording(false);
-      mediaRecorderRef.current.onstop = () => {
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop());
-          streamRef.current = null;
-        }
-        const finalMime = mimeType || 'audio/webm';
-        const blob = new Blob(audioChunksRef.current, { type: finalMime });
-        if (blob.size > 0) {
-          const file = new File([blob], `receta_voz_${Date.now()}.${ext}`, { type: finalMime });
-          setAudioFile(file);
-          executeIngest('audio', '', file);
-        }
-      };
-      mediaRecorderRef.current.stop();
-    } else if (audioFile) {
-      setIsRecording(false);
-      executeIngest('audio', '', audioFile);
-    }
-  };
-
-  // Extraer nota de voz previamente grabada
+  // Extraer nota de voz previamente revisada (si aparece un anuncio, el audio se conserva intacto)
   const handleExtractVoice = (fileToSend?: File | null) => {
     const target = fileToSend || audioFile;
     if (!target) {
@@ -897,7 +1169,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       );
       return;
     }
-    executeIngest('audio', '', target);
+    executeIngest('audio', '', [target]);
   };
 
   // Manejador al finalizar la cuenta regresiva del anuncio intersticial de 5s o vídeo AdMob
@@ -906,7 +1178,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     setIsCrossDeviceModal(false);
     skipInterstitialRef.current = true;
     if (pendingIngestParams) {
-      executeIngest(pendingIngestParams.mode, pendingIngestParams.value, pendingIngestParams.file);
+      executeIngest(pendingIngestParams.mode, pendingIngestParams.value, pendingIngestParams.files);
     } else if (pendingPcUrl) {
       const trimmed = pendingPcUrl.trim();
       const isHttp = /^https?:\/\//i.test(trimmed);
@@ -1133,22 +1405,29 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
       executeIngest('texto', texto);
     } else if (mode === 'audio') {
       if (isRecording) {
-        handleStopAndExtractVoice();
+        // Siempre pasar por revisión previa antes de consumir cuota o lanzar anuncio
+        stopVoiceRecording();
       } else if (audioFile) {
-        executeIngest('audio', '', audioFile);
+        executeIngest('audio', '', [audioFile]);
       } else {
         startVoiceRecording();
       }
     }
   };
 
-  // Calcular etapa actual según segundos transcurridos
+  // Calcular etapa actual según segundos transcurridos y tipo real de captura
+  const hasPhotoAttached =
+    selectedFiles.length > 0 && selectedFiles.some((f) => f.type.startsWith('image/'));
+
   const loadingStages = useMemo(() => {
     if (mode === 'audio') {
       return language === 'en' ? AUDIO_LOADING_STAGES_EN : AUDIO_LOADING_STAGES_ES;
     }
+    if (hasPhotoAttached) {
+      return language === 'en' ? PHOTO_LOADING_STAGES_EN : PHOTO_LOADING_STAGES_ES;
+    }
     return language === 'en' ? LOADING_STAGES_EN : LOADING_STAGES_ES;
-  }, [mode, language]);
+  }, [mode, hasPhotoAttached, language]);
   const culinaryHumorPhrases =
     language === 'en' ? CULINARY_HUMOR_PHRASES_EN : CULINARY_HUMOR_PHRASES_ES;
 
@@ -1466,14 +1745,15 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                 )}
               </div>
 
-              {/* Input nativo de archivo con accept amplio (imágenes, PDFs y audios) */}
+              {/* Input nativo de archivo con accept amplio (hasta 3 fotos, o 1 PDF/audio) */}
               <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                accept="image/jpeg, image/png, image/webp, application/pdf, audio/*"
+                accept="image/jpeg, image/png, image/webp, image/heic, image/heif, application/pdf, audio/*"
+                multiple
                 className="hidden"
-                disabled={isPending}
+                disabled={isPending || isOptimizingPhoto}
               />
 
               {/* Botón secundario para subir archivos o fotos */}
@@ -1513,47 +1793,89 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
               </button>
             </div>
 
-            {/* Tarjeta de visualización de archivo adjunto con miniatura */}
-            {selectedFile && (
-              <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs">
-                <div className="flex items-center gap-3 overflow-hidden">
-                  {filePreviewUrl ? (
-                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-[#e7dfd5] shrink-0">
-                      <img
-                        src={filePreviewUrl}
-                        alt={selectedFile.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : selectedFile.type.startsWith('image/') ? (
-                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
-                      <Camera className="w-5 h-5" />
-                    </div>
-                  ) : selectedFile.type.startsWith('audio/') ? (
-                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
-                      <Volume2 className="w-5 h-5" />
-                    </div>
-                  ) : (
-                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                  )}
-                  <div className="truncate">
-                    <p className="font-semibold text-stone-900 truncate">{selectedFile.name}</p>
-                    <p className="text-[11px] text-stone-500">
-                      {(selectedFile.size / 1024).toFixed(1)} KB • {t('capture_file_ready')}
-                    </p>
-                  </div>
+            {/* Indicador de compresión rápida en cliente */}
+            {isOptimizingPhoto && (
+              <div className="flex items-center gap-2.5 p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-700 animate-fade-in">
+                <Loader2 className="w-4 h-4 animate-spin text-brand-primary shrink-0" />
+                <span>
+                  {language === 'en'
+                    ? 'Optimizing photo(s) for fast upload...'
+                    : 'Optimizando foto(s) para una subida rápida...'}
+                </span>
+              </div>
+            )}
+
+            {/* Tarjeta de visualización de archivos/fotos adjuntas (hasta 3 fotos = 1 captura) */}
+            {selectedFiles.length > 0 && (
+              <div className="p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs space-y-2.5">
+                <div className="space-y-2">
+                  {selectedFiles.map((fileItem, idx) => {
+                    const previewUrl = filePreviewUrls[idx];
+                    return (
+                      <div key={`${fileItem.name}-${idx}`} className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          {previewUrl ? (
+                            <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-[#e7dfd5] shrink-0">
+                              <img
+                                src={previewUrl}
+                                alt={fileItem.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : fileItem.type.startsWith('image/') ? (
+                            <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
+                              <Camera className="w-5 h-5" />
+                            </div>
+                          ) : fileItem.type.startsWith('audio/') ? (
+                            <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
+                              <Volume2 className="w-5 h-5" />
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
+                              <FileText className="w-5 h-5" />
+                            </div>
+                          )}
+                          <div className="truncate">
+                            <p className="font-semibold text-stone-900 truncate">{fileItem.name}</p>
+                            <p className="text-[11px] text-stone-500">
+                              {(fileItem.size / 1024).toFixed(1)} KB • {t('capture_file_ready')}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(idx)}
+                          disabled={isPending}
+                          className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer shrink-0"
+                          title={language === 'en' ? 'Remove file' : 'Quitar archivo'}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
-                <button
-                  type="button"
-                  onClick={handleRemoveFile}
-                  disabled={isPending}
-                  className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer shrink-0"
-                  title="Quitar archivo"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+
+                {hasPhotoAttached && selectedFiles.length < MAX_CAPTURE_PHOTOS && (
+                  <div className="pt-2 border-t border-[#e7dfd5] flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-stone-500">
+                      {language === 'en'
+                        ? `${selectedFiles.length}/${MAX_CAPTURE_PHOTOS} photos (1 recipe)`
+                        : `${selectedFiles.length}/${MAX_CAPTURE_PHOTOS} fotos (cuenta como 1 receta)`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isPending || isOptimizingPhoto}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] text-brand-primary font-semibold text-[11px] flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>
+                        {language === 'en' ? 'Add another photo' : 'Añadir otra foto'}
+                      </span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1596,57 +1918,100 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
               </button>
             </div>
 
-            {/* Input nativo de archivo con accept amplio */}
+            {/* Input nativo de archivo con accept amplio (hasta 3 fotos, o 1 PDF/audio) */}
             <input
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
-              accept="image/jpeg, image/png, image/webp, application/pdf, audio/*"
+              accept="image/jpeg, image/png, image/webp, image/heic, image/heif, application/pdf, audio/*"
+              multiple
               className="hidden"
-              disabled={isPending}
+              disabled={isPending || isOptimizingPhoto}
             />
 
-            {/* Tarjeta de visualización de archivo adjunto con miniatura */}
-            {selectedFile && (
-              <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs">
-                <div className="flex items-center gap-3 overflow-hidden">
-                  {filePreviewUrl ? (
-                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-[#e7dfd5] shrink-0">
-                      <img
-                        src={filePreviewUrl}
-                        alt={selectedFile.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : selectedFile.type.startsWith('image/') ? (
-                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
-                      <Camera className="w-5 h-5" />
-                    </div>
-                  ) : selectedFile.type.startsWith('audio/') ? (
-                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
-                      <Volume2 className="w-5 h-5" />
-                    </div>
-                  ) : (
-                    <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                  )}
-                  <div className="truncate">
-                    <p className="font-semibold text-stone-900 truncate">{selectedFile.name}</p>
-                    <p className="text-[11px] text-stone-500">
-                      {(selectedFile.size / 1024).toFixed(1)} KB • {t('capture_file_ready')}
-                    </p>
-                  </div>
+            {/* Indicador de compresión rápida en cliente */}
+            {isOptimizingPhoto && (
+              <div className="flex items-center gap-2.5 p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-700 animate-fade-in">
+                <Loader2 className="w-4 h-4 animate-spin text-brand-primary shrink-0" />
+                <span>
+                  {language === 'en'
+                    ? 'Optimizing photo(s) for fast upload...'
+                    : 'Optimizando foto(s) para una subida rápida...'}
+                </span>
+              </div>
+            )}
+
+            {/* Tarjeta de visualización de archivos/fotos adjuntas (hasta 3 fotos = 1 captura) */}
+            {selectedFiles.length > 0 && (
+              <div className="p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs space-y-2.5">
+                <div className="space-y-2">
+                  {selectedFiles.map((fileItem, idx) => {
+                    const previewUrl = filePreviewUrls[idx];
+                    return (
+                      <div key={`${fileItem.name}-${idx}`} className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          {previewUrl ? (
+                            <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-[#e7dfd5] shrink-0">
+                              <img
+                                src={previewUrl}
+                                alt={fileItem.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : fileItem.type.startsWith('image/') ? (
+                            <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
+                              <Camera className="w-5 h-5" />
+                            </div>
+                          ) : fileItem.type.startsWith('audio/') ? (
+                            <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
+                              <Volume2 className="w-5 h-5" />
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
+                              <FileText className="w-5 h-5" />
+                            </div>
+                          )}
+                          <div className="truncate">
+                            <p className="font-semibold text-stone-900 truncate">{fileItem.name}</p>
+                            <p className="text-[11px] text-stone-500">
+                              {(fileItem.size / 1024).toFixed(1)} KB • {t('capture_file_ready')}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(idx)}
+                          disabled={isPending}
+                          className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer shrink-0"
+                          title={language === 'en' ? 'Remove file' : 'Quitar archivo'}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
-                <button
-                  type="button"
-                  onClick={handleRemoveFile}
-                  disabled={isPending}
-                  className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer shrink-0"
-                  title="Quitar archivo"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+
+                {hasPhotoAttached && selectedFiles.length < MAX_CAPTURE_PHOTOS && (
+                  <div className="pt-2 border-t border-[#e7dfd5] flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-stone-500">
+                      {language === 'en'
+                        ? `${selectedFiles.length}/${MAX_CAPTURE_PHOTOS} photos (1 recipe)`
+                        : `${selectedFiles.length}/${MAX_CAPTURE_PHOTOS} fotos (cuenta como 1 receta)`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isPending || isOptimizingPhoto}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] text-brand-primary font-semibold text-[11px] flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>
+                        {language === 'en' ? 'Add another photo' : 'Añadir otra foto'}
+                      </span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1654,29 +2019,56 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
           /* MODO AUDIO: ESTUDIO DE DICTADO POR VOZ CROSS-PLATFORM */
           <div className="space-y-4">
             {isRecording ? (
-              /* ESTADO: GRABANDO EN DIRECTO CON CRONÓMETRO REGRESIVO Y PULSO */
+              /* ESTADO: GRABANDO EN DIRECTO CON MEDIDOR REAL DE MICRÓFONO, PAUSA Y REVISIÓN PREVIA */
               <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-rose-50/80 via-white to-amber-50/40 border-2 border-rose-400/80 shadow-md space-y-5 animate-fade-in text-center">
                 <div className="flex items-center justify-center gap-2 text-rose-600 font-bold text-xs sm:text-sm uppercase tracking-wider">
                   <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600"></span>
+                    {!isPaused && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
+                    )}
+                    <span
+                      className={`relative inline-flex rounded-full h-3 w-3 ${
+                        isPaused ? 'bg-amber-500' : 'bg-rose-600'
+                      }`}
+                    ></span>
                   </span>
-                  <span>{t('capture_voice_recording')}</span>
+                  <span>
+                    {isPaused
+                      ? language === 'en'
+                        ? 'Recording paused'
+                        : 'Grabación en pausa'
+                      : t('capture_voice_recording')}
+                  </span>
                 </div>
 
-                {/* Visualizador interactivo simulado de actividad sonora */}
+                {/* Visualizador real conectado al nivel del micrófono */}
                 <div className="flex items-center justify-center gap-1.5 h-12 py-2">
-                  {[40, 75, 55, 90, 60, 100, 70, 85, 45, 95, 65, 80, 50, 70, 40].map((h, i) => (
+                  {audioLevels.map((level, i) => (
                     <div
                       key={i}
-                      className="w-1.5 bg-gradient-to-t from-rose-500 to-amber-500 rounded-full transition-all duration-300 animate-pulse"
+                      className={`w-1.5 rounded-full transition-all duration-75 ${
+                        isPaused
+                          ? 'bg-stone-300'
+                          : 'bg-gradient-to-t from-rose-500 to-amber-500'
+                      }`}
                       style={{
-                        height: `${Math.max(16, (h * ((recordingSeconds % 3) + 1)) / 3)}%`,
-                        animationDelay: `${(i * 70) % 600}ms`,
+                        height: `${isPaused ? 16 : level}%`,
                       }}
                     />
                   ))}
                 </div>
+
+                {/* Aviso en vivo si no entra señal por el micrófono */}
+                {noVoiceSignalWarning && !isPaused && (
+                  <div className="mx-auto max-w-sm px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center justify-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                    <span>
+                      {language === 'en'
+                        ? 'No microphone signal detected. Speak closer or check mic settings.'
+                        : 'No entra señal de audio. Habla más cerca o revisa el micrófono.'}
+                    </span>
+                  </div>
+                )}
 
                 {/* Cronómetro en vivo: tiempo transcurrido / tiempo restante */}
                 <div className="space-y-1">
@@ -1690,12 +2082,12 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                   </p>
                 </div>
 
-                {/* Controles de grabación activa */}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                {/* Controles de grabación activa: Cancelar, Pausar/Reanudar y Detener para revisar */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
                   <button
                     type="button"
                     onClick={cancelVoiceRecording}
-                    className="w-full sm:w-auto min-h-[46px] px-5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto min-h-[46px] px-4 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center justify-center gap-2"
                   >
                     <X className="w-4 h-4" />
                     <span>{t('capture_voice_cancel')}</span>
@@ -1703,11 +2095,29 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
                   <button
                     type="button"
-                    onClick={handleStopAndExtractVoice}
+                    onClick={togglePauseVoiceRecording}
+                    className="w-full sm:w-auto min-h-[46px] px-5 rounded-xl bg-amber-100 hover:bg-amber-200/80 text-amber-900 text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {isPaused ? (
+                      <>
+                        <Play className="w-4 h-4 fill-current" />
+                        <span>{language === 'en' ? 'Resume' : 'Reanudar'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="w-4 h-4" />
+                        <span>{language === 'en' ? 'Pause' : 'Pausar'}</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={stopVoiceRecording}
                     className="w-full sm:w-auto min-h-[46px] px-6 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-bold transition cursor-pointer flex items-center justify-center gap-2 shadow-sm shadow-rose-600/30"
                   >
                     <Square className="w-4 h-4 fill-current" />
-                    <span>{t('capture_voice_stop')}</span>
+                    <span>{language === 'en' ? 'Stop & review' : 'Detener y revisar'}</span>
                   </button>
                 </div>
               </div>
@@ -1814,7 +2224,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             isRecording ? (
               <>
                 <Square className="w-5 h-5 fill-current text-white shrink-0" />
-                <span>{t('capture_voice_stop')}</span>
+                <span>{language === 'en' ? 'Stop & review' : 'Detener y revisar'}</span>
               </>
             ) : audioFile ? (
               <>
@@ -1831,9 +2241,11 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
           ) : (
             <>
               <span>
-                {selectedFile
-                  ? `${t('capture_process_recipe')} (${selectedFile.name})`
-                  : t('capture_btn_process')}
+                {selectedFiles.length > 1
+                  ? `${t('capture_process_recipe')} (${selectedFiles.length} ${language === 'en' ? 'photos' : 'fotos'})`
+                  : selectedFiles.length === 1
+                    ? `${t('capture_process_recipe')} (${selectedFiles[0].name})`
+                    : t('capture_btn_process')}
               </span>
               <ArrowRight className="w-5 h-5" />
             </>

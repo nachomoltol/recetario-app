@@ -1398,6 +1398,7 @@ export async function extractRecipeWithGemini({
   url: rawUrl,
   texto,
   file,
+  files,
   porcionesUsuario,
   idioma = 'es',
   alertasClinicas,
@@ -1406,6 +1407,7 @@ export async function extractRecipeWithGemini({
   url?: string;
   texto?: string;
   file?: File;
+  files?: File[];
   porcionesUsuario?: number;
   idioma?: 'es' | 'en';
   alertasClinicas?: string[];
@@ -1415,39 +1417,57 @@ export async function extractRecipeWithGemini({
   const url = sanitizeRecipeUrl(rawUrl);
   const ai = getGeminiClient();
 
+  const inputFiles: File[] = [];
+  if (Array.isArray(files) && files.length > 0) {
+    for (const f of files) {
+      if (f && f.size > 0) inputFiles.push(f);
+    }
+  } else if (file && file.size > 0) {
+    inputFiles.push(file);
+  }
+
   let combo: MediaComboResult | null = null;
-  let geminiUploadedFileName: string | null = null;
-  let tempUploadedFilePath: string | null = null;
+  const geminiUploadedFileNames: string[] = [];
+  const tempUploadedFilePaths: string[] = [];
 
   try {
-    let uploadedFilePart: any = null;
+    const uploadedFileParts: any[] = [];
     let contextPrompt = '';
+    let hasImageUpload = false;
+    let hasAudioUpload = false;
 
-    // 0. Procesar Archivo / Imagen subido directamente por el usuario (Multimodal)
-    if (file && file.size > 0) {
-      const fileName = file.name || 'documento_receta';
+    // 0. Procesar uno o varios Archivos / Imágenes / Audios subidos directamente por el usuario (hasta 3)
+    for (const currentFile of inputFiles.slice(0, 3)) {
+      const fileName = currentFile.name || 'documento_receta';
       const ext = path.extname(fileName).toLowerCase();
-      const mimeType = getMimeType(fileName, file.type);
+      const mimeType = getMimeType(fileName, currentFile.type);
+
+      if (mimeType.startsWith('image/') || /\.(jpe?g|png|webp|gif|heic|avif)$/i.test(ext)) {
+        hasImageUpload = true;
+      } else if (mimeType.startsWith('audio/') || /\.(webm|m4a|mp3|wav|ogg|aac|mp4)$/i.test(ext)) {
+        hasAudioUpload = true;
+      }
 
       if (ext === '.txt' || mimeType === 'text/plain') {
-        const textContent = await file.text();
+        const textContent = await currentFile.text();
         contextPrompt += `DOCUMENTO DE TEXTO SUBIDO POR EL USUARIO (${fileName}):\n${textContent}\n\n`;
       } else {
-        const buffer = Buffer.from(await file.arrayBuffer());
+        const buffer = Buffer.from(await currentFile.arrayBuffer());
         const tempFileName = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext || '.bin'}`;
-        tempUploadedFilePath = path.join(os.tmpdir(), tempFileName);
-        fs.writeFileSync(tempUploadedFilePath, buffer);
+        const localTempPath = path.join(os.tmpdir(), tempFileName);
+        fs.writeFileSync(localTempPath, buffer);
+        tempUploadedFilePaths.push(localTempPath);
 
         // Subida mediante Gemini Files API
         const uploadedFile = await ai.files.upload({
-          file: tempUploadedFilePath,
+          file: localTempPath,
           config: {
             mimeType: mimeType,
           },
         });
 
         if (uploadedFile.name) {
-          geminiUploadedFileName = uploadedFile.name;
+          geminiUploadedFileNames.push(uploadedFile.name);
 
           let fileRecord = await ai.files.get({ name: uploadedFile.name });
           let attempts = 0;
@@ -1458,17 +1478,39 @@ export async function extractRecipeWithGemini({
           }
 
           if (fileRecord.state !== 'FAILED' && fileRecord.uri) {
-            uploadedFilePart = {
+            uploadedFileParts.push({
               fileData: {
                 fileUri: fileRecord.uri,
                 mimeType: fileRecord.mimeType || mimeType,
               },
-            };
-            contextPrompt += `ARCHIVO / AUDIO / DOCUMENTO ADJUNTO POR EL USUARIO (${fileName}, ${mimeType}). Analiza minuciosamente el contenido de este archivo (texto, imágenes, audio multimodal o notas de voz) para extraer y estructurar la receta completa.\n\n`;
+            });
           } else {
             console.warn('El archivo subido a Gemini Files falló o no está listo:', fileRecord.state);
           }
         }
+      }
+    }
+
+    if (uploadedFileParts.length > 0) {
+      if (hasImageUpload) {
+        const pageCountNote =
+          uploadedFileParts.length > 1
+            ? `El usuario ha subido ${uploadedFileParts.length} imágenes correspondientes a distintas páginas o vistas de UNA MISMA RECETA. Combina toda la información de todas las imágenes en una única receta coherente sin duplicar ingredientes ni pasos.`
+            : 'El usuario ha subido una fotografía o imagen de una receta.';
+        contextPrompt += `MODO FOTO / IMAGEN ADJUNTA (${uploadedFileParts.length} archivo(s)):
+${pageCountNote}
+INSTRUCCIONES ESPECÍFICAS PARA MODO FOTO:
+- Si es una receta impresa o manuscrita: lee con cuidado la caligrafía e interpreta abreviaturas culinarias habituales (ej. "c/s" = cucharada sopera, "cdta" = cucharadita, "gr" = g, "mant." = mantequilla, "har." = harina, "c/n" = al gusto). Respeta fielmente los ingredientes escritos sin inventar otros.
+- Si la imagen es una etiqueta de producto alimentario o una fotografía de un plato terminado sin texto escrito: evalúa si se distingue claramente un plato de cocina real; si es un plato identificable, reconstruye una ficha culinaria orientativa realista con ingredientes y pasos coherentes e indica explícitamente al final de 'descripcion' que las cantidades son orientativas estimadas a partir de la foto del plato. Si la imagen no muestra comida ni receta, establece "es_receta_valida": false.\n\n`;
+      } else if (hasAudioUpload) {
+        contextPrompt += `MODO VOZ / DICTADO HABLADO POR EL USUARIO:
+INSTRUCCIONES ESPECÍFICAS PARA DICTADO DE VOZ:
+- El usuario ha dictado esta receta de viva voz en cocina (puede haber pausas, muletillas o ruido de fondo).
+- RECTIFICACIONES HABLADAS: Si el usuario corrige una cantidad o ingrediente sobre la marcha (ej. "pon 200 gramos... no, perdón, mejor 300", "usa nata... bueno, mejor leche evaporada"), aplica SIEMPRE la última versión corregida y descarta el error anterior.
+- REORDENACIÓN DE OLVIDOS: Si al final del audio el usuario recuerda un ingrediente o paso previo (ej. "ah, se me olvidó decir que antes precalientes el horno" o "también lleva una pizca de sal"), colócalo en el orden cronológico correcto dentro de 'pasos' y añádelo a 'ingredientes'.
+- Si el audio está vacío, solo contiene ruido o no describe ninguna receta real, establece "es_receta_valida": false.\n\n`;
+      } else {
+        contextPrompt += `ARCHIVO / DOCUMENTO ADJUNTO POR EL USUARIO (${inputFiles.map((f) => f.name).join(', ')}). Analiza minuciosamente el contenido de este documento para extraer y estructurar la receta completa.\n\n`;
       }
     }
 
@@ -1482,11 +1524,11 @@ export async function extractRecipeWithGemini({
         contextPrompt += ytData.concatenatedText;
 
         if (ytData.isMultimodalFallback && ytData.videoUri) {
-          uploadedFilePart = {
+          uploadedFileParts.push({
             fileData: {
               fileUri: ytData.videoUri,
             },
-          };
+          });
         }
       } else {
         combo = await downloadMediaCombo(url);
@@ -1499,7 +1541,7 @@ export async function extractRecipeWithGemini({
           });
 
           if (uploadedFile.name) {
-            geminiUploadedFileName = uploadedFile.name;
+            geminiUploadedFileNames.push(uploadedFile.name);
 
             // Esperar si el archivo multimedia está en estado PROCESSING
             let fileRecord = await ai.files.get({ name: uploadedFile.name });
@@ -1511,12 +1553,12 @@ export async function extractRecipeWithGemini({
             }
 
             if (fileRecord.state !== 'FAILED' && fileRecord.uri) {
-              uploadedFilePart = {
+              uploadedFileParts.push({
                 fileData: {
                   fileUri: fileRecord.uri,
                   mimeType: fileRecord.mimeType || combo.mimeType,
                 },
-              };
+              });
             }
           }
         }
@@ -1564,7 +1606,7 @@ DIRECTIVA ESTRICTA DE ESCALADO MATEMÁTICO Y PROSA CULINARIA NATURAL: Si las rac
       .replace(/TikTok - Make Your Day|Login • Instagram|Instagram|YouTube|Sign in|Iniciar sesión/gi, '')
       .trim();
 
-    if (!uploadedFilePart && cleanTextWithoutPlaceholders.length < 35) {
+    if (uploadedFileParts.length === 0 && cleanTextWithoutPlaceholders.length < 35) {
       if (url && detectFuenteTipo(url) === 'youtube') {
         throw new NonCulinaryContentError(
           'Este vídeo no contiene transcripción ni detalles de receta legibles. Prueba con otro enlace.'
@@ -1617,11 +1659,7 @@ ${contextPrompt.trim()}
 `.trim();
 
     // 3. Montar payload para Gemini
-    const parts: any[] = [];
-    if (uploadedFilePart) {
-      parts.push(uploadedFilePart);
-    }
-    parts.push({ text: promptFinal });
+    const parts: any[] = [...uploadedFileParts, { text: promptFinal }];
 
     const contents = [{ role: 'user', parts }];
 
@@ -1701,19 +1739,23 @@ ${contextPrompt.trim()}
       }`
     );
   } finally {
-    // 5. Limpieza automática de recursos (File API y disco temporal)
-    if (tempUploadedFilePath && fs.existsSync(tempUploadedFilePath)) {
-      try {
-        fs.unlinkSync(tempUploadedFilePath);
-      } catch (e) {
-        console.warn('No se pudo borrar el archivo temporal local:', e);
+    // 5. Limpieza automática inmediata de todos los recursos temporales (File API de Gemini y disco temporal)
+    for (const localPath of tempUploadedFilePaths) {
+      if (localPath && fs.existsSync(localPath)) {
+        try {
+          fs.unlinkSync(localPath);
+        } catch (e) {
+          console.warn('No se pudo borrar el archivo temporal local:', e);
+        }
       }
     }
-    if (geminiUploadedFileName) {
-      try {
-        await ai.files.delete({ name: geminiUploadedFileName });
-      } catch (e) {
-        console.warn('No se pudo borrar el archivo en Gemini Files:', e);
+    for (const geminiName of geminiUploadedFileNames) {
+      if (geminiName) {
+        try {
+          await ai.files.delete({ name: geminiName });
+        } catch (e) {
+          console.warn('No se pudo borrar el archivo en Gemini Files:', e);
+        }
       }
     }
     if (combo?.cleanUp) {

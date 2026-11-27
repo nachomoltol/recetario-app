@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { removeStorageUrlsSafely } from '@/lib/supabase/storageCleanup';
 import { calcularGramos } from '@/lib/nutrition/converter';
 import { classifyIngredientAisle } from '@/lib/culinary/aisles';
 import { IngredienteMaestro } from '@/types/recipe';
@@ -404,26 +405,16 @@ export async function updateRecipePhotoAction({
     // 1. Obtener la foto previa para eliminarla si procede de 'recetas_fotos' y es distinta
     const { data: recetaActual } = await supabase
       .from('recetas')
-      .select('foto_url')
+      .select('foto_url, imagen_portada_url')
       .eq('id', recetaId)
       .eq('usuario_id', user.id)
       .single();
 
-    const fotoAnterior = recetaActual?.foto_url;
-    if (
-      fotoAnterior &&
-      fotoAnterior !== fotoUrl &&
-      fotoAnterior.includes('/recetas_fotos/')
-    ) {
-      try {
-        const parts = fotoAnterior.split('/recetas_fotos/');
-        if (parts[1]) {
-          const oldFilePath = decodeURIComponent(parts[1]);
-          await supabase.storage.from('recetas_fotos').remove([oldFilePath]);
-        }
-      } catch (storageErr) {
-        console.warn('Aviso: no se pudo eliminar la foto anterior de recetas_fotos:', storageErr);
-      }
+    const oldUrlsToRemove = [recetaActual?.foto_url, recetaActual?.imagen_portada_url].filter(
+      (u): u is string => Boolean(u && u !== fotoUrl && u.includes('/recetas_fotos/'))
+    );
+    if (oldUrlsToRemove.length > 0) {
+      await removeStorageUrlsSafely(supabase, 'recetas_fotos', oldUrlsToRemove);
     }
 
     const { error: errUpdate } = await supabase

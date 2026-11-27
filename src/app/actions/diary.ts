@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { removeStorageUrlsSafely } from '@/lib/supabase/storageCleanup';
 import { Database } from '@/types/database';
 
 type DiarioUpdate = Database['public']['Tables']['diario_cocinados']['Update'];
@@ -93,6 +94,10 @@ export async function addCookEntryAction(formData: FormData): Promise<DiaryActio
 
     if (insertError) {
       console.error('Error insertando en diario_cocinados:', insertError);
+      // Limpiar la foto recién subida para no dejar archivos huérfanos en Supabase Storage
+      if (fotoResultadoUrl) {
+        await removeStorageUrlsSafely(supabase, 'cooking-diary', [fotoResultadoUrl]);
+      }
       return { error: `Error guardando en el diario: ${insertError.message}` };
     }
 
@@ -149,15 +154,7 @@ export async function deleteDiaryEntryAction(
 
     // 2. Si tenía foto asociada en cooking-diary, eliminarla del Storage
     if (entry.foto_resultado_url) {
-      try {
-        const urlParts = entry.foto_resultado_url.split('/cooking-diary/');
-        if (urlParts.length > 1) {
-          const filePath = decodeURIComponent(urlParts[1]);
-          await supabase.storage.from('cooking-diary').remove([filePath]);
-        }
-      } catch (storageErr) {
-        console.warn('Aviso: no se pudo borrar la foto de Storage (no bloqueante):', storageErr);
-      }
+      await removeStorageUrlsSafely(supabase, 'cooking-diary', [entry.foto_resultado_url]);
     }
 
     // 3. Eliminar de la base de datos
