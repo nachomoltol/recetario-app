@@ -103,7 +103,11 @@ export async function updateUserProfileAction(payload: {
         pref.toLowerCase() !== 'general' && pref.toLowerCase() !== 'omnívora' && pref.toLowerCase() !== 'omnivora'
     );
 
-    if (!isProServer && (hasProLevelAttempt || hasProClinicalAttempt)) {
+    const hasProAllergenAttempt =
+      Array.isArray(payload.alergenos) &&
+      payload.alergenos.some((a) => Boolean((a || '').trim()));
+
+    if (!isProServer && (hasProLevelAttempt || hasProClinicalAttempt || hasProAllergenAttempt)) {
       return {
         success: false,
         error: 'PRO_SUBSCRIPTION_REQUIRED',

@@ -32,7 +32,13 @@ import {
   Download,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
+  ShieldAlert,
 } from 'lucide-react';
+import {
+  checkRecipeClinicalCompatibility,
+  hasActiveClinicalRestrictions,
+} from '@/lib/clinicalDictionary';
 import dynamic from 'next/dynamic';
 
 const ProSubscriptionModal = dynamic(
@@ -231,6 +237,41 @@ export function MealPlannerView({
 
   const profileFromStore = useProfileStore((s) => s.profile);
   const profile = userProfile ?? profileFromStore;
+
+  const isProWithClinicalProfile = useMemo(() => {
+    const isProUser = (profile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
+    return isProUser && hasActiveClinicalRestrictions(profile);
+  }, [profile]);
+
+  // Cálculo local determinista (0 tokens de IA) de conflictos clínicos en recetas planificadas
+  const plannerRecipeConflictsMap = useMemo(() => {
+    const map = new Map<string, { count: number; isCritical: boolean; summary: string }>();
+    if (!isProWithClinicalProfile) return map;
+
+    for (const r of userRecipes || []) {
+      const ings = ((r as any).receta_ingredientes || []).map((i: any) => ({
+        nombre_limpio: i?.nombre_limpio || i?.nombre_crudo || '',
+        nombre_crudo: i?.nombre_crudo || i?.nombre_limpio || '',
+      }));
+      if (ings.length === 0) continue;
+
+      const report = checkRecipeClinicalCompatibility(ings, {
+        preferencias: profile?.preferencias_dieteticas || undefined,
+        alergenos: profile?.alergenos || undefined,
+        idioma: language,
+      });
+
+      if (report.conflicts.length > 0) {
+        const isCritical = report.severidadMaxima === 'critica';
+        const summary = report.conflicts
+          .slice(0, 3)
+          .map((c) => `${c.ingredienteOriginal} (${c.patologia})`)
+          .join(', ');
+        map.set(r.id, { count: report.conflicts.length, isCritical, summary });
+      }
+    }
+    return map;
+  }, [isProWithClinicalProfile, userRecipes, profile, language]);
   const isPaidPlan = ['pro', 'chef', 'premium', 'admin'].includes(
     (profile?.plan_suscripcion || '').trim().toLowerCase()
   );
@@ -1097,16 +1138,48 @@ export function MealPlannerView({
     const displayDiners = assignedPlan?.porciones ?? defaultDiners;
 
     if (assignedPlan && assignedPlan.receta) {
+      const slotConflict = plannerRecipeConflictsMap.get(assignedPlan.receta.id);
       return (
         <div
           key={`${dayDateStr}-${currentSlot}`}
           className="w-full max-w-full p-2.5 sm:p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] flex items-center justify-between gap-2.5 transition-all hover:border-brand-primary/50 group shadow-2xs"
         >
           <div className="min-w-0 flex-1 space-y-0.5">
-            {/* Micro header: Icono + Nombre del momento/rol */}
+            {/* Micro header: Icono + Nombre del momento/rol + alerta clínica local (0 tokens) */}
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
               <SlotIcon className="w-3 h-3 text-brand-primary shrink-0" />
               <span className="truncate">{slotLabel}</span>
+              {slotConflict && (
+                <Link
+                  href={`/recipes/${assignedPlan.receta.id}?servings=${displayDiners}&from=planner&date=${dayDateStr}`}
+                  title={
+                    language === 'en'
+                      ? `Unadapted conflicts: ${slotConflict.summary}`
+                      : `Conflictos sin adaptar: ${slotConflict.summary}`
+                  }
+                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md border normal-case tracking-normal text-[9px] font-semibold shrink-0 ${
+                    slotConflict.isCritical
+                      ? 'bg-rose-50 text-rose-800 border-rose-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}
+                >
+                  {slotConflict.isCritical ? (
+                    <ShieldAlert className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+                  ) : (
+                    <AlertTriangle className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                  )}
+                  <span>
+                    {slotConflict.count}{' '}
+                    {slotConflict.count === 1
+                      ? language === 'en'
+                        ? 'conflict'
+                        : 'conflicto'
+                      : language === 'en'
+                      ? 'conflicts'
+                      : 'conflictos'}
+                  </span>
+                </Link>
+              )}
             </div>
 
             {/* Título de la receta en font-serif-recipe */}
@@ -1216,17 +1289,40 @@ export function MealPlannerView({
     const displayDiners = assignedPlan?.porciones ?? defaultDiners;
 
     if (assignedPlan && assignedPlan.receta) {
+      const slotConflict = plannerRecipeConflictsMap.get(assignedPlan.receta.id);
       return (
         <div
           key={`${dayDateStr}-${currentSlot}`}
           className="w-full p-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] space-y-2 text-left hover:border-brand-primary/50 transition-all group shadow-2xs flex flex-col justify-between"
         >
-          {/* Fila superior: Icono de comida + Nombre del slot */}
-          <div className="flex items-center justify-between text-[11px] font-semibold text-stone-600">
-            <span className="flex items-center gap-1.5 capitalize text-stone-600">
+          {/* Fila superior: Icono de comida + Nombre del slot + alerta clínica local (0 tokens) */}
+          <div className="flex items-center justify-between gap-1 text-[11px] font-semibold text-stone-600">
+            <span className="flex items-center gap-1.5 capitalize text-stone-600 min-w-0">
               <SlotIcon className="w-3.5 h-3.5 text-brand-primary shrink-0" />
               <span className="truncate">{slotLabel}</span>
             </span>
+            {slotConflict && (
+              <Link
+                href={`/recipes/${assignedPlan.receta.id}?servings=${displayDiners}&from=planner&date=${dayDateStr}`}
+                title={
+                  language === 'en'
+                    ? `Unadapted conflicts: ${slotConflict.summary}`
+                    : `Conflictos sin adaptar: ${slotConflict.summary}`
+                }
+                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md border text-[9px] font-semibold shrink-0 ${
+                  slotConflict.isCritical
+                    ? 'bg-rose-50 text-rose-800 border-rose-200'
+                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                }`}
+              >
+                {slotConflict.isCritical ? (
+                  <ShieldAlert className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                )}
+                <span>{slotConflict.count}</span>
+              </Link>
+            )}
           </div>
 
           {/* Título de la receta: tipografía holgada en varias líneas */}

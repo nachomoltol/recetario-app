@@ -28,7 +28,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Star,
+  ShieldAlert,
+  AlertTriangle,
 } from 'lucide-react';
+import {
+  checkRecipeClinicalCompatibility,
+  hasActiveClinicalRestrictions,
+} from '@/lib/clinicalDictionary';
 import { Receta } from '@/types/recipe';
 import { MomentoDia, RolPlato } from '@/types/database';
 import { assignMealSlotAction, MealSlot } from '@/app/actions/mealPlanner';
@@ -488,6 +494,7 @@ interface RecipeCollectionOrganizerProps {
     preferencias_dieteticas?: string[] | null;
     alergenos?: string[] | null;
     raciones_defecto?: number | null;
+    plan_suscripcion?: string | null;
   } | null;
 }
 export function RecipeCollectionOrganizer({
@@ -716,10 +723,43 @@ export function RecipeCollectionOrganizer({
     return counts;
   }, [localRecetas]);
 
+  const isProWithClinicalProfile = useMemo(() => {
+    const isPro = (userProfile?.plan_suscripcion || '').trim().toLowerCase() === 'pro';
+    return isPro && hasActiveClinicalRestrictions(userProfile);
+  }, [userProfile]);
+
+  // Cálculo local determinista (0 tokens de IA) de conflictos sin adaptar frente al perfil PRO activo
+  const recipeConflictsMap = useMemo(() => {
+    const map = new Map<string, { count: number; isCritical: boolean; summary: string }>();
+    if (!isProWithClinicalProfile) return map;
+
+    for (const r of localRecetas) {
+      const ings = (r.ingredientesNombres || []).map((name) => ({
+        nombre_limpio: name,
+        nombre_crudo: name,
+      }));
+      if (ings.length === 0) continue;
+
+      const report = checkRecipeClinicalCompatibility(ings, {
+        preferencias: userProfile?.preferencias_dieteticas || undefined,
+        alergenos: userProfile?.alergenos || undefined,
+        idioma: language,
+      });
+
+      if (report.conflicts.length > 0) {
+        const isCritical = report.severidadMaxima === 'critica';
+        const summary = report.conflicts
+          .slice(0, 3)
+          .map((c) => `${c.ingredienteOriginal} (${c.patologia})`)
+          .join(', ');
+        map.set(r.id, { count: report.conflicts.length, isCritical, summary });
+      }
+    }
+    return map;
+  }, [isProWithClinicalProfile, localRecetas, userProfile, language]);
+
   const tieneAdaptacionClinica = Boolean(
-    (userProfile?.preferencias_dieteticas &&
-      userProfile.preferencias_dieteticas.length > 0) ||
-      (userProfile?.alergenos && userProfile.alergenos.length > 0) ||
+    hasActiveClinicalRestrictions(userProfile) ||
       userProfile?.nivel_culinario === 'Principiante' ||
       userProfile?.nivel_culinario === 'Avanzado'
   );
@@ -769,6 +809,7 @@ export function RecipeCollectionOrganizer({
   const renderRecipeCard = (r: RecetaConIngredientes) => {
     const tieneFoto = Boolean(r.foto_url || r.imagen_portada_url);
     const fotoSrc = r.foto_url || r.imagen_portada_url;
+    const conflictInfo = recipeConflictsMap.get(r.id);
 
     return (
       <div
@@ -868,6 +909,39 @@ export function RecipeCollectionOrganizer({
                 {r.titulo.replace(/<\/?mark>/gi, '')}
               </h3>
             </Link>
+
+            {/* Indicador local (0 tokens) si la receta tiene conflictos sin adaptar frente al perfil PRO */}
+            {conflictInfo && conflictInfo.count > 0 && (
+              <Link
+                href={buildRecipeDetailUrl(r.id)}
+                title={
+                  language === 'en'
+                    ? `Unadapted conflicts: ${conflictInfo.summary}. Open recipe to adapt.`
+                    : `Conflictos sin adaptar: ${conflictInfo.summary}. Abre la receta para adaptarla.`
+                }
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-semibold transition w-fit max-w-full ${
+                  conflictInfo.isCritical
+                    ? 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
+                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                }`}
+              >
+                {conflictInfo.isCritical ? (
+                  <ShieldAlert className="w-3 h-3 text-rose-600 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                )}
+                <span className="truncate">
+                  {conflictInfo.count}{' '}
+                  {conflictInfo.count === 1
+                    ? language === 'en'
+                      ? 'conflict · Adapt'
+                      : 'conflicto · Adaptar'
+                    : language === 'en'
+                    ? 'conflicts · Adapt'
+                    : 'conflictos · Adaptar'}
+                </span>
+              </Link>
+            )}
 
             {r.descripcion && (
               <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed font-light hidden sm:block">

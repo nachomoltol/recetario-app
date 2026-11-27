@@ -2895,6 +2895,72 @@ export function hasActiveClinicalRestrictions(profile?: {
 }
 
 /**
+ * Detecta combinaciones potencialmente contradictorias o muy restrictivas
+ * entre el patrón alimentario y las patologías activas para informar al usuario.
+ */
+export function detectClinicalProfileTensions(params: {
+  patronAlimentario?: string | null;
+  objetivosClinicos?: string[] | null;
+  idioma?: 'es' | 'en';
+}): string[] {
+  const isEn = params.idioma === 'en';
+  const patternKey = normalizeClinicalKey(params.patronAlimentario || '');
+  const objKeys = new Set(
+    (params.objetivosClinicos || []).map((o) => normalizeClinicalKey(o)).filter(Boolean)
+  );
+
+  const tensions: string[] = [];
+
+  if (patternKey === 'vegana' && (objKeys.has('fodmap') || objKeys.has('sii'))) {
+    tensions.push(
+      isEn
+        ? 'Vegan + Low FODMAP/IBS is very restrictive on legumes and plant proteins.'
+        : 'Vegana + FODMAP/SII restringe a la vez proteínas animales y muchas legumbres.'
+    );
+  }
+
+  if (
+    patternKey === 'keto' &&
+    (objKeys.has('hipercolesterolemia') ||
+      objKeys.has('dislipemia_familiar') ||
+      objKeys.has('higado_graso') ||
+      objKeys.has('dieta_blanda'))
+  ) {
+    tensions.push(
+      isEn
+        ? 'Keto (high fat) may clash with low-saturated-fat or gentle digestion conditions.'
+        : 'Keto (alta en grasas) puede chocar con protocolos bajos en grasas saturadas o digestión suave.'
+    );
+  }
+
+  if (patternKey === 'dash' && objKeys.has('antirreflujo')) {
+    tensions.push(
+      isEn
+        ? 'DASH favors garlic and citrus seasoning, which Antireflux excludes. Antireflux will take priority.'
+        : 'DASH recomienda ajo y cítricos para reducir sal, pero Antirreflujo los excluye. Prevalecerá Antirreflujo.'
+    );
+  }
+
+  if (patternKey === 'macrobiotica' && objKeys.has('sin_gluten')) {
+    tensions.push(
+      isEn
+        ? 'Macrobiotic relies on whole grains and soy ferments; Gluten-Free will strictly exclude gluten sources.'
+        : 'Macrobiótica usa cereales integrales y fermentos; Sin Gluten excluirá estrictamente cualquier fuente de gluten.'
+    );
+  }
+
+  if (patternKey === 'paleo' && objKeys.has('gota')) {
+    tensions.push(
+      isEn
+        ? 'Paleo emphasizes animal proteins while Gout limits red meat and seafood. Gout limits will take priority.'
+        : 'Paleo prioriza proteína animal mientras Gota limita carnes rojas y marisco. Prevalecerán los límites de Gota.'
+    );
+  }
+
+  return tensions;
+}
+
+/**
  * Cruza las preferencias del usuario y alérgenos con el diccionario clínico
  * para obtener una lista consolidada y deduplicada de ingredientes estrictamente prohibidos.
  * (Función retrocompatible: mantiene firma original devolviendo string[])

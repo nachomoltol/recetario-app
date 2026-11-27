@@ -11,9 +11,11 @@ import {
   Sparkles,
   Award,
   AlertCircle,
+  AlertTriangle,
   Save,
   Lock,
   ShieldCheck,
+  ShieldAlert,
   HeartPulse,
   Loader2,
   ChevronDown,
@@ -29,8 +31,10 @@ import { ProSubscriptionModal } from '@/components/subscription/ProSubscriptionM
 import { FeatureInfoTrigger } from '@/components/ui/FeatureInfoTrigger';
 import { isNativeMobilePlatform, isNativeIosPlatform } from '@/lib/admob/admobService';
 import {
+  ALERGENOS_UE,
   OBJETIVOS_CLINICOS,
   PATRONES_ALIMENTARIOS,
+  detectClinicalProfileTensions,
 } from '@/lib/clinicalDictionary';
 
 interface ChefStats {
@@ -159,6 +163,23 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
     foundPatron?.id || 'Omnívora'
   );
 
+  // Inicialización de los 14 Alérgenos oficiales de la UE (PRO)
+  const initialAlergenos = useMemo(() => {
+    if (!isPro) return [] as string[];
+    const raw = initialProfile.alergenos || [];
+    const matched = ALERGENOS_UE.filter((a) =>
+      raw.some(
+        (r) =>
+          r.toLowerCase() === a.id.toLowerCase() ||
+          r.toLowerCase() === a.nombre.es.toLowerCase() ||
+          r.toLowerCase() === a.nombre.en.toLowerCase()
+      )
+    ).map((a) => a.id);
+    return Array.from(new Set(matched));
+  }, [isPro, initialProfile.alergenos]);
+
+  const [alergenosSeleccionados, setAlergenosSeleccionados] = useState<string[]>(initialAlergenos);
+
   const [isPending, startTransition] = useTransition();
   const [statusMessage, setStatusMessage] = useState<{
     type: 'success' | 'error';
@@ -166,12 +187,27 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
   } | null>(null);
 
   // Detectar si el usuario ha seleccionado funciones exclusivas PRO:
-  // CUALQUIER Nivel Culinario (Principiante, Intermedio o Avanzado) o cualquier patología/patrón clínico
+  // CUALQUIER Nivel Culinario (Principiante, Intermedio o Avanzado), patología, patrón o alérgeno
   const hasActivePathologies = useMemo(() => {
     const hasCustomObjectives = objetivosClinicos.some((id) => id !== 'General');
     const hasCustomPattern = patronAlimentario !== 'Omnívora';
-    return hasCustomObjectives || hasCustomPattern;
-  }, [objetivosClinicos, patronAlimentario]);
+    const hasAllergens = alergenosSeleccionados.length > 0;
+    return hasCustomObjectives || hasCustomPattern || hasAllergens;
+  }, [objetivosClinicos, patronAlimentario, alergenosSeleccionados]);
+
+  const hasMedicalConditionsOrAllergens = useMemo(() => {
+    return objetivosClinicos.some((id) => id !== 'General') || alergenosSeleccionados.length > 0;
+  }, [objetivosClinicos, alergenosSeleccionados]);
+
+  const profileTensions = useMemo(
+    () =>
+      detectClinicalProfileTensions({
+        patronAlimentario,
+        objetivosClinicos,
+        idioma: language,
+      }),
+    [patronAlimentario, objetivosClinicos, language]
+  );
 
   const hasProLevelSelected = Boolean(nivelCulinario);
   const hasSelectedProFeatures = hasProLevelSelected || hasActivePathologies;
@@ -182,11 +218,13 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
     nivelCulinario: string | null;
     patronAlimentario: string;
     objetivosClinicos: string[];
+    alergenos: string[];
   }>({
     nombre: (initialProfile.nombre || '').trim(),
     nivelCulinario: resolvedInitialLevel,
     patronAlimentario: foundPatron?.id || 'Omnívora',
     objetivosClinicos: matchedObjetivos.length > 0 ? matchedObjetivos : ['General'],
+    alergenos: initialAlergenos,
   });
 
   // Detección de cambios sucios (isDirty)
@@ -199,8 +237,12 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
     const currObjs = objetivosClinicos.slice().sort().join(',');
     const objsChanged = prevObjs !== currObjs;
 
-    return nombreChanged || nivelChanged || patronChanged || objsChanged;
-  }, [nombre, nivelCulinario, patronAlimentario, objetivosClinicos, savedSnapshot]);
+    const prevAlerg = savedSnapshot.alergenos.slice().sort().join(',');
+    const currAlerg = alergenosSeleccionados.slice().sort().join(',');
+    const alergChanged = prevAlerg !== currAlerg;
+
+    return nombreChanged || nivelChanged || patronChanged || objsChanged || alergChanged;
+  }, [nombre, nivelCulinario, patronAlimentario, objetivosClinicos, alergenosSeleccionados, savedSnapshot]);
 
   // Referencias para desmontaje seguro (NUNCA persistir funciones PRO si el usuario es FREE)
   const dirtyRef = useRef(isDirty);
@@ -209,8 +251,20 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
   isProRef.current = isPro;
   const hasSelectedProRef = useRef(hasSelectedProFeatures);
   hasSelectedProRef.current = hasSelectedProFeatures;
-  const stateRef = useRef({ nombre, nivelCulinario, objetivosClinicos, patronAlimentario });
-  stateRef.current = { nombre, nivelCulinario, objetivosClinicos, patronAlimentario };
+  const stateRef = useRef({
+    nombre,
+    nivelCulinario,
+    objetivosClinicos,
+    patronAlimentario,
+    alergenosSeleccionados,
+  });
+  stateRef.current = {
+    nombre,
+    nivelCulinario,
+    objetivosClinicos,
+    patronAlimentario,
+    alergenosSeleccionados,
+  };
 
   // Sincronización proactiva con el store de Zustand si aún no está inicializado
   useEffect(() => {
@@ -247,7 +301,13 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       // Solo auto-guardar al salir si es usuario PRO o si solo cambió el nombre sin tocar funciones PRO
       if (dirtyRef.current && (isProRef.current || !hasSelectedProRef.current)) {
-        const { nombre, nivelCulinario, objetivosClinicos, patronAlimentario } = stateRef.current;
+        const {
+          nombre,
+          nivelCulinario,
+          objetivosClinicos,
+          patronAlimentario,
+          alergenosSeleccionados,
+        } = stateRef.current;
         if (isProRef.current) {
           const preferenciasActualizadas = [
             ...objetivosClinicos,
@@ -257,6 +317,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
             nombre: nombre.trim(),
             nivel_culinario: nivelCulinario || 'Intermedio',
             preferencias_dieteticas: preferenciasActualizadas,
+            alergenos: alergenosSeleccionados,
           })
             .then((res) => {
               if (res.success && res.data) {
@@ -323,14 +384,22 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
     });
   };
 
+  const handleToggleAlergeno = (alergenoId: string) => {
+    setAlergenosSeleccionados((prev) =>
+      prev.includes(alergenoId)
+        ? prev.filter((id) => id !== alergenoId)
+        : [...prev, alergenoId]
+    );
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setStatusMessage(null);
 
     // ==============================================================
-    // MURO DE PAGO EN PERFIL (100% PRO PARA LOS 3 NIVELES Y PATOLOGÍAS):
+    // MURO DE PAGO EN PERFIL (100% PRO PARA LOS 3 NIVELES, ALÉRGENOS Y PATOLOGÍAS):
     // Si el usuario es FREE e intenta guardar CUALQUIER nivel culinario
-    // (Principiante, Intermedio o Avanzado) o cualquier patología clínica,
+    // (Principiante, Intermedio o Avanzado), alérgeno o patología clínica,
     // se bloquea la persistencia en Supabase y se le redirige a Stripe / Miga Pro.
     // ==============================================================
     if (!isPro && hasSelectedProFeatures) {
@@ -349,6 +418,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
         ...(isPro && preferenciasActualizadas
           ? { preferencias_dieteticas: preferenciasActualizadas }
           : {}),
+        ...(isPro ? { alergenos: alergenosSeleccionados } : {}),
       });
 
       if (res.error === 'PRO_SUBSCRIPTION_REQUIRED') {
@@ -366,6 +436,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
           nivelCulinario,
           patronAlimentario,
           objetivosClinicos: [...objetivosClinicos],
+          alergenos: [...alergenosSeleccionados],
         });
         if (res.data) {
           setStoreProfile(res.data);
@@ -377,6 +448,7 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
             ...(isPro && preferenciasActualizadas
               ? { preferencias_dieteticas: preferenciasActualizadas }
               : {}),
+            ...(isPro ? { alergenos: alergenosSeleccionados } : {}),
           });
         }
         setTimeout(() => setStatusMessage(null), 3500);
@@ -805,6 +877,25 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                       </span>
                     );
                   })}
+
+                  {/* Alérgenos críticos UE seleccionados */}
+                  {alergenosSeleccionados.map((alergId) => {
+                    const alergObj = ALERGENOS_UE.find((a) => a.id === alergId);
+                    if (!alergObj) return null;
+                    const shortLabel = (language === 'en' ? alergObj.nombre.en : alergObj.nombre.es)
+                      .replace(/\s*\([^)]*\)/g, '')
+                      .split(' y ')[0]
+                      .split(' and ')[0];
+                    return (
+                      <span
+                        key={`alerg-chip-${alergId}`}
+                        className="px-2.5 py-1 rounded-xl bg-rose-50 text-rose-900 border border-rose-200 text-xs font-semibold flex items-center gap-1 shadow-2xs"
+                      >
+                        <ShieldAlert className="w-3 h-3 text-rose-600 shrink-0" />
+                        <span>{shortLabel}</span>
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -817,11 +908,44 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                 <Settings className="w-3.5 h-3.5 text-brand-primary" />
                 <span>
                   {language === 'en'
-                    ? 'Modify conditions & pattern'
-                    : 'Modificar patologías y patrón'}
+                    ? 'Modify diet, conditions & allergens'
+                    : 'Modificar patrón, patologías y alérgenos'}
                 </span>
               </button>
             </div>
+
+            {/* Aviso de combinaciones contradictorias o muy restrictivas */}
+            {profileTensions.length > 0 && (
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    {language === 'en'
+                      ? 'Note on your active combination'
+                      : 'Aviso sobre tu combinación activa'}
+                  </span>
+                </div>
+                <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-amber-900/90">
+                  {profileTensions.map((msg, idx) => (
+                    <li key={idx}>{msg}</li>
+                  ))}
+                </ul>
+                <p className="text-[11px] font-semibold text-amber-900 pt-0.5">
+                  {language === 'en'
+                    ? 'Priority order applied: 1. Allergies → 2. Pathologies → 3. Dietary pattern.'
+                    : 'Orden de prioridad aplicado: 1. Alergias → 2. Patologías → 3. Patrón alimentario.'}
+                </p>
+              </div>
+            )}
+
+            {/* Aviso médico orientativo responsable */}
+            {hasMedicalConditionsOrAllergens && (
+              <p className="text-[11px] text-stone-500 leading-relaxed px-1">
+                {language === 'en'
+                  ? 'Informational notice: Miga adaptations and alerts are culinary guidance only. They do not replace medical or dietitian advice, nor reading real product labels in severe allergies.'
+                  : 'Aviso orientativo: las adaptaciones y alertas de Miga son una ayuda culinaria orientativa. No sustituyen el criterio de un médico o dietista-nutricionista ni la revisión del etiquetado real en alergias graves.'}
+              </p>
+            )}
           </div>
 
           {/* ============================================================== */}
@@ -1119,6 +1243,80 @@ export function ProfileForm({ initialProfile, stats }: ProfileFormProps) {
                   })}
                 </div>
               </div>
+
+              {/* Selector de los 14 Alérgenos Oficiales UE (Severidad Crítica / Tolerancia Cero) */}
+              <div className="space-y-2 pt-2 border-t border-[#e7dfd5]">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-bold text-rose-900 flex items-center gap-1.5">
+                    <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>
+                      {language === 'en'
+                        ? 'EU Allergens (Zero tolerance)'
+                        : 'Alérgenos UE (Tolerancia cero)'}
+                    </span>
+                  </label>
+                  <span className="text-[11px] text-rose-700 font-semibold">
+                    {alergenosSeleccionados.length > 0
+                      ? `${alergenosSeleccionados.length} ${language === 'en' ? 'selected' : 'activos'}`
+                      : language === 'en'
+                      ? 'None'
+                      : 'Ninguno'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-500 leading-snug">
+                  {language === 'en'
+                    ? 'Marked allergens are strictly excluded in alerts, full recipe adaptation, and ingredient substitutes.'
+                    : 'Los alérgenos marcados se excluyen con tolerancia cero en avisos, adaptación completa y sustituciones.'}
+                </p>
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  {ALERGENOS_UE.map((alerg) => {
+                    const isSelected = alergenosSeleccionados.includes(alerg.id);
+                    const labelShort = (language === 'en' ? alerg.nombre.en : alerg.nombre.es)
+                      .replace(/\s*\([^)]*\)/g, '')
+                      .split(' y ')[0]
+                      .split(' and ')[0];
+                    return (
+                      <button
+                        key={alerg.id}
+                        type="button"
+                        onClick={() => handleToggleAlergeno(alerg.id)}
+                        className={`min-h-[38px] py-1.5 px-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-between gap-1.5 cursor-pointer select-none active:scale-95 ${
+                          isSelected
+                            ? 'bg-rose-50 border-2 border-rose-500 text-rose-900 shadow-2xs'
+                            : 'bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] text-stone-700 hover:border-stone-400 font-medium'
+                        }`}
+                        title={language === 'en' ? alerg.nombre.en : alerg.nombre.es}
+                      >
+                        <span className="truncate">{labelShort}</span>
+                        {isSelected && (
+                          <span className="w-3.5 h-3.5 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Aviso de combinaciones contradictorias dentro del Drawer */}
+              {profileTensions.length > 0 && (
+                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-[11px] space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>
+                      {language === 'en'
+                        ? 'Priority: 1. Allergies → 2. Pathologies → 3. Dietary pattern'
+                        : 'Prioridad: 1. Alergias → 2. Patologías → 3. Patrón alimentario'}
+                    </span>
+                  </div>
+                  {profileTensions.map((msg, idx) => (
+                    <p key={idx} className="text-amber-900/90 leading-snug">
+                      • {msg}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="p-4 border-t border-[#e7dfd5] bg-white">
