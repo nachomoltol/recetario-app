@@ -3,7 +3,9 @@ import {
   formatCulinaryAmount,
   formatQuantityNumber,
   pluralizeCulinaryNoun,
+  singularizeSpanishCulinaryNoun,
   isFeminineCulinaryNoun,
+  isLiquidOrFluidIngredient,
   MAX_SPOON_MAGNITUDE,
 } from '@/lib/nutrition/formatQuantity';
 import { formatIngredientUnit } from '@/lib/culinary/aisles';
@@ -259,7 +261,8 @@ export function scaleStepQuantities(
   ratio: number,
   lang: 'es' | 'en' = 'es',
   targetServings?: number,
-  usageTracker?: Map<string, number>
+  usageTracker?: Map<string, number>,
+  isBaking: boolean = false
 ): string {
   if (!stepText || !scaledIngredients || scaledIngredients.length === 0) {
     return stepText;
@@ -483,7 +486,11 @@ export function scaleStepQuantities(
         let effectiveUnit = isRogueMetricConflict ? ingUnitClean : (textUnitClean || ingUnitClean);
 
         if (isIngSpoon && isMagnitudeOver60) {
-          effectiveUnit = isTextMetric ? textUnitClean : 'g';
+          effectiveUnit = isTextMetric
+            ? textUnitClean
+            : isLiquidOrFluidIngredient(ing.nombre_limpio || ing.nombre_crudo || ingWord, ingUnitClean)
+            ? 'ml'
+            : 'g';
         }
 
         // Comprobar si la mención está en un contexto distributivo individual (ej: "por persona", "en cada cuenco")
@@ -526,7 +533,8 @@ export function scaleStepQuantities(
               residualAmount,
               effectiveUnit,
               lang,
-              ing.nombre_limpio || ing.nombre_crudo || ingWord
+              ing.nombre_limpio || ing.nombre_crudo || ingWord,
+              isBaking
             );
             const resPhrase =
               lang === 'en'
@@ -650,7 +658,8 @@ export function scaleStepQuantities(
           finalScaledAmount,
           effectiveUnit,
           lang,
-          ing.nombre_limpio || ing.nombre_crudo || ingWord
+          ing.nombre_limpio || ing.nombre_crudo || ingWord,
+          isBaking
         );
 
         const isPureNumber =
@@ -662,17 +671,8 @@ export function scaleStepQuantities(
         if (isPureNumber && !cutNoun && finalScaledAmount > 1) {
           cleanIngWord = pluralizeCulinaryNoun(cleanIngWord, lang);
         } else if (isPureNumber && !cutNoun && finalScaledAmount <= 1) {
-          const words = cleanIngWord.split(/\s+/);
-          const firstWord = words[0];
-          const rest = words.slice(1).join(' ');
-          const lower = firstWord.toLowerCase();
-          if (lang === 'es' && lower.endsWith('s')) {
-            let singFirst = lower;
-            if (lower.endsWith('ces')) singFirst = lower.slice(0, -3) + 'z';
-            else if (lower.endsWith('ones')) singFirst = lower.slice(0, -4) + 'ón';
-            else if (lower.endsWith('es')) singFirst = lower.slice(0, -2);
-            else singFirst = lower.slice(0, -1);
-            cleanIngWord = rest ? `${singFirst} ${rest}` : singFirst;
+          if (lang === 'es') {
+            cleanIngWord = singularizeSpanishCulinaryNoun(cleanIngWord);
           }
         }
 
@@ -858,7 +858,11 @@ export function scaleStepQuantities(
         let effectiveUnit = isRogueMetricConflict ? ingUnitClean : (textUnitClean || ingUnitClean);
 
         if (isIngSpoon && isMagnitudeOver60) {
-          effectiveUnit = isTextMetric ? textUnitClean : 'g';
+          effectiveUnit = isTextMetric
+            ? textUnitClean
+            : isLiquidOrFluidIngredient(ing.nombre_limpio || ing.nombre_crudo || ingWord, ingUnitClean)
+            ? 'ml'
+            : 'g';
         }
 
         const textAfter = fullStr ? fullStr.slice(offset + match.length) : '';
@@ -898,7 +902,8 @@ export function scaleStepQuantities(
               residualAmount,
               effectiveUnit,
               lang,
-              ing.nombre_limpio || ing.nombre_crudo || ingWord
+              ing.nombre_limpio || ing.nombre_crudo || ingWord,
+              isBaking
             );
             const resPart = openParen ? `(${formattedResidual})` : formattedResidual;
             const resWord = lang === 'en' ? 'remaining' : 'restante';
@@ -1003,7 +1008,8 @@ export function scaleStepQuantities(
           finalScaledAmount,
           effectiveUnit,
           lang,
-          ing.nombre_limpio || ing.nombre_crudo || ingWord
+          ing.nombre_limpio || ing.nombre_crudo || ingWord,
+          isBaking
         );
 
         const isPureNumber =
@@ -1150,7 +1156,8 @@ export function scaleStepQuantities(
           finalScaledAmount,
           effectiveUnit,
           lang,
-          ing.nombre_limpio || ing.nombre_crudo || ingWord
+          ing.nombre_limpio || ing.nombre_crudo || ingWord,
+          isBaking
         );
 
         let cleanIngWord = ingWord;

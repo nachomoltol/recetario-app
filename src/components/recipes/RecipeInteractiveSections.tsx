@@ -291,6 +291,8 @@ export function RecipeInteractiveSections({
         titulo: tituloReceta,
         categorias: categoriasGastronomicas,
         isBaking,
+        tiempo_coccion_min: tiempoCoccionMin,
+        pasos: safePasos,
       }
     );
     return rawScaled.map((ing) => {
@@ -306,7 +308,7 @@ export function RecipeInteractiveSections({
       }
       return ing;
     });
-  }, [safeIngredientes, basePorciones, servings, language, rolPlato, tituloReceta, categoriasGastronomicas, isBaking]);
+  }, [safeIngredientes, basePorciones, servings, language, rolPlato, tituloReceta, categoriasGastronomicas, isBaking, tiempoCoccionMin, safePasos]);
 
   const scaledTiempoCoccion = tiempoCoccionMin
     ? scaleCookingTime(tiempoCoccionMin, basePorciones || 2, servings, {
@@ -532,7 +534,8 @@ export function RecipeInteractiveSections({
           ratio,
           language,
           servings,
-          usageTracker
+          usageTracker,
+          isBaking
         );
         if (descriptorSensorial) {
           descriptorSensorial = scaleStepQuantities(
@@ -541,7 +544,8 @@ export function RecipeInteractiveSections({
             ratio,
             language,
             servings,
-            new Map(snapshotTracker)
+            new Map(snapshotTracker),
+            isBaking
           );
         }
         if (consejo) {
@@ -551,7 +555,8 @@ export function RecipeInteractiveSections({
             ratio,
             language,
             servings,
-            new Map(snapshotTracker)
+            new Map(snapshotTracker),
+            isBaking
           );
         }
       }
@@ -824,6 +829,7 @@ export function RecipeInteractiveSections({
             recetaId={recetaId}
             tituloReceta={tituloReceta}
             ingredientes={scaledIngredientes}
+            isBaking={isBaking}
             onSubstituteChange={handleSubstituteChange}
             userProfile={userProfile}
           />

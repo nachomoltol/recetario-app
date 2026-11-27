@@ -11,6 +11,111 @@ import { isCanonicalSpiceHerbSaltOrPepper } from '@/lib/gemini/schema';
 export const MAX_SPOON_MAGNITUDE = 60;
 
 /**
+ * Detecta si un ingrediente es líquido o grasa fluida (aceites, vinagres, salsas líquidas,
+ * leche, nata, caldos, agua, zumos, miel, siropes, extractos) para que al superar
+ * el umbral de cucharadas (> 60) se exprese en 'ml' y no en 'g'.
+ */
+export function isLiquidOrFluidIngredient(
+  ingredientName?: string | null,
+  unit?: string | null
+): boolean {
+  const u = (unit || '').toLowerCase().trim();
+  if (/\b(ml|mls|mililitro|mililitros|l|lt|lts|litro|litros)\b/i.test(u)) {
+    return true;
+  }
+  const n = (ingredientName || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+  if (!n) return false;
+
+  return /\b(aceite|aove|oil|vinagre|vinegar|salsa|sauce|soja|soy|tamari|teriyaki|worcestershire|ostras|pescado|leche|milk|bebida|nata|cream|caldo|broth|stock|fondo|fumet|agua|water|vino|wine|cerveza|beer|sidra|cider|zumo|jugo|juice|miel|honey|sirope|syrup|jarabe|melaza|extracto|esencia|ketchup|passata|gazpacho|salmorejo|batido|smoothie|cafe|coffee|te|infusion|limonada)\b/i.test(
+    n
+  );
+}
+
+/**
+ * Convierte a singular un sustantivo culinario en español respetando palabras
+ * cuyo singular termina en '-e' (tomates -> tomate, aguacates -> aguacate,
+ * filetes -> filete, dientes -> diente) y evitando cortes incorrectos.
+ */
+export function singularizeSpanishCulinaryNoun(name: string): string {
+  if (!name) return '';
+  const trimmed = name.trim();
+  if (!trimmed) return '';
+
+  const words = trimmed.split(/\s+/);
+  const firstWord = words[0];
+  const rest = words.slice(1).join(' ');
+  const lower = firstWord.toLowerCase();
+
+  if (!lower.endsWith('s') || lower.length <= 3) {
+    return trimmed;
+  }
+
+  // Excepciones culinarias invariables o con singular específico en consonante
+  const explicitMap: Record<string, string> = {
+    panes: 'pan',
+    coles: 'col',
+    coliflores: 'coliflor',
+    flores: 'flor',
+    frijoles: 'frijol',
+    caracoles: 'caracol',
+    arboles: 'árbol',
+    árboles: 'árbol',
+    boles: 'bol',
+    ravioles: 'ravioli',
+    mejillones: 'mejillón',
+    champiñones: 'champiñón',
+    champinones: 'champiñón',
+    pimentones: 'pimentón',
+    limones: 'limón',
+    melocotones: 'melocotón',
+    calabacines: 'calabacín',
+    calabazines: 'calabacín',
+    nueces: 'nuez',
+    arroces: 'arroz',
+    maíces: 'maíz',
+    maices: 'maíz',
+    bueyes: 'buey',
+    ajos: 'ajo',
+    huevos: 'huevo',
+  };
+
+  let singFirst = lower;
+  if (explicitMap[lower]) {
+    singFirst = explicitMap[lower];
+  } else if (lower.endsWith('ces') && lower.length > 4) {
+    singFirst = lower.slice(0, -3) + 'z';
+  } else if (lower.endsWith('ones') && lower.length > 5) {
+    singFirst = lower.slice(0, -4) + 'ón';
+  } else if (lower.endsWith('ines') && lower.length > 5) {
+    singFirst = lower.slice(0, -4) + 'ín';
+  } else if (lower.endsWith('anes') && lower.length > 5) {
+    singFirst = lower.slice(0, -4) + 'án';
+  } else if (/(?:res|des|jes|yes)$/.test(lower) && lower.length > 4) {
+    // Palabras con singular en -r, -d, -j, -y (ej. sabores -> sabor, mitades -> mitad, bueyes -> buey)
+    // Excepción: palabras acabadas en -gres/-tres/-bres/-dres/-pres/-vres cuyo singular acaba en -e (ej. vinagres, postres, sobres)
+    if (/(?:gres|tres|bres|dres|pres|vres|cres|fres)$/.test(lower)) {
+      singFirst = lower.slice(0, -1);
+    } else {
+      singFirst = lower.slice(0, -2);
+    }
+  } else {
+    // Regla general para palabras acabadas en -s (incluye tomates->tomate, aguacates->aguacate, filetes->filete, dientes->diente, chiles->chile)
+    singFirst = lower.slice(0, -1);
+  }
+
+  // Preservar mayúscula inicial si existía
+  if (firstWord.charAt(0) === firstWord.charAt(0).toUpperCase() && firstWord.charAt(0) !== firstWord.charAt(0).toLowerCase()) {
+    singFirst = singFirst.charAt(0).toUpperCase() + singFirst.slice(1);
+  }
+
+  return rest ? `${singFirst} ${rest}` : singFirst;
+}
+
+/**
  * Convierte un número decimal frecuente a su representación de fracción culinaria tipográfica
  * con caracteres Unicode individuales (ej: 0.5 -> "½", 0.25 -> "¼", 0.75 -> "¾", 1.5 -> "1 ½", 1.25 -> "1 ¼").
  * Reservado EXCLUSIVAMENTE para unidades contables y medidas volumétricas tradicionales (cucharas/tazas).
@@ -167,7 +272,8 @@ export function formatCulinaryAmount(
   amount: number,
   unit?: string | null,
   lang: 'es' | 'en' = 'es',
-  ingredientName?: string | null
+  ingredientName?: string | null,
+  isBaking: boolean = false
 ): string {
   if (amount === undefined || amount === null || isNaN(amount)) {
     return '1';
@@ -190,23 +296,20 @@ export function formatCulinaryAmount(
   }
 
   // 0.1 GUARDA DEFENSIVA: ESPECIAS, HIERBAS Y CONDIMENTOS CON GRAMAJES OBSOLETOS (<= 15 g / ml / cucharadita)
-  // Fuerza a nivel visual "al gusto" / "to taste" ignorando valores numéricos heredados de recetas antiguas.
+  // Fuerza a nivel visual "al gusto" / "to taste" SOLO en platos salados; en repostería/postres respeta la medida exacta.
   const isSmallMeasureUnit =
     /^(g|gr|grs|gramo|gramos|gram|grams|mg|cucharadita|cucharaditas|cdita|cditas|tsp|teaspoon|teaspoons|cucharada|cucharadas|cda|cdas|tbsp|tablespoon|tablespoons)$/i.test(
       u
     );
-  if (isSmallMeasureUnit && amount <= 15 && ingredientName) {
+  if (!isBaking && isSmallMeasureUnit && amount <= 15 && ingredientName) {
     if (isCanonicalSpiceHerbSaltOrPepper(ingredientName, ingredientName)) {
       return lang === 'en' ? 'to taste' : 'al gusto';
     }
   }
 
-  // BARRERA: Pizcas
+  // BARRERA: Pizcas (siempre invariable: nunca "2 ½ pizcas")
   if (/^(pizca|pizcas|pinch|pinches)$/i.test(u)) {
-    if (amount <= 1) {
-      return lang === 'en' ? '1 pinch' : '1 pizca';
-    }
-    return `${formatQuantityNumber(amount)} ${lang === 'en' ? 'pinches' : 'pizcas'}`;
+    return lang === 'en' ? '1 pinch' : '1 pizca';
   }
 
   // =========================================================================
@@ -224,7 +327,7 @@ export function formatCulinaryAmount(
     const magnitude = Math.max(amount, spoonMagnitude);
 
     if (magnitude > MAX_SPOON_MAGNITUDE) {
-      const isLiquid = /ml/i.test(u);
+      const isLiquid = isLiquidOrFluidIngredient(ingredientName, u);
       const metricLabel = isLiquid ? 'ml' : 'g';
       if (magnitude >= 1000) {
         const kgOrL = Math.round((magnitude / 1000) * 10) / 10;

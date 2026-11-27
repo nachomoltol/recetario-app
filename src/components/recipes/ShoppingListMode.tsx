@@ -37,6 +37,7 @@ interface ShoppingListModeProps {
   recetaId: string;
   tituloReceta: string;
   ingredientes: ExtendedIngredient[];
+  isBaking?: boolean;
   onSubstituteChange?: (
     currentTarget: string,
     newName: string | null,
@@ -50,6 +51,7 @@ export function ShoppingListMode({
   recetaId,
   tituloReceta,
   ingredientes,
+  isBaking = false,
   onSubstituteChange,
   userProfile,
 }: ShoppingListModeProps) {
@@ -258,6 +260,7 @@ export function ShoppingListMode({
                           tituloReceta={tituloReceta}
                           scaledCantidad={ing.cantidad_escalada}
                           scaledGramos={ing.gramos_escalados}
+                          isBaking={isBaking}
                           onSubstituteChange={onSubstituteChange}
                           userProfile={userProfile}
                           onRequirePro={() => setShowProModal(true)}
@@ -278,6 +281,7 @@ export function ShoppingListMode({
                     tituloReceta={tituloReceta}
                     scaledCantidad={ing.cantidad_escalada}
                     scaledGramos={ing.gramos_escalados}
+                    isBaking={isBaking}
                     onSubstituteChange={onSubstituteChange}
                     userProfile={userProfile}
                     onRequirePro={() => setShowProModal(true)}

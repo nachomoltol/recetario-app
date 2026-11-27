@@ -30,6 +30,7 @@ interface IngredientRowProps {
   tituloReceta: string;
   scaledCantidad?: number;
   scaledGramos?: number;
+  isBaking?: boolean;
   userProfile?: {
     plan_suscripcion?: string | null;
     [key: string]: any;
@@ -48,6 +49,7 @@ export function IngredientRow({
   tituloReceta,
   scaledCantidad,
   scaledGramos,
+  isBaking = false,
   userProfile,
   onSubstituteChange,
   onRequirePro,
@@ -178,14 +180,16 @@ export function IngredientRow({
 
   const rawCantidadMostrada = appliedOption
     ? (appliedOption.cantidad_ajustada && appliedOption.unidad_ajustada
-        ? formatCulinaryAmount(appliedOption.cantidad_ajustada, appliedOption.unidad_ajustada, language, nombreMostrado)
+        ? formatCulinaryAmount(appliedOption.cantidad_ajustada, appliedOption.unidad_ajustada, language, nombreMostrado, isBaking)
         : appliedOption.cantidad_sugerida)
-    : formatCulinaryAmount(baseCantidadNum, ingrediente?.unidad, language, nombreMostrado);
+    : formatCulinaryAmount(baseCantidadNum, ingrediente?.unidad, language, nombreMostrado, isBaking);
 
-  // Si ing.unidad === 'al gusto' (o 'to taste'), o si es una especia/hierba/sal/pimienta con gramajes obsoletos,
+  // Si ing.unidad === 'al gusto' (o 'to taste'), o si es una especia/hierba/sal/pimienta con gramajes obsoletos en platos salados,
   // renderizar únicamente "al gusto" sin anteponer ningún número (1) ni unidad en gramos.
+  // En repostería/postres (isBaking) se respetan siempre las medidas exactas de especias y aromatizantes.
   const effectiveUnitLower = (appliedOption?.unidad_ajustada || ingrediente?.unidad || '').toLowerCase().trim();
   const isSpiceObsoleteAmount =
+    !isBaking &&
     (baseCantidadNum <= 15 || /^(g|gr|grs|mg|cucharadita|cdita|tsp)$/i.test(effectiveUnitLower)) &&
     isCanonicalSpiceHerbSaltOrPepper(nombreMostrado, ingrediente?.nombre_crudo);
 

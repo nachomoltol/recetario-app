@@ -1,6 +1,6 @@
 import { RecetaIngrediente, RolCulinario } from '@/types/recipe';
 import { extractCulinarySemanticCore, isStructuralCulinaryRole } from '@/lib/gemini/schema';
-import { MAX_SPOON_MAGNITUDE } from '@/lib/nutrition/formatQuantity';
+import { MAX_SPOON_MAGNITUDE, isLiquidOrFluidIngredient } from '@/lib/nutrition/formatQuantity';
 
 export type { RolCulinario };
 
@@ -485,6 +485,9 @@ export interface BakingOrPastryContextInput {
   etiquetas?: string[] | null;
   seccion?: string | null;
   isBaking?: boolean;
+  tiempo_coccion_min?: number | null;
+  hasThermalCooking?: boolean;
+  pasos?: Array<{ instruccion?: string | null; potencia_fuego?: string | null }> | null;
   ingredientes?: Array<{
     nombre_limpio?: string | null;
     nombre_crudo?: string | null;
@@ -493,6 +496,63 @@ export interface BakingOrPastryContextInput {
     unidad?: string | null;
     cantidad?: number | null;
   }> | null;
+}
+
+/**
+ * Detecta si la receta es una bebida, batido o preparación en frío sin cocción térmica,
+ * donde los líquidos NO sufren evaporación y deben escalar 1:1 de forma lineal.
+ */
+export function isColdOrNoCookContext(context?: BakingOrPastryContextInput | null): boolean {
+  if (!context) return false;
+  if (context.hasThermalCooking === false) return true;
+  if (context.hasThermalCooking === true) return false;
+
+  const textCues = [
+    context.titulo || '',
+    context.categoria || '',
+    ...(context.categorias || []),
+    ...(context.etiquetas || []),
+    context.descripcion || '',
+  ]
+    .join(' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  // Bebidas, batidos, sopas frías, ensaladas y preparaciones en frío explícitas
+  const isExplicitColdOrDrink =
+    /\b(batido|batidos|smoothie|smoothies|milkshake|shake|zumo|zumos|jugo|jugos|juice|limonada|naranjada|horchata|cafe\s+frio|iced\s+coffee|cold\s+brew|infusion|coctel|cocktail|mocktail|bebida|bebidas|gazpacho|salmorejo|ajoblanco|vichyssoise|ensalada|ensaladas|salad|alino|vinagreta|dressing|ceviche|tartar|carpaccio|poke\s+bowl|overnight\s+oats|avena\s+nocturna|chia\s+pudding|pudding\s+de\s+chia)\b/i.test(
+      textCues
+    );
+
+  // Comprobar si los pasos incluyen cocción térmica real
+  const pasosText = (context.pasos || [])
+    .map((p) => `${p?.instruccion || ''} ${p?.potencia_fuego || ''}`)
+    .join(' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  const hasThermalStep =
+    (context.pasos || []).some((p) => Boolean(p?.potencia_fuego)) ||
+    /\b(hervir|hierve|cocer|cuece|cocinar\s+a\s+fuego|guisar|sofreir|sofrie|saltear|saltea|freir|frie|hornear|hornea|precalentar|precalienta|reducir|reduce|fuego\s+medio|fuego\s+alto|fuego\s+suave|fuego\s+lento|sarten|cazuela|olla|horno|plancha|airfryer|freidora\s+de\s+aire|microondas|boil|simmer|saute|bake|roast|fry|stew|oven|pan|skillet|stovetop)\b/i.test(
+      pasosText
+    );
+
+  if (isExplicitColdOrDrink && !hasThermalStep) {
+    return true;
+  }
+
+  // Si explícitamente declara 0 minutos de cocción y no hay pasos térmicos
+  if (
+    typeof context.tiempo_coccion_min === 'number' &&
+    context.tiempo_coccion_min === 0 &&
+    !hasThermalStep
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -625,6 +685,8 @@ export function scaleIngredientsWithCulinaryHeuristics(
       ingredientes,
     });
 
+  const isColdNoCook = !isBaking && isColdOrNoCookContext(recipeContext);
+
   return ingredientes.map((ing) => {
     try {
       const name = ing?.nombre_limpio || ing?.nombre_crudo || 'Ingrediente';
@@ -647,6 +709,9 @@ export function scaleIngredientsWithCulinaryHeuristics(
         } else {
           factor = ratio;
         }
+      } else if (isColdNoCook && isFluid) {
+        // Bebidas, batidos y recetas frías sin cocción térmica: los líquidos escalan 1:1 (sin evaporación)
+        factor = ratio;
       } else {
         // En recetas saladas, guisos, currys, estofados y salsas: amortiguación sublineal termodinámicamente correcta
         if (isFluid) {
@@ -691,7 +756,7 @@ export function scaleIngredientsWithCulinaryHeuristics(
         const magnitude = Math.max(rawScaledCant, spoonMagnitude);
 
         if (magnitude > MAX_SPOON_MAGNITUDE) {
-          finalUnit = isFluid || /ml/i.test(uNorm) ? 'ml' : 'g';
+          finalUnit = isFluid || isLiquidOrFluidIngredient(name, uNorm) ? 'ml' : 'g';
           rawScaledCant = magnitude;
           if (rawScaledGramos <= 0) {
             rawScaledGramos = magnitude;
@@ -710,6 +775,8 @@ export function scaleIngredientsWithCulinaryHeuristics(
           } else {
             explicacion = 'Escalado lineal estricto (1:1) para preservar la química y proporciones de masa/repostería.';
           }
+        } else if (isColdNoCook && isFluid) {
+          explicacion = 'Escalado lineal directo (1:1) al ser una preparación fría o bebida sin evaporación.';
         } else if (isFluid) {
           explicacion = 'Factor sublineal por dinámica de evaporación y superficie libre del recipiente.';
         } else if (capApplied) {
