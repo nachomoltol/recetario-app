@@ -38,11 +38,15 @@ interface ShoppingListModeProps {
   tituloReceta: string;
   ingredientes: ExtendedIngredient[];
   isBaking?: boolean;
+  baseServings?: number;
+  currentServings?: number;
+  resumenPreparacion?: string;
   onSubstituteChange?: (
     currentTarget: string,
     newName: string | null,
     adaptedBaseName?: string,
-    substituteOption?: SubstituteOption | null
+    substituteOption?: SubstituteOption | null,
+    ingredienteId?: string
   ) => void;
   userProfile?: any;
 }
@@ -52,6 +56,9 @@ export function ShoppingListMode({
   tituloReceta,
   ingredientes,
   isBaking = false,
+  baseServings,
+  currentServings,
+  resumenPreparacion,
   onSubstituteChange,
   userProfile,
 }: ShoppingListModeProps) {
@@ -75,6 +82,14 @@ export function ShoppingListMode({
   }, [storageKey]);
 
   const safeIngredientes = Array.isArray(ingredientes) ? ingredientes : [];
+
+  const allIngredientNames = useMemo(
+    () =>
+      safeIngredientes
+        .map((i) => String(i?.nombre_limpio || i?.nombre_crudo || '').replace(/<\/?[^>]+(>|$)/g, '').trim())
+        .filter(Boolean),
+    [safeIngredientes]
+  );
 
   // Consolidación pura de ingredientes para el modo lista de la compra (Single Source of Truth)
   const consolidatedItems = useMemo<ConsolidatedShoppingItem[]>(() => {
@@ -261,6 +276,10 @@ export function ShoppingListMode({
                           scaledCantidad={ing.cantidad_escalada}
                           scaledGramos={ing.gramos_escalados}
                           isBaking={isBaking}
+                          baseServings={baseServings}
+                          currentServings={currentServings}
+                          otrosIngredientes={allIngredientNames}
+                          resumenPreparacion={resumenPreparacion}
                           onSubstituteChange={onSubstituteChange}
                           userProfile={userProfile}
                           onRequirePro={() => setShowProModal(true)}
@@ -282,6 +301,10 @@ export function ShoppingListMode({
                     scaledCantidad={ing.cantidad_escalada}
                     scaledGramos={ing.gramos_escalados}
                     isBaking={isBaking}
+                    baseServings={baseServings}
+                    currentServings={currentServings}
+                    otrosIngredientes={allIngredientNames}
+                    resumenPreparacion={resumenPreparacion}
                     onSubstituteChange={onSubstituteChange}
                     userProfile={userProfile}
                     onRequirePro={() => setShowProModal(true)}

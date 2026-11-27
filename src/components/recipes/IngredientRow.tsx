@@ -22,6 +22,7 @@ import { RecetaIngrediente } from '@/types/recipe';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { useLanguageStore } from '@/stores/useLanguageStore';
 import { formatCulinaryAmount, pluralizeCulinaryNoun, cleanIngredientName } from '@/lib/nutrition/formatQuantity';
+import { getScalingFactor, roundCulinaryAmount } from '@/lib/culinary/scaler';
 import { isCanonicalSpiceHerbSaltOrPepper } from '@/lib/gemini/schema';
 import { useProfileStore } from '@/stores/useProfileStore';
 
@@ -31,6 +32,10 @@ interface IngredientRowProps {
   scaledCantidad?: number;
   scaledGramos?: number;
   isBaking?: boolean;
+  baseServings?: number;
+  currentServings?: number;
+  otrosIngredientes?: string[];
+  resumenPreparacion?: string;
   userProfile?: {
     plan_suscripcion?: string | null;
     [key: string]: any;
@@ -39,7 +44,8 @@ interface IngredientRowProps {
     currentTarget: string,
     newName: string | null,
     adaptedBaseName?: string,
-    substituteOption?: SubstituteOption | null
+    substituteOption?: SubstituteOption | null,
+    ingredienteId?: string
   ) => void;
   onRequirePro?: () => void;
 }
@@ -50,6 +56,10 @@ export function IngredientRow({
   scaledCantidad,
   scaledGramos,
   isBaking = false,
+  baseServings = 2,
+  currentServings,
+  otrosIngredientes,
+  resumenPreparacion,
   userProfile,
   onSubstituteChange,
   onRequirePro,
@@ -132,6 +142,9 @@ export function IngredientRow({
         unidad: ingrediente.unidad,
         tituloReceta,
         idioma: language,
+        otrosIngredientes,
+        resumenPreparacion,
+        esReposteria: isBaking,
       });
 
       if (res.success && res.data && res.data.length > 0) {
@@ -158,17 +171,38 @@ export function IngredientRow({
 
     if (isAlreadyApplied) {
       // Revertir sustitución actual hacia el término adaptado base
-      onSubstituteChange?.(opt.nombre_sustituto, null, adaptedBaseName, null);
+      onSubstituteChange?.(opt.nombre_sustituto, null, adaptedBaseName, null, ingrediente?.id);
       setAppliedOption(null);
     } else {
       // Aplicar nueva sustitución: el target que está actualmente en el texto de preparación
       const currentTarget = appliedOption ? appliedOption.nombre_sustituto : adaptedBaseName;
-      onSubstituteChange?.(currentTarget, opt.nombre_sustituto, adaptedBaseName, opt);
+      onSubstituteChange?.(currentTarget, opt.nombre_sustituto, adaptedBaseName, opt, ingrediente?.id);
       setAppliedOption(opt);
     }
 
     // Cerrar suavemente el Bottom Sheet
     setIsOpen(false);
+  };
+
+  const effBaseServings = baseServings > 0 ? baseServings : 2;
+  const effCurrentServings = currentServings && currentServings > 0 ? currentServings : effBaseServings;
+  const servingsRatio = effCurrentServings / effBaseServings;
+
+  const getScaledSubstituteAmount = (opt: SubstituteOption): number => {
+    const baseSubAmt = Number(opt.cantidad_ajustada) || 1;
+    if (servingsRatio === 1 || isNaN(servingsRatio)) return baseSubAmt;
+    const factor = isBaking
+      ? opt.rol_culinario_ajustado === 'invariable'
+        ? 1
+        : servingsRatio
+      : getScalingFactor(
+          opt.rol_culinario_ajustado || 'principal',
+          servingsRatio,
+          opt.nombre_sustituto,
+          opt.unidad_ajustada,
+          baseSubAmt
+        );
+    return roundCulinaryAmount(baseSubAmt * factor, opt.unidad_ajustada);
   };
 
   const baseCantidadNum = scaledCantidad !== undefined ? scaledCantidad : Number(ingrediente?.cantidad) || 1;
@@ -180,7 +214,13 @@ export function IngredientRow({
 
   const rawCantidadMostrada = appliedOption
     ? (appliedOption.cantidad_ajustada && appliedOption.unidad_ajustada
-        ? formatCulinaryAmount(appliedOption.cantidad_ajustada, appliedOption.unidad_ajustada, language, nombreMostrado, isBaking)
+        ? formatCulinaryAmount(
+            getScaledSubstituteAmount(appliedOption),
+            appliedOption.unidad_ajustada,
+            language,
+            nombreMostrado,
+            isBaking
+          )
         : appliedOption.cantidad_sugerida)
     : formatCulinaryAmount(baseCantidadNum, ingrediente?.unidad, language, nombreMostrado, isBaking);
 
@@ -397,7 +437,23 @@ export function IngredientRow({
 
                               <p className="text-xs text-stone-600 font-medium">
                                 <span className="text-stone-500">{t('drawer_ratio_recommended')}:</span>{' '}
-                                <span className="font-bold text-stone-900">{opt.cantidad_sugerida}</span>
+                                <span className="font-bold text-stone-900">
+                                  {opt.cantidad_ajustada && opt.unidad_ajustada
+                                    ? `${formatCulinaryAmount(
+                                        getScaledSubstituteAmount(opt),
+                                        opt.unidad_ajustada,
+                                        language,
+                                        opt.nombre_sustituto,
+                                        isBaking
+                                      )}${
+                                        servingsRatio !== 1
+                                          ? ` (${effCurrentServings} ${effCurrentServings === 1 ? t('recipe_serving_single') : t('recipe_servings_plural')})`
+                                          : opt.cantidad_sugerida
+                                          ? ` · ${opt.cantidad_sugerida}`
+                                          : ''
+                                      }`
+                                    : opt.cantidad_sugerida}
+                                </span>
                               </p>
                             </div>
 

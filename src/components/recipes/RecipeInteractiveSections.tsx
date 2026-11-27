@@ -20,7 +20,7 @@ import {
   scaleCookingTime,
   isBakingOrPastryContext,
 } from '@/lib/culinary/scaler';
-import { replaceIngredientInText } from '@/lib/culinary/textReplacer';
+import { replaceIngredientAndAmountInText } from '@/lib/culinary/textReplacer';
 import { scaleStepQuantities } from '@/lib/culinary/stepQuantityScaler';
 import { ServingsScaler } from './ServingsScaler';
 import { ShoppingListMode } from './ShoppingListMode';
@@ -128,7 +128,8 @@ interface RecipeInteractiveSectionsProps {
     currentTarget: string,
     newName: string | null,
     adaptedBaseName?: string,
-    substituteOption?: SubstituteOption | null
+    substituteOption?: SubstituteOption | null,
+    ingredienteId?: string
   ) => void;
   isAdapted?: boolean;
   userProfile?: any;
@@ -177,7 +178,18 @@ export function RecipeInteractiveSections({
   const [mobileTab, setMobileTab] = useState<'ingredients' | 'steps'>('ingredients');
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(true);
   const [isStepsOpen, setIsStepsOpen] = useState(true);
-  const [substitutions, setSubstitutions] = useState<Record<string, string>>({});
+  const [substitutions, setSubstitutions] = useState<
+    Record<
+      string,
+      {
+        newName: string;
+        oldAmount?: number;
+        oldUnit?: string | null;
+        newAmount?: number;
+        newUnit?: string | null;
+      }
+    >
+  >({});
   const [showProLevelModal, setShowProLevelModal] = useState(false);
   const prevRecetaIdRef = useRef(recetaId);
 
@@ -209,7 +221,8 @@ export function RecipeInteractiveSections({
     currentTarget: string,
     newName: string | null,
     adaptedBaseName?: string,
-    substituteOption?: SubstituteOption | null
+    substituteOption?: SubstituteOption | null,
+    ingredienteId?: string
   ) => {
     const cleanTarget = String(currentTarget || '')
       .replace(/<\/?[^>]+(>|$)/g, '')
@@ -223,18 +236,33 @@ export function RecipeInteractiveSections({
       .replace(/<\/?[^>]+(>|$)/g, '')
       .trim();
 
+    const matchedIng = (ingredientes || []).find(
+      (i) =>
+        (ingredienteId && i.id === ingredienteId) ||
+        String(i?.nombre_limpio || i?.nombre_crudo || '')
+          .replace(/<\/?[^>]+(>|$)/g, '')
+          .trim()
+          .toLowerCase() === baseKey.toLowerCase()
+    );
+
     setSubstitutions((prev) => {
       const next = { ...prev };
       delete next[cleanTarget];
       delete next[baseKey];
 
       if (cleanNew && cleanNew.toLowerCase() !== baseKey.toLowerCase()) {
-        next[baseKey] = cleanNew;
+        next[baseKey] = {
+          newName: cleanNew,
+          oldAmount: matchedIng ? Number(matchedIng.cantidad) : undefined,
+          oldUnit: matchedIng?.unidad || null,
+          newAmount: substituteOption?.cantidad_ajustada,
+          newUnit: substituteOption?.unidad_ajustada || null,
+        };
       }
       return next;
     });
 
-    onSubstitutePersist?.(cleanTarget, cleanNew, baseKey, substituteOption);
+    onSubstitutePersist?.(cleanTarget, cleanNew, baseKey, substituteOption, ingredienteId);
   };
 
   const [currentSteps, setCurrentSteps] = useState<Paso[]>(Array.isArray(pasos) ? pasos : []);
@@ -479,11 +507,17 @@ export function RecipeInteractiveSections({
     };
   }, [language, isPro]);
 
+  // Resumen breve del método de cocción/preparación para dar contexto a las sustituciones PRO
+  const resumenPreparacion = useMemo(() => {
+    return safePasos
+      .map((p, idx) => `${idx + 1}. ${String(p?.instruccion || '').replace(/<\/?[^>]+(>|$)/g, '').trim()}`)
+      .join(' ')
+      .slice(0, 480);
+  }, [safePasos]);
+
   // Reactividad dinámica: escalado métrico, calibración pedagógica por nivel y sustitución de ingredientes
   const reactivePasos = useMemo(() => {
-    const activeSubs = Object.entries(substitutions).filter(
-      (entry): entry is [string, string] => Boolean(entry[1])
-    );
+    const activeSubs = Object.entries(substitutions).filter((entry) => Boolean(entry[1]?.newName));
     const usageTracker = new Map<string, number>();
 
     return safePasos.map((paso) => {
@@ -561,18 +595,27 @@ export function RecipeInteractiveSections({
         }
       }
 
-      // 2. Aplicar sustitución de ingredientes si existen
-      for (const [adaptedBase, newName] of activeSubs) {
-        instruccion = replaceIngredientInText(instruccion, adaptedBase, newName);
+      // 2. Aplicar sustitución de ingredientes (con ajuste de cantidad/unidad y género si aplica)
+      for (const [adaptedBase, subMeta] of activeSubs) {
+        const subOpts = {
+          oldAmount: subMeta.oldAmount,
+          oldUnit: subMeta.oldUnit,
+          newAmount: subMeta.newAmount,
+          newUnit: subMeta.newUnit,
+          lang: language,
+          isBaking,
+        };
+        instruccion = replaceIngredientAndAmountInText(instruccion, adaptedBase, subMeta.newName, subOpts);
         if (descriptorSensorial) {
-          descriptorSensorial = replaceIngredientInText(
+          descriptorSensorial = replaceIngredientAndAmountInText(
             descriptorSensorial,
             adaptedBase,
-            newName
+            subMeta.newName,
+            subOpts
           );
         }
         if (consejo) {
-          consejo = replaceIngredientInText(consejo, adaptedBase, newName);
+          consejo = replaceIngredientAndAmountInText(consejo, adaptedBase, subMeta.newName, subOpts);
         }
       }
 
@@ -830,6 +873,9 @@ export function RecipeInteractiveSections({
             tituloReceta={tituloReceta}
             ingredientes={scaledIngredientes}
             isBaking={isBaking}
+            baseServings={basePorciones || 2}
+            currentServings={servings}
+            resumenPreparacion={resumenPreparacion}
             onSubstituteChange={handleSubstituteChange}
             userProfile={userProfile}
           />

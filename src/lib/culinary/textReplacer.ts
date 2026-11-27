@@ -1,3 +1,18 @@
+import { formatCulinaryAmount, isFeminineCulinaryNoun } from '@/lib/nutrition/formatQuantity';
+
+/**
+ * Palabras genéricas paraguas que NO deben usarse como fallback difuso de 1 palabra
+ * cuando el ingrediente original era compuesto (ej. evitar que "aceite de sésamo"
+ * reemplace menciones a "aceite de oliva" en los pasos).
+ */
+const GENERIC_UMBRELLA_WORDS = new Set([
+  'aceite', 'oil', 'salsa', 'sauce', 'harina', 'flour', 'leche', 'milk',
+  'bebida', 'queso', 'cheese', 'crema', 'cream', 'caldo', 'broth', 'stock',
+  'vinagre', 'vinegar', 'polvo', 'powder', 'agua', 'water', 'sal', 'salt',
+  'pimienta', 'pepper', 'azucar', 'azúcar', 'sugar', 'semilla', 'semillas',
+  'pechuga', 'filete', 'lomo', 'carne', 'pescado', 'pasta', 'pan', 'zumo', 'jugo',
+]);
+
 /**
  * Detecta si un índice en el texto se encuentra dentro de un bloque abierto <mark>...</mark>
  */
@@ -141,10 +156,15 @@ export function replaceIngredientInText(text?: string | null, oldName?: string |
     }
   }
 
-  // Fallback difuso: primera palabra sustantiva (ej. "arroz" en "arroz bomba")
+  // Fallback difuso: primera palabra sustantiva (solo si NO es una palabra genérica paraguas
+  // dentro de un ingrediente compuesto, evitando que "aceite de sésamo" pise "aceite de oliva")
   const substantiveWord = getFirstSubstantiveWord(cleanOld);
+  const isMultiWordOriginal = cleanOld.split(/\s+/).filter(Boolean).length > 1;
   const fallbackVariants: string[] = [];
-  if (substantiveWord) {
+  if (
+    substantiveWord &&
+    !(isMultiWordOriginal && GENERIC_UMBRELLA_WORDS.has(substantiveWord.toLowerCase()))
+  ) {
     fallbackVariants.push(substantiveWord);
     if (substantiveWord.endsWith('s')) {
       fallbackVariants.push(substantiveWord.slice(0, -1));
@@ -206,11 +226,107 @@ export function replaceIngredientInText(text?: string | null, oldName?: string |
     return text;
   }
 
-    // Limpieza de seguridad contra etiquetas <mark> duplicadas o anidadas accidentalmente
-    return result
+    // Limpieza de seguridad contra etiquetas <mark> duplicadas y ajuste de concordancia de artículo en español
+    let cleaned = result
       .replace(/<mark>\s*<mark>/gi, '<mark>')
       .replace(/<\/mark>\s*<\/mark>/gi, '</mark>');
+
+    const isNewFem = isFeminineCulinaryNoun(cleanNew);
+    const escapedNew = cleanNew.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (isNewFem) {
+      cleaned = cleaned
+        .replace(new RegExp(`\\b(el)\\s+(<mark>${escapedNew}<\\/mark>)`, 'gi'), (_m, art, target) =>
+          (art === 'El' ? 'La ' : 'la ') + target
+        )
+        .replace(new RegExp(`\\b(un)\\s+(<mark>${escapedNew}<\\/mark>)`, 'gi'), (_m, art, target) =>
+          (art === 'Un' ? 'Una ' : 'una ') + target
+        );
+    } else {
+      cleaned = cleaned
+        .replace(new RegExp(`\\b(la)\\s+(<mark>${escapedNew}<\\/mark>)`, 'gi'), (_m, art, target) =>
+          (art === 'La' ? 'El ' : 'el ') + target
+        )
+        .replace(new RegExp(`\\b(una)\\s+(<mark>${escapedNew}<\\/mark>)`, 'gi'), (_m, art, target) =>
+          (art === 'Una' ? 'Un ' : 'un ') + target
+        );
+    }
+
+    return cleaned;
   } catch {
     return text || '';
   }
+}
+
+/**
+ * Reemplaza un ingrediente en el texto de un paso ajustando además la cantidad y unidad
+ * cuando la sustitución cambia la densidad o medida (ej. "30 g de jengibre" -> "1 cucharadita de ralladura de limón").
+ */
+export function replaceIngredientAndAmountInText(
+  text?: string | null,
+  oldName?: string | null,
+  newName?: string | null,
+  options?: {
+    oldAmount?: number;
+    oldUnit?: string | null;
+    newAmount?: number;
+    newUnit?: string | null;
+    lang?: 'es' | 'en';
+    isBaking?: boolean;
+  }
+): string {
+  if (!text) return '';
+  if (!oldName || !newName) return text;
+
+  const cleanOld = String(oldName).replace(/<\/?[^>]+(>|$)/g, '').trim();
+  const cleanNew = String(newName).replace(/<\/?[^>]+(>|$)/g, '').trim();
+  if (!cleanOld || !cleanNew || cleanOld.toLowerCase() === cleanNew.toLowerCase()) {
+    return text;
+  }
+
+  let working = text;
+  const lang = options?.lang || 'es';
+  const hasNewMeasure =
+    typeof options?.newAmount === 'number' &&
+    options.newAmount > 0 &&
+    Boolean(options?.newUnit);
+
+  const unitChanged =
+    hasNewMeasure &&
+    ((options?.oldUnit || '').trim().toLowerCase() !== (options?.newUnit || '').trim().toLowerCase() ||
+      (typeof options?.oldAmount === 'number' &&
+        Math.abs((options.oldAmount || 0) - (options.newAmount || 0)) > 0.05));
+
+  if (hasNewMeasure && unitChanged) {
+    try {
+      const formattedNew = formatCulinaryAmount(
+        options!.newAmount!,
+        options!.newUnit!,
+        lang,
+        cleanNew,
+        Boolean(options?.isBaking)
+      );
+      const isPureNum =
+        /^\d+(?:[.,]\d+)?$/.test(formattedNew) ||
+        /^\d+\s+[½¼¾⅓⅔⅛]$/.test(formattedNew) ||
+        /^[½¼¾⅓⅔⅛]$/.test(formattedNew) ||
+        /^(media|medio|half)$/i.test(formattedNew);
+      const connector = isPureNum ? ' ' : lang === 'en' ? ' of ' : ' de ';
+
+      const oldAgnostic = toAccentAgnosticRegex(cleanOld);
+      const amountUnitOldRegex = new RegExp(
+        `(?:\\b(?:los|las|el|la|unos|unas|the|a|an)\\s+)?` +
+        `(?:\\d+(?:[.,]\\d+)?|[½¼¾⅓⅔⅛]|\\d+\\/\\d+)\\s*` +
+        `(?:g|gr|grs|gramos?|grams?|kg|kilos?|ml|mls|mililitros?|l|litros?|cucharadas?|cucharaditas?|tbsp|tsp|tazas?|cups?|unidades?|units?|dientes?|cloves?|piezas?|pieces?)\\s+` +
+        `(?:(?:de|of)\\s+)?(?:<mark>)?${oldAgnostic}(?:<\\/mark>)?`,
+        'gui'
+      );
+
+      working = working.replace(
+        amountUnitOldRegex,
+        `<mark>${formattedNew}${connector}${cleanNew}</mark>`
+      );
+    } catch {}
+  }
+
+  return replaceIngredientInText(working, cleanOld, cleanNew);
 }

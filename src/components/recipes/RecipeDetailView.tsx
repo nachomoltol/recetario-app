@@ -46,7 +46,8 @@ const PhotoCropModal = dynamic(
 );
 import { updateRecipeAction, updateRecipePhotoAction } from '@/app/actions/recipeUpdate';
 import { saveRecipeAdaptationAction, revertRecipeAdaptationAction } from '@/app/actions/saveRecipeAdaptationAction';
-import { replaceIngredientInText } from '@/lib/culinary/textReplacer';
+import { replaceIngredientAndAmountInText } from '@/lib/culinary/textReplacer';
+import { classifyIngredientAisle } from '@/lib/culinary/aisles';
 import { createClient } from '@/lib/supabase/client';
 import { compressImageClient } from '@/lib/utils/imageCompress';
 import { useLanguageStore } from '@/stores/useLanguageStore';
@@ -466,12 +467,13 @@ export function RecipeDetailView({
     }
   };
 
-  // Persistir sustitución de un ingrediente y actualizar pasos reactivos en Supabase
+  // Persistir sustitución de un ingrediente (identificado por ID único), actualizar pasillo y pasos en Supabase
   const handleSubstitutePersist = async (
     currentTarget: string,
     newName: string | null,
     adaptedBaseName?: string,
-    substituteOption?: SubstituteOption | null
+    substituteOption?: SubstituteOption | null,
+    ingredienteId?: string
   ) => {
     try {
       const cleanTarget = String(currentTarget || '').replace(/<\/?[^>]+(>|$)/g, '').trim();
@@ -481,23 +483,37 @@ export function RecipeDetailView({
       const targetLower = cleanTarget.toLowerCase();
       const baseLower = cleanBase.toLowerCase();
 
+      let matchedOldAmount: number | undefined = undefined;
+      let matchedOldUnit: string | null = null;
+      let matchedNewAmount: number | undefined = undefined;
+      let matchedNewUnit: string | null = null;
+
       const updatedIngs = (currentIngredientes || []).map((ing) => {
         const rawName = ing?.nombre_limpio || ing?.nombre_crudo || '';
         const ingClean = String(rawName).replace(/<\/?[^>]+(>|$)/g, '').trim().toLowerCase();
-        if (ingClean === targetLower || ingClean === baseLower) {
+        const isMatched = ingredienteId
+          ? ing.id === ingredienteId
+          : ingClean === targetLower || ingClean === baseLower;
+
+        if (isMatched) {
+          matchedOldAmount = Number(ing.cantidad) || undefined;
+          matchedOldUnit = ing.unidad || null;
+
           const isReverting = !cleanNew || cleanNew.toLowerCase() === baseLower;
           if (isReverting) {
             return {
               ...ing,
               nombre_limpio: cleanBase,
+              pasillo_supermercado: classifyIngredientAisle(cleanBase, ing.pasillo_supermercado),
               notas: null,
             };
           }
 
-          // Aplicar sustitución estructurada con normalización de densidad sensorial
-          const rawQty = substituteOption?.cantidad_ajustada !== undefined && substituteOption.cantidad_ajustada > 0
-            ? substituteOption.cantidad_ajustada
-            : ing.cantidad;
+          // Aplicar sustitución estructurada con normalización de densidad sensorial y recálculo de pasillo
+          const rawQty =
+            substituteOption?.cantidad_ajustada !== undefined && substituteOption.cantidad_ajustada > 0
+              ? substituteOption.cantidad_ajustada
+              : ing.cantidad;
           const rawUnit = substituteOption?.unidad_ajustada || ing.unidad;
           const rawRol = substituteOption?.rol_culinario_ajustado || (ing as any).rol_culinario;
 
@@ -511,12 +527,16 @@ export function RecipeDetailView({
             ing.cantidad
           );
 
+          matchedNewAmount = normalized.cantidad;
+          matchedNewUnit = normalized.unidad;
+
           return {
             ...ing,
             nombre_limpio: cleanNew,
             cantidad: normalized.cantidad,
             unidad: normalized.unidad,
             rol_culinario: normalized.rol_culinario,
+            pasillo_supermercado: classifyIngredientAisle(cleanNew),
             notas: `Sustituido por ${cleanNew}`,
           };
         }
@@ -524,22 +544,29 @@ export function RecipeDetailView({
       });
 
       const replacement = cleanNew || cleanBase;
+      const stepReplaceOpts = {
+        oldAmount: matchedOldAmount,
+        oldUnit: matchedOldUnit,
+        newAmount: matchedNewAmount,
+        newUnit: matchedNewUnit,
+        lang: language,
+      };
       const updatedPasos = (currentPasos || []).map((paso) => {
         return {
           ...paso,
-          instruccion: replaceIngredientInText(paso.instruccion, currentTarget, replacement),
+          instruccion: replaceIngredientAndAmountInText(paso.instruccion, currentTarget, replacement, stepReplaceOpts),
           instruccion_principiante: paso.instruccion_principiante
-            ? replaceIngredientInText(paso.instruccion_principiante, currentTarget, replacement)
+            ? replaceIngredientAndAmountInText(paso.instruccion_principiante, currentTarget, replacement, stepReplaceOpts)
             : null,
           instruccion_avanzada: paso.instruccion_avanzada
-            ? replaceIngredientInText(paso.instruccion_avanzada, currentTarget, replacement)
+            ? replaceIngredientAndAmountInText(paso.instruccion_avanzada, currentTarget, replacement, stepReplaceOpts)
             : null,
           descriptor_sensorial: paso.descriptor_sensorial
-            ? replaceIngredientInText(paso.descriptor_sensorial, currentTarget, replacement)
+            ? replaceIngredientAndAmountInText(paso.descriptor_sensorial, currentTarget, replacement, stepReplaceOpts)
             : null,
           potencia_fuego: paso.potencia_fuego || null,
           consejo_pro: paso.consejo_pro
-            ? replaceIngredientInText(paso.consejo_pro, currentTarget, replacement)
+            ? replaceIngredientAndAmountInText(paso.consejo_pro, currentTarget, replacement, stepReplaceOpts)
             : null,
         };
       });

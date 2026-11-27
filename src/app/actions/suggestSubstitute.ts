@@ -3,7 +3,11 @@
 import { getGeminiClient, PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '@/lib/gemini/client';
 import { Type } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
-import { getDetailedClinicalProfile, buildClinicalFirewallPrompt } from '@/lib/clinicalDictionary';
+import {
+  getDetailedClinicalProfile,
+  buildClinicalFirewallPrompt,
+  checkRecipeClinicalCompatibility,
+} from '@/lib/clinicalDictionary';
 import { RolCulinario, normalizeSubstituteQuantityAndUnit } from '@/lib/culinary/scaler';
 
 export interface SubstituteOption {
@@ -137,12 +141,18 @@ export async function suggestSubstituteAction({
   unidad,
   tituloReceta,
   idioma = 'es',
+  otrosIngredientes,
+  resumenPreparacion,
+  esReposteria = false,
 }: {
   nombreIngrediente: string;
   cantidad?: number;
   unidad?: string;
   tituloReceta: string;
   idioma?: 'es' | 'en';
+  otrosIngredientes?: string[];
+  resumenPreparacion?: string;
+  esReposteria?: boolean;
 }): Promise<SuggestSubstituteResult> {
   if (!nombreIngrediente || !tituloReceta) {
     return {
@@ -216,13 +226,32 @@ PROHIBICIÓN ESTRICTA: La IA tiene TERMINANTEMENTE PROHIBIDO sugerir cualquier i
         ? `\nADVERTENCIA CRÍTICA DE IDIOMA: Si el idioma solicitado es Inglés ('en'), estás ESTRICTAMENTE PROHIBIDO de usar la palabra 'unidades', 'cucharadas', 'gramos' en español. Debes usar sus equivalentes en inglés ('units/pieces', 'tbsp/tsp', 'grams'). Las etiquetas de dificultad ('Fácil', 'Principiante') DEBEN traducirse al inglés ('Easy', 'Beginner'). TODO EL JSON DEBE SER INGLÉS NATIVO.`
         : '';
 
+    const otrosIngsLimpios = (otrosIngredientes || [])
+      .map((s) => String(s || '').replace(/<\/?[^>]+(>|$)/g, '').trim())
+      .filter((s) => s.length > 0 && s.toLowerCase() !== nombreIngrediente.trim().toLowerCase())
+      .slice(0, 25);
+
+    const resumenPrepLimpio = (resumenPreparacion || '')
+      .replace(/<\/?[^>]+(>|$)/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 500);
+
+    const dishContext = `
+CONTEXTO COMPLETO DEL PLATO (ÚSALO PARA EVITAR ALTERNATIVAS INCONGRUENTES O REPETIDAS):
+- Tipo de elaboración: ${esReposteria ? (idioma === 'en' ? 'Baking / Pastry / Dessert (respect dough/batter chemistry)' : 'Repostería / Postre / Masa (respeta la química de la masa y dulzor)') : (idioma === 'en' ? 'Savory / General dish' : 'Plato salado / general')}
+- Resto de ingredientes ya presentes en la receta: ${otrosIngsLimpios.length > 0 ? otrosIngsLimpios.join(', ') : (idioma === 'en' ? 'Not specified' : 'No especificado')}
+- Resumen del método de preparación / cocción: ${resumenPrepLimpio || (idioma === 'en' ? 'Not specified' : 'No especificado')}
+- REGLA DE COHERENCIA: NO propongas alternativas que rompan la técnica térmica (ej. yogur en hervido prolongado donde se corta) ni que dupliquen un ingrediente ya protagonista salvo que tenga sentido culinario real.`.trim();
+
     const userPrompt = `
 RECETA: "${tituloReceta}"
 INGREDIENTE A SUSTITUIR: ${cantidad ? `${cantidad} ` : ''}${unidad ? `${unidad} de ` : ''}${nombreIngrediente}
+${dishContext}
 ${clinicalContext}
 
 DIRECTIVA DE REEMPLAZO DINÁMICO:
-Proporciona EXACTAMENTE 3 alternativas nutricionalmente coherentes con la naturaleza del ingrediente y organolépticamente viables.
+Proporciona EXACTAMENTE 3 alternativas nutricionalmente coherentes con la naturaleza del ingrediente, compatibles con el resto del plato y su método de cocción, y 100% seguras para el perfil clínico del usuario.
 
 GESTIÓN DINÁMICA DE IDIOMA:
 Redacta todas las alternativas, etiquetas dinámicas, razones culinarias, beneficios y modos de uso estrictamente en ${langName}. NUNCA mezcles idiomas.${antiSpanglishDirective}
@@ -255,12 +284,39 @@ Redacta todas las alternativas, etiquetas dinámicas, razones culinarias, benefi
           throw new Error('El formato de alternativas no contiene opciones válidas.');
         }
 
-        // Mapeo defensivo asegurando soporte de etiquetas dinámicas y normalización de densidad
-        const alternativas: SubstituteOption[] = rawAlternativas.map((alt: any) => {
-          const subName = String(alt.nombre_sustituto || '').trim();
-          const rawQty = typeof alt.cantidad_ajustada === 'number' && alt.cantidad_ajustada > 0
-            ? alt.cantidad_ajustada
-            : Number(cantidad) || 1;
+        // Mapeo defensivo asegurando soporte de etiquetas dinámicas y normalización de densidad/unidades
+        const seenNames = new Set<string>();
+        const origLower = nombreIngrediente.trim().toLowerCase();
+
+        const alternativas: SubstituteOption[] = [];
+        for (const alt of rawAlternativas) {
+          const subName = String(alt?.nombre_sustituto || '').trim();
+          const subLower = subName.toLowerCase();
+          if (!subName || subLower === origLower || seenNames.has(subLower)) {
+            continue;
+          }
+
+          // Doble blindaje determinista post-IA: descartar cualquier alternativa incompatible con alergias/restricciones
+          if (clinicalProfile.exclusionesTotales.length > 0) {
+            const compat = checkRecipeClinicalCompatibility(
+              [{ nombre_limpio: subName, nombre_crudo: subName }],
+              { preferencias, alergenos, idioma }
+            );
+            if (!compat.isCompatible) {
+              console.warn(
+                `[suggestSubstitute] Alternativa descartada por filtro clínico post-IA: "${subName}"`,
+                compat.conflicts.map((c) => c.patologia)
+              );
+              continue;
+            }
+          }
+
+          seenNames.add(subLower);
+
+          const rawQty =
+            typeof alt.cantidad_ajustada === 'number' && alt.cantidad_ajustada > 0
+              ? alt.cantidad_ajustada
+              : Number(cantidad) || 1;
           const rawUnit = String(alt.unidad_ajustada || unidad || 'unidad').trim();
           const rawRol = alt.rol_culinario_ajustado;
 
@@ -269,13 +325,17 @@ Redacta todas las alternativas, etiquetas dinámicas, razones culinarias, benefi
             subName,
             rawQty,
             rawUnit,
-            rawRol
+            rawRol,
+            unidad || null,
+            cantidad ?? null
           );
 
-          return {
+          alternativas.push({
             nombre_sustituto: subName,
             etiqueta_dinamica: String(alt.etiqueta_dinamica || alt.etiqueta_tipo || 'Alternativa').trim(),
-            categoria_icono: ['vegetal', 'proteina', 'lacteo', 'cereal', 'despensa', 'general'].includes(alt.categoria_icono)
+            categoria_icono: ['vegetal', 'proteina', 'lacteo', 'cereal', 'despensa', 'general'].includes(
+              alt.categoria_icono
+            )
               ? alt.categoria_icono
               : 'general',
             cantidad_sugerida: String(alt.cantidad_sugerida || '1:1').trim(),
@@ -286,35 +346,18 @@ Redacta todas las alternativas, etiquetas dinámicas, razones culinarias, benefi
             beneficio_nutricional: String(alt.beneficio_nutricional || '').trim(),
             modo_uso: String(alt.modo_uso || '').trim(),
             tipo: alt.categoria_icono || alt.tipo || 'general',
-          };
-        });
-
-        // Blindaje defensivo: asegurar exactamente 3 alternativas
-        const finalAlternativas: SubstituteOption[] = alternativas.slice(0, 3);
-        while (finalAlternativas.length < 3) {
-          const indexNum = finalAlternativas.length + 1;
-          const fallbackName = `${nombreIngrediente} (${idioma === 'en' ? 'Option' : 'Opción'} ${indexNum})`;
-          const normalized = normalizeSubstituteQuantityAndUnit(
-            nombreIngrediente,
-            fallbackName,
-            Number(cantidad) || 1,
-            unidad || 'unidad'
-          );
-
-          finalAlternativas.push({
-            nombre_sustituto: fallbackName,
-            etiqueta_dinamica: idioma === 'en' ? 'Alternative' : 'Alternativa',
-            categoria_icono: 'general',
-            cantidad_sugerida: '1:1',
-            cantidad_ajustada: normalized.cantidad,
-            unidad_ajustada: normalized.unidad,
-            rol_culinario_ajustado: normalized.rol_culinario,
-            razon_culinaria: idioma === 'en' ? 'Functional culinary replacement' : 'Sustitución culinaria funcional',
-            beneficio_nutricional: idioma === 'en' ? 'Adapted nutritional profile' : 'Perfil nutricional adaptado',
-            modo_uso: idioma === 'en' ? 'Use identically' : 'Incorporar de manera idéntica',
-            tipo: 'general',
-            etiqueta_tipo: idioma === 'en' ? 'Alternative' : 'Alternativa',
           });
+        }
+
+        const finalAlternativas: SubstituteOption[] = alternativas.slice(0, 3);
+        if (finalAlternativas.length === 0) {
+          return {
+            success: false,
+            error:
+              idioma === 'en'
+                ? 'No safe alternatives compatible with your allergies and dietary restrictions were found for this ingredient.'
+                : 'No se encontraron alternativas seguras compatibles con tus alergias y restricciones para este ingrediente.',
+          };
         }
 
         return { success: true, data: finalAlternativas };
