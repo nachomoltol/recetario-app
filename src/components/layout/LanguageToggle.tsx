@@ -10,6 +10,35 @@ interface LanguageToggleProps {
   alwaysShow?: boolean;
 }
 
+function FlagES() {
+  return (
+    <svg
+      viewBox="0 0 18 12"
+      aria-hidden="true"
+      className="w-4 h-[11px] rounded-[2px] shrink-0 shadow-[0_0_0_0.5px_rgba(0,0,0,0.12)]"
+    >
+      <rect width="18" height="12" fill="#AA151B" />
+      <rect y="3" width="18" height="6" fill="#F1BF00" />
+    </svg>
+  );
+}
+
+function FlagEN() {
+  return (
+    <svg
+      viewBox="0 0 18 12"
+      aria-hidden="true"
+      className="w-4 h-[11px] rounded-[2px] shrink-0 shadow-[0_0_0_0.5px_rgba(0,0,0,0.12)]"
+    >
+      <rect width="18" height="12" fill="#012169" />
+      <path d="M0 0L18 12M18 0L0 12" stroke="#FFFFFF" strokeWidth="2.2" />
+      <path d="M0 0L18 12M18 0L0 12" stroke="#C8102E" strokeWidth="1" />
+      <path d="M9 0V12M0 6H18" stroke="#FFFFFF" strokeWidth="3.4" />
+      <path d="M9 0V12M0 6H18" stroke="#C8102E" strokeWidth="2" />
+    </svg>
+  );
+}
+
 export function LanguageToggle({ className = '', alwaysShow = false }: LanguageToggleProps) {
   const pathname = usePathname();
   const language = useLanguageStore((s) => s.language);
@@ -44,8 +73,8 @@ export function LanguageToggle({ className = '', alwaysShow = false }: LanguageT
         }`}
         title="Español"
       >
-        <span className="text-[11px] sm:text-xs leading-none">🇪🇸</span>
-        <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">ES</span>
+        <FlagES />
+        <span className="text-[10px] sm:text-[11px] font-bold tracking-tight leading-none">ES</span>
       </button>
 
       <button
@@ -59,8 +88,8 @@ export function LanguageToggle({ className = '', alwaysShow = false }: LanguageT
         }`}
         title="English"
       >
-        <span className="text-[11px] sm:text-xs leading-none">🇬🇧</span>
-        <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">EN</span>
+        <FlagEN />
+        <span className="text-[10px] sm:text-[11px] font-bold tracking-tight leading-none">EN</span>
       </button>
     </div>
   );
