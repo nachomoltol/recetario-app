@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
-import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
+import { HomeBrandHeader } from '@/components/recipes/HomeWelcomeHeader';
 import { MealPlannerHeaderReplanButton } from '@/components/planner/MealPlannerHeaderReplanButton';
 import { MealPlannerView } from '@/components/planner/MealPlannerView';
 import { getWeeklyPlanAction } from '@/app/actions/mealPlanner';
@@ -59,17 +59,21 @@ export default async function MealPlannerPage(props: MealPlannerPageProps) {
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
         <div className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8">
           <div className="h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-3 w-full">
-            {/* Lado izquierdo: Botón Volver (ultra-compacto en móvil: 36x36px solo icono) */}
-            <HeaderBackButton fallbackUrl="/" compactOnMobile />
+            {/* Lado izquierdo: en móvil es pestaña raíz (sin Volver artificial); en escritorio mantiene Volver */}
+            <div className="flex items-center md:hidden shrink-0">
+              <HomeBrandHeader />
+            </div>
+            <div className="hidden md:flex items-center shrink-0">
+              <HeaderBackButton fallbackUrl="/" />
+            </div>
 
             {/* Centro: Botón Replanificar estilizado y compacto (max-w-[180px] en móvil) */}
             <div className="flex-1 max-w-[180px] sm:max-w-xs mx-1 flex justify-center">
               <MealPlannerHeaderReplanButton />
             </div>
 
-            {/* Lado derecho: Idioma + Menú de usuario */}
+            {/* Lado derecho: Menú de usuario */}
             <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-              <LanguageToggle />
               <UserDropdownMenu
                 fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
                 email={user.email || ''}

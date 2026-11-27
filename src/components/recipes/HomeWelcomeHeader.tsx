@@ -11,33 +11,19 @@ export function HomeWelcomeHeader({ userName }: HomeWelcomeHeaderProps) {
   const t = useLanguageStore((s) => s.t);
 
   return (
-    <section className="space-y-3 sm:space-y-4">
-      {/* Contenedor horizontal: Logo gigante maximizado + Tag Miga: recetas de redes centrado en el eje Y */}
-      <div className="flex flex-row items-center gap-3.5 sm:gap-5">
-        <Link
-          href="/recipes"
-          className="focus:outline-none transition opacity-95 hover:opacity-100 shrink-0"
-          aria-label="Logo Miga"
-        >
-          <img
-            src="/miga-logo.svg"
-            alt="Logo Miga"
-            className="h-24 xs:h-28 sm:h-32 md:h-36 w-auto object-contain"
-          />
-        </Link>
-        <div className="h-10 sm:h-14 w-px bg-[#e7dfd5] shrink-0" />
-        <span className="text-xs sm:text-base font-bold uppercase tracking-wider text-brand-primary leading-snug">
+    <section className="space-y-1 sm:space-y-1.5">
+      {/* Saludo compacto para aprovechar el espacio vertical en móvil */}
+      <div className="flex items-baseline justify-between gap-2 flex-wrap">
+        <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight font-serif-recipe">
+          {t('home_greeting')}, {userName}
+        </h1>
+        <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-brand-primary/90">
           {t('home_tag')}
         </span>
       </div>
 
-      {/* Saludo con escala armónica y jerarquía equilibrada */}
-      <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight font-serif-recipe">
-        {t('home_greeting')}, {userName}
-      </h1>
-
-      {/* Tagline descriptivo legible y alineado a la izquierda */}
-      <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-light max-w-2xl text-left">
+      {/* Subtítulo breve legible */}
+      <p className="text-xs sm:text-sm text-stone-500 leading-snug max-w-2xl text-left">
         {t('home_subtitle')}
       </p>
     </section>

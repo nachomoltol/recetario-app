@@ -6,12 +6,11 @@ import { ensureUserProfileExists } from '@/lib/supabase/ensureUserProfile';
 import { ensureMonthlyResetAndPlanSync } from '@/lib/quota/ensureMonthlyResetAndPlanSync';
 import { BookOpen, Sparkles } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
-import { LanguageToggle } from '@/components/layout/LanguageToggle';
-import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
 import { RecipeCaptureCard } from '@/components/recipes/RecipeCaptureCard';
 import { HomeRecentRecipesSection } from '@/components/recipes/HomeRecentRecipesSection';
 import {
   HomeWelcomeHeader,
+  HomeBrandHeader,
   HomeEmptyCookbookState,
 } from '@/components/recipes/HomeWelcomeHeader';
 
@@ -58,14 +57,11 @@ export default async function RecipesDashboardPage(props: RecipesDashboardPagePr
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
-      {/* Barra de navegación superior luminosa */}
+      {/* Barra de navegación superior limpia y compacta (sin Volver ni idioma en inicio) */}
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          {/* Zona izquierda: Botón de retorno estándar y Selector de idioma */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <HeaderBackButton fallbackUrl="/" />
-            <LanguageToggle />
-          </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+          {/* Zona izquierda: Marca Miga compacta */}
+          <HomeBrandHeader />
 
           {/* Zona derecha: Menú de Usuario Desplegable */}
           <div className="flex items-center gap-2 sm:gap-3">
@@ -77,8 +73,8 @@ export default async function RecipesDashboardPage(props: RecipesDashboardPagePr
         </div>
       </header>
 
-      {/* Contenido Principal con foco exclusivo en Captura y Última Receta */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8 sm:space-y-10">
+      {/* Contenido Principal compacto para móvil con foco en Captura y Última Receta */}
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-8 space-y-5 sm:space-y-8">
         {/* Cabecera y Bienvenida Dinámica Bilingüe */}
         <HomeWelcomeHeader userName={userName} />
 

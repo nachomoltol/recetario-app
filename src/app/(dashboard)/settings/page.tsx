@@ -2,10 +2,10 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
-import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { HeaderBackButton } from '@/components/layout/HeaderBackButton';
 import { CookingSettingsForm } from '@/components/settings/CookingSettingsForm';
 import { ThemeSelectorCard } from '@/components/settings/ThemeSelectorCard';
+import { LanguageSettingsCard } from '@/components/settings/LanguageSettingsCard';
 import { SettingsHeaderTitle } from '@/components/settings/SettingsHeaderCard';
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +41,6 @@ export default async function SettingsPage() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <LanguageToggle />
             <UserDropdownMenu
               fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
               email={user.email || ''}
@@ -51,7 +50,10 @@ export default async function SettingsPage() {
       </header>
 
       {/* Contenido principal */}
-      <main className="flex-1 max-w-2xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6">
+      <main className="flex-1 max-w-2xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-5 sm:space-y-6">
+        {/* Selector de Idioma movido desde Inicio para liberar la cabecera */}
+        <LanguageSettingsCard />
+
         {/* Selector de Paletas y Temas de Color en cabecera */}
         <ThemeSelectorCard isPro={isPro} />
 

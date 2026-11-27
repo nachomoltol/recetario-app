@@ -4,9 +4,9 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ChefHat, ArrowLeft, BookOpen, Clock, ArrowRight, Utensils, Sparkles } from 'lucide-react';
 import { UserDropdownMenu } from '@/components/auth/UserDropdownMenu';
-import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { RecipeCollectionBackButton } from '@/components/recipes/RecipeCollectionBackButton';
 import { HeaderHomeButton } from '@/components/layout/HeaderHomeButton';
+import { HomeBrandHeader } from '@/components/recipes/HomeWelcomeHeader';
 import { RecipeCollectionOrganizer } from '@/components/recipes/RecipeCollectionOrganizer';
 import { CollectionHeroHeader } from '@/components/recipes/CollectionHeaderComponents';
 
@@ -63,14 +63,17 @@ export default async function RecipeCollectionPage() {
   return (
     <div className="min-h-screen bg-[#faf7f2] text-stone-900 flex flex-col">
       <header className="border-b border-[#e7dfd5] bg-white/90 backdrop-blur-md sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-3">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+          {/* En móvil es pestaña raíz: marca limpia sin botón artificial de Volver */}
+          <div className="flex items-center md:hidden">
+            <HomeBrandHeader />
+          </div>
+          <div className="hidden md:flex items-center gap-3">
             <RecipeCollectionBackButton fallbackUrl="/recipes" />
             <HeaderHomeButton />
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <LanguageToggle />
             <UserDropdownMenu
               fallbackName={profile?.nombre || user.email?.split('@')[0] || 'Chef'}
               email={user.email || ''}
@@ -79,7 +82,7 @@ export default async function RecipeCollectionPage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-5 sm:py-10 space-y-5 sm:space-y-6">
         <CollectionHeroHeader />
 
         {total === 0 ? (

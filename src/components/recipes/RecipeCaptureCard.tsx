@@ -16,6 +16,7 @@ import {
   Paperclip,
   X,
   Camera,
+  ImagePlus,
   MonitorPlay,
   Play,
   Monitor,
@@ -301,7 +302,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   const [showInterstitialModal, setShowInterstitialModal] = useState(false);
   const [hardLimitModal, setHardLimitModal] = useState<HardLimitType | null>(null);
   const [pendingIngestParams, setPendingIngestParams] = useState<{
-    mode: 'url' | 'texto' | 'audio';
+    mode: 'url' | 'foto' | 'texto' | 'audio';
     value: string;
     files?: File[] | null;
   } | null>(null);
@@ -320,13 +321,13 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     : null;
   const resolvedDefaultUrl = isInitialYouTube && initialYtMatch ? initialYtMatch[0] : initialUrl;
   const resolvedDefaultText = isInitialYouTube ? '' : initialText;
-  const resolvedDefaultMode: 'url' | 'texto' | 'audio' = isInitialYouTube
+  const resolvedDefaultMode: 'url' | 'foto' | 'texto' | 'audio' = isInitialYouTube
     ? 'url'
     : resolvedDefaultText && !resolvedDefaultUrl
       ? 'texto'
       : 'url';
 
-  const [mode, setMode] = useState<'url' | 'texto' | 'audio'>(resolvedDefaultMode);
+  const [mode, setMode] = useState<'url' | 'foto' | 'texto' | 'audio'>(resolvedDefaultMode);
   const [url, setUrl] = useState(resolvedDefaultUrl);
   const [texto, setTexto] = useState(resolvedDefaultText);
   const [error, setError] = useState<string | null>(null);
@@ -362,6 +363,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
   const captureCardRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
   const scrolledOnceRef = useRef<string | null>(null);
@@ -669,7 +671,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   );
 
   const executeIngest = useCallback(
-    (targetMode: 'url' | 'texto' | 'audio', targetValue: string, overrideFiles?: File[] | null) => {
+    (targetMode: 'url' | 'foto' | 'texto' | 'audio', targetValue: string, overrideFiles?: File[] | null) => {
       setError(null);
       setSuccess(null);
       setCreatedRecetaId(null);
@@ -683,14 +685,24 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
 
       const filesToUpload = overrideFiles !== undefined ? (overrideFiles ?? []) : selectedFiles;
       const hasFiles = filesToUpload.length > 0;
-      const isPhotoCapture = hasFiles && filesToUpload.every((f) => f.type.startsWith('image/'));
+      const isPhotoCapture =
+        targetMode === 'foto' || (hasFiles && filesToUpload.every((f) => f.type.startsWith('image/')));
 
       if (targetMode === 'url') {
         if (!targetValue.trim() && !hasFiles) {
           setError(
             language === 'en'
-              ? 'Please enter a link or upload a file/image.'
-              : 'Por favor, introduce un enlace o sube un archivo/imagen de la receta.'
+              ? 'Please paste or enter a recipe link.'
+              : 'Por favor, pega o introduce un enlace de la receta.'
+          );
+          return;
+        }
+      } else if (targetMode === 'foto') {
+        if (!hasFiles) {
+          setError(
+            language === 'en'
+              ? 'Please take or choose at least one photo of the recipe.'
+              : 'Por favor, haz o selecciona al menos una foto de la receta.'
           );
           return;
         }
@@ -698,8 +710,8 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         if (!targetValue.trim() && !hasFiles) {
           setError(
             language === 'en'
-              ? 'Please enter recipe text or upload a file/image.'
-              : 'Por favor, introduce el texto con la receta o sube un archivo/imagen.'
+              ? 'Please enter recipe text.'
+              : 'Por favor, introduce o pega el texto de la receta.'
           );
           return;
         }
@@ -1400,9 +1412,19 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (mode === 'url') {
-      executeIngest('url', url);
+      if (!url.trim()) {
+        void handlePasteFromClipboard(true);
+      } else {
+        executeIngest('url', url, []);
+      }
+    } else if (mode === 'foto') {
+      if (selectedFiles.length > 0) {
+        executeIngest('foto', '', selectedFiles);
+      } else {
+        fileInputRef.current?.click();
+      }
     } else if (mode === 'texto') {
-      executeIngest('texto', texto);
+      executeIngest('texto', texto, []);
     } else if (mode === 'audio') {
       if (isRecording) {
         // Siempre pasar por revisión previa antes de consumir cuota o lanzar anuncio
@@ -1423,7 +1445,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     if (mode === 'audio') {
       return language === 'en' ? AUDIO_LOADING_STAGES_EN : AUDIO_LOADING_STAGES_ES;
     }
-    if (hasPhotoAttached) {
+    if (mode === 'foto' || hasPhotoAttached) {
       return language === 'en' ? PHOTO_LOADING_STAGES_EN : PHOTO_LOADING_STAGES_ES;
     }
     return language === 'en' ? LOADING_STAGES_EN : LOADING_STAGES_ES;
@@ -1443,24 +1465,24 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
     <div
       ref={captureCardRef}
       id="panel-captura"
-      className="p-6 sm:p-8 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-6 scroll-mt-20"
+      className="p-4 sm:p-7 rounded-3xl bg-white border border-[#e7dfd5] shadow-xs space-y-4 sm:space-y-5 scroll-mt-20"
     >
-      <div className="flex items-center gap-3.5">
-        <div className="w-12 h-12 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0 shadow-2xs">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0 shadow-2xs">
           <Sparkles className="w-5 h-5" />
         </div>
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold font-serif-recipe text-stone-900 tracking-tight">
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-xl font-bold font-serif-recipe text-stone-900 tracking-tight leading-tight">
             {t('capture_card_title')}
           </h2>
-          <p className="text-xs sm:text-sm text-stone-500">
+          <p className="text-xs sm:text-sm text-stone-500 leading-snug">
             {t('capture_card_subtitle')}
           </p>
         </div>
       </div>
 
-      {/* Selector de modo Responsive en 3 columnas iguales ocupando el 100% del ancho en móvil y PC */}
-      <div className="w-full grid grid-cols-3 gap-1.5 sm:gap-2 bg-[#f4efe6] p-1.5 rounded-2xl border border-[#e7dfd5]">
+      {/* Selector limpio de 4 modos visibles en 1 sola fila para móvil y escritorio: Enlace, Foto, Voz, Texto */}
+      <div className="w-full grid grid-cols-4 gap-1 sm:gap-1.5 bg-[#f4efe6] p-1 sm:p-1.5 rounded-2xl border border-[#e7dfd5]">
         <button
           type="button"
           disabled={isPending || isRecording}
@@ -1468,31 +1490,33 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             setMode('url');
             setError(null);
           }}
-          className={`min-h-[46px] sm:min-h-[50px] px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
+          className={`min-h-[52px] sm:min-h-[48px] px-1.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-sm font-medium transition cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 active:scale-[0.98] ${
             mode === 'url'
               ? 'bg-white text-stone-900 font-semibold shadow-xs'
               : 'text-stone-600 hover:text-stone-900'
           } disabled:opacity-50`}
         >
           <LinkIcon className="w-4 h-4 text-brand-primary shrink-0" />
-          <span className="truncate">{t('capture_tab_url')}</span>
+          <span className="truncate">{language === 'en' ? 'Link' : 'Enlace'}</span>
         </button>
+
         <button
           type="button"
           disabled={isPending || isRecording}
           onClick={() => {
-            setMode('texto');
+            setMode('foto');
             setError(null);
           }}
-          className={`min-h-[46px] sm:min-h-[50px] px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
-            mode === 'texto'
+          className={`min-h-[52px] sm:min-h-[48px] px-1.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-sm font-medium transition cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 active:scale-[0.98] ${
+            mode === 'foto'
               ? 'bg-white text-stone-900 font-semibold shadow-xs'
               : 'text-stone-600 hover:text-stone-900'
           } disabled:opacity-50`}
         >
-          <FileText className="w-4 h-4 text-brand-primary shrink-0" />
-          <span className="truncate">{t('capture_tab_text')}</span>
+          <Camera className="w-4 h-4 text-brand-primary shrink-0" />
+          <span className="truncate">{language === 'en' ? 'Photo' : 'Foto'}</span>
         </button>
+
         <button
           type="button"
           disabled={isPending}
@@ -1500,14 +1524,31 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             setMode('audio');
             setError(null);
           }}
-          className={`min-h-[46px] sm:min-h-[50px] px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
+          className={`min-h-[52px] sm:min-h-[48px] px-1.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-sm font-medium transition cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 active:scale-[0.98] ${
             mode === 'audio'
               ? 'bg-white text-stone-900 font-semibold shadow-xs'
               : 'text-stone-600 hover:text-stone-900'
           } disabled:opacity-50`}
         >
           <Mic className="w-4 h-4 text-brand-primary shrink-0" />
-          <span className="truncate">{t('capture_tab_voice')}</span>
+          <span className="truncate">{language === 'en' ? 'Voice' : 'Voz'}</span>
+        </button>
+
+        <button
+          type="button"
+          disabled={isPending || isRecording}
+          onClick={() => {
+            setMode('texto');
+            setError(null);
+          }}
+          className={`min-h-[52px] sm:min-h-[48px] px-1.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-sm font-medium transition cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 active:scale-[0.98] ${
+            mode === 'texto'
+              ? 'bg-white text-stone-900 font-semibold shadow-xs'
+              : 'text-stone-600 hover:text-stone-900'
+          } disabled:opacity-50`}
+        >
+          <FileText className="w-4 h-4 text-brand-primary shrink-0" />
+          <span className="truncate">{language === 'en' ? 'Text' : 'Texto'}</span>
         </button>
       </div>
 
@@ -1692,106 +1733,110 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3.5">
         {mode === 'url' ? (
-          <div className="space-y-2.5">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <input
-                  ref={urlInputRef}
-                  type="url"
-                  autoFocus={false}
-                  value={url}
-                  onPaste={(e) => {
-                    const pasted = e.clipboardData?.getData('text') || '';
-                    const cleanUrl = extractCleanSharedUrl(pasted);
-                    if (cleanUrl && cleanUrl !== pasted.trim()) {
-                      e.preventDefault();
-                      setUrl(cleanUrl);
-                    }
-                  }}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const trimmedVal = val.trim();
-                    if (
-                      trimmedVal &&
-                      !/^https?:\/\/\S+$/i.test(trimmedVal) &&
-                      /https?:\/\/\S+/i.test(trimmedVal)
-                    ) {
-                      const cleanUrl = extractCleanSharedUrl(trimmedVal);
-                      setUrl(cleanUrl || val);
-                    } else {
-                      setUrl(val);
-                    }
-                  }}
-                  placeholder={t('capture_placeholder_url_detailed')}
-                  disabled={isPending}
-                  className="w-full min-h-[52px] pl-4 pr-11 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition shadow-2xs disabled:opacity-60"
-                />
-                {url && !isPending ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUrl('');
-                      urlInputRef.current?.focus();
-                    }}
-                    title={language === 'en' ? 'Clear link' : 'Borrar enlace'}
-                    className="w-7 h-7 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/70 flex items-center justify-center absolute right-3 top-1/2 -translate-y-1/2 transition cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <LinkIcon className="w-5 h-5 text-stone-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                )}
-              </div>
-
-              {/* Input nativo de archivo con accept amplio (hasta 3 fotos, o 1 PDF/audio) */}
+          <div className="space-y-2">
+            <div className="relative">
               <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/jpeg, image/png, image/webp, image/heic, image/heif, application/pdf, audio/*"
-                multiple
-                className="hidden"
-                disabled={isPending || isOptimizingPhoto}
+                ref={urlInputRef}
+                type="url"
+                autoFocus={false}
+                value={url}
+                onPaste={(e) => {
+                  const pasted = e.clipboardData?.getData('text') || '';
+                  const cleanUrl = extractCleanSharedUrl(pasted);
+                  if (cleanUrl && cleanUrl !== pasted.trim()) {
+                    e.preventDefault();
+                    setUrl(cleanUrl);
+                  }
+                }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const trimmedVal = val.trim();
+                  if (
+                    trimmedVal &&
+                    !/^https?:\/\/\S+$/i.test(trimmedVal) &&
+                    /https?:\/\/\S+/i.test(trimmedVal)
+                  ) {
+                    const cleanUrl = extractCleanSharedUrl(trimmedVal);
+                    setUrl(cleanUrl || val);
+                  } else {
+                    setUrl(val);
+                  }
+                }}
+                placeholder={t('capture_placeholder_url_detailed')}
+                disabled={isPending}
+                className="w-full min-h-[52px] pl-4 pr-11 py-3 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition shadow-2xs disabled:opacity-60"
               />
+              {url && !isPending ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUrl('');
+                    urlInputRef.current?.focus();
+                  }}
+                  title={language === 'en' ? 'Clear link' : 'Borrar enlace'}
+                  className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/70 flex items-center justify-center absolute right-2.5 top-1/2 -translate-y-1/2 transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              ) : (
+                <LinkIcon className="w-5 h-5 text-stone-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              )}
+            </div>
+          </div>
+        ) : mode === 'foto' ? (
+          <div className="space-y-3">
+            {/* Inputs ocultos de cámara directa y galería/PDF (hasta 3 fotos = 1 receta) */}
+            <input
+              type="file"
+              ref={cameraInputRef}
+              onChange={handleFileChange}
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              disabled={isPending || isOptimizingPhoto}
+            />
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/jpeg, image/png, image/webp, image/heic, image/heif, application/pdf"
+              multiple
+              className="hidden"
+              disabled={isPending || isOptimizingPhoto}
+            />
 
-              {/* Botón secundario para subir archivos o fotos */}
+            {/* Controles táctiles claros de cámara y galería */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={isPending || isOptimizingPhoto || selectedFiles.length >= MAX_CAPTURE_PHOTOS}
+                className="min-h-[56px] px-3 py-3 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] active:scale-[0.98] border border-[#e7dfd5] text-stone-900 font-semibold text-xs sm:text-sm transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs disabled:opacity-50"
+              >
+                <Camera className="w-5 h-5 text-brand-primary shrink-0" />
+                <span>{language === 'en' ? 'Take photo' : 'Hacer foto'}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isPending}
-                title={t('capture_title_upload_file')}
-                className="min-h-[52px] px-3.5 sm:px-4 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] active:scale-[0.98] border border-[#e7dfd5] text-brand-primary hover:text-[#8e511c] font-medium transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs shrink-0 disabled:opacity-50"
+                disabled={isPending || isOptimizingPhoto || selectedFiles.length >= MAX_CAPTURE_PHOTOS}
+                className="min-h-[56px] px-3 py-3 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] active:scale-[0.98] border border-[#e7dfd5] text-stone-900 font-semibold text-xs sm:text-sm transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs disabled:opacity-50"
               >
-                <Paperclip className="w-5 h-5" />
-                <span className="hidden sm:inline text-xs font-semibold">{t('capture_btn_upload_file')}</span>
+                <ImagePlus className="w-5 h-5 text-brand-primary shrink-0" />
+                <span>{language === 'en' ? 'Gallery (up to 3)' : 'Galería (hasta 3)'}</span>
               </button>
             </div>
 
-            {/* Botones rápidos de 1 toque para pegar desde TikTok, Instagram, YouTube o portapapeles */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handlePasteFromClipboard(true)}
-                disabled={isPending}
-                className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-2xl bg-[#f4efe6] hover:bg-[#ebe2d5] active:scale-[0.99] border border-brand-primary/35 text-stone-900 font-semibold text-xs sm:text-sm transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs disabled:opacity-50"
-              >
-                <ClipboardPaste className="w-4 h-4 text-brand-primary shrink-0" />
-                <span>
-                  {language === 'en' ? 'Paste link & extract' : 'Pegar enlace y extraer'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handlePasteFromClipboard(false)}
-                disabled={isPending}
-                className="min-h-[44px] px-3.5 py-2 rounded-2xl bg-[#faf7f2] hover:bg-[#f4efe6] active:scale-[0.99] border border-[#e7dfd5] text-stone-600 hover:text-stone-900 font-medium text-xs transition cursor-pointer flex items-center justify-center shrink-0 disabled:opacity-50"
-              >
-                <span>{language === 'en' ? 'Paste only' : 'Solo pegar'}</span>
-              </button>
-            </div>
+            {selectedFiles.length === 0 && !isOptimizingPhoto && (
+              <p className="text-[11px] sm:text-xs text-stone-500 text-center leading-relaxed px-2">
+                {language === 'en'
+                  ? 'Handwritten notes, cookbook pages, product labels, or finished dishes. Up to 3 photos count as 1 recipe.'
+                  : 'Recetas manuscritas, páginas de libro, etiquetas o platos terminados. Hasta 3 fotos cuentan como 1 sola receta.'}
+              </p>
+            )}
 
             {/* Indicador de compresión rápida en cliente */}
             {isOptimizingPhoto && (
@@ -1805,7 +1850,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
               </div>
             )}
 
-            {/* Tarjeta de visualización de archivos/fotos adjuntas (hasta 3 fotos = 1 captura) */}
+            {/* Tarjeta de visualización de fotos/archivos adjuntos (hasta 3 fotos = 1 captura) */}
             {selectedFiles.length > 0 && (
               <div className="p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs space-y-2.5">
                 <div className="space-y-2">
@@ -1815,7 +1860,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                       <div key={`${fileItem.name}-${idx}`} className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3 overflow-hidden">
                           {previewUrl ? (
-                            <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-[#e7dfd5] shrink-0">
+                            <div className="w-11 h-11 rounded-xl overflow-hidden bg-white border border-[#e7dfd5] shrink-0">
                               <img
                                 src={previewUrl}
                                 alt={fileItem.name}
@@ -1823,15 +1868,11 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                               />
                             </div>
                           ) : fileItem.type.startsWith('image/') ? (
-                            <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
+                            <div className="w-11 h-11 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
                               <Camera className="w-5 h-5" />
                             </div>
-                          ) : fileItem.type.startsWith('audio/') ? (
-                            <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
-                              <Volume2 className="w-5 h-5" />
-                            </div>
                           ) : (
-                            <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
+                            <div className="w-11 h-11 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
                               <FileText className="w-5 h-5" />
                             </div>
                           )}
@@ -1846,7 +1887,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
                           type="button"
                           onClick={() => handleRemoveFile(idx)}
                           disabled={isPending}
-                          className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer shrink-0"
+                          className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer shrink-0"
                           title={language === 'en' ? 'Remove file' : 'Quitar archivo'}
                         >
                           <X className="w-4 h-4" />
@@ -1880,7 +1921,7 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
             )}
           </div>
         ) : mode === 'texto' ? (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <textarea
               ref={textInputRef}
               autoFocus={false}
@@ -1889,131 +1930,8 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
               rows={4}
               placeholder={t('capture_placeholder_text_detailed')}
               disabled={isPending}
-              className="w-full p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition resize-none shadow-2xs disabled:opacity-60"
+              className="w-full p-3.5 sm:p-4 rounded-2xl bg-[#faf7f2] border border-[#e7dfd5] text-stone-900 placeholder-stone-400 text-sm sm:text-base focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition resize-none shadow-2xs disabled:opacity-60"
             />
-
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isPending}
-                className="px-3.5 py-2 rounded-xl bg-[#faf7f2] hover:bg-[#f4efe6] border border-[#e7dfd5] text-brand-primary text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <Paperclip className="w-4 h-4" />
-                <span>{t('capture_btn_attach_file')}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('audio');
-                  setError(null);
-                  startVoiceRecording();
-                }}
-                disabled={isPending}
-                className="px-3.5 py-2 rounded-xl bg-[#f4efe6] hover:bg-[#e7dfd5] text-brand-primary text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <Mic className="w-4 h-4" />
-                <span>{t('capture_voice_record_btn')}</span>
-              </button>
-            </div>
-
-            {/* Input nativo de archivo con accept amplio (hasta 3 fotos, o 1 PDF/audio) */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept="image/jpeg, image/png, image/webp, image/heic, image/heif, application/pdf, audio/*"
-              multiple
-              className="hidden"
-              disabled={isPending || isOptimizingPhoto}
-            />
-
-            {/* Indicador de compresión rápida en cliente */}
-            {isOptimizingPhoto && (
-              <div className="flex items-center gap-2.5 p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs text-stone-700 animate-fade-in">
-                <Loader2 className="w-4 h-4 animate-spin text-brand-primary shrink-0" />
-                <span>
-                  {language === 'en'
-                    ? 'Optimizing photo(s) for fast upload...'
-                    : 'Optimizando foto(s) para una subida rápida...'}
-                </span>
-              </div>
-            )}
-
-            {/* Tarjeta de visualización de archivos/fotos adjuntas (hasta 3 fotos = 1 captura) */}
-            {selectedFiles.length > 0 && (
-              <div className="p-3 px-4 rounded-2xl bg-[#f4efe6] border border-[#e7dfd5] text-xs animate-fade-in shadow-2xs space-y-2.5">
-                <div className="space-y-2">
-                  {selectedFiles.map((fileItem, idx) => {
-                    const previewUrl = filePreviewUrls[idx];
-                    return (
-                      <div key={`${fileItem.name}-${idx}`} className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          {previewUrl ? (
-                            <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-[#e7dfd5] shrink-0">
-                              <img
-                                src={previewUrl}
-                                alt={fileItem.name}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          ) : fileItem.type.startsWith('image/') ? (
-                            <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
-                              <Camera className="w-5 h-5" />
-                            </div>
-                          ) : fileItem.type.startsWith('audio/') ? (
-                            <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
-                              <Volume2 className="w-5 h-5" />
-                            </div>
-                          ) : (
-                            <div className="w-10 h-10 rounded-xl bg-white border border-[#e7dfd5] flex items-center justify-center text-brand-primary shrink-0">
-                              <FileText className="w-5 h-5" />
-                            </div>
-                          )}
-                          <div className="truncate">
-                            <p className="font-semibold text-stone-900 truncate">{fileItem.name}</p>
-                            <p className="text-[11px] text-stone-500">
-                              {(fileItem.size / 1024).toFixed(1)} KB • {t('capture_file_ready')}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFile(idx)}
-                          disabled={isPending}
-                          className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer shrink-0"
-                          title={language === 'en' ? 'Remove file' : 'Quitar archivo'}
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {hasPhotoAttached && selectedFiles.length < MAX_CAPTURE_PHOTOS && (
-                  <div className="pt-2 border-t border-[#e7dfd5] flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-stone-500">
-                      {language === 'en'
-                        ? `${selectedFiles.length}/${MAX_CAPTURE_PHOTOS} photos (1 recipe)`
-                        : `${selectedFiles.length}/${MAX_CAPTURE_PHOTOS} fotos (cuenta como 1 receta)`}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isPending || isOptimizingPhoto}
-                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#faf7f2] border border-[#e7dfd5] text-brand-primary font-semibold text-[11px] flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>
-                        {language === 'en' ? 'Add another photo' : 'Añadir otra foto'}
-                      </span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         ) : (
           /* MODO AUDIO: ESTUDIO DE DICTADO POR VOZ CROSS-PLATFORM */
@@ -2208,49 +2126,61 @@ export function RecipeCaptureCard({ initialProfile }: RecipeCaptureCardProps = {
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={isPending}
-          className="w-full min-h-[54px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-brand-primary hover:bg-brand-hover active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-sm shadow-brand-primary/20 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
-        >
-          {isPending ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin text-white shrink-0" />
-              <span className="truncate">
-                {currentHumorPhrase} ({elapsedSeconds}s)
-              </span>
-            </>
-          ) : mode === 'audio' ? (
-            isRecording ? (
+        {/* Botón principal inteligente (oculto en Voz cuando no procesa para evitar duplicar controles) */}
+        {(mode !== 'audio' || isPending) && (
+          <button
+            type="submit"
+            disabled={isPending || isOptimizingPhoto}
+            className="w-full min-h-[52px] py-3.5 px-6 rounded-2xl font-semibold text-sm sm:text-base text-white bg-brand-primary hover:bg-brand-hover active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-sm shadow-brand-primary/20 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
+          >
+            {isPending ? (
               <>
-                <Square className="w-5 h-5 fill-current text-white shrink-0" />
-                <span>{language === 'en' ? 'Stop & review' : 'Detener y revisar'}</span>
+                <Loader2 className="w-5 h-5 animate-spin text-white shrink-0" />
+                <span className="truncate">
+                  {currentHumorPhrase} ({elapsedSeconds}s)
+                </span>
               </>
-            ) : audioFile ? (
-              <>
-                <Sparkles className="w-5 h-5 text-white shrink-0" />
-                <span>{t('capture_voice_extract')}</span>
-                <ArrowRight className="w-5 h-5" />
-              </>
+            ) : mode === 'url' ? (
+              url.trim() ? (
+                <>
+                  <span>{t('capture_btn_process')}</span>
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              ) : (
+                <>
+                  <ClipboardPaste className="w-5 h-5 text-white shrink-0" />
+                  <span>
+                    {language === 'en' ? 'Paste link & extract' : 'Pegar enlace y extraer'}
+                  </span>
+                </>
+              )
+            ) : mode === 'foto' ? (
+              selectedFiles.length > 0 ? (
+                <>
+                  <Sparkles className="w-5 h-5 text-white shrink-0" />
+                  <span>
+                    {selectedFiles.length > 1
+                      ? `${t('capture_process_recipe')} (${selectedFiles.length} ${language === 'en' ? 'photos' : 'fotos'})`
+                      : t('capture_process_recipe')}
+                  </span>
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              ) : (
+                <>
+                  <ImagePlus className="w-5 h-5 text-white shrink-0" />
+                  <span>
+                    {language === 'en' ? 'Choose recipe photo(s)' : 'Elegir foto(s) de la receta'}
+                  </span>
+                </>
+              )
             ) : (
               <>
-                <Mic className="w-5 h-5 text-white shrink-0" />
-                <span>{t('capture_voice_record_btn')}</span>
+                <span>{t('capture_btn_process')}</span>
+                <ArrowRight className="w-5 h-5" />
               </>
-            )
-          ) : (
-            <>
-              <span>
-                {selectedFiles.length > 1
-                  ? `${t('capture_process_recipe')} (${selectedFiles.length} ${language === 'en' ? 'photos' : 'fotos'})`
-                  : selectedFiles.length === 1
-                    ? `${t('capture_process_recipe')} (${selectedFiles[0].name})`
-                    : t('capture_btn_process')}
-              </span>
-              <ArrowRight className="w-5 h-5" />
-            </>
-          )}
-        </button>
+            )}
+          </button>
+        )}
       </form>
 
       <div className="flex items-center justify-between gap-2 pt-3 border-t border-[#f4efe6] text-xs">

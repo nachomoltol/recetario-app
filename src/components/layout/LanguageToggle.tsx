@@ -7,9 +7,10 @@ import { useLanguageStore } from '@/stores/useLanguageStore';
 interface LanguageToggleProps {
   className?: string;
   showIcon?: boolean;
+  alwaysShow?: boolean;
 }
 
-export function LanguageToggle({ className = '' }: LanguageToggleProps) {
+export function LanguageToggle({ className = '', alwaysShow = false }: LanguageToggleProps) {
   const pathname = usePathname();
   const language = useLanguageStore((s) => s.language);
   const setLanguage = useLanguageStore((s) => s.setLanguage);
@@ -19,10 +20,9 @@ export function LanguageToggle({ className = '' }: LanguageToggleProps) {
     initLanguage();
   }, [initLanguage]);
 
-  // Solo mostrar el selector de idioma en la portada / home principal ('/' o '/recipes')
-  // En páginas secundarias debe permanecer limpio.
-  const isHome = pathname === '/' || pathname === '/recipes';
-  if (!isHome) {
+  // Por defecto solo se muestra en Ajustes (o cuando se indica alwaysShow) para mantener limpias las cabeceras
+  const isSettings = pathname.startsWith('/settings');
+  if (!alwaysShow && !isSettings) {
     return null;
   }
 

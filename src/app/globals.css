@@ -76,6 +76,12 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
+  scroll-padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+
+button,
+a {
+  touch-action: manipulation;
 }
 
 h1, h2, h3, .font-serif-recipe {

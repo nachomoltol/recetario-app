@@ -43,18 +43,18 @@ export function BottomNavigation() {
   return (
     <nav
       aria-label="Navegación principal móvil"
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#e7dfd5] shadow-lg pb-[env(safe-area-inset-bottom)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#e7dfd5] shadow-lg pb-[max(0.5rem,env(safe-area-inset-bottom))]"
     >
-      <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-around">
+      <div className="max-w-md mx-auto px-4 pt-1.5 pb-1 min-h-[60px] flex items-center justify-around">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-2xl transition-all cursor-pointer min-w-[72px] min-h-[48px] ${
+              className={`flex flex-col items-center justify-center gap-1 py-1.5 px-4 rounded-2xl transition-all cursor-pointer min-w-[80px] min-h-[48px] touch-manipulation active:scale-95 ${
                 item.isActive
-                  ? 'text-brand-primary font-bold bg-[#f4efe6]/80'
+                  ? 'text-brand-primary font-bold bg-[#f4efe6]/85'
                   : 'text-stone-500 hover:text-stone-800 font-medium'
               }`}
             >
